@@ -1,0 +1,69 @@
+/* Afferent design tokens — single source of truth.
+ * Mirrors the :root block from the original Afferent.html prototype.
+ * Grouped by ladder: paper / ink / accent / signal / type / spacing / geometry. */
+
+:root {
+  /* Paper ladder — warm, low-chroma. Body sits BELOW cards. */
+  --canvas:      #f7f5f1;
+  --paper:       #fcfbf8;
+  --paper-2:     #f1eee7;
+  --paper-3:     #e8e4db;
+  --rule:        #d8d4cc;
+  --rule-strong: #bfbab0;
+
+  /* Ink — one authoritative navy. */
+  --ink:         #1d2236;
+  --ink-2:       #3a3f53;
+  --ink-3:       #6f6e74;
+  --ink-4:       #a8a6ab;
+
+  /* Accent collapsed to navy. */
+  --accent:      #1d2236;
+  --accent-2:    #1d2236;
+  --accent-tint: #ebe8df;
+
+  /* Brand semantic — one navy. Charcoal aliased. */
+  --navy:        #1d2236;
+  --navy-line:   #3a3f53;
+  --navy-sub:    #c8c5bd;
+  --navy-dim:    #a8a6ab;
+  --charcoal:    #1d2236;
+
+  /* Signal — muted, never SaaS-bright. */
+  --neg:         #8a3a36;
+  --neg-tint:    #f3e7e3;
+  --warn:        #9a7f55;
+  --warn-tint:   #f1ebde;
+  --pos:         #6b7355;
+  --pos-tint:    #ebeadb;
+
+  /* Type families — next/font sets --ff-*-loaded; we fall back to system fonts. */
+  --ff-display: var(--ff-display-loaded), "Inter Tight", system-ui, sans-serif;
+  --ff-ui:      var(--ff-ui-loaded),      "IBM Plex Sans", system-ui, sans-serif;
+  --ff-mono:    var(--ff-mono-loaded),    "IBM Plex Mono", ui-monospace, monospace;
+
+  /* Type scale — single source of truth.
+   * L1 headline · L2 metric · L3 secondary · L4 eyebrow · L5 page title
+   * L6 lead · L7 body · L8 micro · L9 tag */
+  --t-l1: 56px;   --t-l1-w: 600;
+  --t-l2: 36px;   --t-l2-w: 600;
+  --t-l3: 22px;   --t-l3-w: 600;
+  --t-l4: 10.5px; --t-l4-w: 600;
+  --t-l5: 22px;   --t-l5-w: 600;
+  --t-l6: 13.5px; --t-l6-w: 400;
+  --t-l7: 12.5px; --t-l7-w: 400;
+  --t-l8: 11px;   --t-l8-w: 400;
+  --t-l9: 10px;   --t-l9-w: 700;
+
+  --fs-ui: 13px;
+
+  /* Spacing scale */
+  --s-1: 4px; --s-2: 8px;  --s-3: 12px;
+  --s-4: 16px; --s-5: 22px; --s-6: 24px;
+  --s-7: 32px; --s-8: 40px;
+
+  /* Page geometry */
+  --page-max:    1320px;
+  --page-padX:   32px;
+  --section-gap: 24px;
+}
