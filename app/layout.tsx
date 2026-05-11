@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Inter_Tight, IBM_Plex_Sans, IBM_Plex_Mono } from "next/font/google";
 import { TopBar } from "@/components/layout";
+import { BuildProvider } from "@/features/build/BuildContext";
 import "./globals.css";
 
 const interTight = Inter_Tight({
@@ -33,8 +34,10 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
       className={`${interTight.variable} ${plexSans.variable} ${plexMono.variable}`}
     >
       <body>
-        <TopBar/>
-        {children}
+        <BuildProvider>
+          <TopBar/>
+          {children}
+        </BuildProvider>
       </body>
     </html>
   );

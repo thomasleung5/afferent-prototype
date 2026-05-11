@@ -1,0 +1,186 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  DataTable, deriveDeptFilter, applyFilter,
+  type Column, type FilterGroup,
+} from "@/components/table";
+import { CellInput, CellSelect, DeptChip, SourcePill } from "@/components/ui";
+import { fmt } from "@/lib/format";
+import type { DeptCode, Position } from "@/lib/types";
+import { useBuildState } from "./BuildContext";
+
+const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];
+
+interface Row extends Omit<Position, "flag"> {
+  flag: boolean;
+  warning?: Position["flag"];
+  hourly: number;
+}
+
+export function PositionsTable() {
+  const { positions, updatePosition } = useBuildState();
+  const [dept, setDept] = useState("ALL");
+  const [reviewOnly, setReviewOnly] = useState(false);
+
+  const all: Row[] = useMemo(() => positions.map((p): Row => ({
+    id: p.id,
+    title: p.title,
+    dept: p.dept,
+    fte: p.fte,
+    salary: p.salary,
+    benefits: p.benefits,
+    hours: p.hours,
+    flag: !!p.flag,
+    warning: p.flag,
+    hourly: p.hours > 0 ? (p.salary + p.benefits) / p.hours : 0,
+  })), [positions]);
+
+  const flaggedCount = all.filter((r) => r.flag).length;
+  const rows = useMemo(() => {
+    const base = applyFilter(all, "dept", dept);
+    return reviewOnly ? base.filter((r) => r.flag) : base;
+  }, [all, dept, reviewOnly]);
+
+  const filters: FilterGroup[] = [
+    {
+      id: "dept", label: "Dept",
+      options: deriveDeptFilter(all),
+      value: dept, onChange: setDept,
+    },
+    {
+      id: "review", label: "View",
+      options: [
+        { value: "ALL",  label: "All",          count: all.length },
+        { value: "FLAG", label: "Needs review", count: flaggedCount },
+      ],
+      value: reviewOnly ? "FLAG" : "ALL",
+      onChange: (v) => setReviewOnly(v === "FLAG"),
+    },
+  ];
+
+  const cols: Column<Row>[] = [
+    {
+      key: "title",
+      label: "Position",
+      width: "minmax(220px, 1.6fr)",
+      sortable: true,
+      render: (r) => (
+        <div>
+          <CellInput
+            value={r.title}
+            onChange={(v) => updatePosition(r.id, { title: String(v) })}
+          />
+          {r.warning && (
+            <div style={{ fontSize: 11, color: "var(--warn)", paddingLeft: 6, marginTop: 2 }}>
+              ⚠ {r.warning === "title-changed"
+                ? "Title changed since prior study"
+                : "Missing productive hours"}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "dept",
+      label: "Dept",
+      width: "80px",
+      sortable: true,
+      render: (r) => (
+        <CellSelect
+          value={r.dept}
+          options={DEPT_OPTIONS}
+          onChange={(v) => updatePosition(r.id, { dept: v as DeptCode })}
+        />
+      ),
+    },
+    {
+      key: "fte",
+      label: "FTE",
+      width: "70px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          type="number" value={r.fte} step={0.05} min={0} max={2}
+          onChange={(v) => updatePosition(r.id, { fte: Number(v) || 0 })}
+          align="right"
+        />
+      ),
+    },
+    {
+      key: "salary",
+      label: "Salary",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          type="number" value={r.salary} step={1000} min={0}
+          onChange={(v) => updatePosition(r.id, { salary: Number(v) || 0 })}
+          align="right" prefix="$"
+        />
+      ),
+    },
+    {
+      key: "benefits",
+      label: "Benefits",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          type="number" value={r.benefits} step={1000} min={0}
+          onChange={(v) => updatePosition(r.id, { benefits: Number(v) || 0 })}
+          align="right" prefix="$"
+        />
+      ),
+    },
+    {
+      key: "hours",
+      label: "Prod hrs/yr",
+      width: "110px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          type="number" value={r.hours} step={20} min={0}
+          onChange={(v) => updatePosition(r.id, { hours: Number(v) || 0 })}
+          align="right"
+        />
+      ),
+    },
+    {
+      key: "hourly",
+      label: "Direct $/hr",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <span className="num" style={{ fontWeight: 600 }}>
+          {r.hours > 0 ? `$${Math.round(r.hourly)}` : "—"}
+        </span>
+      ),
+    },
+    {
+      key: "source",
+      label: "Source",
+      width: "100px",
+      align: "right",
+      render: () => <SourcePill>Imported</SourcePill>,
+    },
+  ];
+
+  return (
+    <DataTable
+      title="Position roster"
+      eyebrow="Inputs · Edit any cell to recompute downstream rates"
+      cols={cols}
+      rows={rows}
+      filters={filters}
+      defaultSort={{ key: "title", dir: "asc" }}
+      stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
+      footerNote={`${rows.length} positions · ${fmt.dollarsK(rows.reduce((a, r) => a + (r.salary + r.benefits) * r.fte, 0))} total comp`}
+    />
+  );
+}

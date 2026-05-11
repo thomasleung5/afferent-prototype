@@ -1,0 +1,204 @@
+"use client";
+
+import { useMemo, useState } from "react";
+import {
+  DataTable,
+  type Column, type FilterGroup,
+} from "@/components/table";
+import { CellInput, CellSelect } from "@/components/ui";
+import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
+import { useBuildState } from "./BuildContext";
+
+const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG", "SHARED:CDS"];
+const CATEGORIES: OpCategory[] = [
+  "Software & subscriptions",
+  "Professional services",
+  "Training & travel",
+  "Office & supplies",
+  "Memberships & dues",
+  "Vehicles & equipment",
+  "Legal noticing",
+  "Capital outlay",
+  "Other",
+];
+
+function SharedChip() {
+  return (
+    <span className="mono" style={{
+      display: "inline-block",
+      padding: "2px 6px",
+      border: "1px dashed var(--rule-strong)",
+      background: "var(--paper-2)",
+      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em",
+      color: "var(--ink-2)",
+    }}>SHARED</span>
+  );
+}
+
+interface Row extends OperatingLine {
+  flag?: boolean;
+}
+
+export function OperatingTable() {
+  const { operating, updateOperating } = useBuildState();
+  const [deptFilter, setDeptFilter] = useState("ALL");
+  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [includeFilter, setIncludeFilter] = useState("ALL");
+
+  const rows: Row[] = useMemo(() => operating.filter((r) => {
+    if (deptFilter !== "ALL" && r.dept !== deptFilter) return false;
+    if (categoryFilter !== "ALL" && r.category !== categoryFilter) return false;
+    if (includeFilter === "INC" && !r.include) return false;
+    if (includeFilter === "EXC" && r.include) return false;
+    return true;
+  }).map((r) => ({ ...r, flag: r.include && !r.source })), [operating, deptFilter, categoryFilter, includeFilter]);
+
+  const deptOptions = [
+    { value: "ALL",        label: "All",         count: operating.length },
+    { value: "PLAN",       label: "Planning",    count: operating.filter((r) => r.dept === "PLAN").length },
+    { value: "BLDG",       label: "Building",    count: operating.filter((r) => r.dept === "BLDG").length },
+    { value: "ENG",        label: "Engineering", count: operating.filter((r) => r.dept === "ENG").length },
+    { value: "SHARED:CDS", label: "Shared",      count: operating.filter((r) => r.dept === "SHARED:CDS").length },
+  ];
+
+  const categoryCounts: Record<string, number> = {};
+  operating.forEach((r) => { categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1; });
+  const categoryOptions = [
+    { value: "ALL", label: "All", count: operating.length },
+    ...CATEGORIES.filter((c) => categoryCounts[c]).map((c) => ({
+      value: c, label: c, count: categoryCounts[c],
+    })),
+  ];
+
+  const includeOptions = [
+    { value: "ALL", label: "All",      count: operating.length },
+    { value: "INC", label: "Included", count: operating.filter((r) => r.include).length },
+    { value: "EXC", label: "Excluded", count: operating.filter((r) => !r.include).length },
+  ];
+
+  const filters: FilterGroup[] = [
+    { id: "dept",     label: "Dept",     options: deptOptions,     value: deptFilter,     onChange: setDeptFilter },
+    { id: "category", label: "Category", options: categoryOptions, value: categoryFilter, onChange: setCategoryFilter },
+    { id: "include",  label: "Status",   options: includeOptions,  value: includeFilter,  onChange: setIncludeFilter },
+  ];
+
+  const cols: Column<Row>[] = [
+    {
+      key: "code",
+      label: "Fund-Program",
+      width: "110px",
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          <CellInput
+            value={r.code}
+            onChange={(v) => updateOperating(r.id, { code: String(v) })}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "line",
+      label: "Line item",
+      width: "minmax(220px, 1.6fr)",
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          <div style={{
+            textDecoration: r.include ? "none" : "line-through",
+            textDecorationColor: "var(--ink-4)",
+          }}>
+            <CellInput
+              value={r.line}
+              onChange={(v) => updateOperating(r.id, { line: String(v) })}
+            />
+          </div>
+          {!r.include && r.excludeReason && (
+            <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic", paddingLeft: 6 }}>
+              Excluded: {r.excludeReason}
+            </div>
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "dept",
+      label: "Dept",
+      width: "110px",
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          {r.dept === "SHARED:CDS" ? <SharedChip/> : (
+            <CellSelect
+              value={r.dept}
+              options={DEPT_OPTIONS}
+              onChange={(v) => updateOperating(r.id, { dept: v as OpDept })}
+            />
+          )}
+        </div>
+      ),
+    },
+    {
+      key: "category",
+      label: "Category",
+      width: "170px",
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          <CellSelect
+            value={r.category}
+            options={CATEGORIES}
+            onChange={(v) => updateOperating(r.id, { category: v as OpCategory })}
+          />
+        </div>
+      ),
+    },
+    {
+      key: "amount",
+      label: "Amount",
+      width: "110px",
+      align: "right",
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          <CellInput
+            type="number" value={r.amount} step={100} min={0}
+            onChange={(v) => updateOperating(r.id, { amount: Number(v) || 0 })}
+            align="right" prefix="$"
+          />
+        </div>
+      ),
+    },
+    {
+      key: "include",
+      label: "Include",
+      align: "center",
+      width: "80px",
+      render: (r) => (
+        <button
+          onClick={() => updateOperating(r.id, { include: !r.include })}
+          title={r.include ? "Click to exclude from $/hr (line stays visible for audit)" : "Click to include in $/hr"}
+          style={{
+            width: 36, height: 20, padding: 2,
+            background: r.include ? "var(--accent)" : "var(--rule)",
+            border: "none", borderRadius: 999,
+            position: "relative", cursor: "pointer",
+          }}
+        >
+          <span style={{
+            position: "absolute", top: 2, left: r.include ? 18 : 2,
+            width: 16, height: 16, borderRadius: "50%", background: "#fff",
+            transition: "left 100ms",
+          }}/>
+        </button>
+      ),
+    },
+  ];
+
+  return (
+    <DataTable
+      title="Operating cost lines"
+      eyebrow="Inputs · Toggle Include to exclude lines from $/hr"
+      cols={cols}
+      rows={rows}
+      filters={filters}
+      defaultSort={{ key: "amount", dir: "desc" }}
+      footerNote={`${rows.length} of ${operating.length} lines · ${operating.filter((l) => l.include).length} included`}
+    />
+  );
+}

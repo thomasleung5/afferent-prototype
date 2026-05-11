@@ -71,6 +71,94 @@ export interface AuditEntry {
   src: string;
 }
 
+/* ---------- Build Model inputs ---------- */
+
+export type PositionFlag = "title-changed" | "missing-hours";
+
+export interface Position {
+  id: string;
+  title: string;
+  dept: DeptCode;
+  fte: number;
+  salary: number;
+  benefits: number;
+  /** Productive hours per FTE per year (e.g. 1720). */
+  hours: number;
+  flag?: PositionFlag;
+}
+
+export type OpDept = DeptCode | "SHARED:CDS";
+
+export type OpCategory =
+  | "Software & subscriptions"
+  | "Professional services"
+  | "Training & travel"
+  | "Office & supplies"
+  | "Memberships & dues"
+  | "Vehicles & equipment"
+  | "Legal noticing"
+  | "Capital outlay"
+  | "Other";
+
+export interface OperatingLine {
+  id: string;
+  code: string;
+  dept: OpDept;
+  category: OpCategory;
+  line: string;
+  amount: number;
+  source: string;
+  include: boolean;
+  excludeReason?: string;
+}
+
+/** Indirect overhead allocated to direct departments by the CAP. */
+export interface CapPool {
+  id: string;
+  center: string;
+  pool: string;
+  amount: number;
+  basis: string;
+  receiving: string;
+  recoverability: string;
+  review: "Reviewed" | "Review";
+}
+
+/** Final CAP allocation, per direct department. */
+export interface CapAllocation {
+  dept: DeptCode;
+  /** Total CAP $ allocated to this department. */
+  allocated: number;
+}
+
+export interface WorkloadRow {
+  /** Matches a `Service.id` from `lib/data/services.ts`. */
+  id: string;
+  prior: number | null;
+  current: number | null;
+  unit: string;
+  source: "imported" | "carry-forward" | "manual" | "missing";
+  status: "Validated" | "Imported" | "Reused" | "Manual" | "Missing";
+  sourceFile?: string;
+  flag?: "missing-current-volume" | "carry-forward";
+}
+
+export interface PolicyTarget {
+  id: string;
+  dept: DeptCode;
+  /** Recovery target as a percent (e.g. 70). */
+  target: number;
+  note: string;
+}
+
+export interface PolicyException {
+  id: string;
+  /** Service id from `lib/data/services.ts`, or a free-form fee name. */
+  fee: string;
+  target: number;
+  note: string;
+}
+
 /** Signal classification for recovery percent. */
 export type SignalKey = "pos" | "warn" | "neg";
 

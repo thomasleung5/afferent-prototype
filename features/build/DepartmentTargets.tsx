@@ -1,0 +1,90 @@
+"use client";
+
+import { DeptChip, EditableNumber, EditableText } from "@/components/ui";
+import { DEPTS } from "@/lib/data/departments";
+import { useBuildState } from "./BuildContext";
+
+function intent(target: number): string {
+  if (target >= 100) return "Full cost recovery";
+  if (target >=  80) return "Near-full recovery";
+  if (target >=  60) return "Partial recovery";
+  return "Subsidized service";
+}
+
+function Bar({ pct }: { pct: number }) {
+  return (
+    <div style={{
+      width: 110, height: 4,
+      background: "var(--paper-3)",
+      position: "relative",
+    }}>
+      <div style={{
+        position: "absolute", left: 0, top: 0, bottom: 0,
+        width: `${Math.max(0, Math.min(100, pct))}%`,
+        background: "var(--ink-2)",
+      }}/>
+    </div>
+  );
+}
+
+export function DepartmentTargets() {
+  const { policyTargets, updatePolicyTarget } = useBuildState();
+
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--rule)",
+    }}>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
+        gap: 16,
+        padding: "12px 20px",
+        borderBottom: "1px solid var(--rule)",
+        fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+        letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
+      }}>
+        <div>Department</div>
+        <div>Target Recovery</div>
+        <div>Notes</div>
+      </div>
+      {policyTargets.map((t, i) => (
+        <div key={t.id} style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
+          gap: 16,
+          padding: "14px 20px",
+          borderBottom: i < policyTargets.length - 1 ? "1px solid var(--rule)" : "none",
+          alignItems: "center",
+        }}>
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <DeptChip code={t.dept}/>
+            <span style={{ fontSize: 13.5, color: "var(--ink)", fontWeight: 500 }}>
+              {DEPTS[t.dept].name.replace(" Administration", "")}
+            </span>
+          </div>
+          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+            <Bar pct={t.target}/>
+            <EditableNumber
+              value={t.target}
+              onChange={(v) => updatePolicyTarget(t.id, { target: v })}
+              suffix="%"
+              min={0}
+              max={100}
+              align="left"
+              compact
+              width={70}
+              bold
+            />
+            <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{intent(t.target)}</span>
+          </div>
+          <EditableText
+            value={t.note}
+            onChange={(v) => updatePolicyTarget(t.id, { note: v })}
+            placeholder="Optional policy note"
+            compact
+          />
+        </div>
+      ))}
+    </div>
+  );
+}

@@ -21,6 +21,8 @@ const NAV: NavItem[] = [
 
 export function TopBar() {
   const pathname = usePathname();
+  // Print/export routes get a clean shell — no app chrome.
+  if (pathname.startsWith("/export")) return null;
   const isActive = (n: NavItem) => {
     const base = n.prefix ?? n.href;
     if (base === "/") return pathname === "/";
