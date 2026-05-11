@@ -1,5 +1,5 @@
 import { createFileRoute } from "@tanstack/react-router";
-import AnnualChangesPage from "@/app/annual/changes/page";
+import AnnualChangesPage from "@/src/pages/annual/changes";
 
 export const Route = createFileRoute("/annual/changes")({
   component: AnnualChangesPage,

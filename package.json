@@ -19,7 +19,6 @@
     "@hono/node-server": "^2.0.2",
     "@tanstack/react-router": "^1.169.2",
     "hono": "^4.12.18",
-    "next": "16.2.6",
     "pdfjs-dist": "^5.7.284",
     "react": "19.2.4",
     "react-dom": "19.2.4",

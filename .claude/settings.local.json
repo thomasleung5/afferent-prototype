@@ -13,7 +13,10 @@
       "Bash(git commit *)",
       "Bash(npm run *)",
       "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
-      "Bash(ps -p 42304 -o pid,command)"
+      "Bash(ps -p 42304 -o pid,command)",
+      "Bash(git mv *)",
+      "Bash(git rm *)",
+      "Bash(npm uninstall *)"
     ]
   }
 }
