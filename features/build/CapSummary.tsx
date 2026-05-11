@@ -1,7 +1,7 @@
 "use client";
 
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { CellInput, DeptChip, Formula } from "@/components/ui";
+import { DeptChip, Formula } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
@@ -12,9 +12,10 @@ const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";
 
 /** Per-dept CAP rollup. Each row expands to a pool ledger + method/formula/source.
- *  The allocated $ for each dept is editable inline in the summary row. */
+ *  Allocated $ is read-only here — it's an output of the step-down engine over
+ *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
-  const { capAllocation, capPools, derived, updateCapAllocation } = useBuildState();
+  const { capAllocation, capPools, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + capAllocation[d].allocated, 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
@@ -36,19 +37,7 @@ export function CapSummary() {
             <span style={{ fontWeight: 500 }}>{labelOf(d)}</span>
           </span>
         ),
-        alloc: (
-          <span onClick={(e) => e.stopPropagation()} style={{ display: "inline-block" }}>
-            <CellInput
-              type="number"
-              value={c.allocated}
-              onChange={(v) => updateCapAllocation(d, Number(v) || 0)}
-              prefix="$"
-              align="right"
-              step={1000}
-              min={0}
-            />
-          </span>
-        ),
+        alloc: <span className="num">{fmt.dollars(c.allocated)}</span>,
         perHr: rate > 0 ? `$${Math.round(rate)}` : "—",
         pools: pools.length,
         top: topPool ? (

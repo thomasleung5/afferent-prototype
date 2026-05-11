@@ -131,40 +131,6 @@ export function ServicesTable() {
         />
       ),
     },
-    {
-      key: "target",
-      label: "Target",
-      width: "90px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        <CellInput
-          type="number"
-          value={r.target}
-          onChange={(v) => updateService(r.id, { target: Number(v) || 0 })}
-          align="right"
-          suffix="%"
-          min={0}
-          max={200}
-        />
-      ),
-    },
-    {
-      key: "fee",
-      label: "Current fee",
-      width: "120px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        <CellInput
-          type="number"
-          value={r.fee}
-          onChange={(v) => updateService(r.id, { fee: Number(v) || 0 })}
-          align="right"
-          prefix="$"
-        />
-      ),
-    },
   ];
 
   return (
