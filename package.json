@@ -9,6 +9,10 @@
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
+    "@fontsource-variable/ibm-plex-sans": "^5.2.8",
+    "@fontsource-variable/inter-tight": "^5.2.7",
+    "@fontsource/ibm-plex-mono": "^5.2.7",
+    "@tanstack/react-router": "^1.169.2",
     "next": "16.2.6",
     "pdfjs-dist": "^5.7.284",
     "react": "19.2.4",
@@ -16,9 +20,14 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@tanstack/router-devtools": "^1.166.13",
+    "@tanstack/router-plugin": "^1.167.35",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "typescript": "^5"
+    "@vitejs/plugin-react": "^6.0.1",
+    "typescript": "^5",
+    "vite": "^8.0.11",
+    "vite-tsconfig-paths": "^6.1.1"
   }
 }
