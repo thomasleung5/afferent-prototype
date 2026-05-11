@@ -197,7 +197,7 @@ export function FeeScheduleTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 600, color: "var(--accent)" }}>
+        <span className="num" style={{ color: "var(--accent)" }}>
           {fmt.dollars(r.recommended)}
         </span>
       ),

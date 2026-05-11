@@ -157,7 +157,7 @@ export function PositionsTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 600 }}>
+        <span className="num">
           {r.hours > 0 ? `$${Math.round(r.hourly)}` : "—"}
         </span>
       ),

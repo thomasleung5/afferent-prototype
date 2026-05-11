@@ -96,7 +96,7 @@ export function CostOfServiceTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 600 }}>{fmt.dollarsK(r.annual)}</span>
+        <span className="num">{fmt.dollarsK(r.annual)}</span>
       ),
     },
   ];

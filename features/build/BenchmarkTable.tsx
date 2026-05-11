@@ -119,7 +119,7 @@ export function BenchmarkTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 600 }}>
+        <span className="num">
           {r.peerMedian > 0 ? fmt.dollars(r.peerMedian) : "—"}
         </span>
       ),

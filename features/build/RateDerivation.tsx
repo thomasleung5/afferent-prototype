@@ -92,8 +92,8 @@ export function RateDerivation() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 600, color: "var(--accent)" }}>
-          ${Math.round(r.fbhrTotal)}<span style={{ fontSize: 11, color: "var(--ink-3)", fontWeight: 400 }}>/hr</span>
+        <span className="num" style={{ color: "var(--accent)" }}>
+          ${Math.round(r.fbhrTotal)}<span style={{ fontSize: 11, color: "var(--ink-3)" }}>/hr</span>
         </span>
       ),
     },
