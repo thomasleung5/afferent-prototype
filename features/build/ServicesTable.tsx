@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -6,7 +6,7 @@ import {
 } from "@/components/table";
 import { CellInput, CellSelect, DeptChip } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 const SERVICE_TYPES = ["Permit", "Application", "Inspection", "Review", "Meeting", "Other"];
 const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];

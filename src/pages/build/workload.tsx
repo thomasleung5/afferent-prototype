@@ -1,10 +1,10 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { WorkloadTable } from "@/features/build/WorkloadTable";
 import { ImportReview } from "@/features/build/ImportReview";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
 import { parseFile } from "@/lib/parse";
 import { extractWorkload } from "@/lib/parse/extract";

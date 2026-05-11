@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/format";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 /** Three buckets shown on the Operating screen: dollars flowing into $/hr,
  *  excluded lines kept for audit, and a reminder that citywide indirect

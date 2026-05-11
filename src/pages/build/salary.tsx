@@ -1,11 +1,11 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { ImportReview } from "@/features/build/ImportReview";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
 import { parseFile } from "@/lib/parse";
 import { extractSalary } from "@/lib/parse/extract";

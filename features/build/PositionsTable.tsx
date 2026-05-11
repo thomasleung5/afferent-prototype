@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -7,7 +7,7 @@ import {
 import { CellInput, CellSelect, DeptChip, SourcePill } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode, Position } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];
 

@@ -1,11 +1,11 @@
-
+﻿
 import { DataTable, type Column } from "@/components/table";
 import { fmt } from "@/lib/format";
 import {
   ALLOCATION_BASES, ALLOCATION_BASIS_ROWS,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 interface BasisSummaryRow {
   id: string;

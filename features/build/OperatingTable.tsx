@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable,
@@ -6,7 +6,7 @@ import {
 } from "@/components/table";
 import { CellInput, CellSelect } from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG", "SHARED:CDS"];
 const CATEGORIES: OpCategory[] = [

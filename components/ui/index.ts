@@ -22,3 +22,7 @@ export { DropZone } from "./DropZone";
 export type { LastImport } from "./DropZone";
 export { DrilldownShell, DrilldownColumn, TraceBlock } from "./Drilldown";
 export { NodeEyebrow } from "./NodeEyebrow";
+export { StatusPill } from "./StatusPill";
+export type { PillKind } from "./StatusPill";
+export { TableToolbar } from "./TableToolbar";
+export type { FilterGroup, FilterOption } from "./TableToolbar";

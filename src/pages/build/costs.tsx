@@ -1,4 +1,4 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { ExportMenu, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -6,7 +6,7 @@ import { StatusRow } from "@/features/_shared/StatusRow";
 import { RateDerivation } from "@/features/build/RateDerivation";
 import { CostOfServiceTable } from "@/features/build/CostOfServiceTable";
 import { TraceabilityFooter } from "@/features/build/TraceabilityFooter";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 
 export default function CostOfServicePage() {

@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -11,7 +11,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { CAP_POOL_BY_DEPT, CAP_POOLS } from "@/lib/data/cap";
 import type { ServiceCost } from "@/lib/calc";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 interface Row extends ServiceCost {
   rate: number;

@@ -1,7 +1,7 @@
-
+﻿
 import { SectionLabel } from "@/components/ui";
-import { useBuildState } from "./BuildContext";
-import type { Domain } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
+import type { Domain } from "@/lib/store";
 
 const DOMAIN_LABEL: Record<Domain, string> = {
   positions: "Direct Labor",

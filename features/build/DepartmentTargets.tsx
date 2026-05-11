@@ -1,7 +1,7 @@
-
+﻿
 import { DeptChip, EditableNumber, EditableText } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 function intent(target: number): string {
   if (target >= 100) return "Full cost recovery";

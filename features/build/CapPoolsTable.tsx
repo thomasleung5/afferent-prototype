@@ -1,11 +1,11 @@
-
+﻿
 import { useState, type ReactNode } from "react";
 import { DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CAP_POOL_BY_DEPT } from "@/lib/data/cap";
 import { CITY } from "@/lib/data/city";
 import type { CapPool, DeptCode } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];

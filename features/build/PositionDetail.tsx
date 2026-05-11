@@ -1,8 +1,8 @@
-
+﻿
 import { Drawer, EditableNumber, EditableText, DeptChip } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode, Position } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { Section, Row, Field, Formula } from "./ServiceDetail";
 
 const DEPT_OPTIONS: DeptCode[] = ["PLAN", "BLDG", "ENG"];

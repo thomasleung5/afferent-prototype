@@ -1,11 +1,21 @@
 import { Page, PageHeader } from "@/components/layout";
-import { ComingSoon } from "@/features/_shared/ComingSoon";
+import { Btn, Icon } from "@/components/ui";
+import { AnnualEyebrow } from "@/features/annual/AnnualEyebrow";
+import { UpdatePacketView } from "@/features/annual/UpdatePacketView";
 
 export default function AnnualPacketPage() {
   return (
     <Page>
-      <PageHeader eyebrow="Annual update" title="Update packet"/>
-      <ComingSoon legacyFile="screens-annual.jsx (AnnualPacketScreen)"/>
+      <PageHeader
+        eyebrow={<AnnualEyebrow role="Output" label="Update packet"/>}
+        title="Annual update packet"
+        subtitle="Council outputs assembled from the model run. Traceable to source."
+        actions={<>
+          <Btn kind="ghost"><Icon name="download" size={13}/> Export staff report</Btn>
+          <Btn kind="primary"><Icon name="download" size={13}/> Export packet</Btn>
+        </>}
+      />
+      <UpdatePacketView/>
     </Page>
   );
 }

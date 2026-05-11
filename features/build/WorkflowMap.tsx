@@ -1,6 +1,6 @@
-import { Link } from "@tanstack/react-router";
+﻿import { Link } from "@tanstack/react-router";
 import { Icon, SectionLabel } from "@/components/ui";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 interface Node {
   href: string;

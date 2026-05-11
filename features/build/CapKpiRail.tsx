@@ -1,8 +1,8 @@
-
+﻿
 import { KpiTile } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
-import { defaultCenterOrder, useBuildState } from "./BuildContext";
+import { defaultCenterOrder, useBuildState } from "@/lib/store";
 
 /** Reduce pools → centers (name, total $, pool count). Stable ordering comes
  *  from `capCenterOrder` (with any newly-imported centers appended). */

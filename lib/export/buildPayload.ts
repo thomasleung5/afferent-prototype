@@ -1,4 +1,4 @@
-/* Assembles the single payload object that drives both the Excel exporter and
+﻿/* Assembles the single payload object that drives both the Excel exporter and
  * the print-friendly Fee Study PDF route. Pulls from the live BuildContext
  * state so the export always reflects the current edits + imports. */
 
@@ -9,7 +9,7 @@ import type {
 import type {
   FeeComparison, PolicyImpact, ServiceCost,
 } from "@/lib/calc";
-import type { Domain } from "@/features/build/BuildContext";
+import type { Domain } from "@/lib/store";
 import type { SourceLineage, UnmappedRow } from "@/lib/parse";
 import { DEPTS } from "@/lib/data/departments";
 import { CITY } from "@/lib/data/city";

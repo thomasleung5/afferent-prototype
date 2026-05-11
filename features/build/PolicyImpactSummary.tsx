@@ -1,6 +1,6 @@
-
+﻿
 import { fmt } from "@/lib/format";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 function Stat({ label, value, sub, divider }: { label: string; value: string; sub: string; divider?: boolean }) {
   return (

@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -10,7 +10,7 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode, WorkloadRow } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 interface Row {
   id: string;

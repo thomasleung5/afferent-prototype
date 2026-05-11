@@ -1,8 +1,8 @@
-
+﻿
 import { Drawer, EditableNumber, EditableText } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { Section, Row, Field, Formula } from "./ServiceDetail";
 
 const DEPT_OPTIONS: OpDept[] = ["PLAN", "BLDG", "ENG", "SHARED:CDS"];

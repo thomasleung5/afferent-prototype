@@ -1,4 +1,4 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -7,7 +7,7 @@ import { PolicySection } from "@/features/build/PolicySection";
 import { DepartmentTargets } from "@/features/build/DepartmentTargets";
 import { PolicyExceptions } from "@/features/build/PolicyExceptions";
 import { PolicyImpactSummary } from "@/features/build/PolicyImpactSummary";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 
 export default function RecoveryPolicyPage() {
   const { policyTargets, policyExceptions, derived } = useBuildState();

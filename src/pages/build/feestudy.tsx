@@ -1,11 +1,11 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { DropZone, ExportMenu, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { FeeScheduleTable } from "@/features/build/FeeScheduleTable";
 import { ImportReview } from "@/features/build/ImportReview";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
 import { parseFile } from "@/lib/parse";

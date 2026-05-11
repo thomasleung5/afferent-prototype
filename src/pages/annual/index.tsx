@@ -1,15 +1,18 @@
 import { Page, PageHeader } from "@/components/layout";
-import { ComingSoon } from "@/features/_shared/ComingSoon";
+import { Btn, Icon } from "@/components/ui";
+import { AnnualEyebrow } from "@/features/annual/AnnualEyebrow";
+import { SectionOverviewGrid } from "@/features/annual/SectionOverviewGrid";
 
 export default function AnnualOverviewPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Annual update"
-        title="Annual update workflow"
-        subtitle="Refresh the inputs that change each year — keep the structure."
+        eyebrow={<AnnualEyebrow role="Overview" label="FY 2026-27"/>}
+        title="Annual refresh"
+        subtitle="Prior model carried forward. Confirm this year's inputs."
+        actions={<Btn kind="ghost"><Icon name="download" size={13}/> Methodology</Btn>}
       />
-      <ComingSoon legacyFile="screens-annual.jsx"/>
+      <SectionOverviewGrid/>
     </Page>
   );
 }

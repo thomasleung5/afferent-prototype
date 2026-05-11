@@ -1,6 +1,6 @@
-
+﻿
 import { fmt } from "@/lib/format";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { CAP_TOTAL } from "@/lib/data/cap";
 
 /** Persistent footer on the Cost of Service page. Affirms that every number

@@ -1,8 +1,8 @@
-/* Client-side helper for the /api/ai/extract route. Called from the DropZone
+﻿/* Client-side helper for the /api/ai/extract route. Called from the DropZone
  * after the deterministic extractor finishes, to interpret rows that didn't
  * auto-map. Returns AiSuggestion[] ready to push into BuildContext. */
 
-import type { Domain } from "@/features/build/BuildContext";
+import type { Domain } from "@/lib/store";
 import type { ParsedDoc, UnmappedRow } from "@/lib/parse";
 import type { AiExtractRequest, AiExtractResponse, AiSuggestion } from "./types";
 

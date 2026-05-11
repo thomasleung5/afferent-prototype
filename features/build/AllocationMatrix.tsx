@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState, type ReactNode } from "react";
 import { Icon } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -7,7 +7,7 @@ import {
   basisForPool, computeStepDown, DRIVERS,
   type MatrixDept, type MatrixDeptCode,
 } from "@/lib/data/capStepDown";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 type View = "initial" | "final";
 

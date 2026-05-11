@@ -1,4 +1,4 @@
-
+﻿
 import { useState } from "react";
 import {
   DataTable, type Column,
@@ -11,7 +11,7 @@ import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
 import { CAP_POOL_BY_DEPT, CAP_POOLS } from "@/lib/data/cap";
 import type { FBHR } from "@/lib/calc";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";

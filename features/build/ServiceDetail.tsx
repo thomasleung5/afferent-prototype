@@ -1,9 +1,9 @@
-
+﻿
 import { Drawer, EditableNumber, EditableText, DeptChip } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { Service } from "@/lib/types";
 import type { FBHR } from "@/lib/calc";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 
 interface Props {
   service: Service | null;

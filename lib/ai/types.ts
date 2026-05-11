@@ -1,6 +1,6 @@
-/* Types shared between the AI server route and the client review queue. */
+﻿/* Types shared between the AI server route and the client review queue. */
 
-import type { Domain } from "@/features/build/BuildContext";
+import type { Domain } from "@/lib/store";
 import type { SourceLineage } from "@/lib/parse";
 
 export type AiConfidence = "high" | "med" | "low";

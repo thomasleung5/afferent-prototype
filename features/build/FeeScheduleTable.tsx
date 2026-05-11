@@ -1,4 +1,4 @@
-
+﻿
 import { useMemo, useState } from "react";
 import {
   DataTable, applyFilter,
@@ -11,7 +11,7 @@ import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
 import type { DeptCode } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { StateChip, ConfReason, type FeeState } from "./StateChip";
 
 type Confidence = "high" | "med" | "low";

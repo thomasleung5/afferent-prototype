@@ -1,10 +1,10 @@
-
+﻿
 import { Drawer, EditableNumber, DeptChip, RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
 import type { Service } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { Section, Row, Field, Formula } from "./ServiceDetail";
 
 interface Props {

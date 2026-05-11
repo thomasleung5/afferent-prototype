@@ -1,4 +1,4 @@
-
+﻿
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
@@ -12,7 +12,7 @@ import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationMatrix } from "@/features/build/AllocationMatrix";
 import { ImportReview } from "@/features/build/ImportReview";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
 import { parseFile } from "@/lib/parse";
 import { extractCap } from "@/lib/parse/extract";

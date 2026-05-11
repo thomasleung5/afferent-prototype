@@ -1,7 +1,7 @@
-
+﻿
 import { useState } from "react";
 import { Icon, SectionLabel, SourcePill } from "@/components/ui";
-import { useBuildState, type Domain } from "./BuildContext";
+import { useBuildState, type Domain } from "@/lib/store";
 import type { AiSuggestion } from "@/lib/ai/types";
 
 const REASON_LABEL: Record<string, string> = {

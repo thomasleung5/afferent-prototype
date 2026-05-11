@@ -1,4 +1,4 @@
-
+﻿
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -7,7 +7,7 @@ import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingBuckets } from "@/features/build/OperatingBuckets";
 import { OperatingTable } from "@/features/build/OperatingTable";
 import { ImportReview } from "@/features/build/ImportReview";
-import { useBuildState } from "@/features/build/BuildContext";
+import { useBuildState } from "@/lib/store";
 import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
 import { parseFile } from "@/lib/parse";
 import { extractOperating } from "@/lib/parse/extract";

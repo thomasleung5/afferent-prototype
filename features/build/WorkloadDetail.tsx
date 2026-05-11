@@ -1,8 +1,8 @@
-
+﻿
 import { Drawer, EditableNumber } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode, Service, WorkloadRow } from "@/lib/types";
-import { useBuildState } from "./BuildContext";
+import { useBuildState } from "@/lib/store";
 import { Section, Row, Field, Formula } from "./ServiceDetail";
 
 interface Props {

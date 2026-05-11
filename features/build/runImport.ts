@@ -1,8 +1,8 @@
-import type { LastImport } from "@/components/ui";
+﻿import type { LastImport } from "@/components/ui";
 import type { ImportApplyResult, ParsedDoc, UnmappedRow } from "@/lib/parse";
 import type { AiSuggestion } from "@/lib/ai/types";
 import { runAiAssist } from "@/lib/ai/extract";
-import type { Domain } from "./BuildContext";
+import type { Domain } from "@/lib/store";
 
 /** Format an ImportApplyResult into the LastImport shape that DropZone shows
  *  in its right-pane provenance panel. */
