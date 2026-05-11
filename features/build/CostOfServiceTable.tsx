@@ -111,6 +111,7 @@ export function CostOfServiceTable() {
       defaultSort={{ key: "annual", dir: "desc" }}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+      drilldownIndicator
       renderDrilldown={(r) => {
         const dept = r.dept as DeptCode;
         const f = derived.fbhr[dept];

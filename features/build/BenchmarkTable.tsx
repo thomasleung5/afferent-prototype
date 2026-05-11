@@ -154,6 +154,7 @@ export function BenchmarkTable() {
       defaultSort={{ key: "varianceVsMedian", dir: "desc" }}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+      drilldownIndicator
       minWidth={1100}
       renderDrilldown={(r) => {
         const sorted = CITY.peers.slice(0, 5)

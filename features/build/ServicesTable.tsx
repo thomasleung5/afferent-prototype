@@ -5,11 +5,7 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import {
-  CellInput, CellSelect, DeptChip,
-  DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill,
-} from "@/components/ui";
-import { fmt } from "@/lib/format";
+import { CellInput, CellSelect, DeptChip } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "./BuildContext";
 
@@ -34,10 +30,9 @@ interface Row extends Service {
 }
 
 export function ServicesTable() {
-  const { services, derived, updateService } = useBuildState();
+  const { services, updateService } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
-  const [openId, setOpenId] = useState<string | undefined>();
 
   const allRows: Row[] = useMemo(() => services.map((s) => ({
     ...s,
@@ -142,67 +137,7 @@ export function ServicesTable() {
       filters={filters}
       defaultSort={{ key: "name", dir: "asc" }}
       stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
-      openId={openId}
-      onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
-      renderDrilldown={(r) => {
-        const f = derived.fbhr[r.dept];
-        const unitCost = r.hours * (f?.fbhr ?? 0);
-        const annual = unitCost * r.volume;
-        const recoveryPct = unitCost > 0 ? (r.fee / unitCost) * 100 : 0;
-        return (
-          <DrilldownShell>
-            <DrilldownColumn marker="①" title="Source · catalog">
-              <TraceBlock label="Catalog">Service definition · prior fee study Appendix A</TraceBlock>
-              <TraceBlock label="Hours basis">Time-study estimate, validated by department staff</TraceBlock>
-              <TraceBlock label="Volume basis">Permit-system count, FY 24/25 actuals · {fmt.int(r.volume)}/yr</TraceBlock>
-              <TraceBlock label="Department"><DeptChip code={r.dept}/></TraceBlock>
-              <div style={{ marginTop: 10 }}>
-                <SourcePill tone="fact">FACT · 32 services in catalog</SourcePill>
-              </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="②" title="Unit cost build-up">
-              <div style={{
-                padding: "10px 14px", background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>hours per unit</span>
-                  <b>{r.hours}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>× FBHR (dept)</span>
-                  <b>${Math.round(f?.fbhr ?? 0)}/hr</b>
-                </div>
-                <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6, display: "flex", justifyContent: "space-between" }}>
-                  <span>= unit cost</span>
-                  <b>{fmt.dollars(unitCost)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>× volume {fmt.int(r.volume)}</span>
-                  <b>{fmt.dollarsK(annual)}/yr</b>
-                </div>
-              </div>
-              <div style={{ marginTop: 10, fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.55 }}>
-                Current recovery <b style={{ color: recoveryPct >= 80 ? "var(--pos)" : recoveryPct >= 50 ? "var(--warn)" : "var(--neg)" }}>{recoveryPct.toFixed(0)}%</b>
-                {" · "}target <b>{r.target}%</b> · recommended fee{" "}
-                <b>{fmt.dollars(Math.round((unitCost * r.target) / 100 / 5) * 5)}</b>
-              </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="③" title="Carries into">
-              <TraceBlock label="FBHR">Hours × dept FBHR feeds the rollup in Cost of Service</TraceBlock>
-              <TraceBlock label="Annual cost">unit cost × volume → annualized cost on the Fee Schedule</TraceBlock>
-              <TraceBlock label="Recovery">fee × volume ÷ unit cost × volume = recovery %</TraceBlock>
-              <TraceBlock label="Peer median">{r.peer > 0 ? fmt.dollars(r.peer) : "—"}</TraceBlock>
-              <div style={{ marginTop: 10 }}>
-                <Formula>fee × volume / (hours × FBHR × volume) = recovery</Formula>
-              </div>
-            </DrilldownColumn>
-          </DrilldownShell>
-        );
-      }}
-      footerNote={`${rows.length} services · click a row to trace lineage and edit inline`}
+      footerNote={`${rows.length} services · edit inline`}
     />
   );
 }

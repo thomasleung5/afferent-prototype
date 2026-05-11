@@ -263,6 +263,7 @@ export function FeeScheduleTable() {
       filters={filters}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+      drilldownIndicator
       renderDrilldown={(r) => {
         const svc = services.find((s) => s.id === r.id);
         if (!svc) return null;

@@ -116,6 +116,7 @@ export function RateDerivation() {
       defaultSort={{ key: "deptName", dir: "asc" }}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+      drilldownIndicator
       renderDrilldown={(r) => {
         const f = r.fbhr;
         const allocRows = [...CAP_POOL_BY_DEPT[r.dept]].sort((a, b) => b.allocated - a.allocated);
