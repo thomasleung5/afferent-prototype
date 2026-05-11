@@ -10,7 +10,7 @@
  *
  * The route is imported directly as a function — no HTTP server needed. */
 
-import { POST } from "../app/api/ai/extract/route";
+import { handleAiExtract as POST } from "../server/aiExtract";
 import type { AiExtractRequest, AiExtractResponse } from "../lib/ai/types";
 
 function makeRequest(body: AiExtractRequest): Request {
