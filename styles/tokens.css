@@ -37,10 +37,10 @@
   --pos:         #6b7355;
   --pos-tint:    #ebeadb;
 
-  /* Type families — next/font sets --ff-*-loaded; we fall back to system fonts. */
-  --ff-display: var(--ff-display-loaded), "Inter Tight", system-ui, sans-serif;
-  --ff-ui:      var(--ff-ui-loaded),      "IBM Plex Sans", system-ui, sans-serif;
-  --ff-mono:    var(--ff-mono-loaded),    "IBM Plex Mono", ui-monospace, monospace;
+  /* Type families — loaded via Fontsource imports in src/main.tsx. */
+  --ff-display: "Inter Tight Variable", "Inter Tight", system-ui, sans-serif;
+  --ff-ui:      "IBM Plex Sans Variable", "IBM Plex Sans", system-ui, sans-serif;
+  --ff-mono:    "IBM Plex Mono", ui-monospace, monospace;
 
   /* Type scale — single source of truth.
    * L1 headline · L2 metric · L3 secondary · L4 eyebrow · L5 page title
