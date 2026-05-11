@@ -1,4 +1,3 @@
-"use client";
 
 import { DeptChip, EditableNumber, EditableText } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";

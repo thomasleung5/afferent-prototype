@@ -1,4 +1,3 @@
-"use client";
 
 import { Drawer, EditableNumber, DeptChip, RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";

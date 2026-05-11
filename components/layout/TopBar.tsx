@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useRouterState } from "@tanstack/react-router";
 import { CITY } from "@/lib/data/city";
 import { Btn, Icon } from "@/components/ui";
 
@@ -20,7 +17,7 @@ const NAV: NavItem[] = [
 ];
 
 export function TopBar() {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Print/export routes get a clean shell — no app chrome.
   if (pathname.startsWith("/export")) return null;
   const isActive = (n: NavItem) => {
@@ -83,7 +80,7 @@ export function TopBar() {
         {NAV.map((n) => {
           const on = isActive(n);
           return (
-            <Link key={n.href} href={n.href} style={{
+            <Link key={n.href} to={n.href} style={{
               padding: "0 14px",
               display: "inline-flex", alignItems: "center",
               fontSize: 12.5, fontWeight: 500,

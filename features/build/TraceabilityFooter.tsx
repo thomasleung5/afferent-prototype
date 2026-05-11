@@ -1,4 +1,3 @@
-"use client";
 
 import { fmt } from "@/lib/format";
 import { useBuildState } from "./BuildContext";

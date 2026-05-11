@@ -1,4 +1,3 @@
-"use client";
 
 import { EditableNumber, EditableText, Btn, Icon } from "@/components/ui";
 import { useBuildState } from "./BuildContext";

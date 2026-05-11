@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "./BuildContext";
 
@@ -85,7 +83,7 @@ export function OperatingBuckets() {
           Citywide or shared services that benefit multiple departments. Enter these as cost pools in the CAP node.
         </div>
         <Link
-          href="/build/cap"
+          to="/build/cap"
           style={{
             alignSelf: "flex-start", marginTop: 2,
             fontSize: 11.5, color: "var(--accent)", fontWeight: 500,

@@ -1,4 +1,3 @@
-"use client";
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 

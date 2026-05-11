@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Icon, SectionLabel } from "@/components/ui";
 import { useBuildState } from "./BuildContext";
 
@@ -51,7 +49,7 @@ export function WorkflowMap() {
         display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12,
       }}>
         {NODES.map((n) => (
-          <Link key={n.href} href={n.href} style={{
+          <Link key={n.href} to={n.href} style={{
             display: "flex", flexDirection: "column", gap: 8,
             padding: "16px 18px",
             border: "1px solid var(--rule)",

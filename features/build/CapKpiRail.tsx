@@ -1,4 +1,3 @@
-"use client";
 
 import { KpiTile } from "@/components/ui";
 import { fmt } from "@/lib/format";

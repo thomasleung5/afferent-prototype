@@ -1,4 +1,3 @@
-"use client";
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu } from "@/components/ui";

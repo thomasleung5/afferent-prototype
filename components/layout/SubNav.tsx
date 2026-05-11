@@ -1,7 +1,4 @@
-"use client";
-
-import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { Link, useRouterState } from "@tanstack/react-router";
 
 export interface SubNavItem {
   href: string;
@@ -15,7 +12,7 @@ interface Props {
 }
 
 export function SubNav({ items }: Props) {
-  const pathname = usePathname();
+  const pathname = useRouterState({ select: (s) => s.location.pathname });
   const isActive = (it: SubNavItem) => {
     if (it.prefix) return pathname === it.prefix || pathname.startsWith(it.prefix + "/");
     return pathname === it.href;
@@ -32,7 +29,7 @@ export function SubNav({ items }: Props) {
       {items.map((it, i) => {
         const on = isActive(it);
         return (
-          <Link key={it.href} href={it.href} style={{
+          <Link key={it.href} to={it.href} style={{
             padding: "10px 14px",
             display: "inline-flex", alignItems: "center",
             fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",

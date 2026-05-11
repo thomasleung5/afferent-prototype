@@ -1,4 +1,4 @@
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
 export type BtnKind = "ghost" | "primary" | "subtle";
@@ -7,7 +7,7 @@ interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
   kind?: BtnKind;
   style?: CSSProperties;
   children: ReactNode;
-  /** When provided, the button renders as a Next.js `<Link>` instead of a `<button>`. */
+  /** When provided, the button renders as a router `<Link>` instead of a `<button>`. */
   href?: string;
 }
 
@@ -43,7 +43,7 @@ export function Btn({ kind = "ghost", style, disabled, href, children, ...rest }
 
   if (href && !disabled) {
     return (
-      <Link href={href} style={merged}>
+      <Link to={href} style={merged}>
         {children}
       </Link>
     );

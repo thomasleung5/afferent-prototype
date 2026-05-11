@@ -1,4 +1,3 @@
-"use client";
 
 import { Drawer } from "@/components/ui";
 import { fmt } from "@/lib/format";

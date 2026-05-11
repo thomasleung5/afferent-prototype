@@ -1,4 +1,3 @@
-"use client";
 
 import { SectionLabel } from "@/components/ui";
 import { useBuildState } from "./BuildContext";

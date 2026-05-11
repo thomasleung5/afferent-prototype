@@ -4,7 +4,12 @@
       "Bash(curl -s http://localhost:3000/gap)",
       "Bash(npx tsc *)",
       "Bash(npx next *)",
-      "Bash(npx tsx *)"
+      "Bash(npx tsx *)",
+      "Bash(npm install *)",
+      "Bash(npx vite *)",
+      "Bash(npx tsr *)",
+      "Bash(git add *)",
+      "Bash(git commit -m ' *)"
     ]
   }
 }

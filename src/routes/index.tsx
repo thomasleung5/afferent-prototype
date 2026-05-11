@@ -1,5 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
+import HomePage from "@/app/page";
 
 export const Route = createFileRoute("/")({
-  component: () => <div style={{ padding: 40 }}>Vite scaffold ready</div>,
+  component: HomePage,
 });

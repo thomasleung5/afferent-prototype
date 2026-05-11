@@ -1,4 +1,3 @@
-"use client";
 
 import { DataTable, type Column } from "@/components/table";
 import { fmt } from "@/lib/format";

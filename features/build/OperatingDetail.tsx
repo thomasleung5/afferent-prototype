@@ -1,4 +1,3 @@
-"use client";
 
 import { Drawer, EditableNumber, EditableText } from "@/components/ui";
 import { fmt } from "@/lib/format";

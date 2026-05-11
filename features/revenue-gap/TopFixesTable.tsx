@@ -1,4 +1,3 @@
-"use client";
 
 import { useMemo, useState } from "react";
 import { DataTable, deriveDeptFilter, applyFilter, type Column, type FilterGroup } from "@/components/table";

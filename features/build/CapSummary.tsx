@@ -1,4 +1,3 @@
-"use client";
 
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptChip, Formula } from "@/components/ui";

@@ -1,4 +1,3 @@
-"use client";
 
 import { Drawer, DeptChip } from "@/components/ui";
 import { fmt } from "@/lib/format";

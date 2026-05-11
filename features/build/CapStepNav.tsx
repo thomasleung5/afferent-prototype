@@ -1,4 +1,3 @@
-"use client";
 
 export type CapStep = "centers" | "pools" | "drivers" | "matrix";
 

@@ -1,4 +1,3 @@
-"use client";
 
 import { useEffect, useState, type CSSProperties } from "react";
 

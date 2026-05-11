@@ -1,6 +1,4 @@
-"use client";
-
-import Link from "next/link";
+import { Link } from "@tanstack/react-router";
 import { Icon } from "@/components/ui";
 
 interface Checklist { l: string; v: string }
@@ -34,7 +32,7 @@ export function EntryCard({
   const charcoal = "var(--charcoal)";
 
   return (
-    <Link href={href} style={{
+    <Link to={href} style={{
       textAlign: "left",
       background: accent ? navy : "var(--paper)",
       color: accent ? "white" : "var(--ink)",

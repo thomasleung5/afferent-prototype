@@ -1,4 +1,3 @@
-"use client";
 
 import { useState, type ReactNode } from "react";
 import { DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill } from "@/components/ui";
