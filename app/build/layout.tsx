@@ -12,7 +12,6 @@ const ITEMS: SubNavItem[] = [
   { href: "/build/policy",    label: "Recovery Policy" },
   { href: "/build/feestudy",  label: "Fee Schedule" },
   { href: "/build/benchmark", label: "Fee Benchmark" },
-  { href: "/build/recs",      label: "Recommendations" },
 ];
 
 export default function BuildLayout({ children }: { children: ReactNode }) {

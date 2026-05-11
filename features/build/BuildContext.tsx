@@ -53,6 +53,10 @@ interface BuildState {
   aiSuggestions: Record<Domain, AiSuggestion[]>;
   /** Per-domain status of the most recent AI assist call. */
   aiStatus: Record<Domain, { running: boolean; message?: string }>;
+  /** Ordered list of cost-center names that drives the step-down sequence on
+   *  the Cost Allocation screen. Defaults to amount-desc, persisted across
+   *  reorder via the moveCenter action. */
+  capCenterOrder: string[];
   imports: BuildImportLog[];
 }
 
@@ -78,6 +82,7 @@ interface BuildActions {
   addAiSuggestions: (domain: Domain, items: AiSuggestion[]) => void;
   acceptAiSuggestion: (domain: Domain, id: string, override?: Partial<AiSuggestion["entity"]>) => void;
   rejectAiSuggestion: (domain: Domain, id: string) => void;
+  moveCenter: (name: string, direction: "up" | "down") => void;
   resetAll: () => void;
 }
 
@@ -111,25 +116,40 @@ const emptyAiStatus: Record<Domain, { running: boolean; message?: string }> = {
   fees: { running: false }, workload: { running: false }, cap: { running: false },
 };
 
-const initialState = (): BuildState => ({
-  positions: POSITIONS.map((p) => ({ ...p })),
-  operating: OPERATING.map((o) => ({ ...o })),
-  capAllocation: {
-    PLAN: { ...CAP_ALLOCATION.PLAN },
-    BLDG: { ...CAP_ALLOCATION.BLDG },
-    ENG:  { ...CAP_ALLOCATION.ENG },
-  },
-  capPools: CAP_POOLS.map((p) => ({ ...p })),
-  workload: WORKLOAD.map((w) => ({ ...w })),
-  services: SERVICES.map((s) => ({ ...s })),
-  policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
-  policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
-  lineage: {},
-  pendingReview: { ...emptyPending },
-  aiSuggestions: { ...emptyAi },
-  aiStatus: { ...emptyAiStatus },
-  imports: [],
-});
+/** Default cost-center order — amount descending, with stable name fallback.
+ *  Used to seed `capCenterOrder` and to backfill it if the persisted snapshot
+ *  was written before this slice existed. */
+export function defaultCenterOrder(pools: CapPool[]): string[] {
+  const totals = new Map<string, number>();
+  for (const p of pools) totals.set(p.center, (totals.get(p.center) ?? 0) + p.amount);
+  return [...totals.entries()]
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .map(([name]) => name);
+}
+
+const initialState = (): BuildState => {
+  const pools = CAP_POOLS.map((p) => ({ ...p }));
+  return {
+    positions: POSITIONS.map((p) => ({ ...p })),
+    operating: OPERATING.map((o) => ({ ...o })),
+    capAllocation: {
+      PLAN: { ...CAP_ALLOCATION.PLAN },
+      BLDG: { ...CAP_ALLOCATION.BLDG },
+      ENG:  { ...CAP_ALLOCATION.ENG },
+    },
+    capPools: pools,
+    workload: WORKLOAD.map((w) => ({ ...w })),
+    services: SERVICES.map((s) => ({ ...s })),
+    policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
+    policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
+    lineage: {},
+    pendingReview: { ...emptyPending },
+    aiSuggestions: { ...emptyAi },
+    aiStatus: { ...emptyAiStatus },
+    capCenterOrder: defaultCenterOrder(pools),
+    imports: [],
+  };
+};
 
 /** Merge new entities onto an existing list by id. Mapped + lowConfidence rows
  *  with new ids get appended; duplicates patch the matching record. */
@@ -245,7 +265,13 @@ export function BuildProvider({ children }: { children: ReactNode }) {
     if (hydratedRef.current) return;
     hydratedRef.current = true;
     const persisted = readPersisted();
-    if (persisted) setState(persisted);
+    if (persisted) {
+      // Backfill any state slices added after the snapshot was written.
+      if (!persisted.capCenterOrder || persisted.capCenterOrder.length === 0) {
+        persisted.capCenterOrder = defaultCenterOrder(persisted.capPools ?? []);
+      }
+      setState(persisted);
+    }
   }, []);
 
   // Write on every change, but only after first hydration completes.
@@ -562,6 +588,24 @@ export function BuildProvider({ children }: { children: ReactNode }) {
     }));
   }, []);
 
+  const moveCenter = useCallback((name: string, direction: "up" | "down") => {
+    setState((s) => {
+      // If a new pool's center was added since the order was set, slot it in
+      // at the natural position instead of dropping the move.
+      const known = new Set(s.capCenterOrder);
+      const missing = [...new Set(s.capPools.map((p) => p.center))]
+        .filter((c) => !known.has(c));
+      const base = [...s.capCenterOrder, ...missing];
+      const idx = base.indexOf(name);
+      if (idx < 0) return s;
+      const swapWith = direction === "up" ? idx - 1 : idx + 1;
+      if (swapWith < 0 || swapWith >= base.length) return s;
+      const next = [...base];
+      [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
+      return { ...s, capCenterOrder: next };
+    });
+  }, []);
+
   const resetAll = useCallback(() => {
     clearPersisted();
     setState(initialState());
@@ -602,6 +646,7 @@ export function BuildProvider({ children }: { children: ReactNode }) {
     mergeWorkload, mergeCap,
     dismissUnmapped, clearReview,
     setAiStatus, addAiSuggestions, acceptAiSuggestion, rejectAiSuggestion,
+    moveCenter,
     resetAll,
   };
 

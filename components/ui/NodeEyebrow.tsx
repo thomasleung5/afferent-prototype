@@ -1,6 +1,6 @@
 type NodeId =
   | "services" | "salary" | "operating" | "cap" | "workload"
-  | "costs" | "policy" | "feestudy" | "benchmark" | "recs";
+  | "costs" | "policy" | "feestudy" | "benchmark";
 
 const NODE_LABEL: Record<NodeId, string> = {
   services:  "Services",
@@ -12,7 +12,6 @@ const NODE_LABEL: Record<NodeId, string> = {
   policy:    "Recovery Policy",
   feestudy:  "Fee Schedule",
   benchmark: "Fee Benchmark",
-  recs:      "Recommendations",
 };
 
 interface Props {

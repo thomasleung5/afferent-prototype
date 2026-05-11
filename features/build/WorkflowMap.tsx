@@ -22,10 +22,6 @@ const NODES: Node[] = [
   { href: "/build/policy",    label: "Recovery Policy", desc: "Recovery targets · per-dept and per-fee",     kind: "policy", status: (s) => `${s.policyTargets.length} depts · ${s.policyExceptions.length} exception${s.policyExceptions.length === 1 ? "" : "s"}` },
   { href: "/build/feestudy",  label: "Fee Schedule",    desc: "Current fees vs full cost · recommended",     kind: "rollup", status: (s) => `${s.derived.comparisons.filter((c) => c.annualUplift > 0).length} under target` },
   { href: "/build/benchmark", label: "Fee Benchmark",   desc: "Adopted fees in 5 peer cities",               kind: "rollup", status: (s) => `${s.services.filter((sv) => sv.peer > 0).length} with peer data` },
-  { href: "/build/recs",      label: "Recommendations", desc: "Ranked fee changes ready for Council",        kind: "rollup", status: (s) => {
-    const uplift = s.derived.comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
-    return `+$${Math.round(uplift / 1000)}K/yr potential`;
-  }},
 ];
 
 const KIND_LABEL: Record<Node["kind"], string> = {
