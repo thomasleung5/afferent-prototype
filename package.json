@@ -3,9 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start"
+    "dev": "concurrently --names client,api --prefix-colors blue,magenta \"npm run dev:client\" \"npm run dev:api\"",
+    "dev:client": "vite",
+    "dev:api": "tsx watch server/index.ts",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "tsx server/index.ts",
+    "typecheck": "tsc --noEmit"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
@@ -28,6 +32,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@vitejs/plugin-react": "^6.0.1",
+    "concurrently": "^9.2.1",
     "tsx": "^4.21.0",
     "typescript": "^5",
     "vite": "^8.0.11"

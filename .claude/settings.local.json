@@ -10,7 +10,10 @@
       "Bash(npx tsr *)",
       "Bash(git add *)",
       "Bash(git commit -m ' *)",
-      "Bash(git commit *)"
+      "Bash(git commit *)",
+      "Bash(npm run *)",
+      "Bash(lsof -nP -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(ps -p 42304 -o pid,command)"
     ]
   }
 }
