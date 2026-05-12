@@ -16,7 +16,17 @@
       "Bash(ps -p 42304 -o pid,command)",
       "Bash(git mv *)",
       "Bash(git rm *)",
-      "Bash(npm uninstall *)"
+      "Bash(npm uninstall *)",
+      "Bash(git push *)",
+      "Bash(gh --version)",
+      "Bash(gh repo *)",
+      "Bash(gh api *)",
+      "Bash(open *)",
+      "Bash(git pull *)",
+      "Bash(pkill -f \"tsx watch server/index.ts\")",
+      "Bash(pkill -f \"node.*vite\")",
+      "Bash(pkill -f \"concurrently\")",
+      "Bash(lsof -nP -iTCP:8787 -sTCP:LISTEN)"
     ]
   }
 }

@@ -4,6 +4,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import type { AiExtractRequest, AiExtractResponse, AiSuggestion } from "@/lib/ai/types";
+import { aiRawSuggestionSchema, validateEntity } from "@/lib/ai/schemas";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -83,14 +84,6 @@ const TOOL = {
   },
 };
 
-interface RawSuggestion {
-  sourceIndex: number;
-  domain: AiSuggestion["domain"];
-  label: string;
-  entity: Record<string, string | number | boolean | null>;
-  confidence: AiSuggestion["confidence"];
-  reasoning: string;
-}
 
 function json(body: AiExtractResponse, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
@@ -147,25 +140,38 @@ export async function handleAiExtract(req: Request): Promise<Response> {
       }, { status: 502 });
     }
 
-    const raw = toolUse.input as { suggestions?: RawSuggestion[] };
-    const suggestions: AiSuggestion[] = (raw.suggestions ?? []).map((s, i) => {
-      const sourceRow = body.rows.find((r) => r.index === s.sourceIndex) ?? body.rows[i];
-      return {
+    const raw = toolUse.input as { suggestions?: unknown[] };
+    const suggestions: AiSuggestion[] = [];
+    let dropped = 0;
+    for (const [i, item] of (raw.suggestions ?? []).entries()) {
+      const parsed = aiRawSuggestionSchema.safeParse(item);
+      if (!parsed.success) { dropped++; continue; }
+      const entityResult = validateEntity(parsed.data.domain, parsed.data.entity);
+      if (!entityResult.ok) { dropped++; continue; }
+      const sourceRow = body.rows.find((r) => r.index === parsed.data.sourceIndex) ?? body.rows[i];
+      suggestions.push({
         id: `ai-${Date.now()}-${i}`,
-        sourceIndex: sourceRow?.index ?? s.sourceIndex,
-        domain: s.domain,
-        label: s.label,
-        reasoning: s.reasoning,
-        confidence: s.confidence,
-        entity: s.entity,
+        sourceIndex: sourceRow?.index ?? parsed.data.sourceIndex,
+        domain: parsed.data.domain,
+        label: parsed.data.label,
+        reasoning: parsed.data.reasoning,
+        confidence: parsed.data.confidence,
+        entity: entityResult.entity as AiSuggestion["entity"],
         lineage: sourceRow?.lineage ?? {
           file: "unknown", confidence: "review",
           importedAt: new Date().toISOString(),
         },
-      };
-    });
+      });
+    }
 
-    return json({ ok: true, status: "ok", suggestions });
+    return json({
+      ok: true,
+      status: "ok",
+      suggestions,
+      ...(dropped > 0
+        ? { message: `${dropped} suggestion${dropped === 1 ? "" : "s"} failed schema validation and were dropped.` }
+        : {}),
+    });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown model error.";
     return json({ ok: false, status: "model-error", message }, { status: 502 });
