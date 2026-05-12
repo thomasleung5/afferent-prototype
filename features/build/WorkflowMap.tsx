@@ -1,81 +1,137 @@
-﻿import { Link } from "@tanstack/react-router";
-import { Icon, SectionLabel } from "@/components/ui";
-import { useBuildState } from "@/lib/store";
+import { Link } from "@tanstack/react-router";
+import { SectionLabel } from "@/components/ui";
+
+interface CardColors {
+  bg: string;
+  border?: string;
+  title: string;
+  secondary: string;
+}
 
 interface Node {
   href: string;
   label: string;
   desc: string;
-  status: (s: ReturnType<typeof useBuildState>) => string;
-  kind: "anchor" | "input" | "rollup" | "policy";
+  metric: string;
+  state?: "Locked" | "Open";
+  colors?: CardColors;
 }
 
-const NODES: Node[] = [
-  { href: "/build/services",  label: "Services",        desc: "Catalog · hours per instance · role mix",     kind: "anchor", status: (s) => `${s.services.length} services` },
-  { href: "/build/salary",    label: "Direct Labor",    desc: "Position roster → direct $/hr per dept",      kind: "input",  status: (s) => `${s.positions.length} positions` },
-  { href: "/build/operating", label: "Operating",       desc: "Dept non-labor spend → operating $/hr",       kind: "input",  status: (s) => `${s.operating.filter((l) => l.include).length} of ${s.operating.length} included` },
-  { href: "/build/cap",       label: "Cost Allocation", desc: "Citywide indirect → allocated overhead",      kind: "input",  status: (s) => `${Object.values(s.capAllocation).reduce((a, c) => a + c.allocated, 0).toLocaleString("en-US", { style: "currency", currency: "USD", maximumFractionDigits: 0 })} allocated` },
-  { href: "/build/workload",  label: "Workload",        desc: "Annual volume per service",                   kind: "input",  status: (s) => `${s.workload.filter((w) => w.current != null).length} captured` },
-  { href: "/build/costs",     label: "Cost of Service", desc: "Direct + Operating + CAP × hours × volume",   kind: "rollup", status: (s) => `FBHR PLAN $${Math.round(s.derived.fbhr.PLAN.fbhr)} · BLDG $${Math.round(s.derived.fbhr.BLDG.fbhr)} · ENG $${Math.round(s.derived.fbhr.ENG.fbhr)}` },
-  { href: "/build/policy",    label: "Recovery Policy", desc: "Recovery targets · per-dept and per-fee",     kind: "policy", status: (s) => `${s.policyTargets.length} depts · ${s.policyExceptions.length} exception${s.policyExceptions.length === 1 ? "" : "s"}` },
-  { href: "/build/feestudy",  label: "Fee Schedule",    desc: "Current fees vs full cost · recommended",     kind: "rollup", status: (s) => `${s.derived.comparisons.filter((c) => c.annualUplift > 0).length} under target` },
-  { href: "/build/benchmark", label: "Fee Benchmark",   desc: "Adopted fees in 5 peer cities",               kind: "rollup", status: (s) => `${s.services.filter((sv) => sv.peer > 0).length} with peer data` },
+const INPUTS: Node[] = [
+  { href: "/build/services",  label: "Services",        desc: "hours × role mix",                       metric: "37 services" },
+  { href: "/build/salary",    label: "Direct Labor",    desc: "(salary + benefits) ÷ productive hours", metric: "73 positions" },
+  { href: "/build/operating", label: "Operating",       desc: "non-labor · per dept",                   metric: "214 expense lines" },
+  { href: "/build/cap",       label: "Cost Allocation", desc: "indirect → direct",                      metric: "14 indirect pools" },
+  { href: "/build/workload",  label: "Workload",        desc: "annual volume",                          metric: "1,246 activity records" },
 ];
 
-const KIND_LABEL: Record<Node["kind"], string> = {
-  anchor: "Anchor",
-  input:  "Input",
-  rollup: "Rollup",
-  policy: "Policy",
-};
+const WORKFLOW: Node[] = [
+  {
+    href: "/build/costs", label: "Cost of Service",
+    desc: "hours × FBHR × volume", metric: "Deterministic computation", state: "Locked",
+    colors: { bg: "#1d2236", title: "#ffffff", secondary: "#b7bcc8" },
+  },
+  {
+    href: "/build/policy", label: "Recovery Policy",
+    desc: "target % per service", metric: "72% target recovery", state: "Open",
+    colors: { bg: "#e8edf7", border: "#c8d4ea", title: "#1d2236", secondary: "#6f6e74" },
+  },
+  {
+    href: "/build/feestudy", label: "Fee Schedule",
+    desc: "cost × target", metric: "+$420K annual impact", state: "Open",
+    colors: { bg: "#2f3448", title: "#ffffff", secondary: "#c5cad6" },
+  },
+];
 
-const KIND_COLOR: Record<Node["kind"], string> = {
-  anchor: "var(--accent)",
-  input:  "var(--ink-2)",
-  rollup: "var(--pos)",
-  policy: "var(--warn)",
-};
+function StatusPill({ state }: { state: "Locked" | "Open" }) {
+  const s = state === "Locked"
+    ? { bg: "#f2f3f5", fg: "#6b7280" }
+    : { bg: "#fef3c7", fg: "#92400e" };
+  return (
+    <span style={{
+      display: "inline-flex", alignItems: "center", gap: 4,
+      fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+      fontSize: 10, fontWeight: 700,
+      padding: "1px 6px",
+      background: s.bg, color: s.fg,
+      borderRadius: 999,
+      whiteSpace: "nowrap",
+      lineHeight: 1.4,
+    }}>
+      <span style={{ width: 4, height: 4, borderRadius: "50%", background: s.fg }}/>
+      {state}
+    </span>
+  );
+}
+
+function NodeCard({ n, kind }: { n: Node; kind: "input" | "workflow" }) {
+  const c = n.colors;
+  const titleColor = c?.title ?? "#1d2236";
+  const secondaryColor = c?.secondary ?? "#6f6e74";
+  return (
+    <Link to={n.href} style={{
+      display: "flex", flexDirection: "column", gap: 10,
+      padding: kind === "input" ? 14 : 16,
+      minHeight: kind === "input" ? 168 : 184,
+      border: `1px solid ${c?.border ?? c?.bg ?? "#d8d3c7"}`,
+      background: c?.bg ?? "#ffffff",
+      textDecoration: "none",
+      color: titleColor,
+    }}>
+      <div style={{ display: "flex", alignItems: "flex-start", gap: 8 }}>
+        <div style={{
+          flex: 1,
+          fontFamily: '"Inter Tight", system-ui, sans-serif',
+          fontSize: 13.5, fontWeight: 600, color: titleColor,
+        }}>{n.label}</div>
+        {n.state && <StatusPill state={n.state}/>}
+      </div>
+      <div style={{
+        fontFamily: '"IBM Plex Sans", system-ui, sans-serif',
+        fontSize: 12.5, fontWeight: 400, color: secondaryColor, lineHeight: 1.5,
+      }}>{n.desc}</div>
+      <div style={{
+        fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
+        fontSize: 11, fontWeight: 400, color: secondaryColor,
+      }}>{n.metric}</div>
+    </Link>
+  );
+}
+
+function FlowArrow() {
+  return (
+    <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
+      <svg width="22" height="10" viewBox="0 0 22 10" fill="none" aria-hidden="true">
+        <path d="M0 5 H20" stroke="#1d2236" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M16 1 L20 5 L16 9" stroke="#1d2236" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+      </svg>
+    </div>
+  );
+}
 
 export function WorkflowMap() {
-  const state = useBuildState();
   return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)", padding: 22,
-    }}>
-      <SectionLabel right="Inputs feed Cost of Service · Fee Schedule compares · Recovery Policy steers">
-        Build model architecture
-      </SectionLabel>
+    <div>
+      <SectionLabel>Build model architecture</SectionLabel>
+
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12,
+        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10,
+        marginBottom: 16,
       }}>
-        {NODES.map((n) => (
-          <Link key={n.href} to={n.href} style={{
-            display: "flex", flexDirection: "column", gap: 8,
-            padding: "16px 18px",
-            border: "1px solid var(--rule)",
-            background: "var(--paper-2)",
-            textDecoration: "none",
-            color: "var(--ink)",
-          }}>
-            <div style={{ display: "flex", alignItems: "baseline", gap: 8 }}>
-              <span className="mono" style={{
-                fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em",
-                textTransform: "uppercase",
-                color: KIND_COLOR[n.kind],
-              }}>{KIND_LABEL[n.kind]}</span>
-              <span style={{ fontSize: 15, fontWeight: 600 }}>{n.label}</span>
-              <span style={{ flex: 1 }}/>
-              <span className="num mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>{n.status(state)}</span>
-            </div>
-            <div style={{ fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.5 }}>{n.desc}</div>
-            <div style={{
-              marginTop: 4, display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 12, color: "var(--accent)",
-            }}>
-              Open <Icon name="arrow-right" size={11}/>
-            </div>
-          </Link>
-        ))}
+        {INPUTS.map((n) => <NodeCard key={n.href} n={n} kind="input"/>)}
+      </div>
+
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: "1fr 36px 1fr 36px 1fr",
+        gap: 12,
+        alignItems: "center",
+      }}>
+        <NodeCard n={WORKFLOW[0]} kind="workflow"/>
+        <FlowArrow/>
+        <NodeCard n={WORKFLOW[1]} kind="workflow"/>
+        <FlowArrow/>
+        <NodeCard n={WORKFLOW[2]} kind="workflow"/>
       </div>
     </div>
   );
