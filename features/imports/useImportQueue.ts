@@ -1,21 +1,17 @@
-/* Local state for the global Import Manager drawer. One queue item per file
- * dropped during the open session. Each item moves: parsing → classifying →
- * (needs-domain | extracting) → merging → done | error.
+/* Local queue state for the global Import Manager drawer.
  *
- * The actual merges flow through the existing store actions (mergePositions,
- * mergeOperating, …) so per-page DropZones, ImportBar history, and
- * ImportReview AI suggestions all stay live. */
+ * Each dropped file flows through the same shared pipeline as the per-page
+ * DropZones (lib/import/pipeline.ts) and the latest batch becomes the active
+ * currentBatch on the store — exactly what the workflow pages render via
+ * MappingReview + ImportDebug. The Manager itself shows a compact queue of
+ * the files being processed in the current session. */
 
 import { useCallback, useState } from "react";
-import {
-  extractSalary, extractOperating, extractServices, extractFeeSchedule,
-  extractWorkload, extractCap,
-} from "@/lib/parse/extract";
+import { runImportPipelineFromParsed } from "@/lib/import/pipeline";
 import { parseFile, type ParsedDoc } from "@/lib/parse";
-import { classify, type Classification } from "@/lib/parse/classify";
-import { useBuildStore, type Domain } from "@/lib/store";
-import type { ImportApplyResult } from "@/lib/parse";
-import { runAiAssistPass } from "@/features/build/runImport";
+import { classifyDocument } from "@/lib/import/classify";
+import { useBuildStore } from "@/lib/store";
+import type { ImportBatch, DocumentType } from "@/lib/import/types";
 
 export type QueueStage =
   | "parsing"
@@ -31,16 +27,17 @@ export interface QueueItem {
   file: File;
   fileName: string;
   size: number;
-  /** Increments when stage changes — drives the spinner animation. */
   ticks: number;
   stage: QueueStage;
-  /** Set after classify() runs. */
-  classification?: Classification;
-  /** Final domain (auto from classifier OR user-picked). */
-  domain?: Domain;
-  /** Set when merge succeeds. */
-  result?: ImportApplyResult;
-  /** Set on error. */
+  /** Captured after parse so we can re-classify after the user picks. */
+  parsed?: ParsedDoc;
+  /** The classifier result. When documentType === "unknown", we park on "needs-domain". */
+  documentType?: DocumentType;
+  classifyReason?: string;
+  /** The resulting batch for this file. The most recent done batch is also
+   *  the store's currentBatch — that's what the Mapping Review surface
+   *  consumes. */
+  batch?: ImportBatch;
   error?: string;
 }
 
@@ -54,95 +51,23 @@ export function useImportQueue() {
     )), []);
 
   const runExtract = useCallback(async (
-    id: string, doc: ParsedDoc, domain: Domain,
+    id: string, parsed: ParsedDoc, forceType?: DocumentType,
   ) => {
-    patch(id, { stage: "extracting", domain });
-    let result: ImportApplyResult;
-    let unmappedDoc = doc;
+    patch(id, { stage: "extracting" });
     try {
-      switch (domain) {
-        case "positions": {
-          const r = extractSalary(doc, store.positions);
-          patch(id, { stage: "merging" });
-          result = store.mergePositions(r, doc.fileName);
-          unmappedDoc = doc;
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.positions.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-        case "operating": {
-          const r = extractOperating(doc, store.operating);
-          patch(id, { stage: "merging" });
-          result = store.mergeOperating(r, doc.fileName);
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.operating.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-        case "services": {
-          const r = extractServices(doc, store.services);
-          patch(id, { stage: "merging" });
-          result = store.mergeServices(r, doc.fileName);
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.services.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-        case "fees": {
-          const r = extractFeeSchedule(doc, store.services);
-          patch(id, { stage: "merging" });
-          result = store.mergeFeeSchedule(r, doc.fileName);
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.services.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-        case "workload": {
-          const r = extractWorkload(doc, store.workload, store.services);
-          patch(id, { stage: "merging" });
-          result = store.mergeWorkload(r, doc.fileName);
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.services.slice(0, 12).map((s) => ({ name: s.name, dept: s.dept })) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-        case "cap": {
-          const r = extractCap(doc, store.capPools);
-          patch(id, { stage: "merging" });
-          result = store.mergeCap(r, doc.fileName);
-          void runAiAssistPass({
-            domain, doc, unmapped: r.unmapped,
-            exampleRows: store.capPools.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => store.setAiStatus(domain, s),
-            addSuggestions: (items) => store.addAiSuggestions(domain, items),
-          });
-          break;
-        }
-      }
-      patch(id, { stage: "done", result, domain });
+      const batch = runImportPipelineFromParsed(parsed, {
+        services: store.services,
+        forceType,
+      });
+      patch(id, { stage: "merging" });
+      store.setCurrentBatch(batch);
+      patch(id, { stage: "done", batch });
     } catch (err) {
       patch(id, {
         stage: "error",
         error: err instanceof Error ? err.message : "Extraction failed",
       });
     }
-    void unmappedDoc;
   }, [patch, store]);
 
   /** Add a file: parse → classify → either auto-extract or stop for user-pick. */
@@ -154,9 +79,9 @@ export function useImportQueue() {
     };
     setItems((prev) => [item, ...prev]);
 
-    let doc: ParsedDoc;
+    let parsed: ParsedDoc;
     try {
-      doc = await parseFile(file);
+      parsed = await parseFile(file);
     } catch (err) {
       patch(id, {
         stage: "error",
@@ -165,26 +90,31 @@ export function useImportQueue() {
       return;
     }
 
-    patch(id, { stage: "classifying" });
-    const classification = classify(doc);
-    patch(id, { classification });
+    patch(id, { stage: "classifying", parsed });
+    const classification = classifyDocument(parsed);
+    patch(id, {
+      documentType: classification.documentType,
+      classifyReason: classification.reason,
+    });
 
-    if (classification.domain) {
-      // Stash the parsed doc on the closure for the extract pass.
-      await runExtract(id, doc, classification.domain);
+    if (classification.documentType !== "unknown") {
+      await runExtract(id, parsed, classification.documentType);
     } else {
-      // Park for user to pick. We re-derive doc from the file when they pick.
       patch(id, { stage: "needs-domain" });
     }
   }, [patch, runExtract]);
 
-  /** User picked a domain for a parked item — re-parse and extract. */
-  const pickDomain = useCallback(async (id: string, domain: Domain) => {
+  /** User picked a documentType for a parked item — run the pipeline. */
+  const pickDomain = useCallback(async (id: string, documentType: DocumentType) => {
     const item = items.find((it) => it.id === id);
     if (!item) return;
-    let doc: ParsedDoc;
+    if (item.parsed) {
+      await runExtract(id, item.parsed, documentType);
+      return;
+    }
+    let parsed: ParsedDoc;
     try {
-      doc = await parseFile(item.file);
+      parsed = await parseFile(item.file);
     } catch (err) {
       patch(id, {
         stage: "error",
@@ -192,7 +122,7 @@ export function useImportQueue() {
       });
       return;
     }
-    await runExtract(id, doc, domain);
+    await runExtract(id, parsed, documentType);
   }, [items, patch, runExtract]);
 
   const clear = useCallback(() => setItems([]), []);

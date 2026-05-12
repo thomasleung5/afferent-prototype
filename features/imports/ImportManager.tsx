@@ -4,7 +4,9 @@
 
 import { useRef, useState } from "react";
 import { Drawer, StatusPill, Icon } from "@/components/ui";
-import { useBuildState, type Domain } from "@/lib/store";
+import { useBuildState } from "@/lib/store";
+import type { Domain } from "@/lib/store";
+import type { DocumentType } from "@/lib/import/types";
 import { useImportQueue, type QueueItem } from "./useImportQueue";
 
 const DOMAIN_LABEL: Record<Domain, string> = {
@@ -14,6 +16,17 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   fees:      "Fee Schedule",
   workload:  "Workload",
   cap:       "Cost Allocation",
+};
+
+const DOCTYPE_LABEL: Record<Exclude<DocumentType, "unknown">, string> = {
+  fee_schedule:           "Fee Schedule",
+  prior_fee_study:        "Prior Fee Study",
+  budget_book:            "Budget Book",
+  salary_roster:          "Salary Roster",
+  operating_budget:       "Operating Budget",
+  cost_allocation_plan:   "Cost Allocation Plan",
+  workload_export:        "Workload Export",
+  benchmark_fee_schedule: "Benchmark Fee Schedule",
 };
 
 interface Props {
@@ -177,9 +190,18 @@ function QueueRow({
 }: {
   item: QueueItem;
   isLast: boolean;
-  onPickDomain: (d: Domain) => void;
+  onPickDomain: (d: DocumentType) => void;
 }) {
   const pill = STAGE_PILL[item.stage];
+  const docTypeLabel = item.documentType && item.documentType !== "unknown"
+    ? DOCTYPE_LABEL[item.documentType]
+    : null;
+  const auto = item.batch
+    ? item.batch.mappings.filter((m) => m.status === "auto_accepted").length
+    : 0;
+  const review = item.batch
+    ? item.batch.mappings.filter((m) => m.status !== "auto_accepted").length
+    : 0;
 
   return (
     <div style={{
@@ -198,14 +220,21 @@ function QueueRow({
           }} title={item.fileName}>
             {item.fileName}
           </div>
-          {item.classification && (
+          {docTypeLabel && (
             <div className="mono" style={{
               marginTop: 3, fontSize: 10.5, color: "var(--ink-3)",
               letterSpacing: "0.04em",
             }}>
-              {item.domain
-                ? `${DOMAIN_LABEL[item.domain]} · ${(item.classification.confidence * 100).toFixed(0)}% confidence`
-                : item.classification.reason}
+              {docTypeLabel}
+              {item.classifyReason ? ` · ${item.classifyReason}` : ""}
+            </div>
+          )}
+          {!docTypeLabel && item.classifyReason && (
+            <div className="mono" style={{
+              marginTop: 3, fontSize: 10.5, color: "var(--ink-3)",
+              letterSpacing: "0.04em",
+            }}>
+              {item.classifyReason}
             </div>
           )}
           {item.error && (
@@ -213,15 +242,12 @@ function QueueRow({
               {item.error}
             </div>
           )}
-          {item.result && (
+          {item.batch && (
             <div className="mono" style={{
               marginTop: 3, fontSize: 10.5, color: "var(--ink-3)",
               letterSpacing: "0.04em",
             }}>
-              {item.result.mapped} mapped
-              {item.result.lowConfidence + item.result.unmapped > 0
-                ? ` · ${item.result.lowConfidence + item.result.unmapped} for review`
-                : ""}
+              {auto} auto · {review} for review
             </div>
           )}
         </div>
@@ -232,7 +258,7 @@ function QueueRow({
         <div style={{
           marginTop: 8, display: "flex", flexWrap: "wrap", gap: 6,
         }}>
-          {(Object.entries(DOMAIN_LABEL) as [Domain, string][]).map(([d, label]) => (
+          {(Object.entries(DOCTYPE_LABEL) as [DocumentType, string][]).map(([d, label]) => (
             <button
               key={d}
               onClick={() => onPickDomain(d)}
