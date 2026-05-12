@@ -18,6 +18,7 @@ import {
 } from "@/lib/calc";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 import type { AiSuggestion } from "@/lib/ai/types";
+import type { ImportBatch, ImportDecision, MappingCandidate, MappingStatus } from "@/lib/import/types";
 
 /* ── Re-exported types ── */
 
@@ -49,6 +50,11 @@ interface BuildState {
   aiStatus: Record<Domain, { running: boolean; message?: string }>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
+  /** The active pipeline batch the UI is reviewing. Null when no import is
+   *  in progress. Only one at a time per session. */
+  currentBatch: ImportBatch | null;
+  /** User decisions on the active batch's mapping candidates, keyed by id. */
+  decisions: Record<string, ImportDecision>;
 }
 
 interface BuildActions {
@@ -74,6 +80,18 @@ interface BuildActions {
   acceptAiSuggestion: (domain: Domain, id: string, override?: Partial<AiSuggestion["entity"]>) => void;
   rejectAiSuggestion: (domain: Domain, id: string) => void;
   moveCenter: (name: string, direction: "up" | "down") => void;
+  /** Replace the active batch (or clear with null). */
+  setCurrentBatch: (batch: ImportBatch | null) => void;
+  /** Record a per-candidate decision. status === "rejected" leaves the model
+   *  alone; the apply step skips it. */
+  decideMapping: (
+    mappingCandidateId: string,
+    status: MappingStatus,
+    override?: Record<string, string | number | boolean | null>,
+  ) => void;
+  /** Apply every accepted candidate from currentBatch into the target tables,
+   *  record lineage, and append an import-log entry. */
+  applyCurrentBatch: () => { applied: number; skipped: number };
   resetAll: () => void;
 }
 
@@ -119,6 +137,8 @@ const initialState = (): BuildState => {
     aiStatus: { ...emptyAiStatus },
     capCenterOrder: defaultCenterOrder(pools),
     imports: [],
+    currentBatch: null,
+    decisions: {},
   };
 };
 
@@ -186,6 +206,112 @@ function toApplyResult<T>(
     duplicates: r.stats.duplicates,
     warnings,
   };
+}
+
+/* Apply accepted MappingCandidates from a pipeline batch into the target
+ * tables, building lineage for every written row. Returns the partial state
+ * object the caller will pass to set(). Currently handles fees / services /
+ * positions / cap / workload / operating shapes; unsupported target tables
+ * are skipped (logged via "skipped" counter at the caller). */
+function applyAccepted(
+  state: BuildState,
+  accepted: { m: MappingCandidate; entity: Record<string, unknown> }[],
+  batch: ImportBatch,
+): { state: Partial<BuildState> } {
+  let services = state.services;
+  const positions = state.positions;
+  const operating = state.operating;
+  const capPools = state.capPools;
+  const workload = state.workload;
+  const lineage = { ...state.lineage };
+  const at = new Date().toISOString();
+  const importLog: BuildImportLog = {
+    id: Date.now(),
+    domain: "fees",
+    result: {
+      domain: "fees",
+      fileName: batch.sourceFile,
+      detected: batch.classification.documentType,
+      rows: batch.mappings.length,
+      mapped: accepted.length,
+      lowConfidence: 0,
+      unmapped: batch.mappings.filter((m) => m.status === "unresolved").length,
+      duplicates: 0,
+      warnings: batch.extracted.parseWarnings,
+    },
+    at,
+  };
+
+  // Find the extracted row for lineage (source file / sheet / page / row).
+  const allExtracted = [
+    ...batch.extracted.unsectioned,
+    ...batch.extracted.sections.flatMap((s) => s.rows),
+  ];
+  const rowById = new Map(allExtracted.map((r) => [r.id, r]));
+
+  for (const { m, entity } of accepted) {
+    const er = rowById.get(m.extractedRowId);
+    const target = m.proposedTargetTable;
+    if (!target) continue;
+
+    const lineageEntry: SourceLineage = {
+      file: er?.source.file ?? batch.sourceFile,
+      sheet: er?.source.sheet,
+      page: er?.source.page,
+      row: er?.source.row,
+      rawCells: er ? cellsToRecord(er.rawCells) : undefined,
+      confidence: m.confidence >= 0.85 ? "high" : m.confidence >= 0.5 ? "med" : "low",
+      importedAt: at,
+    };
+
+    if (target === "fees" || target === "services") {
+      const name = String(entity.name ?? m.proposedTargetLabel);
+      const dept = coerceDeptCode(entity.dept);
+      const existing = m.proposedTargetId
+        ? services.find((s) => s.id === m.proposedTargetId)
+        : services.find((s) => s.name.toLowerCase().trim() === name.toLowerCase().trim());
+      if (existing) {
+        const patched: Service = {
+          ...existing,
+          fee: typeof entity.fee === "number" ? entity.fee : existing.fee,
+          peer: typeof entity.peer === "number" ? entity.peer : existing.peer,
+          target: typeof entity.target === "number" ? entity.target : existing.target,
+        };
+        services = services.map((s) => s.id === existing.id ? patched : s);
+        lineage[existing.id] = lineageEntry;
+      } else {
+        const id = `svc-imp-${m.id}`;
+        const created: Service = {
+          id, name,
+          dept,
+          volume: Number(entity.volume ?? 0) || 0,
+          hours: Number(entity.hours ?? 0) || 0,
+          cost: 0,
+          fee: Number(entity.fee ?? 0) || 0,
+          peer: Number(entity.peer ?? 0) || 0,
+          target: Number(entity.target ?? 100) || 100,
+        };
+        services = [...services, created];
+        lineage[id] = lineageEntry;
+      }
+    }
+    // positions / operating / cap / workload writeback intentionally
+    // deferred to PR 3 — fee schedule is the proof.
+  }
+
+  return {
+    state: {
+      services, positions, operating, capPools, workload,
+      lineage,
+      imports: [...state.imports, importLog],
+    },
+  };
+}
+
+function cellsToRecord(cells: (string | number | null)[]): Record<string, string | number | null> {
+  const out: Record<string, string | number | null> = {};
+  cells.forEach((c, i) => { out[`c${i}`] = c; });
+  return out;
 }
 
 /* ── Zustand store ── */
@@ -483,6 +609,54 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
           return { capCenterOrder: next };
         }),
+
+      setCurrentBatch: (batch) => set(() => {
+        if (!batch) return { currentBatch: null, decisions: {} };
+        // Seed decisions from the candidate statuses — auto_accepted ones
+        // are pre-decided so the user can apply immediately.
+        const seeded: Record<string, ImportDecision> = {};
+        const at = new Date().toISOString();
+        for (const m of batch.mappings) {
+          if (m.status === "auto_accepted") {
+            seeded[m.id] = { mappingCandidateId: m.id, status: "auto_accepted", decidedAt: at };
+          }
+        }
+        return { currentBatch: batch, decisions: seeded };
+      }),
+
+      decideMapping: (mappingCandidateId, status, override) =>
+        set((s) => ({
+          decisions: {
+            ...s.decisions,
+            [mappingCandidateId]: {
+              mappingCandidateId, status,
+              override,
+              decidedAt: new Date().toISOString(),
+            },
+          },
+        })),
+
+      applyCurrentBatch: () => {
+        const { currentBatch: batch, decisions } = get();
+        if (!batch) return { applied: 0, skipped: 0 };
+        const accepted: { m: MappingCandidate; entity: Record<string, unknown> }[] = [];
+        let skipped = 0;
+        for (const m of batch.mappings) {
+          const d = decisions[m.id];
+          if (!d || (d.status !== "auto_accepted" && d.status !== "accepted_after_edit")) {
+            skipped += 1; continue;
+          }
+          accepted.push({
+            m,
+            entity: { ...(m.proposedEntity as Record<string, unknown>), ...(d.override ?? {}) },
+          });
+        }
+        if (accepted.length === 0) return { applied: 0, skipped };
+
+        const result = applyAccepted(get(), accepted, batch);
+        set(result.state);
+        return { applied: accepted.length, skipped };
+      },
 
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
