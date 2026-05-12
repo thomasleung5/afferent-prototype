@@ -1,6 +1,6 @@
 ﻿
 import { useState } from "react";
-import { Icon, SectionLabel, SourcePill } from "@/components/ui";
+import { Icon, SectionLabel, SourcePill, StatusPill } from "@/components/ui";
 import { useBuildState, type Domain } from "@/lib/store";
 import type { AiSuggestion } from "@/lib/ai/types";
 
@@ -41,15 +41,24 @@ export function ImportReview({ domain }: Props) {
     }}>
       <SectionLabel
         right={
-          unmapped.length > 0 ? (
-            <button
-              onClick={() => clearReview(domain)}
-              style={{
-                fontSize: 11.5, color: "var(--ink-3)",
-                background: "transparent", border: "none", cursor: "pointer",
-              }}
-            >Dismiss all</button>
-          ) : null
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            {status.running
+              ? <StatusPill kind="info">Asking Claude…</StatusPill>
+              : suggestions.length > 0
+                ? <StatusPill kind="review">{suggestions.length} for review</StatusPill>
+                : unmapped.length > 0
+                  ? <StatusPill kind="review">{unmapped.length} unresolved</StatusPill>
+                  : <StatusPill kind="ok">Ready</StatusPill>}
+            {unmapped.length > 0 && (
+              <button
+                onClick={() => clearReview(domain)}
+                style={{
+                  fontSize: 11.5, color: "var(--ink-3)",
+                  background: "transparent", border: "none", cursor: "pointer",
+                }}
+              >Dismiss all</button>
+            )}
+          </div>
         }
       >
         Review queue {totalCount(suggestions.length, unmapped.length)}

@@ -1,5 +1,5 @@
 ﻿
-import { SectionLabel } from "@/components/ui";
+import { SectionLabel, StatusPill } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 import type { Domain } from "@/lib/store";
 
@@ -35,7 +35,7 @@ export function ImportBar() {
         <div style={{ background: "var(--paper-2)", border: "1px solid var(--rule)" }}>
           <div style={{
             display: "grid",
-            gridTemplateColumns: "140px minmax(220px, 1.6fr) 90px 90px 90px 100px",
+            gridTemplateColumns: "140px minmax(220px, 1.6fr) 90px 90px 110px 100px",
             gap: 14, padding: "8px 14px",
             borderBottom: "1px solid var(--rule-strong)",
             background: "var(--paper)",
@@ -46,49 +46,49 @@ export function ImportBar() {
             <div>File</div>
             <div style={{ textAlign: "right" }}>Rows</div>
             <div style={{ textAlign: "right" }}>Mapped</div>
-            <div style={{ textAlign: "right" }}>Review</div>
+            <div style={{ textAlign: "right" }}>Status</div>
             <div style={{ textAlign: "right" }}>When</div>
           </div>
-          {recent.map((imp, i) => (
-            <div key={imp.id} style={{
-              display: "grid",
-              gridTemplateColumns: "140px minmax(220px, 1.6fr) 90px 90px 90px 100px",
-              gap: 14, padding: "8px 14px",
-              borderBottom: i < recent.length - 1 ? "1px solid var(--rule)" : "none",
-              fontSize: 12,
-            }}>
-              <span className="mono" style={{
-                fontSize: 10.5, color: "var(--ink-2)", letterSpacing: "0.06em",
-              }}>{DOMAIN_LABEL[imp.domain]}</span>
-              <span style={{ color: "var(--ink-2)" }}>
-                {imp.result.fileName}
-                {imp.result.detected && (
-                  <span style={{ color: "var(--ink-3)", marginLeft: 6, fontSize: 11 }}>
-                    · {imp.result.detected}
-                  </span>
-                )}
-              </span>
-              <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
-                {imp.result.rows}
-              </span>
-              <span className="num" style={{ textAlign: "right", color: "var(--pos)" }}>
-                {imp.result.mapped}
-              </span>
-              <span className="num" style={{
-                textAlign: "right",
-                color: imp.result.unmapped + imp.result.lowConfidence > 0 ? "var(--warn)" : "var(--ink-3)",
+          {recent.map((imp, i) => {
+            const reviewN = imp.result.unmapped + imp.result.lowConfidence;
+            return (
+              <div key={imp.id} style={{
+                display: "grid",
+                gridTemplateColumns: "140px minmax(220px, 1.6fr) 90px 90px 110px 100px",
+                gap: 14, padding: "8px 14px",
+                borderBottom: i < recent.length - 1 ? "1px solid var(--rule)" : "none",
+                fontSize: 12, alignItems: "center",
               }}>
-                {imp.result.unmapped + imp.result.lowConfidence > 0
-                  ? imp.result.unmapped + imp.result.lowConfidence
-                  : "—"}
-              </span>
-              <span className="mono" style={{
-                textAlign: "right", fontSize: 11, color: "var(--ink-3)",
-              }}>
-                {new Date(imp.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
-              </span>
-            </div>
-          ))}
+                <span className="mono" style={{
+                  fontSize: 10.5, color: "var(--ink-2)", letterSpacing: "0.06em",
+                }}>{DOMAIN_LABEL[imp.domain]}</span>
+                <span style={{ color: "var(--ink-2)" }}>
+                  {imp.result.fileName}
+                  {imp.result.detected && (
+                    <span style={{ color: "var(--ink-3)", marginLeft: 6, fontSize: 11 }}>
+                      · {imp.result.detected}
+                    </span>
+                  )}
+                </span>
+                <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
+                  {imp.result.rows}
+                </span>
+                <span className="num" style={{ textAlign: "right", color: "var(--pos)" }}>
+                  {imp.result.mapped}
+                </span>
+                <span style={{ display: "flex", justifyContent: "flex-end" }}>
+                  {reviewN > 0
+                    ? <StatusPill kind="review">{reviewN} review</StatusPill>
+                    : <StatusPill kind="ok">Imported</StatusPill>}
+                </span>
+                <span className="mono" style={{
+                  textAlign: "right", fontSize: 11, color: "var(--ink-3)",
+                }}>
+                  {new Date(imp.at).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+                </span>
+              </div>
+            );
+          })}
         </div>
       )}
     </div>
