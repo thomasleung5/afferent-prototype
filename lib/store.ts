@@ -219,10 +219,10 @@ function applyAccepted(
   batch: ImportBatch,
 ): { state: Partial<BuildState> } {
   let services = state.services;
-  const positions = state.positions;
-  const operating = state.operating;
-  const capPools = state.capPools;
-  const workload = state.workload;
+  let positions = state.positions;
+  let operating = state.operating;
+  let capPools = state.capPools;
+  let workload = state.workload;
   const lineage = { ...state.lineage };
   const at = new Date().toISOString();
   const importLog: BuildImportLog = {
@@ -294,9 +294,71 @@ function applyAccepted(
         services = [...services, created];
         lineage[id] = lineageEntry;
       }
+    } else if (target === "positions") {
+      const id = `pos-imp-${m.id}`;
+      const created: Position = {
+        id,
+        title: String(entity.title ?? m.proposedTargetLabel),
+        dept: coerceDeptCode(entity.dept),
+        fte: Number(entity.fte ?? 1) || 1,
+        salary: Number(entity.salary ?? 0) || 0,
+        benefits: Number(entity.benefits ?? 0) || 0,
+        hours: Number(entity.hours ?? 1720) || 1720,
+      };
+      positions = [...positions, created];
+      lineage[id] = lineageEntry;
+    } else if (target === "operating") {
+      const id = `OP-IMP-${m.id}`;
+      const created: OperatingLine = {
+        id,
+        code: String(entity.accountCode ?? entity.code ?? ""),
+        line: String(entity.line ?? entity.accountName ?? m.proposedTargetLabel),
+        dept: coerceOpDept(entity.dept),
+        category: coerceOpCategory(entity.category),
+        amount: Number(entity.amount ?? 0) || 0,
+        source: `Import · ${batch.sourceFile}`,
+        include: entity.include === false || entity.includeInCostOfService === "no" ? false : true,
+      };
+      operating = [...operating, created];
+      lineage[id] = lineageEntry;
+    } else if (target === "cap") {
+      const id = `cap-imp-${m.id}`;
+      const created: CapPool = {
+        id,
+        center: String(entity.sourceDepartment ?? entity.center ?? ""),
+        pool: String(entity.poolName ?? entity.pool ?? m.proposedTargetLabel),
+        amount: Number(entity.allocatedAmount ?? entity.amount ?? 0) || 0,
+        basis: String(entity.allocationBasis ?? entity.basis ?? "FY budgeted"),
+        receiving: String(entity.targetDepartment ?? "Multiple departments"),
+        recoverability: String(entity.recoverability ?? "Partially recoverable"),
+        review: "Reviewed",
+      };
+      capPools = [...capPools, created];
+      lineage[id] = lineageEntry;
+    } else if (target === "workload") {
+      const name = String(entity.name ?? entity.serviceName ?? m.proposedTargetLabel);
+      const matched = m.proposedTargetId
+        ? services.find((s) => s.id === m.proposedTargetId)
+        : services.find((s) => s.name.toLowerCase().trim() === name.toLowerCase().trim());
+      if (!matched) continue; // can't write workload without a parent service
+      const rowId = matched.id;
+      const existing = workload.find((w) => w.id === rowId);
+      const merged: WorkloadRow = {
+        id: rowId,
+        current: Number(entity.current ?? entity.currentVolume ?? existing?.current ?? 0),
+        prior: entity.prior != null || entity.priorVolume != null
+          ? Number(entity.prior ?? entity.priorVolume)
+          : (existing?.prior ?? null),
+        unit: String(entity.unit ?? existing?.unit ?? "Item"),
+        source: "imported",
+        status: "Imported",
+        sourceFile: batch.sourceFile,
+      };
+      workload = existing
+        ? workload.map((w) => w.id === rowId ? merged : w)
+        : [...workload, merged];
+      lineage[rowId] = lineageEntry;
     }
-    // positions / operating / cap / workload writeback intentionally
-    // deferred to PR 3 — fee schedule is the proof.
   }
 
   return {

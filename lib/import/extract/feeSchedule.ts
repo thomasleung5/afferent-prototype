@@ -18,6 +18,7 @@ import type {
   ExtractedDocument, ExtractedRow, ExtractedRowType, ExtractedSection,
 } from "../types";
 import { parseMoney } from "../normalize";
+import { nextRowId } from "./_sheet";
 
 const HOURLY_RE = /\bper\s+hour\b|\$\s?\d[\d,]*\s*\/\s*hr\b|\bhourly\b/i;
 const ACTUAL_COST_RE = /\bactual cost\b|\btime\s*[+&]\s*materials?\b|\bt\s*&\s*m\b/i;
@@ -28,9 +29,6 @@ const UNIT_RE = /\b(per\s+(unit|acre|sq\.?\s*ft|square foot|lot|dwelling|hour|pa
 /** Section header pattern for PDFs / CSV — all-caps line, 3-80 chars, mostly letters. */
 const SECTION_RE = /^[A-Z][A-Z0-9 &/()'.,-]{3,80}$/;
 const SUBTOTAL_RE = /\b(subtotal|total)\b/i;
-
-let rowId = 0;
-const nextId = () => `er-${++rowId}`;
 
 export function extractFeeSchedule(doc: ParsedDoc): ExtractedDocument {
   const out: ExtractedDocument = {
@@ -91,7 +89,7 @@ function extractFromSheet(sheet: ParsedSheet, file: string, out: ExtractedDocume
     });
 
     const row: ExtractedRow = {
-      id: nextId(),
+      id: nextRowId(),
       rawLabel: rawLabel || "(blank)",
       rawCells: cells,
       parsedValue: current ?? undefined,
@@ -155,7 +153,7 @@ function extractFromPage(page: ParsedPage, file: string, out: ExtractedDocument)
     });
 
     const row: ExtractedRow = {
-      id: nextId(),
+      id: nextRowId(),
       rawLabel: labelPart || "(blank)",
       rawCells: [line],
       parsedValue: value ?? undefined,

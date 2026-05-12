@@ -15,6 +15,11 @@ import type { Service } from "@/lib/types";
 
 import { classifyDocument } from "./classify";
 import { extractFeeSchedule } from "./extract/feeSchedule";
+import { extractSalaryRoster } from "./extract/salaryRoster";
+import { extractOperatingBudget } from "./extract/operatingBudget";
+import { extractCostAllocationPlan } from "./extract/costAllocationPlan";
+import { extractWorkloadExport } from "./extract/workloadExport";
+import { extractBenchmarkFeeSchedule } from "./extract/benchmarkFeeSchedule";
 import { mapExtractedDocument } from "./map";
 import { validate } from "./validate";
 import type {
@@ -66,16 +71,27 @@ export function runImportPipelineFromParsed(
   };
 }
 
-/** Extractor dispatch. Only fee_schedule + benchmark_fee_schedule are
- *  implemented here yet — other types come in PR 3. Falls back to a
- *  minimal extractor that surfaces parse warnings + an "unsupported"
- *  document so the UI still has something to render. */
+/** Extractor dispatch — every documentType (except "unknown" / "budget_book")
+ *  has a flexible extractor. budget_book falls back to operatingBudget which
+ *  also handles department-total rows. unknown surfaces a passthrough so the
+ *  UI can still render the classification and the user can re-pick a type. */
 function extractFor(parsed: ParsedDoc, documentType: DocumentType): ExtractedDocument {
   switch (documentType) {
     case "fee_schedule":
-    case "benchmark_fee_schedule":
     case "prior_fee_study":
       return extractFeeSchedule(parsed);
+    case "benchmark_fee_schedule":
+      return extractBenchmarkFeeSchedule(parsed);
+    case "salary_roster":
+      return extractSalaryRoster(parsed);
+    case "operating_budget":
+    case "budget_book":
+      return extractOperatingBudget(parsed);
+    case "cost_allocation_plan":
+      return extractCostAllocationPlan(parsed);
+    case "workload_export":
+      return extractWorkloadExport(parsed);
+    case "unknown":
     default:
       return {
         documentType,
@@ -85,7 +101,7 @@ function extractFor(parsed: ParsedDoc, documentType: DocumentType): ExtractedDoc
         notes: [],
         parseWarnings: [
           ...parsed.warnings,
-          `Extractor for "${documentType}" not yet implemented in lib/import — falling back to passthrough.`,
+          `Document type "${documentType}" — no extractor; pick a target type to enable mapping.`,
         ],
       };
   }
