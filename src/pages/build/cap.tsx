@@ -11,24 +11,23 @@ import { CapPoolsTable } from "@/features/build/CapPoolsTable";
 import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationMatrix } from "@/features/build/AllocationMatrix";
-import { ImportReview } from "@/features/build/ImportReview";
+import { MappingReview } from "@/features/imports/MappingReview";
+import { ImportDebug } from "@/features/imports/ImportDebug";
 import { useBuildState } from "@/lib/store";
-import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
-import { parseFile } from "@/lib/parse";
-import { extractCap } from "@/lib/parse/extract";
+import { runImportPipeline } from "@/lib/import/pipeline";
+import type { LastImport } from "@/components/ui";
 
 export default function CapPage() {
-  const {
-    capAllocation, capPools, mergeCap, pendingReview,
-    setAiStatus, addAiSuggestions,
-  } = useBuildState();
+  const { capAllocation, capPools, services, currentBatch, setCurrentBatch } = useBuildState();
   const [step, setStep] = useState<CapStep>("centers");
 
   const totalAllocated =
     capAllocation.PLAN.allocated + capAllocation.BLDG.allocated + capAllocation.ENG.allocated;
   const allocatedPct = CAP_TOTAL > 0 ? Math.round((totalAllocated / CAP_TOTAL) * 100) : 0;
   const reviewCount = capPools.filter((p) => p.review === "Review").length;
-  const reviewQueue = pendingReview.cap.length;
+  const reviewing = currentBatch
+    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
+    : 0;
   const centerCount = new Set(capPools.map((p) => p.center)).size;
 
   return (
@@ -45,7 +44,7 @@ export default function CapPage() {
         `${capPools.length} pools`,
         `${allocatedPct}% allocated`,
         { value: reviewCount === 0 ? "Balanced" : `${reviewCount} unresolved`, tone: reviewCount === 0 ? "pos" : "warn" },
-        ...(reviewQueue > 0 ? [{ value: `${reviewQueue} unmapped`, tone: "warn" as const }] : []),
+        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
         "Step-down · FY 2026-27",
       ]}/>
 
@@ -68,24 +67,28 @@ export default function CapPage() {
           <DropZone
             accept=".xlsx,.csv"
             formats="xlsx, csv"
-            hint="Drag the most recent Cost Allocation Plan inventory. Centers, pools, and bases in one workbook."
-            onImport={async (file) => {
-              const doc = await parseFile(file);
-              const result = extractCap(doc, capPools);
-              const applied = mergeCap(result, file.name);
-              void runAiAssistPass({
-                domain: "cap",
-                doc,
-                unmapped: result.unmapped,
-                exampleRows: capPools.slice(0, 3) as unknown as Record<string, unknown>[],
-                setStatus: (s) => setAiStatus("cap", s),
-                addSuggestions: (items) => addAiSuggestions("cap", items),
-              });
-              return toLastImport(applied);
+            hint="Drag a Cost Allocation Plan inventory. Pools, bases, percentages, and dollar allocations all import — review before applying."
+            onImport={async (file): Promise<LastImport> => {
+              const batch = await runImportPipeline(file, { services, forceType: "cost_allocation_plan" });
+              setCurrentBatch(batch);
+              const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
+              const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
+              return {
+                file: file.name,
+                rows: batch.mappings.length,
+                mapped: accepted,
+                review: flagged,
+                date: new Date().toLocaleString(undefined, {
+                  month: "short", day: "numeric", year: "numeric",
+                  hour: "numeric", minute: "2-digit",
+                }),
+              };
             }}
           />
 
-          <ImportReview domain="cap"/>
+          <MappingReview/>
+
+          <ImportDebug/>
 
           <CapPoolsTable/>
         </>

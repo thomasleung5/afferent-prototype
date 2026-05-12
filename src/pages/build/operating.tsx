@@ -1,4 +1,4 @@
-﻿
+
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -6,21 +6,20 @@ import { StatusRow } from "@/features/_shared/StatusRow";
 import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingBuckets } from "@/features/build/OperatingBuckets";
 import { OperatingTable } from "@/features/build/OperatingTable";
-import { ImportReview } from "@/features/build/ImportReview";
+import { MappingReview } from "@/features/imports/MappingReview";
+import { ImportDebug } from "@/features/imports/ImportDebug";
 import { useBuildState } from "@/lib/store";
-import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
-import { parseFile } from "@/lib/parse";
-import { extractOperating } from "@/lib/parse/extract";
+import { runImportPipeline } from "@/lib/import/pipeline";
+import type { LastImport } from "@/components/ui";
 
 export default function OperatingPage() {
-  const {
-    operating, mergeOperating, pendingReview,
-    setAiStatus, addAiSuggestions,
-  } = useBuildState();
+  const { operating, services, currentBatch, setCurrentBatch } = useBuildState();
   const included = operating.filter((l) => l.include);
   const excluded = operating.filter((l) => !l.include);
   const includedTotal = included.reduce((a, l) => a + l.amount, 0);
-  const reviewQueue = pendingReview.operating.length;
+  const reviewing = currentBatch
+    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
+    : 0;
 
   return (
     <Page>
@@ -36,7 +35,7 @@ export default function OperatingPage() {
         { value: "Validated", tone: "pos" },
         `${included.length} included · ${excluded.length} excluded`,
         `${fmt.dollarsK(includedTotal)} flowing into $/hr`,
-        ...(reviewQueue > 0 ? [{ value: `${reviewQueue} unmapped`, tone: "warn" as const }] : []),
+        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
         "FY 2026-27",
       ]}/>
 
@@ -47,24 +46,28 @@ export default function OperatingPage() {
       <DropZone
         accept=".xlsx,.csv,.pdf"
         formats="xlsx, csv, budget book pdf"
-        hint="Drag the budget book or a department detail sheet. Common formats: Tyler / OpenGov budget extracts, line-item Excel, or scanned PDF."
-        onImport={async (file) => {
-          const doc = await parseFile(file);
-          const result = extractOperating(doc, operating);
-          const applied = mergeOperating(result, file.name);
-          void runAiAssistPass({
-            domain: "operating",
-            doc,
-            unmapped: result.unmapped,
-            exampleRows: operating.slice(0, 3) as unknown as Record<string, unknown>[],
-            setStatus: (s) => setAiStatus("operating", s),
-            addSuggestions: (items) => addAiSuggestions("operating", items),
-          });
-          return toLastImport(applied);
+        hint="Drag the budget book or a department detail sheet. Account-line and department-total rows both import — review before applying."
+        onImport={async (file): Promise<LastImport> => {
+          const batch = await runImportPipeline(file, { services, forceType: "operating_budget" });
+          setCurrentBatch(batch);
+          const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
+          const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
+          return {
+            file: file.name,
+            rows: batch.mappings.length,
+            mapped: accepted,
+            review: flagged,
+            date: new Date().toLocaleString(undefined, {
+              month: "short", day: "numeric", year: "numeric",
+              hour: "numeric", minute: "2-digit",
+            }),
+          };
         }}
       />
 
-      <ImportReview domain="operating"/>
+      <MappingReview/>
+
+      <ImportDebug/>
 
       <OperatingTable/>
     </Page>

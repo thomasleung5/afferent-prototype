@@ -1,23 +1,22 @@
-﻿
+
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { WorkloadTable } from "@/features/build/WorkloadTable";
-import { ImportReview } from "@/features/build/ImportReview";
+import { MappingReview } from "@/features/imports/MappingReview";
+import { ImportDebug } from "@/features/imports/ImportDebug";
 import { useBuildState } from "@/lib/store";
-import { toLastImport, runAiAssistPass } from "@/features/build/runImport";
-import { parseFile } from "@/lib/parse";
-import { extractWorkload } from "@/lib/parse/extract";
+import { runImportPipeline } from "@/lib/import/pipeline";
+import type { LastImport } from "@/components/ui";
 
 export default function WorkloadPage() {
-  const {
-    workload, services, mergeWorkload, pendingReview,
-    setAiStatus, addAiSuggestions,
-  } = useBuildState();
+  const { workload, services, currentBatch, setCurrentBatch } = useBuildState();
   const totalVol = workload.reduce((a, r) => a + (r.current ?? 0), 0);
   const missing  = workload.filter((r) => r.current == null).length;
   const carry    = workload.filter((r) => r.source === "carry-forward").length;
-  const reviewQueue = pendingReview.workload.length;
+  const reviewing = currentBatch
+    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
+    : 0;
 
   return (
     <Page>
@@ -33,33 +32,35 @@ export default function WorkloadPage() {
         `${totalVol.toLocaleString()} workload rows`,
         { value: missing === 0 ? "All captured" : `${missing} missing`, tone: missing === 0 ? "pos" : "warn" },
         carry > 0 ? `${carry} carry-forward` : "No carry-forward",
-        ...(reviewQueue > 0 ? [{ value: `${reviewQueue} unmapped`, tone: "warn" as const }] : []),
+        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
         "FY 2026-27",
       ]}/>
 
       <DropZone
         accept=".xlsx,.csv"
         formats="xlsx, csv permit-system exports"
-        hint="Drag a permit-system export. Supported: Tyler EnerGov, Accela, OpenGov, or any CSV with service + volume columns."
-        onImport={async (file) => {
-          const doc = await parseFile(file);
-          const result = extractWorkload(doc, workload, services);
-          const applied = mergeWorkload(result, file.name);
-          // Pass service names so the AI can match unmapped rows to the catalog.
-          const serviceExamples = services.slice(0, 12).map((s) => ({ name: s.name, dept: s.dept }));
-          void runAiAssistPass({
-            domain: "workload",
-            doc,
-            unmapped: result.unmapped,
-            exampleRows: serviceExamples as unknown as Record<string, unknown>[],
-            setStatus: (s) => setAiStatus("workload", s),
-            addSuggestions: (items) => addAiSuggestions("workload", items),
-          });
-          return toLastImport(applied);
+        hint="Drag a permit-system export. Tyler EnerGov, Accela, OpenGov, or any CSV with service + volume columns — service names get fuzzy-matched to the catalog."
+        onImport={async (file): Promise<LastImport> => {
+          const batch = await runImportPipeline(file, { services, forceType: "workload_export" });
+          setCurrentBatch(batch);
+          const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
+          const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
+          return {
+            file: file.name,
+            rows: batch.mappings.length,
+            mapped: accepted,
+            review: flagged,
+            date: new Date().toLocaleString(undefined, {
+              month: "short", day: "numeric", year: "numeric",
+              hour: "numeric", minute: "2-digit",
+            }),
+          };
         }}
       />
 
-      <ImportReview domain="workload"/>
+      <MappingReview/>
+
+      <ImportDebug/>
 
       <WorkloadTable/>
     </Page>
