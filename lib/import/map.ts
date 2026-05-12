@@ -185,7 +185,7 @@ function mapToPositions(row: ExtractedRow): MappingCandidate {
   if (!dept) missing.push("department");
   if (salary == null) missing.push("salary");
 
-  const confidence = missing.length === 0 ? 0.8 : 0.5 - missing.length * 0.1;
+  const confidence = missing.length === 0 ? 0.9 : 0.5 - missing.length * 0.1;
   return {
     id: nextMappingId(),
     extractedRowId: row.id,
@@ -229,14 +229,17 @@ function mapToOperating(row: ExtractedRow): MappingCandidate {
 }
 
 function mapToCap(row: ExtractedRow): MappingCandidate {
-  const amount = (row.fields?.amount ?? row.parsedValue) as number | undefined;
-  const pct = row.fields?.percent as number | undefined;
+  const fields = row.fields ?? {};
+  const amount = (fields.allocatedAmount ?? fields.amount ?? row.parsedValue) as number | undefined;
+  const pct = (fields.allocationPercent ?? fields.percent) as number | undefined;
   const dept = inferDept(row);
 
   const missing: string[] = [];
   if (amount == null && pct == null) missing.push("amount or percent");
 
-  const confidence = (amount != null || pct != null) ? 0.75 : 0.3;
+  const confidence = (amount != null && pct != null) ? 0.9
+    : (amount != null || pct != null) ? 0.75
+    : 0.3;
   return {
     id: nextMappingId(),
     extractedRowId: row.id,
@@ -259,8 +262,10 @@ function mapToCap(row: ExtractedRow): MappingCandidate {
 }
 
 function mapToWorkload(row: ExtractedRow, ctx: MapContext): MappingCandidate {
-  const current = (row.fields?.current ?? row.parsedValue) as number | undefined;
-  const match = matchService(row.rawLabel, ctx.services);
+  const fields = row.fields ?? {};
+  const current = (fields.currentVolume ?? fields.current ?? row.parsedValue) as number | undefined;
+  const labelForMatch = String(fields.serviceName ?? row.rawLabel);
+  const match = matchService(labelForMatch, ctx.services);
   const missing: string[] = [];
   if (current == null) missing.push("current volume");
   if (!match.top) missing.push("matching service");
@@ -313,7 +318,25 @@ function inferDept(row: ExtractedRow): NormalizedDept | undefined {
   const sectionHit = row.source.section ? normalizeDept(row.source.section) : null;
   const labelHit = normalizeDept(row.rawLabel);
   const noteHit = row.note ? normalizeDept(row.note) : null;
-  return sectionHit?.value ?? labelHit?.value ?? noteHit?.value ?? undefined;
+  // Many extractors don't surface a dept column on row.fields — scan the
+  // raw cells and the surfaced fields for any value that normalizes to a
+  // real department. This is a mapping-layer fallback only, not extraction.
+  let cellHit: ReturnType<typeof normalizeDept> = null;
+  if (row.fields) {
+    for (const v of Object.values(row.fields)) {
+      if (v == null || v === "") continue;
+      const hit = normalizeDept(String(v));
+      if (hit && hit.value !== "OTHER" && hit.value !== "SHARED") { cellHit = hit; break; }
+    }
+  }
+  if (!cellHit) {
+    for (const cell of row.rawCells) {
+      if (cell == null || cell === "") continue;
+      const hit = normalizeDept(String(cell));
+      if (hit && hit.value !== "OTHER" && hit.value !== "SHARED") { cellHit = hit; break; }
+    }
+  }
+  return sectionHit?.value ?? labelHit?.value ?? noteHit?.value ?? cellHit?.value ?? undefined;
 }
 
 function statusFor(
