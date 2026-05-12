@@ -57,3 +57,49 @@ let rowIdSeq = 0;
 export function nextRowId(): string {
   return `er-${++rowIdSeq}`;
 }
+
+/* ── PDF helpers ────────────────────────────────────────────────────────── */
+
+/** All-caps line, 4–80 chars, mostly letters — treated as a section header. */
+export const SECTION_RE = /^[A-Z][A-Z0-9 &/()'.,-]{3,80}$/;
+
+/** Walk every non-empty PDF line, threading the most-recent section header
+ *  through as context. Yields {line, section, page, lineNo} for each
+ *  non-section line. */
+export function* iterPdfLines(doc: ParsedDoc): Generator<{
+  line: string; section?: string; page: number; lineNo: number;
+}> {
+  if (!doc.pages) return;
+  let section: string | undefined;
+  for (const page of doc.pages) {
+    for (let i = 0; i < page.lines.length; i++) {
+      const line = page.lines[i].trim();
+      if (!line) continue;
+      if (SECTION_RE.test(line) && line.length < 80) {
+        section = line;
+        continue;
+      }
+      yield { line, section, page: page.page, lineNo: i + 1 };
+    }
+  }
+}
+
+/** Pull every money-like token out of a string. Returns numbers in source
+ *  order. Handles $1,234.56, (1234) negatives, percents. */
+export function moneyTokens(s: string): number[] {
+  const out: number[] = [];
+  // Conservative: at least one digit, optional $ prefix, commas + decimals OK.
+  const re = /-?\(?\$?\d[\d,]*\.?\d*\)?%?/g;
+  const matches = s.match(re) ?? [];
+  for (const m of matches) {
+    const cleaned = m.replace(/[$,]/g, "").replace(/^\(/, "-").replace(/\)$/, "").replace(/%$/, "");
+    const n = Number(cleaned);
+    if (Number.isFinite(n)) out.push(n);
+  }
+  return out;
+}
+
+/** Strip every money-like token from a string and collapse whitespace. */
+export function stripMoneyTokens(s: string): string {
+  return s.replace(/-?\(?\$?\d[\d,]*\.?\d*\)?%?/g, " ").replace(/\s+/g, " ").trim();
+}

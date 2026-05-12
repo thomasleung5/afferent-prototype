@@ -7,9 +7,13 @@
 import type { ParsedDoc } from "@/lib/parse/types";
 import type { ExtractedDocument, ExtractedRow, ExtractedRowType } from "../types";
 import { normalizeDept, normalizeOpCategory, parseMoney } from "../normalize";
-import { pickCol, listRows, nextRowId } from "./_sheet";
+import {
+  pickCol, listRows, nextRowId,
+  iterPdfLines, moneyTokens, stripMoneyTokens,
+} from "./_sheet";
 
 const TOTAL_RE = /\b(total|subtotal|department\s+total|grand\s+total)\b/i;
+const ACCOUNT_RE = /\b\d{3,5}[-.]?\d{0,5}\b/;
 
 export function extractOperatingBudget(doc: ParsedDoc): ExtractedDocument {
   const out: ExtractedDocument = {
@@ -20,6 +24,12 @@ export function extractOperatingBudget(doc: ParsedDoc): ExtractedDocument {
     notes: [],
     parseWarnings: [...doc.warnings],
   };
+
+  // PDF path
+  if ((!doc.sheets || doc.sheets.length === 0) && doc.pages && doc.pages.length > 0) {
+    extractFromPagesOperating(doc, out);
+    return out;
+  }
 
   if (!doc.sheets || doc.sheets.length === 0) {
     out.parseWarnings.push("Operating budget expected a spreadsheet — none found.");
@@ -86,4 +96,55 @@ export function extractOperatingBudget(doc: ParsedDoc): ExtractedDocument {
     out.unsectioned.push(er);
   }
   return out;
+}
+
+/* ── PDF path ───────────────────────────────────────────────────────────── */
+
+/** Operating-budget PDF line:  "<optional account code>  <label words>  <amount>"
+ *  Department often appears as the surrounding section header. */
+function extractFromPagesOperating(doc: ParsedDoc, out: ExtractedDocument): void {
+  for (const { line, section, page, lineNo } of iterPdfLines(doc)) {
+    const accountMatch = line.match(ACCOUNT_RE);
+    const account = accountMatch?.[0] ?? "";
+
+    const nums = moneyTokens(line);
+    // Treat the last numeric > 100 as the amount — small dept codes shouldn't qualify.
+    const amount = [...nums].reverse().find((n) => Math.abs(n) >= 100) ?? null;
+
+    let label = stripMoneyTokens(account ? line.replace(account, "") : line).trim();
+    if (!label) continue;
+
+    const isTotal = TOTAL_RE.test(label);
+    const rowType: ExtractedRowType = isTotal ? "subtotal" : "account_line";
+
+    const sectionDept = section ? normalizeDept(section) : null;
+
+    const warnings: string[] = [];
+    if (amount == null && !isTotal) warnings.push("missing amount");
+
+    const er: ExtractedRow = {
+      id: nextRowId(),
+      rawLabel: label,
+      rawCells: [line],
+      parsedValue: amount ?? undefined,
+      rowType,
+      source: { file: doc.fileName, page, row: lineNo, section },
+      fields: {
+        accountCode: account || null,
+        accountName: label,
+        dept: sectionDept?.value ?? null,
+        amount: amount ?? null,
+        category: null,
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
+      confidence: amount != null ? "high" : rowType === "subtotal" ? "high" : "low",
+    };
+    out.unsectioned.push(er);
+  }
+
+  if (out.unsectioned.length === 0) {
+    out.parseWarnings.push(
+      "PDF parsed but no operating-line patterns found — try a structured spreadsheet export.",
+    );
+  }
 }

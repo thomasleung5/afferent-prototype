@@ -1,0 +1,15 @@
+Fee Item,Department,Current Fee,Deposit,Unit,Notes
+"Pre-Application — Formal Meeting","Planning",550,,each,FY26-27 proposed
+"Site Development Hearing Review","Planning",4400,5500,each,
+"Site Development — Fast Track Hearing","Planning",5100,,each,
+"Site Development — Minor Admin Review","Planning",1650,2000,each,
+"Use Permit","Planning",,3500,each,deposit only — billed at actual cost
+"ADU permit","Building",1050,,each,
+"Building permit (per IBC valuation)","Building",,,each,Base fee plus 8% of valuation
+"Plan Check Fee","Building",1325,,each,
+"Inspection · Re-inspection","Building",110,,per visit,
+"Staff hourly rate","Building",195,,per hour,billed time-and-materials
+"Encroachment Permit — Minor","Engineering",475,,each,
+"Encroachment Permit — Major","Engineering",1850,1000,each,
+"Grading Plan Check","Engineering",2200,,each,
+"Subtotal Building",,2540,,,

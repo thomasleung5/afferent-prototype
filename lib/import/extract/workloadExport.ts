@@ -8,7 +8,10 @@
 import type { ParsedDoc } from "@/lib/parse/types";
 import type { ExtractedDocument, ExtractedRow } from "../types";
 import { normalizeDept, normalizeFiscalYear, parseMoney } from "../normalize";
-import { pickCol, listRows, nextRowId } from "./_sheet";
+import {
+  pickCol, listRows, nextRowId,
+  iterPdfLines, moneyTokens, stripMoneyTokens,
+} from "./_sheet";
 
 const FY_RE = /\bFY\s*\d{2,4}\b/i;
 
@@ -21,6 +24,12 @@ export function extractWorkloadExport(doc: ParsedDoc): ExtractedDocument {
     notes: [],
     parseWarnings: [...doc.warnings],
   };
+
+  // PDF path
+  if ((!doc.sheets || doc.sheets.length === 0) && doc.pages && doc.pages.length > 0) {
+    extractFromPagesWorkload(doc, out);
+    return out;
+  }
 
   if (!doc.sheets || doc.sheets.length === 0) {
     out.parseWarnings.push("Workload export expected a spreadsheet — none found.");
@@ -97,4 +106,73 @@ export function extractWorkloadExport(doc: ParsedDoc): ExtractedDocument {
     });
   }
   return out;
+}
+
+/* ── PDF path ───────────────────────────────────────────────────────────── */
+
+/** Workload PDF line:  "<service name>  [<dept>]  <prior>  <current>"
+ *  - last two integer counts: prior + current (current is rightmost)
+ *  - department: section header preferred, otherwise inline token
+ *  - label: text before the first numeric token */
+function extractFromPagesWorkload(doc: ParsedDoc, out: ExtractedDocument): void {
+  for (const { line, section, page, lineNo } of iterPdfLines(doc)) {
+    const nums = moneyTokens(line);
+    if (nums.length === 0) continue;
+
+    // Prefer two trailing integers as prior/current.
+    const ints = nums.filter((n) => Number.isInteger(n) && n >= 0 && n < 1_000_000);
+    let prior: number | null = null;
+    let current: number | null = null;
+    if (ints.length >= 2) {
+      prior = ints[ints.length - 2];
+      current = ints[ints.length - 1];
+    } else if (ints.length === 1) {
+      current = ints[0];
+    }
+
+    const sectionDept = section ? normalizeDept(section) : null;
+    const deptMatch = line.match(/\b(Planning|Building|Engineering|Bldg|Eng)\b/i);
+    const dept = sectionDept?.value
+      ?? (deptMatch ? normalizeDept(deptMatch[0])?.value ?? null : null);
+
+    // Pool label = text before the first numeric token.
+    const firstNumIdx = line.search(/-?\d/);
+    let label = firstNumIdx > 0 ? line.slice(0, firstNumIdx).trim() : stripMoneyTokens(line);
+    // Strip the inline dept word from the label if present.
+    if (deptMatch && label.includes(deptMatch[0])) {
+      label = label.replace(deptMatch[0], "").replace(/\s+/g, " ").trim();
+    }
+    if (!label || label.length < 3) continue;
+
+    const fy = normalizeFiscalYear(line);
+
+    const warnings: string[] = [];
+    if (current == null) warnings.push("missing current volume");
+
+    const er: ExtractedRow = {
+      id: nextRowId(),
+      rawLabel: label,
+      rawCells: [line],
+      parsedValue: current ?? undefined,
+      rowType: "workload_row",
+      source: { file: doc.fileName, page, row: lineNo, section },
+      fields: {
+        serviceName: label,
+        department: dept,
+        unit: "Item",
+        priorVolume: prior,
+        currentVolume: current,
+        fiscalYear: fy ?? null,
+      },
+      warnings: warnings.length > 0 ? warnings : undefined,
+      confidence: current != null ? "high" : "low",
+    };
+    out.unsectioned.push(er);
+  }
+
+  if (out.unsectioned.length === 0) {
+    out.parseWarnings.push(
+      "PDF parsed but no workload-row patterns found — try a structured spreadsheet export.",
+    );
+  }
 }
