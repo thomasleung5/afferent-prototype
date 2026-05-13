@@ -4,7 +4,10 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect, DeptChip } from "@/components/ui";
+import {
+  CellInput, CellSelect, DeptChip,
+  DrilldownShell, DrilldownColumn, TraceBlock,
+} from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -24,14 +27,30 @@ const TYPE_FOR = (id: string): string => {
   return "Other";
 };
 
+const ROLE_MIX_BY_DEPT: Record<DeptCode, { role: string; pct: number }[]> = {
+  PLAN: [{ role: "Planner II",        pct: 70 }, { role: "Senior Planner",       pct: 30 }],
+  BLDG: [{ role: "Plans Examiner",    pct: 60 }, { role: "Permit Technician",    pct: 40 }],
+  ENG:  [{ role: "Civil Engineer II", pct: 65 }, { role: "Engineering Technician", pct: 35 }],
+};
+
 interface Row extends Service {
   flag?: boolean;
 }
+
+type RoleMix = { role: string; pct: number }[];
 
 export function ServicesTable() {
   const { services, updateService } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
+  const [openId, setOpenId] = useState<string | undefined>();
+  const [mixById, setMixById] = useState<Record<string, RoleMix>>({});
+
+  const getMix = (r: Row): RoleMix => mixById[r.id] ?? ROLE_MIX_BY_DEPT[r.dept];
+  const setPct = (r: Row, role: string, pct: number) => {
+    const next = getMix(r).map((m) => m.role === role ? { ...m, pct } : m);
+    setMixById({ ...mixById, [r.id]: next });
+  };
 
   const allRows: Row[] = useMemo(() => services.map((s) => ({
     ...s,
@@ -125,6 +144,40 @@ export function ServicesTable() {
         />
       ),
     },
+    {
+      key: "mix",
+      label: "Role mix",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => getMix(r).length,
+      render: (r) => {
+        const mix = getMix(r);
+        const isOpen = openId === r.id;
+        return (
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              setOpenId(isOpen ? undefined : r.id);
+            }}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              fontSize: 12.5, color: "var(--ink-2)",
+              cursor: "pointer", userSelect: "none",
+            }}
+          >
+            <span>{mix.length} roles</span>
+            <span style={{
+              display: "inline-block", fontSize: 9,
+              color: isOpen ? "var(--accent)" : "var(--ink-3)",
+              transform: isOpen ? "rotate(90deg)" : "none",
+              transition: "transform 100ms",
+              fontFamily: "var(--ff-mono)", lineHeight: 1,
+            }}>▶</span>
+          </div>
+        );
+      },
+    },
   ];
 
   return (
@@ -136,6 +189,47 @@ export function ServicesTable() {
       filters={filters}
       defaultSort={{ key: "name", dir: "asc" }}
       stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
+      openId={openId}
+      renderDrilldown={(r) => {
+        const mix = getMix(r);
+        return (
+          <DrilldownShell>
+            <DrilldownColumn marker="①" title="Role allocation">
+              {mix.map((m) => (
+                <TraceBlock key={m.role} label={m.role}>
+                  <CellInput
+                    type="number"
+                    value={m.pct}
+                    onChange={(v) => setPct(r, m.role, Number(v) || 0)}
+                    step={5}
+                    min={0}
+                    max={100}
+                    align="right"
+                    suffix="%"
+                  />
+                </TraceBlock>
+              ))}
+            </DrilldownColumn>
+
+            <DrilldownColumn marker="②" title="Hours per instance">
+              {mix.map((m) => (
+                <TraceBlock key={m.role} label={m.role}>
+                  <span className="num">{((r.hours * m.pct) / 100).toFixed(1)} h</span>
+                </TraceBlock>
+              ))}
+            </DrilldownColumn>
+
+            <DrilldownColumn marker="③" title="Source">
+              <TraceBlock label="Basis">
+                Time-study averaged across recent permits in this dept
+              </TraceBlock>
+              <TraceBlock label="Hours / inst">
+                <span className="num">{r.hours} h</span>
+              </TraceBlock>
+            </DrilldownColumn>
+          </DrilldownShell>
+        );
+      }}
       footerNote={`${rows.length} services · edit inline`}
     />
   );
