@@ -1,8 +1,10 @@
 
+import { useMemo } from "react";
 import { Drawer } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool, DeptCode } from "@/lib/types";
-import { CAP_POOL_BY_DEPT } from "@/lib/data/cap";
+import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
+import { useBuildState } from "@/lib/store";
 import { Section, Row } from "./ServiceDetail";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
@@ -16,10 +18,15 @@ interface Props {
  *  to each direct dept. Read-only: pool-level allocation is governed by the
  *  CAP step-down engine, not direct edits here. */
 export function CapPoolDetail({ pool, onClose }: Props) {
+  const { capPools, capCenterOrder } = useBuildState();
+  const model = useMemo(
+    () => computeStepDown(capPools, capCenterOrder),
+    [capPools, capCenterOrder],
+  );
   if (!pool) return null;
   const byDept = ORDER.map((d) => ({
     dept: d,
-    amount: CAP_POOL_BY_DEPT[d].find((x) => x.poolId === pool.id)?.allocated ?? 0,
+    amount: model.alloc2[pool.id]?.[d as MatrixDeptCode] ?? 0,
   }));
   const totalToDirect = byDept.reduce((a, b) => a + b.amount, 0);
 

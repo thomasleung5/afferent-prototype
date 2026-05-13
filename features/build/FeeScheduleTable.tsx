@@ -109,14 +109,14 @@ export function FeeScheduleTable() {
     return b.annualUplift - a.annualUplift;
   }), [filtered]);
 
-  const filterCounts = {
+  const filterCounts = useMemo(() => ({
     ALL:     enriched.length,
     HIGH:    enriched.filter((r) => r.priority === "high").length,
     LOW:     enriched.filter((r) => r.confidence === "low").length,
     PENDING: enriched.filter((r) => r.state === "PENDING").length,
     READY:   enriched.filter((r) => r.state === "READY" || r.state === "REVIEWED").length,
     ADOPTED: enriched.filter((r) => r.state === "ADOPTED").length,
-  };
+  }), [enriched]);
 
   const filters: FilterGroup[] = [
     {
@@ -145,7 +145,7 @@ export function FeeScheduleTable() {
     },
   ];
 
-  const cols: Column<Row>[] = [
+  const cols: Column<Row>[] = useMemo(() => [
     {
       key: "name",
       label: "Fee item",
@@ -251,7 +251,8 @@ export function FeeScheduleTable() {
         </div>
       ),
     },
-  ];
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  ], [derived.fbhr, updateService, stateMap]);
 
   return (
     <DataTable

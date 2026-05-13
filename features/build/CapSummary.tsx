@@ -1,10 +1,10 @@
 ﻿
+import { useMemo } from "react";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptChip, Formula } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { DEPTS } from "@/lib/data/departments";
-import { CAP_POOL_BY_DEPT } from "@/lib/data/cap";
+import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
 import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
@@ -14,15 +14,22 @@ const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Bui
  *  Allocated $ is read-only here — it's an output of the step-down engine over
  *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
-  const { capAllocation, capPools, derived } = useBuildState();
+  const { capAllocation, capPools, capCenterOrder, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + capAllocation[d].allocated, 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
+
+  const model = useMemo(
+    () => computeStepDown(capPools, capCenterOrder),
+    [capPools, capCenterOrder],
+  );
 
   const rows: DeptSummaryRow[] = ORDER.map((d) => {
     const c = capAllocation[d];
     const rate = derived.fbhr[d].capRate;
-    const pools = CAP_POOL_BY_DEPT[d];
-    const sorted = [...pools].sort((a, b) => b.allocated - a.allocated);
+    const sorted = capPools
+      .map((p) => ({ poolId: p.id, allocated: model.alloc2[p.id]?.[d as MatrixDeptCode] ?? 0 }))
+      .filter((p) => p.allocated > 0.5)
+      .sort((a, b) => b.allocated - a.allocated);
     const top = sorted[0];
     const topPool = top ? capPools.find((p) => p.id === top.poolId) : null;
     const topPct = top && c.allocated > 0 ? Math.round((top.allocated / c.allocated) * 100) : 0;
@@ -38,7 +45,7 @@ export function CapSummary() {
         ),
         alloc: <span className="num">{fmt.dollars(c.allocated)}</span>,
         perHr: rate > 0 ? `$${Math.round(rate)}` : "—",
-        pools: pools.length,
+        pools: sorted.length,
         top: topPool ? (
           <span>
             <span style={{ color: "var(--ink)" }}>{topPool.pool}</span>

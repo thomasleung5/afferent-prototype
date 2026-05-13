@@ -1,9 +1,10 @@
 ﻿
-import { useState, type ReactNode } from "react";
+import { useMemo, useState, type ReactNode } from "react";
 import { DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CAP_POOL_BY_DEPT } from "@/lib/data/cap";
+import { CITY } from "@/lib/data/city";
 import type { CapPool, DeptCode } from "@/lib/types";
+import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
@@ -13,6 +14,10 @@ export function CapPoolsTable() {
   const { capPools, capCenterOrder } = useBuildState();
   const [openId, setOpenId] = useState<string | undefined>();
 
+  const model = useMemo(
+    () => computeStepDown(capPools, capCenterOrder),
+    [capPools, capCenterOrder],
+  );
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
@@ -177,17 +182,17 @@ function PoolRow({ pool, centerTotal, isOpen, isLast, onClick }: RowProps) {
           background: "var(--paper-2)",
           borderBottom: !isLast ? "1px solid var(--rule)" : "none",
         }}>
-          <PoolDrilldown pool={pool}/>
+          <PoolDrilldown pool={pool} alloc2={model.alloc2}/>
         </div>
       )}
     </>
   );
 }
 
-function PoolDrilldown({ pool }: { pool: CapPool }) {
+function PoolDrilldown({ pool, alloc2 }: { pool: CapPool; alloc2: Record<string, Record<MatrixDeptCode, number>> }) {
   const byDept = ORDER.map((d) => ({
     dept: d,
-    amount: (CAP_POOL_BY_DEPT[d] ?? []).find((x) => x.poolId === pool.id)?.allocated ?? 0,
+    amount: alloc2[pool.id]?.[d as MatrixDeptCode] ?? 0,
   }));
   const totalToDirect = byDept.reduce((a, b) => a + b.amount, 0);
   return (

@@ -1,5 +1,5 @@
 ﻿
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   DataTable, type Column,
 } from "@/components/table";
@@ -9,7 +9,7 @@ import {
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
-import { CAP_POOL_BY_DEPT, CAP_POOLS } from "@/lib/data/cap";
+import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
 import type { FBHR } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 
@@ -29,7 +29,11 @@ interface Row {
 }
 
 export function RateDerivation() {
-  const { derived } = useBuildState();
+  const { derived, capPools, capCenterOrder } = useBuildState();
+  const stepModel = useMemo(
+    () => computeStepDown(capPools, capCenterOrder),
+    [capPools, capCenterOrder],
+  );
   const [openId, setOpenId] = useState<string | undefined>();
 
   const rows: Row[] = ORDER.map((d) => {
@@ -117,7 +121,10 @@ export function RateDerivation() {
       drilldownIndicator
       renderDrilldown={(r) => {
         const f = r.fbhr;
-        const allocRows = [...CAP_POOL_BY_DEPT[r.dept]].sort((a, b) => b.allocated - a.allocated);
+        const allocRows = capPools
+          .map((p) => ({ poolId: p.id, allocated: stepModel.alloc2[p.id]?.[r.dept as MatrixDeptCode] ?? 0 }))
+          .filter((p) => p.allocated > 0.5)
+          .sort((a, b) => b.allocated - a.allocated);
         const totalCAP = allocRows.reduce((a, x) => a + x.allocated, 0);
         return (
           <DrilldownShell>
@@ -205,7 +212,7 @@ export function RateDerivation() {
                 fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
               }}>
                 {allocRows.slice(0, 6).map((ar, i) => {
-                  const pool = CAP_POOLS.find((p) => p.id === ar.poolId);
+                  const pool = capPools.find((p) => p.id === ar.poolId);
                   return (
                     <div key={ar.poolId} style={{
                       display: "flex", justifyContent: "space-between", gap: 10,

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { CAP_POOL_BY_DEPT, CAP_POOLS } from "@/lib/data/cap";
+import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
 import type { ServiceCost } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 
@@ -19,7 +19,11 @@ interface Row extends ServiceCost {
 }
 
 export function CostOfServiceTable() {
-  const { services, derived } = useBuildState();
+  const { services, derived, capPools, capCenterOrder } = useBuildState();
+  const stepModel = useMemo(
+    () => computeStepDown(capPools, capCenterOrder),
+    [capPools, capCenterOrder],
+  );
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
 
@@ -113,7 +117,10 @@ export function CostOfServiceTable() {
       renderDrilldown={(r) => {
         const dept = r.dept as DeptCode;
         const f = derived.fbhr[dept];
-        const allocRows = [...CAP_POOL_BY_DEPT[dept]].sort((a, b) => b.allocated - a.allocated);
+        const allocRows = capPools
+          .map((p) => ({ poolId: p.id, allocated: stepModel.alloc2[p.id]?.[dept as MatrixDeptCode] ?? 0 }))
+          .filter((p) => p.allocated > 0.5)
+          .sort((a, b) => b.allocated - a.allocated);
         const totalCAPForDept = allocRows.reduce((a, x) => a + x.allocated, 0);
         const totalDirect = Math.round(r.hours * f.directRate);
         const totalOp = Math.round(r.hours * f.operatingRate);
@@ -206,7 +213,7 @@ export function CostOfServiceTable() {
                 fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
               }}>
                 {allocRows.slice(0, 6).map((ar, i) => {
-                  const pool = CAP_POOLS.find((p) => p.id === ar.poolId);
+                  const pool = capPools.find((p) => p.id === ar.poolId);
                   return (
                     <div key={ar.poolId} style={{
                       display: "flex", justifyContent: "space-between", gap: 10,

@@ -93,6 +93,7 @@ interface BuildActions {
    *  record lineage, and append an import-log entry. */
   applyCurrentBatch: () => { applied: number; skipped: number };
   resetAll: () => void;
+  clearAll: () => void;
 }
 
 /* ── Helpers ── */
@@ -723,6 +724,30 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
+      },
+
+      clearAll: () => {
+        try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
+        set({
+          positions: [],
+          operating: [],
+          capPools: [],
+          capAllocation: {
+            PLAN: { allocated: 0 },
+            BLDG: { allocated: 0 },
+            ENG:  { allocated: 0 },
+          },
+          workload: [],
+          services: [],
+          policyTargets: [],
+          policyExceptions: [],
+          lineage: {},
+          pendingReview: { ...emptyPending },
+          aiSuggestions: { ...emptyAi },
+          aiStatus: { ...emptyAiStatus },
+          capCenterOrder: [],
+          imports: [],
+        });
       },
     }),
     {

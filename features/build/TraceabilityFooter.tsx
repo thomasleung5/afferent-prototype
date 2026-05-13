@@ -1,17 +1,17 @@
 ﻿
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
-import { CAP_TOTAL } from "@/lib/data/cap";
 
 /** Persistent footer on the Cost of Service page. Affirms that every number
  *  is traceable to source inputs and shows the conservation check. */
 export function TraceabilityFooter() {
-  const { services, derived, capAllocation } = useBuildState();
+  const { services, derived, capAllocation, capPools } = useBuildState();
   const totalAnnual = derived.costs.reduce((a, c) => a + c.annualCost, 0);
   const totalAllocated =
     capAllocation.PLAN.allocated + capAllocation.BLDG.allocated + capAllocation.ENG.allocated;
-  const unallocated = CAP_TOTAL - totalAllocated;
-  const balanced = Math.abs(unallocated) < 1;
+  const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
+  const unallocated = poolTotal - totalAllocated;
+  const balanced = poolTotal === 0 || Math.abs(unallocated) < 1;
 
   return (
     <div style={{

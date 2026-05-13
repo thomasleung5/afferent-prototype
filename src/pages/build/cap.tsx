@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
@@ -37,8 +36,6 @@ export default function CapPage() {
         }
       />
 
-      {/* Per-dept rollup is the executive summary — always visible above the
-          step nav so it stays anchored as the reader pages between steps. */}
       <CapSummary/>
 
       <CapStepNav current={step} onJump={setStep}/>
