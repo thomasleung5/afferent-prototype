@@ -191,34 +191,67 @@ export function ServicesTable() {
       openId={openId}
       renderDrilldown={(r) => {
         const mix = getMix(r);
+        const totalPct = mix.reduce((a, m) => a + m.pct, 0);
         return (
           <DrilldownShell>
-            <DrilldownColumn marker="①" title="Role allocation">
-              {mix.map((m) => (
-                <TraceBlock key={m.role} label={m.role}>
-                  <CellInput
-                    type="number"
-                    value={m.pct}
-                    onChange={(v) => setPct(r, m.role, Number(v) || 0)}
-                    step={5}
-                    min={0}
-                    max={100}
-                    align="right"
-                    suffix="%"
-                  />
-                </TraceBlock>
-              ))}
+            <DrilldownColumn marker="①" title="Role mix">
+              <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
+                <div style={{
+                  display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                  padding: "6px 10px",
+                  background: "var(--paper-2)",
+                  borderBottom: "1px solid var(--rule)",
+                  fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
+                  letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
+                }}>
+                  <div>Role</div>
+                  <div style={{ textAlign: "right" }}>%</div>
+                  <div style={{ textAlign: "right" }}>Hours</div>
+                </div>
+                {mix.map((m, i) => (
+                  <div key={m.role} style={{
+                    display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                    padding: "5px 10px",
+                    borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
+                    fontSize: 12.5, alignItems: "center",
+                  }}>
+                    <span style={{ color: "var(--ink-2)" }}>{m.role}</span>
+                    <span style={{ textAlign: "right" }}>
+                      <CellInput
+                        type="number"
+                        value={m.pct}
+                        onChange={(v) => setPct(r, m.role, Number(v) || 0)}
+                        step={5} min={0} max={100}
+                        align="right" suffix="%"
+                      />
+                    </span>
+                    <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
+                      {((r.hours * m.pct) / 100).toFixed(1)} h
+                    </span>
+                  </div>
+                ))}
+                <div style={{
+                  display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                  padding: "6px 10px",
+                  background: "var(--paper-2)",
+                  borderTop: "2px solid var(--ink)",
+                  fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700,
+                  alignItems: "baseline",
+                }}>
+                  <span className="mono" style={{
+                    fontSize: 10, letterSpacing: "0.1em",
+                    color: "var(--ink-3)", textTransform: "uppercase",
+                  }}>Total</span>
+                  <span className="num" style={{
+                    textAlign: "right",
+                    color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
+                  }}>{totalPct}%</span>
+                  <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
+                </div>
+              </div>
             </DrilldownColumn>
 
-            <DrilldownColumn marker="②" title="Hours per instance">
-              {mix.map((m) => (
-                <TraceBlock key={m.role} label={m.role}>
-                  <span className="num">{((r.hours * m.pct) / 100).toFixed(1)} h</span>
-                </TraceBlock>
-              ))}
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="③" title="Source">
+            <DrilldownColumn marker="②" title="Source">
               <TraceBlock label="Basis">
                 Time-study averaged across recent permits in this dept
               </TraceBlock>
