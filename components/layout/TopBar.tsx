@@ -65,7 +65,7 @@ export function TopBar() {
 
         <div style={{ flex: 1 }}/>
         <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-          <Icon name="plus" size={13}/> Import
+          <Icon name="arrow-up-to-line" size={13}/> Import
         </Btn>
         <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
         <div className="mono" style={{

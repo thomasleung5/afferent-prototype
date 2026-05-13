@@ -103,7 +103,6 @@ export function CostOfServiceTable() {
   return (
     <DataTable
       title="Cost of Service"
-      eyebrow="Rollup · Click any row to trace the cost back to inputs"
       cols={cols}
       rows={rows}
       filters={filters}

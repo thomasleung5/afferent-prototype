@@ -1,17 +1,17 @@
 
+import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
+import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { CITY } from "@/lib/data/city";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { BenchmarkTable } from "@/features/build/BenchmarkTable";
-import { MappingReview } from "@/features/imports/MappingReview";
-import { ImportDebug } from "@/features/imports/ImportDebug";
+import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
-import { runImportPipeline } from "@/lib/import/pipeline";
-import type { LastImport } from "@/components/ui";
 
 export default function FeeBenchmarkPage() {
-  const { services, currentBatch, setCurrentBatch } = useBuildState();
+  const { services, currentBatch } = useBuildState();
+  const [importerOpen, setImporterOpen] = useState(false);
+
   const withPeer = services.filter((s) => s.peer > 0);
   const aboveMedian = withPeer.filter((s) => s.fee > s.peer * 1.05).length;
   const belowMedian = withPeer.filter((s) => s.fee < s.peer * 0.95).length;
@@ -29,7 +29,14 @@ export default function FeeBenchmarkPage() {
         eyebrow={<NodeEyebrow node="benchmark"/>}
         title="Fee Benchmark Database"
         subtitle={`Adopted fees in peer cities: ${CITY.peers.slice(0, 5).join(", ")}.`}
-        actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
+        actions={
+          <>
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
+          </>
+        }
       />
 
       <StatusRow items={[
@@ -42,33 +49,18 @@ export default function FeeBenchmarkPage() {
         ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
       ]}/>
 
-      <DropZone
+      <BenchmarkTable/>
+
+      <PageImportDrawer
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title="Import Fee Benchmark"
+        helper="Drag an adopted fee schedule from a comparator city. Service names get fuzzy-matched to the catalog; matched rows update the peer fee, unmatched rows queue for review."
         accept=".xlsx,.csv,.pdf"
         formats="xlsx, csv, pdf · peer city fee schedule"
-        hint="Drag an adopted fee schedule from a comparator city. Service names get fuzzy-matched to the catalog; matched rows update the peer fee, unmatched rows queue for review."
-        onImport={async (file): Promise<LastImport> => {
-          const batch = await runImportPipeline(file, { services, forceType: "benchmark_fee_schedule" });
-          setCurrentBatch(batch);
-          const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
-          const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
-          return {
-            file: file.name,
-            rows: batch.mappings.length,
-            mapped: accepted,
-            review: flagged,
-            date: new Date().toLocaleString(undefined, {
-              month: "short", day: "numeric", year: "numeric",
-              hour: "numeric", minute: "2-digit",
-            }),
-          };
-        }}
+        forceType="benchmark_fee_schedule"
+        schema="Service name, peer city, adopted fee, notes."
       />
-
-      <MappingReview/>
-
-      <ImportDebug/>
-
-      <BenchmarkTable/>
     </Page>
   );
 }

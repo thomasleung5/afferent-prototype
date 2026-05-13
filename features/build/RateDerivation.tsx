@@ -109,7 +109,6 @@ export function RateDerivation() {
   return (
     <DataTable
       title="Fully Burdened Hourly Rate by Department"
-      eyebrow="Rollup · Direct + Operating + CAP, live"
       cols={cols}
       rows={rows}
       defaultSort={{ key: "deptName", dir: "asc" }}

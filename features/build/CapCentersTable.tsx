@@ -94,7 +94,6 @@ export function CapCentersTable() {
   return (
     <DataTable
       title="Cost centers"
-      titleSize={14}
       cols={cols}
       rows={rows}
       defaultSort={{ key: "totalCost", dir: "desc" }}

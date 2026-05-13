@@ -146,7 +146,6 @@ export function BenchmarkTable() {
   return (
     <DataTable
       title="Fee benchmark · adopted fees in peer cities"
-      eyebrow={`Benchmark · ${CITY.peers.slice(0, 5).join(" · ")}`}
       cols={cols}
       rows={rows}
       filters={filters}

@@ -190,7 +190,6 @@ export function WorkloadTable() {
   return (
     <DataTable
       title="Service workload"
-      eyebrow="Inputs · Edit current volume inline; recovery recomputes"
       cols={cols}
       rows={rows}
       filters={filters}

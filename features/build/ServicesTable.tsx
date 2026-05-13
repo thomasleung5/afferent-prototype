@@ -183,7 +183,6 @@ export function ServicesTable() {
   return (
     <DataTable
       title="Service catalog"
-      eyebrow="Inputs · Hours per instance feeds Cost of Service"
       cols={cols}
       rows={rows}
       filters={filters}

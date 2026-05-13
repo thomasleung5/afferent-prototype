@@ -173,7 +173,6 @@ export function PositionsTable() {
   return (
     <DataTable
       title="Position roster"
-      eyebrow="Inputs · Edit any cell to recompute downstream rates"
       cols={cols}
       rows={rows}
       filters={filters}

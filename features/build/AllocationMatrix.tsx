@@ -48,7 +48,6 @@ export function AllocationMatrix() {
 
   const totalCap = capPools.reduce((a, p) => a + p.amount, 0);
   const grandTotal = capPools.reduce((a, p) => a + rowTotal(p.id), 0);
-  const leakage = totalCap - grandTotal;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -178,8 +177,6 @@ export function AllocationMatrix() {
         </div>
       </div>
 
-      <Reconciliation totalCap={totalCap} grandTotal={grandTotal} leakage={leakage} view={view}/>
-
       {openCell ? (
         <CellTrace
           poolId={openCell.poolId}
@@ -252,66 +249,6 @@ function GroupLabel({ children }: { children: ReactNode }) {
       fontFamily: "var(--ff-mono)", fontSize: 9.5, fontWeight: 700,
       letterSpacing: "0.14em", color: "var(--ink-3)", textTransform: "uppercase",
     }}>{children}</div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Reconciliation — Σ pools vs Σ allocated, with a delta callout when off
-// ---------------------------------------------------------------------------
-
-function Reconciliation({
-  totalCap, grandTotal, leakage, view,
-}: { totalCap: number; grandTotal: number; leakage: number; view: View }) {
-  const balanced = Math.abs(leakage) < 1;
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0,
-      border: "1px solid var(--rule)", background: "var(--paper)",
-    }}>
-      <ReconCell
-        label="Σ Pool $"
-        value={fmt.dollarsK(totalCap)}
-        sub="Total CAP scope (input)"
-      />
-      <ReconCell
-        label={view === "initial" ? "Σ Initial placement" : "Σ Final allocation"}
-        value={fmt.dollarsK(grandTotal)}
-        sub={view === "initial" ? "Across home indirects" : "Across direct depts"}
-        border
-      />
-      <ReconCell
-        label="Conservation"
-        value={balanced ? "Balanced" : `Δ ${fmt.dollars(leakage)}`}
-        sub={balanced ? "Σ pools = Σ allocated" : "Engine residual"}
-        tone={balanced ? "pos" : "warn"}
-        border
-      />
-    </div>
-  );
-}
-
-function ReconCell({
-  label, value, sub, tone, border,
-}: {
-  label: string; value: string; sub: string;
-  tone?: "pos" | "warn"; border?: boolean;
-}) {
-  const color = tone === "warn" ? "var(--warn)" : tone === "pos" ? "var(--ink)" : "var(--ink)";
-  return (
-    <div style={{
-      padding: "12px 16px",
-      borderLeft: border ? "1px solid var(--rule)" : "none",
-    }}>
-      <div className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
-      <div className="num display" style={{
-        fontSize: 22, fontWeight: 600, marginTop: 4, color,
-        fontVariantNumeric: "tabular-nums",
-      }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{sub}</div>
-    </div>
   );
 }
 

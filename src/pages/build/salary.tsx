@@ -1,16 +1,13 @@
 
+import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
+import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
-import { MappingReview } from "@/features/imports/MappingReview";
-import { ImportDebug } from "@/features/imports/ImportDebug";
-import { useBuildState } from "@/lib/store";
-import { runImportPipeline } from "@/lib/import/pipeline";
-import type { LastImport } from "@/components/ui";
+import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 
 export default function DirectLaborPage() {
-  const { services, setCurrentBatch } = useBuildState();
+  const [importerOpen, setImporterOpen] = useState(false);
 
   return (
     <Page>
@@ -18,38 +15,30 @@ export default function DirectLaborPage() {
         eyebrow={<NodeEyebrow node="salary"/>}
         title="Direct Labor"
         subtitle="Direct labor rate per department."
-        actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
+        actions={
+          <>
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
+          </>
+        }
       />
 
       <LaborSummary/>
 
-      <DropZone
+      <PositionsTable/>
+
+      <PageImportDrawer
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title="Import Direct Labor"
+        helper="Drag a salary roster or personnel budget. Each position imports as a candidate — accept after review."
         accept=".xlsx,.csv,.pdf"
         formats="xlsx, csv, pdf budget exports"
-        hint="Drag a salary roster or personnel budget. Each position imports as a candidate — accept after review."
-        onImport={async (file): Promise<LastImport> => {
-          const batch = await runImportPipeline(file, { services, forceType: "salary_roster" });
-          setCurrentBatch(batch);
-          const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
-          const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
-          return {
-            file: file.name,
-            rows: batch.mappings.length,
-            mapped: accepted,
-            review: flagged,
-            date: new Date().toLocaleString(undefined, {
-              month: "short", day: "numeric", year: "numeric",
-              hour: "numeric", minute: "2-digit",
-            }),
-          };
-        }}
+        forceType="salary_roster"
+        schema="Position title, dept, FTE, salary, benefits, productive hours."
       />
-
-      <MappingReview/>
-
-      <ImportDebug/>
-
-      <PositionsTable/>
     </Page>
   );
 }

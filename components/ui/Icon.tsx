@@ -2,6 +2,7 @@ import type { CSSProperties } from "react";
 
 export type IconName =
   | "arrow-right" | "arrow-left"
+  | "arrow-up-to-line"
   | "chevron-right" | "chevron-down"
   | "download" | "search" | "filter"
   | "dot" | "share" | "sort" | "plus"
@@ -24,6 +25,7 @@ export function Icon({ name, size = 16, color = "currentColor", style }: Props) 
   switch (name) {
     case "arrow-right":   return <svg {...props}><path d="M3 8h10M9 4l4 4-4 4"/></svg>;
     case "arrow-left":    return <svg {...props}><path d="M13 8H3M7 4 3 8l4 4"/></svg>;
+    case "arrow-up-to-line": return <svg {...props}><path d="M3 2h10M8 5v9M4 8l4-3 4 3"/></svg>;
     case "chevron-right": return <svg {...props}><path d="M6 3l5 5-5 5"/></svg>;
     case "chevron-down":  return <svg {...props}><path d="M3 6l5 5 5-5"/></svg>;
     case "download":      return <svg {...props}><path d="M8 2v9M4 8l4 3 4-3M3 14h10"/></svg>;

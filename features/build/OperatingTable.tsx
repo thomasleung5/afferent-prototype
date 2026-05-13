@@ -192,7 +192,6 @@ export function OperatingTable() {
   return (
     <DataTable
       title="Operating cost lines"
-      eyebrow="Inputs · Toggle Include to exclude lines from $/hr"
       cols={cols}
       rows={rows}
       filters={filters}

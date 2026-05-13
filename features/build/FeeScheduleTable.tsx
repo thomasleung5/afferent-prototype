@@ -256,7 +256,6 @@ export function FeeScheduleTable() {
   return (
     <DataTable
       title="Fee decision queue"
-      eyebrow="Output · High-priority + low-confidence float to top"
       cols={cols}
       rows={sorted}
       filters={filters}

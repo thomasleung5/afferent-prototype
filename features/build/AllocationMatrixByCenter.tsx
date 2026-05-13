@@ -63,7 +63,6 @@ export function AllocationMatrixByCenter() {
 
   const totalCap = capPools.reduce((a, p) => a + p.amount, 0);
   const grandTotal = capCenterOrder.reduce((a, c) => a + centerRowTotal(c), 0);
-  const leakage = totalCap - grandTotal;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -194,8 +193,6 @@ export function AllocationMatrixByCenter() {
         </div>
       </div>
 
-      <Reconciliation totalCap={totalCap} grandTotal={grandTotal} leakage={leakage}/>
-
       {openCell ? (
         <CenterCellTrace
           center={openCell.center}
@@ -206,66 +203,6 @@ export function AllocationMatrixByCenter() {
       ) : (
         <TraceHint/>
       )}
-    </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Reconciliation — Σ pools vs Σ allocated, with a delta callout when off
-// ---------------------------------------------------------------------------
-
-function Reconciliation({
-  totalCap, grandTotal, leakage,
-}: { totalCap: number; grandTotal: number; leakage: number }) {
-  const balanced = Math.abs(leakage) < 1;
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0,
-      border: "1px solid var(--rule)", background: "var(--paper)",
-    }}>
-      <ReconCell
-        label="Σ Pool $"
-        value={fmt.dollarsK(totalCap)}
-        sub="Total CAP scope (input)"
-      />
-      <ReconCell
-        label="Σ Final allocation"
-        value={fmt.dollarsK(grandTotal)}
-        sub="Across direct depts"
-        border
-      />
-      <ReconCell
-        label="Conservation"
-        value={balanced ? "Balanced" : `Δ ${fmt.dollars(leakage)}`}
-        sub={balanced ? "Σ pools = Σ allocated" : "Engine residual"}
-        tone={balanced ? "pos" : "warn"}
-        border
-      />
-    </div>
-  );
-}
-
-function ReconCell({
-  label, value, sub, tone, border,
-}: {
-  label: string; value: string; sub: string;
-  tone?: "pos" | "warn"; border?: boolean;
-}) {
-  const color = tone === "warn" ? "var(--warn)" : tone === "pos" ? "var(--ink)" : "var(--ink)";
-  return (
-    <div style={{
-      padding: "12px 16px",
-      borderLeft: border ? "1px solid var(--rule)" : "none",
-    }}>
-      <div className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
-      <div className="num display" style={{
-        fontSize: 22, fontWeight: 600, marginTop: 4, color,
-        fontVariantNumeric: "tabular-nums",
-      }}>{value}</div>
-      <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>{sub}</div>
     </div>
   );
 }

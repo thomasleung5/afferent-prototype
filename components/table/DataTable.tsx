@@ -328,7 +328,7 @@ function Toolbar({
           )}
           {title && (
             <div style={{
-              fontSize: titleSize ?? 13.5, fontWeight: 600, color: "var(--ink)",
+              fontSize: titleSize ?? 14, fontWeight: 600, color: "var(--ink)",
               letterSpacing: "-0.005em", lineHeight: 1.3,
             }}>{title}</div>
           )}

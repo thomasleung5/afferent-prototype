@@ -1,7 +1,7 @@
-﻿
+
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
+import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { CapKpiRail, StepDownSequence } from "@/features/build/CapKpiRail";
 import { CapCentersTable } from "@/features/build/CapCentersTable";
 import { CapSummary } from "@/features/build/CapSummary";
@@ -10,15 +10,14 @@ import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationMatrix } from "@/features/build/AllocationMatrix";
 import { AllocationMatrixByCenter } from "@/features/build/AllocationMatrixByCenter";
-import { MappingReview } from "@/features/imports/MappingReview";
-import { ImportDebug } from "@/features/imports/ImportDebug";
-import { useBuildState } from "@/lib/store";
-import { runImportPipeline } from "@/lib/import/pipeline";
-import type { LastImport } from "@/components/ui";
+import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+
+const SHOW_IMPORT: CapStep[] = ["centers", "pools"];
 
 export default function CapPage() {
-  const { services, setCurrentBatch } = useBuildState();
   const [step, setStep] = useState<CapStep>("centers");
+  const [importerOpen, setImporterOpen] = useState(false);
+  const showImport = SHOW_IMPORT.includes(step);
 
   return (
     <Page>
@@ -26,7 +25,16 @@ export default function CapPage() {
         eyebrow={<NodeEyebrow node="cap"/>}
         title="Cost Allocation"
         subtitle="Citywide indirect, allocated to direct departments."
-        actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
+        actions={
+          <>
+            {showImport && (
+              <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+                <Icon name="arrow-up-to-line" size={13}/> Import
+              </Btn>
+            )}
+            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
+          </>
+        }
       />
 
       {/* Per-dept rollup is the executive summary — always visible above the
@@ -43,43 +51,24 @@ export default function CapPage() {
         </>
       )}
 
-      {step === "pools" && (
-        <>
-          <DropZone
-            accept=".xlsx,.csv"
-            formats="xlsx, csv"
-            hint="Drag a Cost Allocation Plan inventory. Pools, bases, percentages, and dollar allocations all import — review before applying."
-            onImport={async (file): Promise<LastImport> => {
-              const batch = await runImportPipeline(file, { services, forceType: "cost_allocation_plan" });
-              setCurrentBatch(batch);
-              const accepted = batch.mappings.filter((m) => m.status === "auto_accepted").length;
-              const flagged = batch.mappings.filter((m) => m.status !== "auto_accepted").length;
-              return {
-                file: file.name,
-                rows: batch.mappings.length,
-                mapped: accepted,
-                review: flagged,
-                date: new Date().toLocaleString(undefined, {
-                  month: "short", day: "numeric", year: "numeric",
-                  hour: "numeric", minute: "2-digit",
-                }),
-              };
-            }}
-          />
-
-          <MappingReview/>
-
-          <ImportDebug/>
-
-          <CapPoolsTable/>
-        </>
-      )}
+      {step === "pools" && <CapPoolsTable/>}
 
       {step === "drivers" && <AllocationBases/>}
 
       {step === "matrix" && <AllocationMatrix/>}
 
       {step === "matrixByCenter" && <AllocationMatrixByCenter/>}
+
+      <PageImportDrawer
+        open={importerOpen}
+        onClose={() => setImporterOpen(false)}
+        title="Import Cost Allocation"
+        helper="Drag a Cost Allocation Plan inventory. Pools, bases, percentages, and dollar allocations all import — review before applying."
+        accept=".xlsx,.csv"
+        formats="xlsx, csv"
+        forceType="cost_allocation_plan"
+        schema="Center, pool, basis, dollar amount, recoverability."
+      />
     </Page>
   );
 }
