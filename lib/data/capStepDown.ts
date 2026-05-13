@@ -17,6 +17,7 @@
  */
 
 import type { CapPool } from "../types";
+import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 
 // ---------------------------------------------------------------------------
 // Departments (matrix-only)
@@ -131,29 +132,26 @@ export function basisForPool(p: CapPool): { basis: BasisKey; directTo?: MatrixDe
 // Drivers (department × basis denominators)
 // ---------------------------------------------------------------------------
 
-/** Driver values per department. Indirect rows are receivers too — a pool
- *  sitting on Finance can be stepped down to City Attorney if Attorney comes
- *  later in the sequence. Values are realistic for Los Altos Hills scale. */
-export const DRIVERS: Record<MatrixDeptCode, Partial<Record<BasisKey, number>>> = {
-  // Indirect
-  BLDG_USE:  {},
-  EQUIP:     {},
-  COUNCIL:   { EXPEND: 412,  EXPEND_X: 412 },
-  CMGR:      { FTE: 3.0,  EXPEND: 1100, EXPEND_X: 1100, PAYROLL:  86, ACCT: 410, AGENDA: 38, PRA: 14, CONTRACT: 22, SQFT:  980, VEHICLE:  4, COMMITS: 0 },
-  CLERK:     { FTE: 1.5,  EXPEND:  312, EXPEND_X:  312, PAYROLL:  42, ACCT: 196, AGENDA:  0, PRA:  0, CONTRACT: 18, SQFT:  420, VEHICLE:  0, COMMITS: 0 },
-  FAS:       { FTE: 4.0,  EXPEND: 1218, EXPEND_X: 1218, PAYROLL:   0, ACCT:   0, AGENDA: 12, PRA:  6, CONTRACT:  0, SQFT: 1180, VEHICLE:  3, COMMITS: 0 },
-  ATTY:      { FTE: 0.0,  EXPEND:  180, EXPEND_X:  180, PAYROLL:   0, ACCT:   0, AGENDA: 22, PRA:  4, CONTRACT: 28, SQFT:  140, VEHICLE:  0, COMMITS: 0 },
-  INS:       { EXPEND: 400, EXPEND_X: 400 },
-  CMTE:      { AGENDA: 36, COMMITS: 0 },
-  // Direct
-  PLAN:      { FTE: 4.5,  EXPEND: 1280, EXPEND_X: 0, PAYROLL: 124, ACCT: 612, AGENDA: 84, PRA: 92, CONTRACT: 36, SQFT: 1480, VEHICLE:  8, COMMITS: 2 },
-  BLDG:      { FTE: 6.0,  EXPEND: 1605, EXPEND_X: 0, PAYROLL: 168, ACCT: 818, AGENDA: 24, PRA: 38, CONTRACT: 24, SQFT: 1860, VEHICLE: 18, COMMITS: 1 },
-  ENG:       { FTE: 2.5,  EXPEND:  720, EXPEND_X: 0, PAYROLL:  68, ACCT: 354, AGENDA: 16, PRA: 22, CONTRACT: 14, SQFT:  780, VEHICLE: 12, COMMITS: 1 },
-  PW:        { FTE: 4.2,  EXPEND:  890, EXPEND_X: 890, PAYROLL: 105, ACCT: 155, AGENDA:  9, PRA:  6, CONTRACT: 44, SQFT:  920, VEHICLE: 124, COMMITS: 1 },
-  PARKS:     { FTE: 1.5,  EXPEND:  340, EXPEND_X: 340, PAYROLL:  38, ACCT:  72, AGENDA:  8, PRA:  5, CONTRACT: 21, SQFT:  240, VEHICLE:  18, COMMITS: 2 },
-  PD:        { FTE: 0.5,  EXPEND:  720, EXPEND_X: 720, PAYROLL:  15, ACCT:  45, AGENDA:  5, PRA:  3, CONTRACT:  8, SQFT:  180, VEHICLE:   6, COMMITS: 0 },
-  FIRE:      { FTE: 0.2,  EXPEND:  234, EXPEND_X: 234, PAYROLL:   8, ACCT:  18, AGENDA:  2, PRA:  1, CONTRACT:  6, SQFT:  140, VEHICLE:   3, COMMITS: 1 },
-};
+/** Driver values per department × basis — derived from the Allocation
+ *  Bases matrix (lib/data/allocationBases.ts) so that the Allocation
+ *  Bases tab and the step-down engine share one source of truth.
+ *
+ *  Indirect rows are receivers too — a pool sitting on Finance can be
+ *  stepped down to City Attorney if Attorney comes later in the sequence.
+ *  Departments not present in ALLOCATION_BASIS_ROWS get an empty row. */
+export const DRIVERS: Record<MatrixDeptCode, Partial<Record<BasisKey, number>>> = (() => {
+  const out = Object.fromEntries(
+    ALL_DEPTS.map((d) => [d.code, {}]),
+  ) as Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
+  for (const row of ALLOCATION_BASIS_ROWS) {
+    const code = row.code as MatrixDeptCode;
+    if (!(code in out)) continue;
+    for (const [k, v] of Object.entries(row.values)) {
+      if (v != null) out[code][k as BasisKey] = v as number;
+    }
+  }
+  return out;
+})();
 
 // ---------------------------------------------------------------------------
 // Step-down compute

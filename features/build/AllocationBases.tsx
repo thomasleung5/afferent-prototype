@@ -76,7 +76,7 @@ function Matrix() {
           ))}
 
           {/* Direct section label */}
-          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Direct (fee-modeled) departments</GroupLabel>
+          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Direct departments</GroupLabel>
           {direct.map((r, i) => (
             <MatrixRow key={r.code} idx={i + 1} row={r} grid={grid}/>
           ))}

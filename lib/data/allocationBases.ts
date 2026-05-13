@@ -84,7 +84,8 @@ const INDIRECT: BasisRow[] = [
   },
 ];
 
-/* Direct (fee-modeled) departments. */
+/* Direct departments — fee-modeled + every other direct dept that
+ * receives a step-down share of citywide overhead. */
 const DIRECT: BasisRow[] = [
   {
     code: "PLAN", name: "Planning", group: "direct",
@@ -108,6 +109,38 @@ const DIRECT: BasisRow[] = [
       FTE: 2.5, EXPEND: 720, EXPEND_X: 0,
       PAYROLL: 68, ACCT: 354, AGENDA: 16, PRA: 22, CONTRACT: 14,
       SQFT: 780, VEHICLE: 12, COMMITS: 1,
+    },
+  },
+  {
+    code: "PW", name: "Public Works", group: "direct",
+    values: {
+      FTE: 4.2, EXPEND: 890, EXPEND_X: 890,
+      PAYROLL: 105, ACCT: 155, AGENDA: 9, PRA: 6, CONTRACT: 44,
+      SQFT: 920, VEHICLE: 124, COMMITS: 1,
+    },
+  },
+  {
+    code: "PARKS", name: "Parks & Recreation", group: "direct",
+    values: {
+      FTE: 1.5, EXPEND: 340, EXPEND_X: 340,
+      PAYROLL: 38, ACCT: 72, AGENDA: 8, PRA: 5, CONTRACT: 21,
+      SQFT: 240, VEHICLE: 18, COMMITS: 2,
+    },
+  },
+  {
+    code: "PD", name: "Police Services", group: "direct",
+    values: {
+      FTE: 0.5, EXPEND: 720, EXPEND_X: 720,
+      PAYROLL: 15, ACCT: 45, AGENDA: 5, PRA: 3, CONTRACT: 8,
+      SQFT: 180, VEHICLE: 6, COMMITS: 0,
+    },
+  },
+  {
+    code: "FIRE", name: "Fire Prevention", group: "direct",
+    values: {
+      FTE: 0.2, EXPEND: 234, EXPEND_X: 234,
+      PAYROLL: 8, ACCT: 18, AGENDA: 2, PRA: 1, CONTRACT: 6,
+      SQFT: 140, VEHICLE: 3, COMMITS: 1,
     },
   },
 ];
