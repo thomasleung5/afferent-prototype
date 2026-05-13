@@ -42,6 +42,8 @@ export interface RowStyle {
 
 interface Props<Row extends DataTableRow> {
   title?: string;
+  /** Pixel font-size for the title text. Default 13.5. */
+  titleSize?: number;
   eyebrow?: string;
   cols: Column<Row>[];
   rows: Row[];
@@ -79,7 +81,7 @@ function compareValues(a: unknown, b: unknown): number {
 }
 
 export function DataTable<Row extends DataTableRow>({
-  title, eyebrow,
+  title, titleSize, eyebrow,
   cols, rows,
   filters,
   defaultSort,
@@ -139,7 +141,7 @@ export function DataTable<Row extends DataTableRow>({
     }}>
       {(title || eyebrow || filters) && (
         <Toolbar
-          title={title} eyebrow={eyebrow} filters={filters}
+          title={title} titleSize={titleSize} eyebrow={eyebrow} filters={filters}
           shownCount={shownCount} totalCount={totalCount}
         />
       )}
@@ -300,9 +302,10 @@ function SortCaret({ dir }: { dir: SortDir | null }) {
 }
 
 function Toolbar({
-  title, eyebrow, filters, shownCount, totalCount,
+  title, titleSize, eyebrow, filters, shownCount, totalCount,
 }: {
   title?: string;
+  titleSize?: number;
   eyebrow?: string;
   filters?: FilterGroup[];
   shownCount: number;
@@ -325,7 +328,7 @@ function Toolbar({
           )}
           {title && (
             <div style={{
-              fontSize: 13.5, fontWeight: 600, color: "var(--ink)",
+              fontSize: titleSize ?? 13.5, fontWeight: 600, color: "var(--ink)",
               letterSpacing: "-0.005em", lineHeight: 1.3,
             }}>{title}</div>
           )}

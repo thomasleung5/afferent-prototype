@@ -1,11 +1,12 @@
 
-export type CapStep = "centers" | "pools" | "drivers" | "matrix";
+export type CapStep = "centers" | "pools" | "drivers" | "matrix" | "matrixByCenter";
 
 export const CAP_STEPS: { id: CapStep; label: string; hint: string }[] = [
-  { id: "centers", label: "Indirect Cost Centers", hint: "Central service providers, ordered for step-down." },
-  { id: "pools",   label: "Cost Pools",            hint: "Each center split into functional pools, one basis each." },
-  { id: "drivers", label: "Allocation Bases",      hint: "Department × basis matrix. The denominator for each pool." },
-  { id: "matrix",  label: "Allocation Matrix",     hint: "Initial placement → step-down → final, every cell traceable." },
+  { id: "centers",        label: "Indirect Cost Centers", hint: "Central service providers, ordered for step-down." },
+  { id: "pools",          label: "Cost Pools",            hint: "Each center split into functional pools, one basis each." },
+  { id: "drivers",        label: "Allocation Bases",      hint: "Department × basis matrix. The denominator for each pool." },
+  { id: "matrix",         label: "Pool Allocations",      hint: "Initial placement → step-down → final, every cell traceable." },
+  { id: "matrixByCenter", label: "Allocation Matrix",     hint: "Same model rolled up — one row per cost center." },
 ];
 
 interface Props {

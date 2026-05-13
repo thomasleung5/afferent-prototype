@@ -9,6 +9,7 @@ import { CapPoolsTable } from "@/features/build/CapPoolsTable";
 import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationMatrix } from "@/features/build/AllocationMatrix";
+import { AllocationMatrixByCenter } from "@/features/build/AllocationMatrixByCenter";
 import { MappingReview } from "@/features/imports/MappingReview";
 import { ImportDebug } from "@/features/imports/ImportDebug";
 import { useBuildState } from "@/lib/store";
@@ -77,6 +78,8 @@ export default function CapPage() {
       {step === "drivers" && <AllocationBases/>}
 
       {step === "matrix" && <AllocationMatrix/>}
+
+      {step === "matrixByCenter" && <AllocationMatrixByCenter/>}
     </Page>
   );
 }

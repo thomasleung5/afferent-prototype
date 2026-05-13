@@ -94,7 +94,7 @@ export function CapCentersTable() {
   return (
     <DataTable
       title="Cost centers"
-      eyebrow="Inputs · Each center groups one or more cost pools below"
+      titleSize={14}
       cols={cols}
       rows={rows}
       defaultSort={{ key: "totalCost", dir: "desc" }}

@@ -1,31 +1,16 @@
 ﻿
-import { DataTable, type Column } from "@/components/table";
 import { fmt } from "@/lib/format";
 import {
   ALLOCATION_BASES, ALLOCATION_BASIS_ROWS,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
-import { useBuildState } from "@/lib/store";
 
-interface BasisSummaryRow {
-  id: string;
-  basis: string;
-  pools: number;
-  totalAllocated: number;
-  examplePools: string[];
-}
-
-/** Step 3 of the CAP flow. Primary view is the department × basis denominator
- *  matrix — the table the city's CAP workbook is actually built around. The
- *  pool-roll-up summary below is supporting context so a reviewer can see
- *  which pools use which basis without leaving the page. */
+/** Step 3 of the CAP flow. The department × basis denominator matrix — the
+ *  table the city's CAP workbook is actually built around. */
 export function AllocationBases() {
-  const { capPools } = useBuildState();
-
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
       <Matrix/>
-      <BasisSummary capPools={capPools}/>
     </div>
   );
 }
@@ -57,26 +42,12 @@ function Matrix() {
       background: "var(--paper)", border: "1px solid var(--rule)",
       overflow: "hidden",
     }}>
-      {/* Title bar */}
       <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "baseline",
-        padding: "12px 18px",
+        padding: "12px 16px",
         borderBottom: "1px solid var(--rule)",
-        background: "var(--paper)",
       }}>
-        <div>
-          <div className="display" style={{ fontSize: 14.5, fontWeight: 600 }}>
-            Department × allocation basis
-          </div>
-          <div className="mono" style={{
-            fontSize: 10.5, color: "var(--ink-3)", marginTop: 3,
-            letterSpacing: "0.04em",
-          }}>
-            {indirect.length} indirect · {direct.length} direct · {ALLOCATION_BASES.length} bases
-          </div>
-        </div>
-        <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          Each column is the denominator for one or more pools
+        <div className="display" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
+          Allocation Bases
         </div>
       </div>
 
@@ -208,79 +179,3 @@ function MatrixRow({ idx, row, grid }: { idx: number; row: BasisRow; grid: strin
   );
 }
 
-// ---------------------------------------------------------------------------
-// Supporting context — bases used by the current pool inventory
-// ---------------------------------------------------------------------------
-
-function BasisSummary({ capPools }: { capPools: ReturnType<typeof useBuildState>["capPools"] }) {
-  const byBasis = new Map<string, { pools: number; total: number; examples: string[] }>();
-  for (const p of capPools) {
-    const key = p.basis || "—";
-    const cur = byBasis.get(key) ?? { pools: 0, total: 0, examples: [] };
-    cur.pools += 1;
-    cur.total += p.amount;
-    if (cur.examples.length < 3) cur.examples.push(p.pool);
-    byBasis.set(key, cur);
-  }
-
-  const rows: BasisSummaryRow[] = [...byBasis.entries()]
-    .sort((a, b) => b[1].total - a[1].total)
-    .map(([basis, v], i) => ({
-      id: `basis-${i}`,
-      basis,
-      pools: v.pools,
-      totalAllocated: v.total,
-      examplePools: v.examples,
-    }));
-
-  const cols: Column<BasisSummaryRow>[] = [
-    {
-      key: "basis",
-      label: "Allocation basis",
-      width: "minmax(280px, 2fr)",
-      sortable: true,
-      render: (r) => <span style={{ fontSize: 13, color: "var(--ink-2)" }}>{r.basis}</span>,
-    },
-    {
-      key: "pools",
-      label: "Used by",
-      width: "100px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        <span className="num">
-          {r.pools}<span style={{ color: "var(--ink-3)", fontWeight: 400 }}> pool{r.pools === 1 ? "" : "s"}</span>
-        </span>
-      ),
-    },
-    {
-      key: "totalAllocated",
-      label: "Pool dollars",
-      width: "130px",
-      align: "right",
-      sortable: true,
-      render: (r) => <span className="num">{fmt.dollarsK(r.totalAllocated)}</span>,
-    },
-    {
-      key: "examplePools",
-      label: "Example pools",
-      width: "minmax(240px, 2fr)",
-      render: (r) => (
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          {r.examplePools.join(" · ")}
-        </span>
-      ),
-    },
-  ];
-
-  return (
-    <DataTable
-      title="Bases used by current pool inventory"
-      eyebrow={`Reference · ${rows.length} unique bases mapped to ${capPools.length} pools`}
-      cols={cols}
-      rows={rows}
-      defaultSort={{ key: "totalAllocated", dir: "desc" }}
-      footerNote="Each pool is allocated using exactly one basis. The matrix above is the denominator; the table is the numerator inventory."
-    />
-  );
-}

@@ -3,27 +3,11 @@ import { useState, type ReactNode } from "react";
 import { DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CAP_POOL_BY_DEPT } from "@/lib/data/cap";
-import { CITY } from "@/lib/data/city";
 import type { CapPool, DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
-
-/** Extract an "FY 24-25 budget" style label from a pool's basis text. Falls
- *  back to the city's current fiscal year when no FY token is present. */
-function fyLabelFor(pools: CapPool[]): string {
-  for (const p of pools) {
-    const m = p.basis.match(/FY\s?(\d{2})[/\-](\d{2})\s*(budget(?:ed)?|actual|projected|estimate)?/i);
-    if (m) {
-      const qualifier = (m[3] ?? "budget").toLowerCase().replace(/ed$/, "");
-      return `FY ${m[1]}-${m[2]} ${qualifier}`;
-    }
-  }
-  // CITY.fiscal is "FY 2025–26" — collapse to "FY 25-26 budget".
-  const c = CITY.fiscal.match(/(\d{2})(\d{2})[–—-](\d{2})/);
-  return c ? `FY ${c[2]}-${c[3]} budget` : `${CITY.fiscal} budget`;
-}
 
 export function CapPoolsTable() {
   const { capPools, capCenterOrder } = useBuildState();
@@ -41,7 +25,6 @@ export function CapPoolsTable() {
             name={c.name}
             pools={pools}
             total={c.total}
-            fy={fyLabelFor(pools)}
             openId={openId}
             onRowClick={(id) => setOpenId(openId === id ? undefined : id)}
           />
@@ -61,12 +44,11 @@ interface SectionProps {
   name: string;
   pools: CapPool[];
   total: number;
-  fy: string;
   openId?: string;
   onRowClick: (id: string) => void;
 }
 
-function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionProps) {
+function CenterSection({ name, pools, total, openId, onRowClick }: SectionProps) {
   return (
     <div style={{
       background: "var(--paper)",
@@ -81,14 +63,8 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
         background: "var(--paper)",
       }}>
         <div>
-          <div className="display" style={{ fontSize: 14.5, fontWeight: 600, color: "var(--ink)" }}>
+          <div className="display" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
             {name}
-          </div>
-          <div className="mono" style={{
-            fontSize: 10.5, color: "var(--ink-3)", marginTop: 3,
-            letterSpacing: "0.04em",
-          }}>
-            {fy} · {pools.length} pool{pools.length === 1 ? "" : "s"} · {fmt.dollars(total)}
           </div>
         </div>
       </div>
@@ -96,7 +72,7 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
       {/* Column header */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 1.6fr) 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+        gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
         gap: 14,
         padding: "8px 18px",
         background: "var(--paper-2)",
@@ -105,6 +81,7 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
         letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         <div>Pool</div>
+        <div style={{ textAlign: "right" }}>%</div>
         <div style={{ textAlign: "right" }}>Amount</div>
         <div>Basis</div>
         <div>Explanation</div>
@@ -118,6 +95,7 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
           <PoolRow
             key={p.id}
             pool={p}
+            centerTotal={total}
             isOpen={isOpen}
             isLast={isLast}
             onClick={() => onRowClick(p.id)}
@@ -128,7 +106,7 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
       {/* Subtotal footer */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 1.6fr) 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+        gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
         gap: 14,
         padding: "9px 18px",
         borderTop: "2px solid var(--ink)",
@@ -139,6 +117,7 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
           fontSize: 10, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>Subtotal</div>
+        <div className="num" style={{ textAlign: "right" }}>100%</div>
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
         <div/>
         <div/>
@@ -149,19 +128,21 @@ function CenterSection({ name, pools, total, fy, openId, onRowClick }: SectionPr
 
 interface RowProps {
   pool: CapPool;
+  centerTotal: number;
   isOpen: boolean;
   isLast: boolean;
   onClick: () => void;
 }
 
-function PoolRow({ pool, isOpen, isLast, onClick }: RowProps) {
+function PoolRow({ pool, centerTotal, isOpen, isLast, onClick }: RowProps) {
+  const pct = centerTotal > 0 ? Math.round((pool.amount / centerTotal) * 100) : 0;
   return (
     <>
       <div
         onClick={onClick}
         style={{
           display: "grid",
-          gridTemplateColumns: "minmax(220px, 1.6fr) 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+          gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
           gap: 14,
           padding: "10px 18px 10px 15px",
           alignItems: "baseline",
@@ -176,6 +157,9 @@ function PoolRow({ pool, isOpen, isLast, onClick }: RowProps) {
       >
         <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
           {pool.pool}
+        </div>
+        <div className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
+          {pct}%
         </div>
         <div className="num" style={{ textAlign: "right", color: "var(--ink)" }}>
           {fmt.dollars(pool.amount)}
