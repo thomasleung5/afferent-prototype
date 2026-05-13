@@ -1,7 +1,6 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
-import { StatusRow } from "@/features/_shared/StatusRow";
 import { WorkloadTable } from "@/features/build/WorkloadTable";
 import { MappingReview } from "@/features/imports/MappingReview";
 import { ImportDebug } from "@/features/imports/ImportDebug";
@@ -10,13 +9,7 @@ import { runImportPipeline } from "@/lib/import/pipeline";
 import type { LastImport } from "@/components/ui";
 
 export default function WorkloadPage() {
-  const { workload, services, currentBatch, setCurrentBatch } = useBuildState();
-  const totalVol = workload.reduce((a, r) => a + (r.current ?? 0), 0);
-  const missing  = workload.filter((r) => r.current == null).length;
-  const carry    = workload.filter((r) => r.source === "carry-forward").length;
-  const reviewing = currentBatch
-    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
-    : 0;
+  const { services, setCurrentBatch } = useBuildState();
 
   return (
     <Page>
@@ -26,15 +19,6 @@ export default function WorkloadPage() {
         subtitle="Annual volume per service."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
       />
-
-      <StatusRow items={[
-        `${services.length} services`,
-        `${totalVol.toLocaleString()} workload rows`,
-        { value: missing === 0 ? "All captured" : `${missing} missing`, tone: missing === 0 ? "pos" : "warn" },
-        carry > 0 ? `${carry} carry-forward` : "No carry-forward",
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
-        "FY 2026-27",
-      ]}/>
 
       <DropZone
         accept=".xlsx,.csv"

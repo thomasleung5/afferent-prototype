@@ -1,8 +1,6 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
-import { fmt } from "@/lib/format";
-import { StatusRow } from "@/features/_shared/StatusRow";
 import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingBuckets } from "@/features/build/OperatingBuckets";
 import { OperatingTable } from "@/features/build/OperatingTable";
@@ -13,13 +11,7 @@ import { runImportPipeline } from "@/lib/import/pipeline";
 import type { LastImport } from "@/components/ui";
 
 export default function OperatingPage() {
-  const { operating, services, currentBatch, setCurrentBatch } = useBuildState();
-  const included = operating.filter((l) => l.include);
-  const excluded = operating.filter((l) => !l.include);
-  const includedTotal = included.reduce((a, l) => a + l.amount, 0);
-  const reviewing = currentBatch
-    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
-    : 0;
+  const { services, setCurrentBatch } = useBuildState();
 
   return (
     <Page>
@@ -29,15 +21,6 @@ export default function OperatingPage() {
         subtitle="Department non-labor spend."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
       />
-
-      <StatusRow items={[
-        `${operating.length} lines`,
-        { value: "Validated", tone: "pos" },
-        `${included.length} included · ${excluded.length} excluded`,
-        `${fmt.dollarsK(includedTotal)} flowing into $/hr`,
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
-        "FY 2026-27",
-      ]}/>
 
       <OperatingSummary/>
 

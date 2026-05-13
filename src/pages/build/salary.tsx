@@ -1,7 +1,6 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
-import { StatusRow } from "@/features/_shared/StatusRow";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { MappingReview } from "@/features/imports/MappingReview";
@@ -11,14 +10,7 @@ import { runImportPipeline } from "@/lib/import/pipeline";
 import type { LastImport } from "@/components/ui";
 
 export default function DirectLaborPage() {
-  const { positions, services, derived, currentBatch, setCurrentBatch } = useBuildState();
-  const labor = derived.labor;
-  const totalFte = positions.reduce((a, p) => a + p.fte, 0);
-  const totalHrs = labor.PLAN.productiveHours + labor.BLDG.productiveHours + labor.ENG.productiveHours;
-  const flagged = positions.filter((p) => p.flag).length;
-  const reviewing = currentBatch
-    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
-    : 0;
+  const { services, setCurrentBatch } = useBuildState();
 
   return (
     <Page>
@@ -28,15 +20,6 @@ export default function DirectLaborPage() {
         subtitle="Direct labor rate per department."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
       />
-
-      <StatusRow items={[
-        `${positions.length} positions`,
-        { value: flagged === 0 ? "Balanced" : `${flagged} need review`, tone: flagged === 0 ? "pos" : "warn" },
-        `${Math.round(totalHrs).toLocaleString()} productive hrs`,
-        `${totalFte.toFixed(1)} FTE`,
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
-        "FY 2026-27",
-      ]}/>
 
       <LaborSummary/>
 

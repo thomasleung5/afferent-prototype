@@ -22,7 +22,7 @@ export default function CostOfServicePage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="costs"/>}
         title="Cost of Service"
-        subtitle="Direct + Operating + CAP applied to hours × volume. The convergence of every upstream input."
+        subtitle="Direct + Operating + Cost Allocation applied to hours"
         actions={<ExportMenu onDownloadExcel={downloadExcel} onOpenPdf={openPdf}/>}
       />
 

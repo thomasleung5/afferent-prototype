@@ -1,7 +1,6 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, DropZone, NodeEyebrow } from "@/components/ui";
-import { StatusRow } from "@/features/_shared/StatusRow";
 import { ServicesTable } from "@/features/build/ServicesTable";
 import { MappingReview } from "@/features/imports/MappingReview";
 import { ImportDebug } from "@/features/imports/ImportDebug";
@@ -10,18 +9,7 @@ import { runImportPipeline } from "@/lib/import/pipeline";
 import type { LastImport } from "@/components/ui";
 
 export default function ServicesPage() {
-  const { services, currentBatch, setCurrentBatch } = useBuildState();
-
-  const byDept = {
-    PLAN: services.filter((s) => s.dept === "PLAN").length,
-    BLDG: services.filter((s) => s.dept === "BLDG").length,
-    ENG:  services.filter((s) => s.dept === "ENG").length,
-  };
-  const totalHours = services.reduce((a, s) => a + s.hours, 0);
-  const flagged = services.filter((s) => !s.hours || !s.volume).length;
-  const reviewing = currentBatch
-    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
-    : 0;
+  const { services, setCurrentBatch } = useBuildState();
 
   return (
     <Page>
@@ -31,15 +19,6 @@ export default function ServicesPage() {
         subtitle="Hours per instance, role mix."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
       />
-
-      <StatusRow items={[
-        `${services.length} services`,
-        `${byDept.PLAN} Planning · ${byDept.BLDG} Building · ${byDept.ENG} Engineering`,
-        `${Math.round(totalHours).toLocaleString()} hrs / instance`,
-        { value: flagged === 0 ? "All scoped" : `${flagged} need review`, tone: flagged === 0 ? "pos" : "warn" },
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
-        "FY 2026-27",
-      ]}/>
 
       <DropZone
         accept=".xlsx,.csv,.pdf"
