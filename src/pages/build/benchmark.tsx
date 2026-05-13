@@ -2,7 +2,6 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
-import { CITY } from "@/lib/data/city";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { BenchmarkTable } from "@/features/build/BenchmarkTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
@@ -28,7 +27,7 @@ export default function FeeBenchmarkPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="benchmark"/>}
         title="Fee Benchmark Database"
-        subtitle={`Adopted fees in peer cities: ${CITY.peers.slice(0, 5).join(", ")}.`}
+        subtitle="Adopted fees in peer cities."
         actions={
           <>
             <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
