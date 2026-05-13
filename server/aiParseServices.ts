@@ -89,7 +89,7 @@ export async function handleAiParseServices(req: Request): Promise<Response> {
   console.log(`[ai-parse-services] Received ${fileName} (${fileSizeKb} KB), catalog: ${catalog.length} entries — sending to ${MODEL}…`);
   const t0 = Date.now();
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
   try {
     const response = await client.messages.create({
       model: MODEL,

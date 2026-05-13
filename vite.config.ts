@@ -13,7 +13,11 @@ export default defineConfig({
   server: {
     port: 3000,
     proxy: {
-      "/api": "http://localhost:8787",
+      "/api": {
+        target: "http://localhost:8787",
+        proxyTimeout: 10 * 60 * 1000,
+        timeout: 10 * 60 * 1000,
+      },
     },
   },
 });

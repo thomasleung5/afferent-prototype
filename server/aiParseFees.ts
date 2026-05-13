@@ -71,7 +71,7 @@ export async function handleAiParseFees(req: Request): Promise<Response> {
   console.log(`[ai-parse-fees] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
   const t0 = Date.now();
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
   try {
     const response = await client.messages.create({
       model: MODEL,

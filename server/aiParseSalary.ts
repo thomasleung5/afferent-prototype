@@ -2,7 +2,14 @@ import Anthropic from "@anthropic-ai/sdk";
 
 const MODEL = "claude-sonnet-4-6";
 
-const SYSTEM = `You are parsing a municipal salary roster or personnel budget PDF. Extract every position line item and return ONLY this JSON, no prose:
+const SYSTEM = `You are extracting staff positions from a municipal document. The document may be a standalone salary roster, a personnel budget appendix inside a larger fee study, or an annual report — only the position-level data matters.
+
+IMPORTANT — if the document is a comprehensive fee study, annual report, or multi-section document:
+- Skip all narrative chapters, methodology sections, executive summaries, and recommendation tables
+- Focus exclusively on sections titled "Staffing Plan", "Personnel Budget", "Salary Schedule", "Position Listing", "Staff Roster", appendices labeled "Staffing" or "Labor", or any tabular section that lists individual positions with salary amounts
+- Do not read or process narrative paragraphs — jump directly to the staffing tables
+
+Extract every position line item you find in those sections and return ONLY this JSON, no prose:
 
 {
   "positions": [
@@ -14,6 +21,7 @@ const SYSTEM = `You are parsing a municipal salary roster or personnel budget PD
 
 Rules:
 - dept must be exactly "PLAN" (Planning), "BLDG" (Building/Inspection), or "ENG" (Engineering/Public Works)
+- Only include positions assigned to PLAN, BLDG, or ENG — skip positions in unrelated departments (admin, finance, parks, etc.)
 - fte is the full-time equivalent allocation to fee services (0.0–1.0) — if not stated assume 1.0
 - salary is the annual base salary as a plain number — no $ or commas
 - benefits is the annual benefits cost as a plain number — if shown as a % of salary, compute the dollar amount
@@ -73,7 +81,7 @@ export async function handleAiParseSalary(req: Request): Promise<Response> {
   console.log(`[ai-parse-salary] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
   const t0 = Date.now();
 
-  const client = new Anthropic({ apiKey });
+  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
   try {
     const response = await client.messages.create({
       model: MODEL,
