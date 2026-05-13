@@ -1,7 +1,7 @@
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon } from "@/components/ui";
 import { AnnualEyebrow } from "@/features/annual/AnnualEyebrow";
-import { SectionOverviewGrid } from "@/features/annual/SectionOverviewGrid";
+import { WorkflowMap } from "@/features/build/WorkflowMap";
 
 export default function AnnualOverviewPage() {
   return (
@@ -12,7 +12,7 @@ export default function AnnualOverviewPage() {
         subtitle="Prior model carried forward. Confirm this year's inputs."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Methodology</Btn>}
       />
-      <SectionOverviewGrid/>
+      <WorkflowMap/>
     </Page>
   );
 }

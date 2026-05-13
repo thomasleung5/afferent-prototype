@@ -4,11 +4,7 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import {
-  CellInput, DeptChip, SourcePill,
-  DrilldownShell, DrilldownColumn, TraceBlock, Formula,
-} from "@/components/ui";
-import { fmt } from "@/lib/format";
+import { CellInput, DeptChip, SourcePill } from "@/components/ui";
 import type { DeptCode, WorkloadRow } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -41,10 +37,9 @@ const SOURCE_LABEL: Record<WorkloadRow["source"], string> = {
 };
 
 export function WorkloadTable() {
-  const { services, workload, updateWorkload, derived } = useBuildState();
+  const { services, workload, updateWorkload } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
-  const [openId, setOpenId] = useState<string | undefined>();
 
   const all: Row[] = useMemo(() => workload.map((w): Row => {
     const svc = services.find((s) => s.id === w.id);
@@ -201,135 +196,6 @@ export function WorkloadTable() {
       filters={filters}
       defaultSort={{ key: "name", dir: "asc" }}
       stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
-      openId={openId}
-      onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
-      drilldownIndicator
-      renderDrilldown={(r) => {
-        const svc = services.find((s) => s.id === r.id);
-        const fbhr = derived.fbhr[r.dept]?.fbhr ?? 0;
-        const hours = svc?.hours ?? 0;
-        const unitCost = hours * fbhr;
-        const annualCost = unitCost * (r.current ?? 0);
-        const changeAbs =
-          r.current == null || r.prior == null ? null : r.current - r.prior;
-
-        return (
-          <DrilldownShell>
-            <DrilldownColumn marker="①" title="Source">
-              <TraceBlock label="Status">
-                <span style={{ color: r.flag ? "var(--warn)" : "var(--ink-2)" }}>
-                  {r.status}
-                </span>
-              </TraceBlock>
-              <TraceBlock label="Origin">
-                {r.source === "carry-forward"
-                  ? "Reused from prior study — needs confirmation"
-                  : r.source === "missing"
-                    ? "No current-year volume available"
-                    : r.source === "manual"
-                      ? "Manually entered by analyst"
-                      : "Permit-system export"}
-              </TraceBlock>
-              <TraceBlock label="Unit">{r.unit}</TraceBlock>
-              <TraceBlock label="Prior volume">
-                <span className="num">{r.prior?.toLocaleString() ?? "—"}</span>
-              </TraceBlock>
-              <div style={{ marginTop: 10 }}>
-                <SourcePill tone={SOURCE_TONE[r.source]}>
-                  {SOURCE_LABEL[r.source]}
-                </SourcePill>
-              </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="②" title="Change vs prior">
-              <div style={{
-                padding: "12px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>prior</span>
-                  <b>{r.prior?.toLocaleString() ?? "—"}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>current</span>
-                  <b>{r.current?.toLocaleString() ?? "—"}</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>change</span>
-                  {r.changePct == null || changeAbs == null ? (
-                    <b>—</b>
-                  ) : (
-                    <b style={{
-                      color: r.changePct > 0 ? "var(--pos)"
-                        : r.changePct < 0 ? "var(--neg)" : "var(--ink)",
-                    }}>
-                      {changeAbs > 0 ? "+" : ""}{changeAbs.toLocaleString()} ({Math.round(r.changePct)}%)
-                    </b>
-                  )}
-                </div>
-              </div>
-              {r.warning === "carry-forward" && (
-                <div style={{
-                  marginTop: 12, fontSize: 11.5,
-                  color: "var(--accent)", lineHeight: 1.55,
-                }}>
-                  Reused from prior study — please confirm against the permit system.
-                </div>
-              )}
-              {r.warning === "missing-current-volume" && (
-                <div style={{
-                  marginTop: 12, fontSize: 11.5,
-                  color: "var(--warn)", lineHeight: 1.55,
-                }}>
-                  No current-year volume — enter manually or accept prior.
-                </div>
-              )}
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="③" title="Carries into">
-              <div style={{
-                padding: "12px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>service hours</span>
-                  <b>{hours} h</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>× FBHR ({r.dept})</span>
-                  <b>${Math.round(fbhr)}/hr</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>= unit cost</span>
-                  <b>{fmt.dollars(unitCost)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>× current vol</span>
-                  <b>{(r.current ?? 0).toLocaleString()}</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>annual cost</span>
-                  <b>{fmt.dollarsK(annualCost)}</b>
-                </div>
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <Formula>hours × FBHR × volume = annual cost</Formula>
-              </div>
-            </DrilldownColumn>
-          </DrilldownShell>
-        );
-      }}
       footerNote={`${rows.length} services · ${rows.filter((r) => r.current != null).length} captured · current volumes feed annual cost`}
     />
   );

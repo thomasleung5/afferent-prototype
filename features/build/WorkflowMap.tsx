@@ -180,8 +180,8 @@ function FlowArrow() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
       <svg width="22" height="10" viewBox="0 0 22 10" fill="none" aria-hidden="true">
-        <path d="M0 5 H20" stroke="#1d2236" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M16 1 L20 5 L16 9" stroke="#1d2236" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M0 5 H20" stroke="#a8a6ab" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M16 1 L20 5 L16 9" stroke="#a8a6ab" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       </svg>
     </div>
   );
