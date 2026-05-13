@@ -94,6 +94,7 @@ interface BuildActions {
   applyCurrentBatch: () => { applied: number; skipped: number };
   resetAll: () => void;
   clearAll: () => void;
+  seedUpstream: () => void;
 }
 
 /* ── Helpers ── */
@@ -724,6 +725,21 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
+      },
+
+      seedUpstream: () => {
+        const pools = CAP_POOLS.map((p) => ({ ...p }));
+        set({
+          positions: POSITIONS.map((p) => ({ ...p })),
+          operating: OPERATING.map((o) => ({ ...o })),
+          capAllocation: {
+            PLAN: { ...CAP_ALLOCATION.PLAN },
+            BLDG: { ...CAP_ALLOCATION.BLDG },
+            ENG:  { ...CAP_ALLOCATION.ENG },
+          },
+          capPools: pools,
+          capCenterOrder: defaultCenterOrder(pools),
+        });
       },
 
       clearAll: () => {
