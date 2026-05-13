@@ -1,8 +1,5 @@
-import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { CITY } from "@/lib/data/city";
-import { Btn, Icon } from "@/components/ui";
-import { ImportManager } from "@/features/imports/ImportManager";
 
 interface NavItem {
   href: string;
@@ -20,7 +17,6 @@ const NAV: NavItem[] = [
 
 export function TopBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const [importerOpen, setImporterOpen] = useState(false);
   // Print/export routes get a clean shell — no app chrome.
   if (pathname.startsWith("/export")) return null;
   const isActive = (n: NavItem) => {
@@ -64,10 +60,6 @@ export function TopBar() {
         </div>
 
         <div style={{ flex: 1 }}/>
-        <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-          <Icon name="arrow-up-to-line" size={13}/> Import
-        </Btn>
-        <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
         <div className="mono" style={{
           width: 28, height: 28,
           border: "1px solid var(--rule-strong)",
@@ -100,7 +92,6 @@ export function TopBar() {
         })}
       </div>
 
-      <ImportManager open={importerOpen} onClose={() => setImporterOpen(false)}/>
     </div>
   );
 }

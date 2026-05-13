@@ -29,22 +29,43 @@ export function RefreshImportGrid() {
       {/* Drop zone placeholder */}
       <div style={{
         background: "var(--paper)", border: "2px dashed var(--rule-strong)",
-        padding: "28px 32px", textAlign: "center",
+        padding: "14px 20px",
       }}>
-        <div className="mono" style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8 }}>
-          Drop this year's source files
-        </div>
-        <div style={{ fontSize: 13, color: "var(--ink-2)", marginBottom: 16 }}>
-          xlsx, csv, pdf, or a zip of all six exports
-        </div>
-        <div style={{ display: "flex", justifyContent: "center", gap: 10, flexWrap: "wrap" }}>
-          <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-            Last import: <span style={{ color: "var(--ink)" }}>FY26-27 annual refresh.zip · 6 files</span>
-            {" · "}{totalRows.toLocaleString()} rows
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
+          <div className="mono" style={{
+            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+            color: "var(--ink-3)", textTransform: "uppercase",
+          }}>
+            Refresh FY2026–27 Source Files
+          </div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+            Last refresh: <span style={{ color: "var(--ink-2)" }}>Apr 24, 2026</span>
+            {" · "}6 files · {totalRows.toLocaleString()} rows
             {" · "}<span style={{ color: "var(--pos)" }}>{autoPct}% auto-mapped</span>
             {totalReview > 0 && <span style={{ color: "var(--warn)" }}> · {totalReview} need review</span>}
-            {" · "}Apr 24, 2026
           </div>
+        </div>
+        <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
+          Upload current-year exports for staffing, operating, workload, fee schedules, benchmark fees, and CAP inputs.
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+          {[
+            "Budget export",
+            "Staffing / FTE",
+            "Operating costs",
+            "Workload metrics",
+            "Fee schedule",
+            "CAP / indirect costs",
+            "Benchmark fees",
+          ].map((label) => (
+            <span key={label} className="mono" style={{
+              fontSize: 10.5, color: "var(--ink-2)",
+              padding: "2px 8px",
+              border: "1px solid var(--rule)",
+              background: "var(--paper-2)",
+              letterSpacing: "0.04em",
+            }}>{label}</span>
+          ))}
         </div>
       </div>
 
@@ -104,12 +125,12 @@ export function RefreshImportGrid() {
 
                 <div style={{
                   marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--rule)",
-                  display: "flex", justifyContent: "space-between", alignItems: "center",
+                  display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
                 }}>
                   <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)" }}>
-                    Imported Apr 18, 2026
+                    Last refreshed Apr 18, 2026
                   </span>
-                  <Btn kind="ghost"><Icon name="share" size={11}/> Re-import</Btn>
+                  <Btn kind="ghost"><Icon name="arrow-up-to-line" size={11}/> Re-import</Btn>
                 </div>
               </div>
             );

@@ -8,8 +8,8 @@ export default function AnnualRefreshPage() {
     <Page>
       <PageHeader
         eyebrow={<AnnualEyebrow role="Import node" label="Refresh inputs"/>}
-        title="Refresh annual inputs"
-        subtitle="Six inputs change each year. Imported, auto-mapped, and routed to section reviews."
+        title="Annual Data Refresh"
+        subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
       />
       <StatusRow items={[
         "2,464 rows imported",
@@ -17,7 +17,7 @@ export default function AnnualRefreshPage() {
         { value: "97% auto-mapped", tone: "pos" },
         { value: "58 need review",  tone: "warn" },
         "Confidence · Medium-High",
-        "Imported Apr 24, 2026",
+        "Refreshed Apr 24, 2026",
       ]}/>
       <RefreshImportGrid/>
     </Page>
