@@ -55,22 +55,27 @@ export async function handleAiParseFees(req: Request): Promise<Response> {
 
   let pdfBase64: string;
   let fileName: string;
+  let fileSizeKb: number;
   try {
     const form = await req.formData();
     const file = form.get("file") as File | null;
     if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
     fileName = file.name;
+    fileSizeKb = Math.round(file.size / 1024);
     const buf = await file.arrayBuffer();
     pdfBase64 = Buffer.from(buf).toString("base64");
   } catch {
     return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
   }
 
+  console.log(`[ai-parse-fees] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
+  const t0 = Date.now();
+
   const client = new Anthropic({ apiKey });
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 4096,
+      max_tokens: 8192,
       system: SYSTEM,
       messages: [{
         role: "user",
@@ -81,21 +86,39 @@ export async function handleAiParseFees(req: Request): Promise<Response> {
       }],
     });
 
+    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
     const text = response.content.find((c) => c.type === "text")?.text ?? "";
+    console.log(`[ai-parse-fees] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
+
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
+      console.error(`[ai-parse-fees] No JSON in response. Raw: ${text.slice(0, 300)}`);
       return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
     }
 
-    const parsed = JSON.parse(jsonMatch[0]) as { fees?: FeeRow[] };
-    if (!Array.isArray(parsed.fees)) {
-      return json({ ok: false, message: "Model returned unexpected structure." }, { status: 502 });
+    let fees: FeeRow[];
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { fees?: FeeRow[] };
+      if (!Array.isArray(parsed.fees)) throw new Error("no fees array");
+      fees = parsed.fees;
+    } catch {
+      // Output was truncated — extract every complete fee object from the partial JSON
+      const partialMatches = jsonMatch[0].matchAll(/\{[^{}]*"name"\s*:[^{}]*\}/g);
+      fees = [];
+      for (const m of partialMatches) {
+        try { fees.push(JSON.parse(m[0]) as FeeRow); } catch { /* skip malformed */ }
+      }
+      if (fees.length === 0) {
+        return json({ ok: false, message: "Response was truncated and no complete fee rows could be recovered. Try a shorter document." }, { status: 502 });
+      }
+      console.warn(`[ai-parse-fees] Response truncated — recovered ${fees.length} partial rows`);
     }
 
-    console.log(`[ai-parse-fees] ${fileName} → ${parsed.fees.length} rows`);
-    return json({ ok: true, fees: parsed.fees });
+    console.log(`[ai-parse-fees] Parsed ${fees.length} fee rows from ${fileName}`);
+    return json({ ok: true, fees });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown model error.";
+    console.error(`[ai-parse-fees] Error: ${message}`);
     return json({ ok: false, message }, { status: 502 });
   }
 }

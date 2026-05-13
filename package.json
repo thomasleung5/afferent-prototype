@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "concurrently --names client,api --prefix-colors blue,magenta \"npm run dev:client\" \"npm run dev:api\"",
     "dev:client": "vite",
-    "dev:api": "tsx watch server/index.ts",
+    "dev:api": "tsx watch --env-file=.env.local server/index.ts",
     "build": "vite build",
     "preview": "vite preview",
     "start": "tsx server/index.ts",
