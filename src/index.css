@@ -35,18 +35,3 @@ input, select { font: inherit; color: inherit; }
   gap: var(--section-gap);
 }
 
-.sec-eyebrow {
-  font-family: var(--ff-mono);
-  font-size: var(--t-l4);
-  font-weight: var(--t-l4-w);
-  letter-spacing: 0.14em;
-  text-transform: uppercase;
-  color: var(--ink-3);
-  padding-top: var(--s-5);
-  margin-bottom: var(--s-4);
-  border-top: 1px solid var(--rule);
-}
-.sec-eyebrow:first-child {
-  border-top: none;
-  padding-top: 0;
-}

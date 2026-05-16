@@ -3,16 +3,6 @@ import type {
   PolicyException, PolicyTarget, Service,
 } from "./types";
 
-export function enrichServices(services: Service[]): EnrichedService[] {
-  return services
-    .map((s) => {
-      const recovery = s.cost > 0 ? (s.fee / s.cost) * 100 : 0;
-      const gap = (s.cost - s.fee) * s.volume;
-      return { ...s, recovery, gap };
-    })
-    .sort((a, b) => b.gap - a.gap);
-}
-
 export interface TopFix extends EnrichedService {
   /** Recommended fee at target recovery, snapped to $5. */
   recommended: number;
