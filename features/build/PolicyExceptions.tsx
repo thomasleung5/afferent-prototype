@@ -1,5 +1,5 @@
 ﻿
-import { EditableNumber, EditableText, Icon } from "@/components/ui";
+import { AddRowButton, EditableNumber, EditableText, Icon } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 
 export function PolicyExceptions() {
@@ -85,14 +85,7 @@ export function PolicyExceptions() {
         borderTop: "1px solid var(--rule-strong)",
         background: "var(--paper-2)",
       }}>
-        <button onClick={addPolicyException} style={{
-          display: "inline-flex", alignItems: "center", gap: 6,
-          fontSize: 12, fontWeight: 500, color: "var(--accent)",
-          padding: "4px 8px", border: "1px dashed var(--rule-strong)",
-          background: "var(--paper)", cursor: "pointer",
-        }}>
-          + Add fee exception
-        </button>
+        <AddRowButton label="Add fee exception" onClick={addPolicyException}/>
       </div>
     </div>
   );

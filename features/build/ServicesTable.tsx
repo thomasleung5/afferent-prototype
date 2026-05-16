@@ -40,7 +40,7 @@ interface Row extends Service {
 type RoleMix = { role: string; pct: number }[];
 
 export function ServicesTable() {
-  const { services, updateService } = useBuildState();
+  const { services, updateService, addService } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
   const [openId, setOpenId] = useState<string | undefined>();
@@ -189,6 +189,8 @@ export function ServicesTable() {
       cols={cols}
       rows={rows}
       filters={filters}
+      onAdd={addService}
+      addLabel="Add service"
       defaultSort={{ key: "name", dir: "asc" }}
       stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
       openId={openId}

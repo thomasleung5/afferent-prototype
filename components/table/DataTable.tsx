@@ -1,5 +1,6 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
+import { AddRowButton } from "@/components/ui/AddRowButton";
 
 export type SortDir = "asc" | "desc";
 export type CellAlign = "left" | "right" | "center";
@@ -272,14 +273,7 @@ export function DataTable<Row extends DataTableRow>({
               alignItems: "center", gap: 14,
             }}>
               {onAdd ? (
-                <button onClick={onAdd} style={{
-                  display: "inline-flex", alignItems: "center", gap: 6,
-                  fontSize: 12, fontWeight: 500, color: "var(--accent)",
-                  padding: "4px 8px", border: "1px dashed var(--rule-strong)",
-                  background: "var(--paper)", cursor: "pointer",
-                }}>
-                  + {addLabel ?? "Add row manually"}
-                </button>
+                <AddRowButton label={addLabel ?? "Add row manually"} onClick={onAdd}/>
               ) : <div/>}
               {footerNote && <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{footerNote}</div>}
             </div>

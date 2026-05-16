@@ -17,7 +17,7 @@ interface Row extends Omit<Position, "flag"> {
 }
 
 export function PositionsTable() {
-  const { positions, updatePosition } = useBuildState();
+  const { positions, updatePosition, addPosition } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
 
@@ -178,6 +178,8 @@ export function PositionsTable() {
         cols={cols}
         rows={rows}
         filters={filters}
+        onAdd={addPosition}
+        addLabel="Add position"
         defaultSort={{ key: "title", dir: "asc" }}
         stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
       />

@@ -67,6 +67,11 @@ interface BuildActions {
   updatePolicyException: (id: string, patch: Partial<PolicyException>) => void;
   addPolicyException: () => void;
   removePolicyException: (id: string) => void;
+  addService: () => void;
+  addPosition: () => void;
+  addOperatingLine: () => void;
+  addCapPool: (center: string) => void;
+  addCapCenter: () => void;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
@@ -420,6 +425,57 @@ export const useBuildStore = create<BuildState & BuildActions>()(
 
       removePolicyException: (id) =>
         set((s) => ({ policyExceptions: s.policyExceptions.filter((e) => e.id !== id) })),
+
+      addService: () =>
+        set((s) => ({
+          services: [
+            ...s.services,
+            { id: `svc-${Date.now()}`, name: "New service", dept: "PLAN",
+              volume: 0, hours: 0, cost: 0, fee: 0, peer: 0, target: 100 },
+          ],
+        })),
+
+      addPosition: () =>
+        set((s) => ({
+          positions: [
+            ...s.positions,
+            { id: `pos-${Date.now()}`, title: "New position", dept: "PLAN",
+              fte: 1, salary: 0, benefits: 0, hours: 1720 },
+          ],
+        })),
+
+      addOperatingLine: () =>
+        set((s) => ({
+          operating: [
+            ...s.operating,
+            { id: `op-${Date.now()}`, code: "—", dept: "PLAN", category: "Other",
+              line: "New line item", amount: 0, source: "manual", include: true },
+          ],
+        })),
+
+      addCapPool: (center) =>
+        set((s) => ({
+          capPools: [
+            ...s.capPools,
+            { id: `cap-${Date.now()}`, center, pool: "New pool", amount: 0,
+              basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+          ],
+        })),
+
+      addCapCenter: () =>
+        set((s) => {
+          const name = "New Cost Center";
+          return {
+            capPools: [
+              ...s.capPools,
+              { id: `cap-${Date.now()}`, center: name, pool: "New pool", amount: 0,
+                basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+            ],
+            capCenterOrder: s.capCenterOrder.includes(name)
+              ? s.capCenterOrder
+              : [...s.capCenterOrder, name],
+          };
+        }),
 
       mergePositions: (r, fileName) => {
         const result = toApplyResult("positions", fileName, r);

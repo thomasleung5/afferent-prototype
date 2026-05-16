@@ -39,7 +39,7 @@ interface Row extends OperatingLine {
 }
 
 export function OperatingTable() {
-  const { operating, updateOperating } = useBuildState();
+  const { operating, updateOperating, addOperatingLine } = useBuildState();
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
@@ -198,6 +198,8 @@ export function OperatingTable() {
         cols={cols}
         rows={rows}
         filters={filters}
+        onAdd={addOperatingLine}
+        addLabel="Add line item"
         defaultSort={{ key: "amount", dir: "desc" }}
       />
     </div>

@@ -20,7 +20,7 @@ interface Row {
  *  Mirrors the legacy CapCentersTable shape so the screen reads as a faithful
  *  port of the original Claude Design CAP Step-1 view. */
 export function CapCentersTable() {
-  const { capPools, capCenterOrder } = useBuildState();
+  const { capPools, capCenterOrder, addCapCenter } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
     // Synthesize a fund-program code from the first pool that belongs to
@@ -100,6 +100,8 @@ export function CapCentersTable() {
       <DataTable
         cols={cols}
         rows={rows}
+        onAdd={addCapCenter}
+        addLabel="Add cost center"
         defaultSort={{ key: "totalCost", dir: "desc" }}
       />
     </div>

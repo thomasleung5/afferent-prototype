@@ -1,11 +1,12 @@
 
+import { AddRowButton } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 export function CapPoolsTable() {
-  const { capPools, capCenterOrder } = useBuildState();
+  const { capPools, capCenterOrder, addCapPool } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
@@ -18,6 +19,7 @@ export function CapPoolsTable() {
             name={c.name}
             pools={pools}
             total={c.total}
+            onAddPool={() => addCapPool(c.name)}
           />
         );
       })}
@@ -35,9 +37,10 @@ interface SectionProps {
   name: string;
   pools: CapPool[];
   total: number;
+  onAddPool: () => void;
 }
 
-function CenterSection({ name, pools, total }: SectionProps) {
+function CenterSection({ name, pools, total, onAddPool }: SectionProps) {
   return (
     <div style={{
       background: "var(--paper)",
@@ -107,6 +110,15 @@ function CenterSection({ name, pools, total }: SectionProps) {
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
         <div/>
         <div/>
+      </div>
+
+      {/* Add-row footer */}
+      <div style={{
+        padding: "10px 18px",
+        borderTop: "1px solid var(--rule-strong)",
+        background: "var(--paper-2)",
+      }}>
+        <AddRowButton label="Add cost pool" onClick={onAddPool}/>
       </div>
     </div>
   );
