@@ -1,5 +1,5 @@
 import { Page, PageHeader } from "@/components/layout";
-import { AnnualEyebrow } from "@/features/annual/AnnualEyebrow";
+import { SectionEyebrow } from "@/components/ui";
 import { RefreshImportGrid } from "@/features/annual/RefreshImportGrid";
 import { StatusRow } from "@/features/_shared/StatusRow";
 
@@ -7,7 +7,7 @@ export default function AnnualRefreshPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<AnnualEyebrow label="Refresh inputs"/>}
+        eyebrow={<SectionEyebrow prefix="Annual Update" label="Refresh inputs"/>}
         title="Annual Data Refresh"
         subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
       />

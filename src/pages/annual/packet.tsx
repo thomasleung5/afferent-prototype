@@ -1,13 +1,12 @@
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon } from "@/components/ui";
-import { AnnualEyebrow } from "@/features/annual/AnnualEyebrow";
+import { Btn, Icon, SectionEyebrow } from "@/components/ui";
 import { UpdatePacketView } from "@/features/annual/UpdatePacketView";
 
 export default function AnnualPacketPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<AnnualEyebrow label="Update packet"/>}
+        eyebrow={<SectionEyebrow prefix="Annual Update" label="Update packet"/>}
         title="Annual update packet"
         subtitle="Council outputs assembled from the model run. Traceable to source."
         actions={<>

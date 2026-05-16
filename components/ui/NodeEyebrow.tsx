@@ -1,3 +1,5 @@
+import { SectionEyebrow } from "./SectionEyebrow";
+
 type NodeId =
   | "services" | "salary" | "operating" | "cap" | "workload"
   | "costs" | "policy" | "feestudy" | "benchmark";
@@ -18,13 +20,7 @@ interface Props {
   node: NodeId;
 }
 
-/** Page eyebrow that reads as a system component, not a wizard step. */
+/** Build Model page eyebrow. Type-safe node → label mapping. */
 export function NodeEyebrow({ node }: Props) {
-  return (
-    <span>
-      Build Model
-      <span style={{ color: "var(--ink-4)", margin: "0 7px" }}>·</span>
-      {NODE_LABEL[node]}
-    </span>
-  );
+  return <SectionEyebrow prefix="Build Model" label={NODE_LABEL[node]}/>;
 }
