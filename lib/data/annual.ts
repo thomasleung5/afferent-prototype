@@ -1,7 +1,7 @@
 // Annual Update data — cross-model change list and recovery deltas.
 // Sourced from the FY 2026-27 annual refresh cycle (Los Altos Hills).
 
-export type ConfLevel = "High" | "Medium" | "Medium-High" | "Low";
+type ConfLevel = "High" | "Medium" | "Medium-High" | "Low";
 
 export interface AnnualChange {
   id: string;
