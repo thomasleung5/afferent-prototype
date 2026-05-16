@@ -1,7 +1,7 @@
 ﻿
+import { Link } from "@tanstack/react-router";
 import { Drawer, EditableNumber, DeptChip, RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
 import type { Service } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
@@ -13,25 +13,21 @@ interface Props {
   onClose: () => void;
 }
 
-/** Stable jitter per id so peer values don't reshuffle between renders. */
-function peerOffsets(id: string, median: number): { city: string; value: number }[] {
-  if (!median) return [];
-  const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const offsets = [-0.18, -0.07, 0.04, 0.12, 0.22];
-  const rounded = (v: number) => Math.round(v / 5) * 5;
-  return CITY.peers.slice(0, 5).map((city, i) => ({
-    city,
-    value: rounded(median * (1 + offsets[(seed + i) % offsets.length])),
-  }));
-}
-
 export function FeeDetail({ service, comparison, onClose }: Props) {
   const { updateService } = useBuildState();
   if (!service || !comparison) return null;
   const set = (patch: Partial<Service>) => updateService(service.id, patch);
-  const peers = peerOffsets(service.id, service.peer);
   const delta = comparison.recommended - service.fee;
   const deltaPct = service.fee > 0 ? (delta / service.fee) * 100 : 100;
+  const peerVariance = service.peer > 0 ? ((service.fee - service.peer) / service.peer) * 100 : 0;
+  const peerLabel =
+    peerVariance >  5 ? "above median"
+  : peerVariance < -5 ? "below median"
+  :                     "near median";
+  const peerColor =
+    peerVariance >  5 ? "var(--neg)"
+  : peerVariance < -5 ? "var(--warn)"
+  :                     "var(--pos)";
 
   return (
     <Drawer
@@ -121,32 +117,23 @@ export function FeeDetail({ service, comparison, onClose }: Props) {
         />
       </Section>
 
-      {peers.length > 0 && (
-        <Section title="Comparable cities">
-          <div style={{
-            background: "var(--paper)", border: "1px solid var(--rule)",
-            fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
-          }}>
-            {peers.map((p, i) => (
-              <div key={p.city} style={{
-                display: "flex", justifyContent: "space-between",
-                gap: 10, padding: "7px 12px",
-                borderBottom: i < peers.length - 1 ? "1px solid var(--rule)" : "none",
-              }}>
-                <span style={{ color: "var(--ink-2)" }}>{p.city}</span>
-                <span style={{ fontWeight: 500 }}>${p.value.toLocaleString()}</span>
-              </div>
-            ))}
-            <div style={{
-              display: "flex", justifyContent: "space-between",
-              padding: "8px 12px",
-              borderTop: "2px solid var(--ink)",
-              background: "var(--paper-2)",
-              fontWeight: 700,
+      {service.peer > 0 && (
+        <Section title="Peer median">
+          <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
+            <span className="num" style={{ fontSize: 18, fontWeight: 600 }}>
+              {fmt.dollars(service.peer)}
+            </span>
+            <span className="num" style={{ fontSize: 12, color: peerColor, fontWeight: 500 }}>
+              {peerVariance > 0 ? "+" : ""}{Math.round(peerVariance)}% {peerLabel}
+            </span>
+          </div>
+          <div style={{ marginTop: 8 }}>
+            <Link to="/build/benchmark" style={{
+              fontSize: 11.5, color: "var(--accent)",
+              textDecoration: "underline", textUnderlineOffset: 3,
             }}>
-              <span>Peer median</span>
-              <span>${service.peer.toLocaleString()}</span>
-            </div>
+              View fee benchmark →
+            </Link>
           </div>
         </Section>
       )}

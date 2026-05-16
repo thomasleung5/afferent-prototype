@@ -12,11 +12,12 @@ export function PolicyExceptions() {
       <div style={{
         display: "grid",
         gridTemplateColumns: "minmax(220px, 1.4fr) 120px minmax(220px, 2fr) 36px",
-        gap: 16,
-        padding: "12px 20px",
+        columnGap: 28,
+        padding: "9px 16px",
         borderBottom: "1px solid var(--rule)",
-        fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
-        letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
+        background: "var(--paper-2)",
+        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
+        color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         <div>Fee</div>
         <div style={{ textAlign: "right" }}>Target</div>
@@ -25,7 +26,7 @@ export function PolicyExceptions() {
       </div>
       {policyExceptions.length === 0 && (
         <div style={{
-          padding: "18px 20px", textAlign: "center",
+          padding: "18px 16px", textAlign: "center",
           color: "var(--ink-3)", fontSize: 12.5,
         }}>
           No exceptions yet. Department targets apply to every fee.
@@ -35,8 +36,8 @@ export function PolicyExceptions() {
         <div key={e.id} style={{
           display: "grid",
           gridTemplateColumns: "minmax(220px, 1.4fr) 120px minmax(220px, 2fr) 36px",
-          gap: 16,
-          padding: "10px 20px",
+          columnGap: 28,
+          padding: "12px 16px",
           borderBottom: i < policyExceptions.length - 1 ? "1px solid var(--rule)" : "none",
           alignItems: "center",
         }}>
@@ -80,7 +81,7 @@ export function PolicyExceptions() {
         </div>
       ))}
       <div style={{
-        padding: "10px 20px",
+        padding: "12px 16px",
         borderTop: "1px solid var(--rule-strong)",
         background: "var(--paper-2)",
       }}>

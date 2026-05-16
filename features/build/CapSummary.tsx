@@ -116,7 +116,6 @@ export function CapSummary() {
   return (
     <DeptSummaryTable
       title="Allocated overhead by department"
-      focus={`Step-down · ${fmt.dollarsK(totalAllocated)} of ${fmt.dollarsK(poolTotal)} pool`}
       cols={[
         { key: "dept",  label: "Department",          width: "1.4fr" },
         { key: "alloc", label: "Allocated overhead",  width: "160px", align: "right", mono: true },

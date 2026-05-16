@@ -1,5 +1,6 @@
 ﻿
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   DataTable, applyFilter,
   type Column, type FilterGroup,
@@ -8,7 +9,6 @@ import {
   CellInput, DeptChip, DrilldownShell, DrilldownColumn, Formula, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
 import type { DeptCode } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
@@ -28,17 +28,6 @@ const PRI_RANK: Record<Priority, number> = { high: 3, med: 2, low: 1, none: 0 };
 const STATE_RANK: Record<FeeState, number> = {
   PENDING: 0, REVIEWED: 1, READY: 2, ADOPTED: 3, DEFERRED: 4,
 };
-
-function peerOffsets(id: string, median: number): { city: string; value: number }[] {
-  if (!median) return [];
-  const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  const offsets = [-0.18, -0.07, 0.04, 0.12, 0.22];
-  const rounded = (v: number) => Math.round(v / 5) * 5;
-  return CITY.peers.slice(0, 5).map((city, i) => ({
-    city,
-    value: rounded(median * (1 + offsets[(seed + i) % offsets.length])),
-  }));
-}
 
 function priorityFor(impact: number): Priority {
   if (impact > 25000) return "high";
@@ -269,7 +258,15 @@ export function FeeScheduleTable() {
         const delta = r.recommended - r.fee;
         const deltaPct = r.fee > 0 ? (delta / r.fee) * 100 : 100;
         const fbhr = derived.fbhr[r.dept as DeptCode]?.fbhr ?? 0;
-        const peers = peerOffsets(r.id, svc.peer);
+        const peerVariance = svc.peer > 0 ? ((r.fee - svc.peer) / svc.peer) * 100 : 0;
+        const peerLabel =
+          peerVariance >  5 ? "above median"
+        : peerVariance < -5 ? "below median"
+        :                     "near median";
+        const peerColor =
+          peerVariance >  5 ? "var(--neg)"
+        : peerVariance < -5 ? "var(--warn)"
+        :                     "var(--pos)";
 
         const reasons: string[] = [];
         if (r.target < 100) reasons.push(`policy target set to ${r.target}% (vs 100% full cost)`);
@@ -387,37 +384,28 @@ export function FeeScheduleTable() {
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--rule)" }}>
                 <div className="mono" style={{
                   fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
-                  color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8,
-                }}>Comparable cities</div>
-                {peers.length === 0 ? (
+                  color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
+                }}>Peer median</div>
+                {svc.peer > 0 ? (
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                    <span className="num" style={{ fontSize: 14, fontWeight: 600 }}>
+                      {fmt.dollars(svc.peer)}
+                    </span>
+                    <span className="num" style={{ fontSize: 11.5, color: peerColor, fontWeight: 500 }}>
+                      {peerVariance > 0 ? "+" : ""}{Math.round(peerVariance)}% {peerLabel}
+                    </span>
+                  </div>
+                ) : (
                   <div style={{ fontSize: 11, color: "var(--ink-3)" }}>
                     No peer data on file for this fee.
                   </div>
-                ) : (
-                  <div style={{
-                    background: "var(--paper)", border: "1px solid var(--rule)",
-                    fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
-                  }}>
-                    {peers.map((row, i) => (
-                      <div key={row.city} style={{
-                        display: "flex", justifyContent: "space-between", gap: 10,
-                        padding: "7px 12px",
-                        borderBottom: i < peers.length - 1 ? "1px solid var(--rule)" : "none",
-                      }}>
-                        <span style={{ color: "var(--ink-2)" }}>{row.city}</span>
-                        <span style={{ fontWeight: 500 }}>${row.value.toLocaleString()}</span>
-                      </div>
-                    ))}
-                    <div style={{
-                      display: "flex", justifyContent: "space-between",
-                      padding: "10px 12px", borderTop: "2px solid var(--ink)",
-                      fontWeight: 700,
-                    }}>
-                      <span>Peer median</span>
-                      <span>${svc.peer.toLocaleString()}</span>
-                    </div>
-                  </div>
                 )}
+                <Link to="/build/benchmark" style={{
+                  display: "inline-block", marginTop: 8, fontSize: 11,
+                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                }}>
+                  View fee benchmark →
+                </Link>
               </div>
             </DrilldownColumn>
           </DrilldownShell>

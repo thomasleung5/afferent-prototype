@@ -71,12 +71,7 @@ function DecisionControl({ status, onSet }: { status: DecisionStatus; onSet: (s:
   );
 }
 
-function PriorityDot({ p }: { p: "high" | "med" | "low" | "none" }) {
-  const color = p === "high" ? "var(--neg)" : p === "med" ? "var(--warn)" : "var(--ink-3)";
-  return <span style={{ display: "inline-block", width: 8, height: 8, borderRadius: "50%", background: color }}/>;
-}
-
-type SortKey = "priority" | "change" | "section" | "prior" | "current" | "impact" | "decision";
+type SortKey = "change" | "section" | "prior" | "current" | "impact" | "decision";
 
 export function ChangeReviewTable() {
   const [queue, setQueue]     = useState<QueueFilter>("ALL");
@@ -138,11 +133,8 @@ export function ChangeReviewTable() {
       return arr;
     }
     arr.sort((a, b) => {
-      const priRank  = { none: 0, low: 1, med: 2, high: 3 };
-      const confRank = { low: 0, medium: 1, high: 2 };
       const decRank  = { accepted: 2, deferred: 1, rejected: 0 };
       const get = (r: typeof a): string | number => {
-        if (sortKey === "priority")   return priRank[r.priority] ?? 0;
         if (sortKey === "change")     return r.change;
         if (sortKey === "section")    return SECTION_LABEL[r.section] ?? "";
         if (sortKey === "prior")      return r.prior;
@@ -160,10 +152,9 @@ export function ChangeReviewTable() {
     return arr;
   }, [filtered, sortKey, sortDir, decisions]);
 
-  const COLS = "40px minmax(260px, 2fr) 150px 100px 100px 140px 190px 28px";
+  const COLS = "minmax(260px, 2fr) 150px 100px 100px 140px 190px 28px";
 
   const HEADERS: { key: SortKey | "_chev"; label: string; align: "left" | "right" }[] = [
-    { key: "priority", label: "Pri.",    align: "left" },
     { key: "change",   label: "Change",  align: "left" },
     { key: "section",  label: "Section", align: "left" },
     { key: "prior",    label: "Prior",   align: "right" },
@@ -174,20 +165,31 @@ export function ChangeReviewTable() {
   ];
 
   return (
-    <div>
-      {/* Headline */}
-      <div style={{ marginBottom: 16 }}>
-        <div className="num display" style={{ fontSize: 56, fontWeight: 600, letterSpacing: "-0.03em", lineHeight: 1.0, color: "var(--ink)" }}>
-          +$472K
-        </div>
-        <div style={{ fontSize: 14, color: "var(--ink-2)", lineHeight: 1.5, marginTop: 10, maxWidth: 640 }}>
-          Net cost impact across <b>{enriched.length}</b> changes. <b>{totals.accepted}</b> accepted,{" "}
-          <b>{totals.pending}</b> pending review, <b>{totals.deferred}</b> deferred.{" "}
-          Blended recovery <b>{RECOVERY_DELTAS.priorBlended}% → {RECOVERY_DELTAS.currentBlended}%</b>{" "}
-          ({RECOVERY_DELTAS.deltaPts} pts).
-        </div>
-        <div style={{ marginTop: 8, fontSize: 13, fontWeight: 500, color: totals.pending > 0 ? "var(--warn)" : "var(--pos)" }}>
-          {totals.pending > 0 ? `${totals.pending} decisions required before packet` : "Ready for packet — all changes reviewed"}
+    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
+      {/* Summary */}
+      <div style={{ marginBottom: 12 }}>
+        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 8 }}>
+          <div>
+            <div className="mono" style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6 }}>
+              Net impact +$472K
+            </div>
+            <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
+              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{enriched.length}</b> changes
+              {" · "}
+              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{totals.accepted}</b> accepted
+              {" · "}
+              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{totals.deferred}</b> deferred
+              {" · blended recovery "}
+              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{RECOVERY_DELTAS.priorBlended}% → {RECOVERY_DELTAS.currentBlended}%</b>
+              {" ("}{RECOVERY_DELTAS.deltaPts} pts{")"}
+            </div>
+          </div>
+          <div style={{ fontSize: 13, fontWeight: 500, color: totals.pending > 0 ? "var(--warn)" : "var(--pos)" }}>
+            {totals.pending > 0 ? `${totals.pending} pending` : "Packet ready"}
+            <div style={{ fontSize: 11, fontWeight: 400, color: "var(--ink-3)" }}>
+              {totals.pending > 0 ? "Review before packet" : "All changes reviewed"}
+            </div>
+          </div>
         </div>
       </div>
 
@@ -277,9 +279,6 @@ export function ChangeReviewTable() {
                 }}
                 onClick={() => setOpenId(open ? null : r.id)}
               >
-                <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-                  <PriorityDot p={r.priority}/>
-                </div>
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 13 }}>{r.change}</div>
                   <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>

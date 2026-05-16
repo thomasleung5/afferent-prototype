@@ -36,11 +36,12 @@ export function DepartmentTargets() {
       <div style={{
         display: "grid",
         gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
-        gap: 16,
-        padding: "12px 20px",
+        columnGap: 28,
+        padding: "9px 16px",
         borderBottom: "1px solid var(--rule)",
-        fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
-        letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
+        background: "var(--paper-2)",
+        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
+        color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         <div>Department</div>
         <div>Target Recovery</div>
@@ -50,8 +51,8 @@ export function DepartmentTargets() {
         <div key={t.id} style={{
           display: "grid",
           gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
-          gap: 16,
-          padding: "14px 20px",
+          columnGap: 28,
+          padding: "12px 16px",
           borderBottom: i < policyTargets.length - 1 ? "1px solid var(--rule)" : "none",
           alignItems: "center",
         }}>

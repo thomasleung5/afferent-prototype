@@ -126,7 +126,6 @@ export function OperatingSummary() {
   return (
     <DeptSummaryTable
       title="Operating costs by department"
-      focus="Operating $ ÷ productive hrs"
       cols={[
         { key: "dept",   label: "Department",     width: "1.5fr" },
         { key: "opCost", label: "Operating $",    width: "160px", align: "right", mono: true },

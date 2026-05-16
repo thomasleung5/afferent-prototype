@@ -118,7 +118,6 @@ export function LaborSummary() {
   return (
     <DeptSummaryTable
       title="Direct labor by department"
-      focus="(salary + benefits) ÷ productive hrs"
       cols={[
         { key: "dept",      label: "Department",  width: "1.5fr" },
         { key: "positions", label: "Positions",   width: "160px" },
