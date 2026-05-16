@@ -157,7 +157,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <div>
           <div style={{ fontSize: 13, fontWeight: 500 }}>{r.driver}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>{r.id}</div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
     },
@@ -227,7 +227,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <div>
           <div style={{ fontSize: 13, fontWeight: 500 }}>{r.alert}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>{r.id}</div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
     },
@@ -361,7 +361,7 @@ export default function RevenueMonitoringPage() {
             }}>
               <div>
                 <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{a.title}</div>
-                <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>{a.id}</div>
+                <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
               </div>
               <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
                 {a.rationale}

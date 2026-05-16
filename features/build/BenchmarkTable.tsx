@@ -92,7 +92,7 @@ export function BenchmarkTable() {
       render: (r) => (
         <div>
           <div style={{ fontSize: 13 }}>{r.name}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 2 }}>{r.id}</div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>{r.id}</div>
         </div>
       ),
     },

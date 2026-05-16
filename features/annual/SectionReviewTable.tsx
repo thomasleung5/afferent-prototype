@@ -188,7 +188,7 @@ export function SectionReviewTable({ sectionKey }: Props) {
               >
                 <div>
                   <div style={{ fontWeight: r.status === "auto" ? 400 : 500, fontSize: 13 }}>{r.item}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>{r.id}</div>
+                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
                 </div>
                 <div><StatusPill kind={kind}>{stLabel}</StatusPill></div>
                 <div className="mono num" style={{ textAlign: "right", fontSize: 11.5, color: "var(--ink-3)" }}>{r.prior}</div>

@@ -34,7 +34,7 @@ export function TopFixesTable({ limit = 12 }: Props) {
       render: (r) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ color: "var(--ink)" }}>{r.name}</span>
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", letterSpacing: "0.05em" }}>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.05em" }}>
             {r.id}
           </span>
         </div>

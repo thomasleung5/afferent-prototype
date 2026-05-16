@@ -49,7 +49,7 @@ export function CostOfServiceTable() {
       render: (r) => (
         <div>
           <div style={{ fontSize: 12.5 }}>{r.name}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 2 }}>{r.id}</div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>{r.id}</div>
         </div>
       ),
     },

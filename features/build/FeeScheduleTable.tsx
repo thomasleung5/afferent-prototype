@@ -149,7 +149,7 @@ export function FeeScheduleTable() {
             }} title={`${r.priority} priority`}/>
             <span style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</span>
           </div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 2, paddingLeft: 16 }}>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2, paddingLeft: 16 }}>
             {r.id}
           </div>
         </div>

@@ -94,7 +94,7 @@ export function ServicesTable() {
             value={r.name}
             onChange={(v) => updateService(r.id, { name: String(v) })}
           />
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", letterSpacing: "0.04em", paddingLeft: 6 }}>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.04em", paddingLeft: 6 }}>
             {r.id}
           </span>
         </div>

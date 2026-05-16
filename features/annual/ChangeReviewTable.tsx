@@ -281,7 +281,7 @@ export function ChangeReviewTable() {
               >
                 <div>
                   <div style={{ fontWeight: 500, fontSize: 13 }}>{r.change}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", marginTop: 3 }}>
+                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>
                     {r.id} · {r.affected}
                   </div>
                 </div>
