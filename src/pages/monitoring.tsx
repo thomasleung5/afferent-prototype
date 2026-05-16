@@ -83,7 +83,11 @@ export default function RevenueMonitoringPage() {
       width: "140px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num" style={{ fontWeight: 600 }}>{r.current}%</span>,
+      render: (r) => (
+        <span className="num" style={{
+          fontSize: 14, fontWeight: 600, letterSpacing: "-0.005em",
+        }}>{r.current}%</span>
+      ),
     },
     {
       key: "drift",
@@ -94,7 +98,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <span className="num" style={{
           color: r.drift < 0 ? "var(--neg)" : r.drift > 0 ? "var(--pos)" : "var(--ink-3)",
-          fontWeight: 500,
+          fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
         }}>
           {r.drift > 0 ? "+" : ""}{r.drift} pts
         </span>
@@ -107,7 +111,9 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)" }}>
+        <span className="num" style={{
+          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+        }}>
           {fmt.dollarsK(r.subsidy)}/yr
         </span>
       ),
@@ -168,7 +174,9 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontWeight: 500 }}>
+        <span className="num" style={{
+          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+        }}>
           +{fmt.dollarsK(r.annualImpact)} gap
         </span>
       ),
@@ -236,7 +244,9 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontWeight: 500 }}>
+        <span className="num" style={{
+          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+        }}>
           +{fmt.dollarsK(r.impact)}
         </span>
       ),
@@ -357,7 +367,7 @@ export default function RevenueMonitoringPage() {
                 {a.rationale}
               </div>
               <div className="num" style={{
-                fontSize: 14, fontWeight: 600,
+                fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
                 color: "var(--pos)", textAlign: "right",
               }}>
                 +{fmt.dollarsK(a.fiscalImpact)}/yr

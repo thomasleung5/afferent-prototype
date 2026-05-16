@@ -17,6 +17,13 @@ const TONE_COLOR: Record<Tone, string> = {
   neg:  "var(--neg)",
 };
 
+const TONE_EMPHASIS: Record<Tone, { size: number; weight: number }> = {
+  info: { size: 12.5, weight: 500 },
+  pos:  { size: 13.5, weight: 600 },
+  warn: { size: 13.5, weight: 600 },
+  neg:  { size: 13.5, weight: 600 },
+};
+
 /** Compact horizontal status strip used at the top of every Build Model screen.
  *  Mirrors the legacy `StatusRow` pattern: governance facts, not KPI tiles. */
 export function StatusRow({ items }: Props) {
@@ -32,9 +39,9 @@ export function StatusRow({ items }: Props) {
         const label = isObj ? item.label : undefined;
         return (
           <div key={i} style={{
-            padding: "10px 16px",
+            padding: "10px 18px",
             borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
-            display: "flex", flexDirection: "column", gap: 2,
+            display: "flex", flexDirection: "column", gap: 3,
             minWidth: 0,
           }}>
             {label && (
@@ -43,8 +50,11 @@ export function StatusRow({ items }: Props) {
                 color: "var(--ink-3)", textTransform: "uppercase",
               }}>{label}</div>
             )}
-            <div style={{
-              fontSize: 12.5, color: TONE_COLOR[tone], fontWeight: 500,
+            <div className={tone === "info" ? undefined : "num"} style={{
+              fontSize: TONE_EMPHASIS[tone].size,
+              color: TONE_COLOR[tone],
+              fontWeight: TONE_EMPHASIS[tone].weight,
+              letterSpacing: tone === "info" ? "normal" : "-0.005em",
               whiteSpace: "nowrap",
             }}>
               {value}
