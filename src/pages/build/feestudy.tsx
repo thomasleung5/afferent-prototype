@@ -87,12 +87,15 @@ export default function FeeSchedulePage() {
       />
 
       <StatusRow items={[
-        `${comparisons.length} fees`,
-        `${adoptedAt} at recommended`,
-        `${underRecovery} under target`,
-        `Now ${fmt.dollarsK(revenueNow)} · Rec ${fmt.dollarsK(revenueRec)}`,
-        { value: `+${fmt.dollarsK(totalUplift)}/yr uplift`, tone: "pos" },
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
+        { label: "Fees",              value: `${comparisons.length}` },
+        { label: "At recommended",    value: `${adoptedAt}` },
+        { label: "Under target",      value: `${underRecovery}` },
+        { label: "Revenue now",       value: fmt.dollarsK(revenueNow) },
+        { label: "Revenue rec.",      value: fmt.dollarsK(revenueRec) },
+        { label: "Annual uplift",     value: `+${fmt.dollarsK(totalUplift)}/yr`, tone: "pos" },
+        ...(reviewing > 0
+          ? [{ label: "For review", value: `${reviewing}`, tone: "warn" as const }]
+          : []),
       ]}/>
 
       <div style={{

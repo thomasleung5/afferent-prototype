@@ -23,11 +23,11 @@ export default function RecoveryPolicyPage() {
       />
 
       <StatusRow items={[
-        `${policyTargets.length} departments`,
-        `${policyExceptions.length} fee exception${policyExceptions.length === 1 ? "" : "s"}`,
-        { value: `${Math.round(impact.overallPct)}% intended recovery`, tone: impact.overallPct >= 80 ? "pos" : "warn" },
-        `${fmt.dollarsK(impact.subsidy)} annual subsidy`,
-        "FY 2026-27",
+        { label: "Departments",       value: `${policyTargets.length}` },
+        { label: "Fee exceptions",    value: `${policyExceptions.length}` },
+        { label: "Intended recovery", value: `${Math.round(impact.overallPct)}%`, tone: impact.overallPct >= 80 ? "pos" : "warn" },
+        { label: "Annual subsidy",    value: fmt.dollarsK(impact.subsidy) },
+        { label: "Fiscal year",       value: "FY 2026-27" },
       ]}/>
 
       <PolicySection

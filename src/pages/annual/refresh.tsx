@@ -12,12 +12,12 @@ export default function AnnualRefreshPage() {
         subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
       />
       <StatusRow items={[
-        "2,464 rows imported",
-        "6 inputs",
-        { value: "97% auto-mapped", tone: "pos" },
-        { value: "58 need review",  tone: "warn" },
-        "Confidence · Medium-High",
-        "Refreshed Apr 24, 2026",
+        { label: "Rows imported", value: "2,464" },
+        { label: "Inputs",        value: "6" },
+        { label: "Auto-mapped",   value: "97%",  tone: "pos" },
+        { label: "Need review",   value: "58",   tone: "warn" },
+        { label: "Confidence",    value: "Medium-High" },
+        { label: "Last refresh",  value: "Apr 24, 2026" },
       ]}/>
       <RefreshImportGrid/>
     </Page>

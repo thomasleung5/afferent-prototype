@@ -27,11 +27,11 @@ export default function CostOfServicePage() {
       />
 
       <StatusRow items={[
-        `${services.length} services`,
-        `Total cost ${fmt.dollarsK(totalAnnual)}/yr`,
-        `Current revenue ${fmt.dollarsK(totalRevenue)}/yr`,
-        { value: `Recovery ${recoveryPct.toFixed(0)}%`, tone: recoveryPct >= 80 ? "pos" : recoveryPct >= 50 ? "warn" : "neg" },
-        { value: `Gap ${fmt.dollarsK(gap)}/yr`, tone: "neg" },
+        { label: "Services",        value: `${services.length}` },
+        { label: "Total cost",      value: `${fmt.dollarsK(totalAnnual)}/yr` },
+        { label: "Current revenue", value: `${fmt.dollarsK(totalRevenue)}/yr` },
+        { label: "Recovery",        value: `${recoveryPct.toFixed(0)}%`, tone: recoveryPct >= 80 ? "pos" : recoveryPct >= 50 ? "warn" : "neg" },
+        { label: "Gap",             value: `${fmt.dollarsK(gap)}/yr`, tone: "neg" },
       ]}/>
 
       <RateDerivation/>

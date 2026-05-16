@@ -39,13 +39,15 @@ export default function FeeBenchmarkPage() {
       />
 
       <StatusRow items={[
-        `${services.length} fees`,
-        `${withPeer.length} with peer data`,
-        `${aboveMedian} above median`,
-        { value: `${inLine} in line`, tone: "pos" },
-        { value: `${belowMedian} below median`, tone: "warn" },
-        `Avg variance ${avgVariance >= 0 ? "+" : ""}${Math.round(avgVariance)}%`,
-        ...(reviewing > 0 ? [{ value: `${reviewing} for review`, tone: "warn" as const }] : []),
+        { label: "Fees",            value: `${services.length}` },
+        { label: "With peer data",  value: `${withPeer.length}` },
+        { label: "Above median",    value: `${aboveMedian}` },
+        { label: "In line",         value: `${inLine}`, tone: "pos" },
+        { label: "Below median",    value: `${belowMedian}`, tone: "warn" },
+        { label: "Avg variance",    value: `${avgVariance >= 0 ? "+" : ""}${Math.round(avgVariance)}%` },
+        ...(reviewing > 0
+          ? [{ label: "For review", value: `${reviewing}`, tone: "warn" as const }]
+          : []),
       ]}/>
 
       <BenchmarkTable/>
