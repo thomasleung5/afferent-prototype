@@ -15,6 +15,7 @@ interface Props {
   accent?: boolean;
   checklist?: Checklist[];
   stats?: StatItem[];
+  support?: string;
 }
 
 /** Two-card workflow branch on the Home screen. `accent` flips the card to navy. */
@@ -23,7 +24,7 @@ export function EntryCard({
   progress, progressLabel,
   cta, href,
   accent = false,
-  checklist, stats,
+  checklist, stats, support,
 }: Props) {
   const navy = "var(--navy)";
   const navyLine = "var(--navy-line)";
@@ -83,7 +84,9 @@ export function EntryCard({
 
       {stats && (
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12,
+          display: "grid",
+          gridTemplateColumns: stats.length === 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
+          gap: 12,
           marginTop: 4, paddingTop: 14,
           borderTop: `1px solid ${accent ? navyLine : "var(--rule)"}`,
         }}>
@@ -100,6 +103,14 @@ export function EntryCard({
             </div>
           ))}
         </div>
+      )}
+
+      {support && (
+        <div style={{
+          fontSize: 11.5,
+          color: accent ? navySub : "var(--ink-3)",
+          lineHeight: 1.5,
+        }}>{support}</div>
       )}
 
       <div style={{ marginTop: "auto", paddingTop: 16 }}>
