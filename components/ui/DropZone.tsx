@@ -3,7 +3,7 @@ import { useRef, useState, type ReactNode } from "react";
 import { Btn } from "./Btn";
 import { Icon } from "./Icon";
 
-export interface LastImport {
+interface LastImport {
   file: string;
   rows: number;
   mapped: number;

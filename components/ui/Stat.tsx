@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 
-export type StatSize = "sm" | "md" | "lg" | "xl";
+type StatSize = "sm" | "md" | "lg" | "xl";
 
 interface Props {
   label: string;
