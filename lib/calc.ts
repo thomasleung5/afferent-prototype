@@ -181,7 +181,7 @@ export function serviceCosts(
 
 /** Recovery target for a service: dept-level policy unless overridden by a
  *  named exception. Match is case-insensitive on the fee name. */
-export function targetFor(
+function targetFor(
   service: Service,
   deptTargets: PolicyTarget[],
   exceptions: PolicyException[],
