@@ -1,11 +1,12 @@
 import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
-import { TableToolbar, StatusPill, DrilldownShell, DrilldownColumn } from "@/components/ui";
+import { TableToolbar, StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/components/ui";
 import { ConfReason } from "@/features/build/StateChip";
+import { StatusRow } from "@/features/_shared/StatusRow";
 import { ANNUAL_CHANGES, RECOVERY_DELTAS, type AnnualChange } from "@/lib/data/annual";
 
 type DecisionStatus = "accepted" | "deferred" | "rejected" | undefined;
-type QueueFilter = "ALL" | "NEEDS" | "HIGH" | "LOW_CONF" | "ACCEPTED";
+type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
 type SectionFilter = "ALL" | "SAL" | "WKL" | "CAP" | "FEE" | "SVC" | "OPS";
 
 const SECTION_LABEL: Record<string, string> = {
@@ -92,10 +93,9 @@ export function ChangeReviewTable() {
 
   const counts = useMemo(() => ({
     ALL:      enriched.length,
-    NEEDS:    enriched.filter((r) => !decisions[r.id]).length,
-    HIGH:     enriched.filter((r) => r.priority === "high").length,
-    LOW_CONF: enriched.filter((r) => r.confidence.toLowerCase() === "low").length,
+    PENDING:  enriched.filter((r) => !decisions[r.id]).length,
     ACCEPTED: enriched.filter((r) => decisions[r.id] === "accepted").length,
+    DEFERRED: enriched.filter((r) => decisions[r.id] === "deferred").length,
   }), [enriched, decisions]);
 
   const totals = useMemo(() => ({
@@ -106,10 +106,9 @@ export function ChangeReviewTable() {
 
   const filtered = enriched.filter((r) => {
     if (section !== "ALL" && r.section !== section) return false;
-    if (queue === "NEEDS")    return !decisions[r.id];
-    if (queue === "HIGH")     return r.priority === "high";
-    if (queue === "LOW_CONF") return r.confidence.toLowerCase() === "low";
+    if (queue === "PENDING")  return !decisions[r.id];
     if (queue === "ACCEPTED") return decisions[r.id] === "accepted";
+    if (queue === "DEFERRED") return decisions[r.id] === "deferred";
     return true;
   });
 
@@ -165,48 +164,32 @@ export function ChangeReviewTable() {
   ];
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 0 }}>
-      {/* Summary */}
-      <div style={{ marginBottom: 12 }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 24, marginBottom: 8 }}>
-          <div>
-            <div className="mono" style={{ fontSize: 10, fontWeight: 600, letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6 }}>
-              Net impact +$472K
-            </div>
-            <div className="mono" style={{ fontSize: 12, color: "var(--ink-3)" }}>
-              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{enriched.length}</b> changes
-              {" · "}
-              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{totals.accepted}</b> accepted
-              {" · "}
-              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{totals.deferred}</b> deferred
-              {" · blended recovery "}
-              <b style={{ color: "var(--ink)", fontWeight: 600 }}>{RECOVERY_DELTAS.priorBlended}% → {RECOVERY_DELTAS.currentBlended}%</b>
-              {" ("}{RECOVERY_DELTAS.deltaPts} pts{")"}
-            </div>
-          </div>
-          <div style={{ fontSize: 13, fontWeight: 500, color: totals.pending > 0 ? "var(--warn)" : "var(--pos)" }}>
-            {totals.pending > 0 ? `${totals.pending} pending` : "Packet ready"}
-            <div style={{ fontSize: 11, fontWeight: 400, color: "var(--ink-3)" }}>
-              {totals.pending > 0 ? "Review before packet" : "All changes reviewed"}
-            </div>
-          </div>
-        </div>
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+      <StatusRow items={[
+        { label: "Net impact",       value: "+$472K" },
+        { label: "Changes",          value: `${enriched.length}` },
+        { label: "Pending",          value: `${totals.pending}`,  tone: totals.pending > 0 ? "warn" : undefined },
+        { label: "Accepted",         value: `${totals.accepted}` },
+        { label: "Deferred",         value: `${totals.deferred}` },
+        { label: "Blended recovery", value: `${RECOVERY_DELTAS.priorBlended}% → ${RECOVERY_DELTAS.currentBlended}%` },
+      ]}/>
 
-      <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
+      <div>
+        <SectionLabel right={`${enriched.length} changes`}>
+          Change decision queue
+        </SectionLabel>
+        <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
         <TableToolbar
-          title="Change decision queue"
           shownCount={sorted.length}
           totalCount={enriched.length}
           filters={[
             {
-              id: "queue", label: "Queue",
+              id: "queue",
               options: [
-                { value: "ALL",      label: "All",            count: counts.ALL },
-                { value: "NEEDS",    label: "Needs review",   count: counts.NEEDS },
-                { value: "HIGH",     label: "High impact",    count: counts.HIGH },
-                { value: "LOW_CONF", label: "Low confidence", count: counts.LOW_CONF },
-                { value: "ACCEPTED", label: "Accepted",       count: counts.ACCEPTED },
+                { value: "ALL",      label: "All",      count: counts.ALL },
+                { value: "PENDING",  label: "Pending",  count: counts.PENDING },
+                { value: "ACCEPTED", label: "Accepted", count: counts.ACCEPTED },
+                { value: "DEFERRED", label: "Deferred", count: counts.DEFERRED },
               ],
               value: queue, onChange: (v) => setQueue(v as QueueFilter),
             },
@@ -364,6 +347,7 @@ export function ChangeReviewTable() {
             No changes match current filters.
           </div>
         )}
+        </div>
       </div>
     </div>
   );

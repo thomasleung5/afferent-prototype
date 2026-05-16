@@ -4,7 +4,7 @@ import {
   DataTable, type Column,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -111,8 +111,11 @@ export function RateDerivation() {
   ];
 
   return (
-    <DataTable
-      title="Fully Burdened Hourly Rate by Department"
+    <div>
+      <SectionLabel right={`${rows.length} departments`}>
+        Fully burdened hourly rate by department
+      </SectionLabel>
+      <DataTable
       cols={cols}
       rows={rows}
       defaultSort={{ key: "deptName", dir: "asc" }}
@@ -249,6 +252,7 @@ export function RateDerivation() {
           </DrilldownShell>
         );
       }}
-    />
+      />
+    </div>
   );
 }

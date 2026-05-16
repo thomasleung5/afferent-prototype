@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, DrilldownShell, DrilldownColumn, Formula, SourcePill,
+  CellInput, DeptChip, DrilldownShell, DrilldownColumn, Formula, SectionLabel, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -15,26 +15,16 @@ import { useBuildState } from "@/lib/store";
 import { StateChip, ConfReason, type FeeState } from "./StateChip";
 
 type Confidence = "high" | "med" | "low";
-type Priority = "high" | "med" | "low" | "none";
 
 interface Row extends FeeComparison {
-  priority: Priority;
   confidence: Confidence;
   state: FeeState;
   flag: boolean;
 }
 
-const PRI_RANK: Record<Priority, number> = { high: 3, med: 2, low: 1, none: 0 };
 const STATE_RANK: Record<FeeState, number> = {
   PENDING: 0, REVIEWED: 1, READY: 2, ADOPTED: 3, DEFERRED: 4,
 };
-
-function priorityFor(impact: number): Priority {
-  if (impact > 25000) return "high";
-  if (impact >  5000) return "med";
-  if (impact > 0)     return "low";
-  return "none";
-}
 
 function confidenceFor(
   volume: number, hours: number, recoveryNow: number, cost: number,
@@ -44,13 +34,6 @@ function confidenceFor(
   if (volume < 5 || cost < 50) return "med";
   return "high";
 }
-
-const PRI_COLOR: Record<Priority, string> = {
-  high: "var(--neg)",
-  med:  "var(--warn)",
-  low:  "var(--ink-3)",
-  none: "var(--ink-4)",
-};
 
 const CONF_COLOR: Record<Confidence, string> = {
   high: "var(--pos)",
@@ -69,11 +52,9 @@ export function FeeScheduleTable() {
   const setState = (id: string, st: FeeState) => setStateMap((s) => ({ ...s, [id]: st }));
 
   const enriched: Row[] = useMemo(() => derived.comparisons.map((c) => {
-    const priority = priorityFor(c.annualUplift);
     const confidence = confidenceFor(c.volume, c.hours, c.recoveryPct, c.unitCost);
     return {
       ...c,
-      priority,
       confidence,
       state: stateFor(c.id),
       flag: confidence === "low",
@@ -82,7 +63,6 @@ export function FeeScheduleTable() {
 
   const filtered = useMemo(() => {
     let out = applyFilter(enriched, "dept", deptFilter);
-    if (filter === "HIGH")    out = out.filter((r) => r.priority === "high");
     if (filter === "LOW")     out = out.filter((r) => r.confidence === "low");
     if (filter === "PENDING") out = out.filter((r) => r.state === "PENDING");
     if (filter === "READY")   out = out.filter((r) => r.state === "READY" || r.state === "REVIEWED");
@@ -90,17 +70,16 @@ export function FeeScheduleTable() {
     return out;
   }, [enriched, filter, deptFilter]);
 
-  // Default ranking: high priority + low confidence first, then by uplift.
+  // Default ranking: low confidence first, then by annual uplift.
   const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const aScore = PRI_RANK[a.priority] * 10 + (a.confidence === "low" ? 3 : a.confidence === "med" ? 2 : 1);
-    const bScore = PRI_RANK[b.priority] * 10 + (b.confidence === "low" ? 3 : b.confidence === "med" ? 2 : 1);
+    const aScore = a.confidence === "low" ? 3 : a.confidence === "med" ? 2 : 1;
+    const bScore = b.confidence === "low" ? 3 : b.confidence === "med" ? 2 : 1;
     if (aScore !== bScore) return bScore - aScore;
     return b.annualUplift - a.annualUplift;
   }), [filtered]);
 
   const filterCounts = useMemo(() => ({
     ALL:     enriched.length,
-    HIGH:    enriched.filter((r) => r.priority === "high").length,
     LOW:     enriched.filter((r) => r.confidence === "low").length,
     PENDING: enriched.filter((r) => r.state === "PENDING").length,
     READY:   enriched.filter((r) => r.state === "READY" || r.state === "REVIEWED").length,
@@ -109,14 +88,13 @@ export function FeeScheduleTable() {
 
   const filters: FilterGroup[] = [
     {
-      id: "queue", label: "Queue",
+      id: "queue",
       options: [
-        { value: "ALL",     label: "All",          count: filterCounts.ALL },
-        { value: "HIGH",    label: "High priority",count: filterCounts.HIGH },
+        { value: "ALL",     label: "All",            count: filterCounts.ALL },
         { value: "LOW",     label: "Low confidence", count: filterCounts.LOW },
-        { value: "PENDING", label: "Pending",      count: filterCounts.PENDING },
-        { value: "READY",   label: "Ready",        count: filterCounts.READY },
-        { value: "ADOPTED", label: "Adopted",      count: filterCounts.ADOPTED },
+        { value: "PENDING", label: "Pending",        count: filterCounts.PENDING },
+        { value: "READY",   label: "Ready",          count: filterCounts.READY },
+        { value: "ADOPTED", label: "Adopted",        count: filterCounts.ADOPTED },
       ],
       value: filter,
       onChange: setFilter,
@@ -142,14 +120,8 @@ export function FeeScheduleTable() {
       sortable: true,
       render: (r) => (
         <div>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <span style={{
-              width: 8, height: 8, borderRadius: "50%",
-              background: PRI_COLOR[r.priority],
-            }} title={`${r.priority} priority`}/>
-            <span style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</span>
-          </div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2, paddingLeft: 16 }}>
+          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</div>
+          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>
             {r.id}
           </div>
         </div>
@@ -164,7 +136,7 @@ export function FeeScheduleTable() {
     },
     {
       key: "fee",
-      label: "Now",
+      label: "Current",
       width: "90px",
       align: "right",
       sortable: true,
@@ -244,8 +216,11 @@ export function FeeScheduleTable() {
   ], [derived.fbhr, updateService, stateMap]);
 
   return (
-    <DataTable
-      title="Fee decision queue"
+    <div>
+      <SectionLabel right={`${enriched.length} fees`}>
+        Fee decision queue
+      </SectionLabel>
+      <DataTable
       cols={cols}
       rows={sorted}
       filters={filters}
@@ -411,8 +386,8 @@ export function FeeScheduleTable() {
           </DrilldownShell>
         );
       }}
-      footerNote={`${sorted.length} of ${enriched.length} fees · click a row for policy, calculation, and confidence`}
-    />
+      />
+    </div>
   );
 }
 

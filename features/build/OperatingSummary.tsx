@@ -1,6 +1,6 @@
 ﻿
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula } from "@/components/ui";
+import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -124,9 +124,12 @@ export function OperatingSummary() {
   });
 
   return (
-    <DeptSummaryTable
-      title="Operating costs by department"
-      cols={[
+    <div>
+      <SectionLabel right={`${rows.length} departments`}>
+        Operating costs by department
+      </SectionLabel>
+      <DeptSummaryTable
+        cols={[
         { key: "dept",   label: "Department",     width: "1.5fr" },
         { key: "opCost", label: "Operating $",    width: "160px", align: "right", mono: true },
         { key: "perHr",  label: "$/hr",           width: "110px", align: "right", mono: true },
@@ -148,6 +151,7 @@ export function OperatingSummary() {
           </span>
         ),
       }}
-    />
+      />
+    </div>
   );
 }

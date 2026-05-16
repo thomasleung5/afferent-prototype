@@ -7,7 +7,7 @@ export default function AnnualRefreshPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<AnnualEyebrow role="Import node" label="Refresh inputs"/>}
+        eyebrow={<AnnualEyebrow label="Refresh inputs"/>}
         title="Annual Data Refresh"
         subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
       />

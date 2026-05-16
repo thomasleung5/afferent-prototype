@@ -1,5 +1,5 @@
 ﻿
-import { EditableNumber, EditableText, Btn, Icon } from "@/components/ui";
+import { EditableNumber, EditableText, Icon } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 
 export function PolicyExceptions() {
@@ -71,8 +71,8 @@ export function PolicyExceptions() {
             style={{
               width: 24, height: 24,
               display: "inline-flex", alignItems: "center", justifyContent: "center",
-              color: "var(--ink-3)", background: "transparent",
-              border: "1px solid var(--rule)",
+              color: "var(--ink-4)", background: "transparent",
+              border: "none",
               cursor: "pointer",
             }}
           >
@@ -81,13 +81,18 @@ export function PolicyExceptions() {
         </div>
       ))}
       <div style={{
-        padding: "12px 16px",
+        padding: "10px 16px",
         borderTop: "1px solid var(--rule-strong)",
         background: "var(--paper-2)",
       }}>
-        <Btn kind="subtle" onClick={addPolicyException}>
-          <Icon name="plus" size={12}/> Add exception
-        </Btn>
+        <button onClick={addPolicyException} style={{
+          display: "inline-flex", alignItems: "center", gap: 6,
+          fontSize: 12, fontWeight: 500, color: "var(--accent)",
+          padding: "4px 8px", border: "1px dashed var(--rule-strong)",
+          background: "var(--paper)", cursor: "pointer",
+        }}>
+          + Add fee exception
+        </button>
       </div>
     </div>
   );

@@ -61,7 +61,7 @@ export function EntryCard({
 
       {checklist && (
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 10,
+          display: "grid", gridTemplateColumns: `repeat(${checklist.length}, 1fr)`, gap: 10,
           marginTop: 4, paddingTop: 14, borderTop: "1px solid var(--rule)",
         }}>
           {checklist.map((c, i) => (
@@ -70,13 +70,10 @@ export function EntryCard({
                 fontSize: 9.5, fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{c.l}</div>
-              <div style={{
-                display: "flex", alignItems: "center", gap: 5,
-                marginTop: 5, fontSize: 12, color: "var(--ink-2)",
-              }}>
-                <span style={{ color: "var(--pos)", fontSize: 11 }}>✓</span>
-                <span className="num">{c.v}</span>
-              </div>
+              <div className="num display" style={{
+                fontSize: 26, fontWeight: 600, marginTop: 6, letterSpacing: "-0.02em",
+                color: "var(--ink-2)",
+              }}>{c.v}</div>
             </div>
           ))}
         </div>

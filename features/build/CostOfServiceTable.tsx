@@ -5,7 +5,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -105,8 +105,11 @@ export function CostOfServiceTable() {
   ];
 
   return (
-    <DataTable
-      title="Cost of Service"
+    <div>
+      <SectionLabel right={`${all.length} services`}>
+        Cost of service
+      </SectionLabel>
+      <DataTable
       cols={cols}
       rows={rows}
       filters={filters}
@@ -253,7 +256,7 @@ export function CostOfServiceTable() {
           </DrilldownShell>
         );
       }}
-      footerNote={`${rows.length} services · annual = unit cost × volume`}
-    />
+      />
+    </div>
   );
 }

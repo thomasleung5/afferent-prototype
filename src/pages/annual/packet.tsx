@@ -7,7 +7,7 @@ export default function AnnualPacketPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<AnnualEyebrow role="Output" label="Update packet"/>}
+        eyebrow={<AnnualEyebrow label="Update packet"/>}
         title="Annual update packet"
         subtitle="Council outputs assembled from the model run. Traceable to source."
         actions={<>

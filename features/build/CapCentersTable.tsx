@@ -1,5 +1,6 @@
 ﻿
 import { DataTable, type Column } from "@/components/table";
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
 import { useBuildState } from "@/lib/store";
@@ -92,12 +93,15 @@ export function CapCentersTable() {
   ];
 
   return (
-    <DataTable
-      title="Cost centers"
-      cols={cols}
-      rows={rows}
-      defaultSort={{ key: "totalCost", dir: "desc" }}
-      footerNote={`${rows.length} centers · derived from the cost pools below`}
-    />
+    <div>
+      <SectionLabel right={`${rows.length} centers`}>
+        Cost centers
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={rows}
+        defaultSort={{ key: "totalCost", dir: "desc" }}
+      />
+    </div>
   );
 }

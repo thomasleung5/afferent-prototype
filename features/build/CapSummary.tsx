@@ -1,7 +1,7 @@
 ﻿
 import { useMemo } from "react";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula } from "@/components/ui";
+import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
@@ -114,9 +114,12 @@ export function CapSummary() {
   });
 
   return (
-    <DeptSummaryTable
-      title="Allocated overhead by department"
-      cols={[
+    <div>
+      <SectionLabel right={`${rows.length} departments · ${capPools.length} pools`}>
+        Allocated overhead by department
+      </SectionLabel>
+      <DeptSummaryTable
+        cols={[
         { key: "dept",  label: "Department",          width: "1.4fr" },
         { key: "alloc", label: "Allocated overhead",  width: "160px", align: "right", mono: true },
         { key: "perHr", label: "$/hr",                width: "100px", align: "right", mono: true },
@@ -140,6 +143,7 @@ export function CapSummary() {
           </span>
         ),
       }}
-    />
+      />
+    </div>
   );
 }

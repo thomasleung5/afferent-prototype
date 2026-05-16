@@ -61,18 +61,17 @@ export default function HomePage() {
       {/* Workflow branch — setup + operations */}
       <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 16 }}>
         <EntryCard
-          eyebrow="First-time setup"
-          title="Build cost-of-service model"
-          desc="Define services, build the salary table, allocate costs, and lock the cost of service."
+          eyebrow="Cost-of-service model"
+          title="Cost-of-service model"
+          desc="Services, labor, overhead allocations, and recovery structure."
           progress={74}
-          progressLabel="Baseline model — staff validation in progress"
+          progressLabel="Baseline model"
           cta="Configure model"
           href="/build"
           checklist={[
             { l: "Services", v: "32 mapped" },
             { l: "Labor",    v: "73 positions" },
             { l: "Overhead", v: "14 pools" },
-            { l: "Fees",     v: "Recovery targets" },
           ]}
         />
         <EntryCard
@@ -117,22 +116,16 @@ export default function HomePage() {
             fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.55, textWrap: "pretty",
             maxWidth: 420,
           }}>
-            Refresh the inputs that change each year. Reuse everything else. Generate the Council packet.
-          </div>
-          <div style={{
-            fontSize: 12, color: "var(--ink-3)", lineHeight: 1.55, marginTop: 2,
-          }}>
-            Monitoring identified material recovery drift since FY 2025–26 adoption.
+            Refresh annual inputs, review recovery impacts, and generate the adoption packet.
           </div>
         </div>
 
         <div style={{
-          display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 16,
+          display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16,
         }}>
           {[
             { l: "Changes to review", v: "12" },
             { l: "Structure reused",  v: "91%" },
-            { l: "Est. review time",  v: "2.5 hrs" },
             { l: "Fees impacted",     v: "25" },
           ].map((s) => (
             <div key={s.l}>
@@ -141,7 +134,7 @@ export default function HomePage() {
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{
-                fontSize: 22, fontWeight: 600, marginTop: 5, letterSpacing: "-0.015em",
+                fontSize: 26, fontWeight: 600, marginTop: 6, letterSpacing: "-0.02em",
               }}>{s.v}</div>
             </div>
           ))}

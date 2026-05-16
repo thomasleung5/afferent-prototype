@@ -7,8 +7,9 @@ export default function AnnualChangesPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<AnnualEyebrow role="Reconciliation" label="Review changes"/>}
+        eyebrow={<AnnualEyebrow label="Review changes"/>}
         title="What changed this update?"
+        subtitle="Review updates to workload, labor, overhead, and recovery assumptions before generating the adoption packet."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export log</Btn>}
       />
       <ChangeReviewTable/>

@@ -300,7 +300,6 @@ export default function RevenueMonitoringPage() {
           cols={deptCols}
           rows={DEPT_HEALTH.map((d) => ({ ...d, id: d.dept }))}
           defaultSort={{ key: "drift", dir: "asc" }}
-          footerNote="Recovery compares current revenue to cost of service at each department's policy target."
         />
       </div>
 
@@ -313,7 +312,6 @@ export default function RevenueMonitoringPage() {
           cols={driverCols}
           rows={DRIFT_DRIVERS}
           defaultSort={{ key: "annualImpact", dir: "desc" }}
-          footerNote="Drivers are ranked by annual gap impact. Links jump to the Build Model section that owns the input."
         />
       </div>
 

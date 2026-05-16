@@ -1,7 +1,7 @@
 
 import { useMemo, useState } from "react";
 import { DataTable, deriveDeptFilter, applyFilter, type Column, type FilterGroup } from "@/components/table";
-import { DeptChip, RecoveryMeter } from "@/components/ui";
+import { DeptChip, RecoveryMeter, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { topFixes, type TopFix } from "@/lib/calc";
 import { SERVICES } from "@/lib/data/services";
@@ -95,14 +95,16 @@ export function TopFixesTable({ limit = 12 }: Props) {
   ];
 
   return (
-    <DataTable
-      title="Fees with the largest cost-recovery shortfall"
-      eyebrow="Top fixes"
-      cols={cols}
-      rows={rows}
-      filters={filters}
-      defaultSort={{ key: "annualUplift", dir: "desc" }}
-      footerNote={`${rows.length} services · sorted by annual uplift`}
-    />
+    <div>
+      <SectionLabel right={`${allRows.length} services`}>
+        Fees with the largest cost-recovery shortfall
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={rows}
+        filters={filters}
+        defaultSort={{ key: "annualUplift", dir: "desc" }}
+      />
+    </div>
   );
 }

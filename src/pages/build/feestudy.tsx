@@ -90,8 +90,8 @@ export default function FeeSchedulePage() {
         { label: "Fees",              value: `${comparisons.length}` },
         { label: "At recommended",    value: `${adoptedAt}` },
         { label: "Under target",      value: `${underRecovery}` },
-        { label: "Revenue now",       value: fmt.dollarsK(revenueNow) },
-        { label: "Revenue rec.",      value: fmt.dollarsK(revenueRec) },
+        { label: "Current revenue",   value: fmt.dollarsK(revenueNow) },
+        { label: "Recommended revenue", value: fmt.dollarsK(revenueRec) },
         { label: "Annual uplift",     value: `+${fmt.dollarsK(totalUplift)}/yr`, tone: "pos" },
         ...(reviewing > 0
           ? [{ label: "For review", value: `${reviewing}`, tone: "warn" as const }]

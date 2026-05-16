@@ -1,4 +1,4 @@
-import { Btn, Icon } from "@/components/ui";
+import { Btn, Icon, SectionLabel } from "@/components/ui";
 
 interface ImportCard {
   name: string;
@@ -71,11 +71,9 @@ export function RefreshImportGrid() {
 
       {/* Import cards */}
       <div>
-        <div className="mono" style={{
-          fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-          marginBottom: 10,
-        }}>Imports by model section</div>
+        <SectionLabel right={`${CARDS.length} sources`}>
+          Imports by model section
+        </SectionLabel>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
           {CARDS.map((c, i) => {
@@ -116,7 +114,7 @@ export function RefreshImportGrid() {
                       <div className="mono" style={{ fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase" }}>
                         {stat.label}
                       </div>
-                      <div className="num" style={{ fontSize: 16, fontWeight: 600, marginTop: 2, color: stat.color }}>
+                      <div className="num" style={{ fontSize: 14, fontWeight: 500, marginTop: 4, color: stat.color }}>
                         {stat.value}
                       </div>
                     </div>
@@ -130,7 +128,7 @@ export function RefreshImportGrid() {
                   <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)" }}>
                     Last refreshed Apr 18, 2026
                   </span>
-                  <Btn kind="ghost"><Icon name="arrow-up-to-line" size={11}/> Re-import</Btn>
+                  <Btn kind="ghost"><Icon name="arrow-up-to-line" size={11}/> Import</Btn>
                 </div>
               </div>
             );

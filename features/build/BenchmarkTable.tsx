@@ -5,7 +5,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, Formula, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, Formula, SectionLabel, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
@@ -144,8 +144,11 @@ export function BenchmarkTable() {
   ];
 
   return (
-    <DataTable
-      title="Fee benchmark · adopted fees in peer cities"
+    <div>
+      <SectionLabel right={`${rows.length} fees · ${CITY.peers.length} peer cities`}>
+        Fee benchmark · adopted fees in peer cities
+      </SectionLabel>
+      <DataTable
       cols={cols}
       rows={rows}
       filters={filters}
@@ -246,7 +249,7 @@ export function BenchmarkTable() {
           </DrilldownShell>
         );
       }}
-      footerNote={`${rows.length} fees · click a row to compare peer cities and cost basis`}
-    />
+      />
+    </div>
   );
 }

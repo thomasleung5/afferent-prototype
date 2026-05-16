@@ -4,8 +4,7 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect, DeptChip, SourcePill } from "@/components/ui";
-import { fmt } from "@/lib/format";
+import { CellInput, CellSelect, DeptChip, SectionLabel, SourcePill } from "@/components/ui";
 import type { DeptCode, Position } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -171,14 +170,17 @@ export function PositionsTable() {
   ];
 
   return (
-    <DataTable
-      title="Position roster"
-      cols={cols}
-      rows={rows}
-      filters={filters}
-      defaultSort={{ key: "title", dir: "asc" }}
-      stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
-      footerNote={`${rows.length} positions · ${fmt.dollarsK(rows.reduce((a, r) => a + (r.salary + r.benefits) * r.fte, 0))} total comp`}
-    />
+    <div>
+      <SectionLabel right={`${all.length} positions`}>
+        Position roster
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={rows}
+        filters={filters}
+        defaultSort={{ key: "title", dir: "asc" }}
+        stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
+      />
+    </div>
   );
 }

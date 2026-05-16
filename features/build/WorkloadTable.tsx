@@ -4,7 +4,7 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, DeptChip, SourcePill } from "@/components/ui";
+import { CellInput, DeptChip, SectionLabel, SourcePill } from "@/components/ui";
 import type { DeptCode, WorkloadRow } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -188,14 +188,17 @@ export function WorkloadTable() {
   ];
 
   return (
-    <DataTable
-      title="Service workload"
-      cols={cols}
-      rows={rows}
-      filters={filters}
-      defaultSort={{ key: "name", dir: "asc" }}
-      stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
-      footerNote={`${rows.length} services · ${rows.filter((r) => r.current != null).length} captured · current volumes feed annual cost`}
-    />
+    <div>
+      <SectionLabel right={`${all.length} services`}>
+        Service workload
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={rows}
+        filters={filters}
+        defaultSort={{ key: "name", dir: "asc" }}
+        stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
+      />
+    </div>
   );
 }

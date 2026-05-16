@@ -1,6 +1,6 @@
 ﻿
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula } from "@/components/ui";
+import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
@@ -116,9 +116,12 @@ export function LaborSummary() {
   });
 
   return (
-    <DeptSummaryTable
-      title="Direct labor by department"
-      cols={[
+    <div>
+      <SectionLabel right={`${rows.length} departments · ${totalPositions} positions`}>
+        Direct labor by department
+      </SectionLabel>
+      <DeptSummaryTable
+        cols={[
         { key: "dept",      label: "Department",  width: "1.5fr" },
         { key: "positions", label: "Positions",   width: "160px" },
         { key: "avgRate",   label: "Avg $/hr",    width: "110px", align: "right", mono: true },
@@ -145,6 +148,7 @@ export function LaborSummary() {
         hrs: Math.round(totalHrs).toLocaleString(),
         total: fmt.dollarsK(totalComp),
       }}
-    />
+      />
+    </div>
   );
 }

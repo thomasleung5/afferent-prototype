@@ -4,7 +4,7 @@ import {
   DataTable,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect } from "@/components/ui";
+import { CellInput, CellSelect, SectionLabel } from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -190,13 +190,16 @@ export function OperatingTable() {
   ];
 
   return (
-    <DataTable
-      title="Operating cost lines"
-      cols={cols}
-      rows={rows}
-      filters={filters}
-      defaultSort={{ key: "amount", dir: "desc" }}
-      footerNote={`${rows.length} of ${operating.length} lines · ${operating.filter((l) => l.include).length} included`}
-    />
+    <div>
+      <SectionLabel right={`${operating.length} lines`}>
+        Operating cost lines
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={rows}
+        filters={filters}
+        defaultSort={{ key: "amount", dir: "desc" }}
+      />
+    </div>
   );
 }

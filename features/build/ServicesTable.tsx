@@ -6,7 +6,7 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect, DeptChip,
-  DrilldownShell, DrilldownColumn, TraceBlock,
+  DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -181,8 +181,11 @@ export function ServicesTable() {
   ];
 
   return (
-    <DataTable
-      title="Service catalog"
+    <div>
+      <SectionLabel right={`${allRows.length} services`}>
+        Service catalog
+      </SectionLabel>
+      <DataTable
       cols={cols}
       rows={rows}
       filters={filters}
@@ -262,7 +265,7 @@ export function ServicesTable() {
           </DrilldownShell>
         );
       }}
-      footerNote={`${rows.length} services · edit inline`}
-    />
+      />
+    </div>
   );
 }
