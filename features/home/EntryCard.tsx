@@ -98,7 +98,7 @@ export function EntryCard({
                 color: accent ? navyDim : "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{
-                fontSize: 22, fontWeight: 600, marginTop: 4, letterSpacing: "-0.015em",
+                fontSize: 26, fontWeight: 600, marginTop: 6, letterSpacing: "-0.02em",
               }}>{s.v}</div>
             </div>
           ))}

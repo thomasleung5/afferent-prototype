@@ -41,7 +41,7 @@ export default function HomePage() {
             textTransform: "uppercase", color: "var(--ink-3)",
           }}>Citywide cost recovery</div>
           <div className="display" style={{
-            fontSize: 34, fontWeight: 600, letterSpacing: "-0.02em", lineHeight: 1.1,
+            fontSize: 40, fontWeight: 600, letterSpacing: "-0.024em", lineHeight: 1.08,
           }}>
             <span className="num" style={{ color: "var(--neg)" }}>{fmt.dollarsK(gap)}/yr</span>
             {" "}
@@ -141,7 +141,7 @@ export default function HomePage() {
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{
-                fontSize: 20, fontWeight: 600, marginTop: 4, letterSpacing: "-0.015em",
+                fontSize: 22, fontWeight: 600, marginTop: 5, letterSpacing: "-0.015em",
               }}>{s.v}</div>
             </div>
           ))}

@@ -18,10 +18,10 @@ const TONE_COLOR: Record<Tone, string> = {
 };
 
 const TONE_EMPHASIS: Record<Tone, { size: number; weight: number }> = {
-  info: { size: 12.5, weight: 500 },
-  pos:  { size: 13.5, weight: 600 },
-  warn: { size: 13.5, weight: 600 },
-  neg:  { size: 13.5, weight: 600 },
+  info: { size: 13,   weight: 500 },
+  pos:  { size: 16,   weight: 600 },
+  warn: { size: 16,   weight: 600 },
+  neg:  { size: 16,   weight: 600 },
 };
 
 /** Compact horizontal status strip used at the top of every Build Model screen.
@@ -39,9 +39,9 @@ export function StatusRow({ items }: Props) {
         const label = isObj ? item.label : undefined;
         return (
           <div key={i} style={{
-            padding: "10px 18px",
+            padding: "14px 22px",
             borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
-            display: "flex", flexDirection: "column", gap: 3,
+            display: "flex", flexDirection: "column", gap: 5,
             minWidth: 0,
           }}>
             {label && (
