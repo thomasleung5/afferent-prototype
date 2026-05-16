@@ -9,10 +9,11 @@ interface NavItem {
 }
 
 const NAV: NavItem[] = [
-  { href: "/",       label: "Home" },
-  { href: "/gap",    label: "Revenue Gap" },
-  { href: "/build",  label: "Build Model",  prefix: "/build" },
-  { href: "/annual", label: "Annual Update", prefix: "/annual" },
+  { href: "/",           label: "Home" },
+  { href: "/gap",        label: "Revenue Gap" },
+  { href: "/build",      label: "Build Model",        prefix: "/build" },
+  { href: "/monitoring", label: "Revenue Monitoring", prefix: "/monitoring" },
+  { href: "/annual",     label: "Annual Update",      prefix: "/annual" },
 ];
 
 export function TopBar() {
