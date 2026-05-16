@@ -12,10 +12,6 @@ export const fmt = {
     if (a >= 1_000)     return `$${(n / 1_000).toFixed(0)}K`;
     return `$${Math.round(n).toLocaleString()}`;
   },
-  pct(n: number | null | undefined, d = 0): string {
-    if (n == null) return "—";
-    return `${n.toFixed(d)}%`;
-  },
   int(n: number | null | undefined): string {
     if (n == null) return "—";
     return Math.round(n).toLocaleString();

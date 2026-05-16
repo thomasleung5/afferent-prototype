@@ -6,7 +6,7 @@ interface Props {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  accent?: string;
+  color?: string;
   size?: StatSize;
 }
 
@@ -17,7 +17,7 @@ const SIZES: Record<StatSize, { value: number; label: number }> = {
   xl: { value: 88, label: 11 },
 };
 
-export function Stat({ label, value, sub, accent, size = "md" }: Props) {
+export function Stat({ label, value, sub, color, size = "md" }: Props) {
   const s = SIZES[size];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
@@ -29,7 +29,7 @@ export function Stat({ label, value, sub, accent, size = "md" }: Props) {
       </div>
       <div className="display num" style={{
         fontSize: s.value, fontWeight: 600, lineHeight: 1,
-        color: accent ?? "var(--ink)",
+        color: color ?? "var(--ink)",
         letterSpacing: "-0.02em",
       }}>
         {value}
