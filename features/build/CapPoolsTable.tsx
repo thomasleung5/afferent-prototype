@@ -46,10 +46,13 @@ interface SectionProps {
   onCreateBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
 }
 
-const GRID = "minmax(220px, 1.6fr) 60px 120px 80px minmax(280px, 2fr)";
+const GRID = "minmax(220px, 1.6fr) 60px 120px 80px 120px minmax(260px, 2fr)";
 
 function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
   const eligibleTotal = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+  // Weighted eligible %: total eligible $ / total raw $. NOT a simple average
+  // of row percentages — a $1M pool at 50% dominates a $1K pool at 100%.
+  const weightedEligiblePct = total > 0 ? Math.round((eligibleTotal / total) * 100) : 0;
   return (
     <div style={{
       background: "var(--paper)",
@@ -85,6 +88,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         <div style={{ textAlign: "right" }}>%</div>
         <div style={{ textAlign: "right" }}>Amount</div>
         <div style={{ textAlign: "right" }}>Eligible %</div>
+        <div style={{ textAlign: "right" }}>Eligible $</div>
         <div>Basis</div>
       </div>
 
@@ -104,12 +108,12 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         );
       })}
 
-      {/* Subtotal footer — two rows: Allocated (raw) + Eligible (after policy) */}
+      {/* Reconciliation row — Total | 100% | raw $ | weighted % | eligible $ | */}
       <div style={{
         display: "grid",
         gridTemplateColumns: GRID,
         gap: 14,
-        padding: "7px 18px",
+        padding: "9px 18px",
         borderTop: "2px solid var(--ink)",
         background: "var(--paper-2)",
         fontSize: 12, fontWeight: 600,
@@ -117,30 +121,17 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         <div className="mono" style={{
           fontSize: 10, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Allocated</div>
+        }}>Total</div>
         <div className="num" style={{ textAlign: "right" }}>100%</div>
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
-        <div/>
-        <div/>
-      </div>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: GRID,
-        gap: 14,
-        padding: "7px 18px",
-        background: "var(--paper-2)",
-        fontSize: 12, fontWeight: 600,
-        color: "var(--ink-2)",
-      }}>
-        <div className="mono" style={{
-          fontSize: 10, letterSpacing: "0.1em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Eligible</div>
-        <div className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
-          {total > 0 ? `${Math.round((eligibleTotal / total) * 100)}%` : "—"}
+        <div
+          className="num"
+          style={{ textAlign: "right", color: "var(--ink-2)" }}
+          title={total > 0 ? `${fmt.dollars(eligibleTotal)} eligible of ${fmt.dollars(total)} raw` : undefined}
+        >
+          {total > 0 ? `${weightedEligiblePct}%` : "—"}
         </div>
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(eligibleTotal)}</div>
-        <div/>
         <div/>
       </div>
 
@@ -167,6 +158,7 @@ interface RowProps {
 
 function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: RowProps) {
   const pct = centerTotal > 0 ? Math.round((pool.amount / centerTotal) * 100) : 0;
+  const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
   return (
     <div style={{
       display: "grid",
@@ -200,6 +192,17 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
           }}
           align="right" suffix="%"
         />
+      </div>
+      <div
+        className="num"
+        title={`${fmt.dollars(pool.amount)} × ${pool.eligiblePercent}% eligible`}
+        style={{
+          textAlign: "right",
+          color: pool.eligiblePercent === 0 ? "var(--ink-4)" : "var(--ink)",
+          fontWeight: 500,
+        }}
+      >
+        {fmt.dollars(eligibleAmount)}
       </div>
       <AllocationBasisCombobox
         bases={bases}
