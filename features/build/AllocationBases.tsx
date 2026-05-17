@@ -299,7 +299,7 @@ function CellTrace({
           {"  ÷  "}
           {formatCell(total, basis.fmt)} {basis.unit}
           {"  =  "}
-          <span style={{ color: "var(--accent)", fontWeight: 700 }}>{share.toFixed(1)}%</span>
+          <span style={{ color: "var(--accent)" }}>{share.toFixed(1)}%</span>
         </BigFormula>
         <div style={{
           marginTop: 12, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,

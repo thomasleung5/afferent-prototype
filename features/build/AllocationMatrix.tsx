@@ -492,7 +492,7 @@ function CellTrace({
               gap: 12, alignItems: "baseline",
               padding: "10px 14px",
               borderTop: "2px solid var(--ink)",
-              fontSize: 12, fontWeight: 700,
+              fontSize: 12, fontWeight: 500,
               background: "var(--paper)",
             }}>
               <span/>

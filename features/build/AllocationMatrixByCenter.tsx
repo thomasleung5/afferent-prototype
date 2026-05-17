@@ -372,7 +372,7 @@ function CenterCellTrace({
               padding: "12px 16px",
               borderTop: "2px solid var(--ink)",
               background: "var(--paper)",
-              fontSize: 13, fontWeight: 700,
+              fontSize: 13, fontWeight: 500,
             }}>
               <div>Total to {dept.name}</div>
               <div/>

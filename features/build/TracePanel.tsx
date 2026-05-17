@@ -124,8 +124,8 @@ interface StatProps {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  /** Promote this stat to the headline outcome — same size, heavier weight,
-   *  accent color. Emphasis carries through tone/weight, not scale. */
+  /** Promote this stat to the headline outcome — same size and weight as
+   *  surrounding stats, accent color only. */
   emphasis?: boolean;
 }
 
@@ -139,7 +139,7 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
       }}>{label}</div>
       <div style={{
         fontSize: 14,
-        fontWeight: emphasis ? 700 : 500,
+        fontWeight: 500,
         color: emphasis ? "var(--accent)" : "var(--ink)",
         lineHeight: 1.3,
         fontVariantNumeric: "tabular-nums",
@@ -208,7 +208,7 @@ export function FlowDiagram({ steps }: { steps: FlowStep[] }) {
             <div>
               <div style={{
                 fontSize: 13.5,
-                fontWeight: s.emphasis ? 700 : 500,
+                fontWeight: 500,
                 color: s.emphasis ? "var(--accent)" : "var(--ink)",
                 fontVariantNumeric: "tabular-nums",
                 lineHeight: 1.35,
