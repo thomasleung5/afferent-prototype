@@ -293,7 +293,7 @@ export default function RevenueMonitoringPage() {
 
       {/* 2. Revenue health by department */}
       <div>
-        <SectionLabel right={`${DEPT_HEALTH.length} departments · live model`}>
+        <SectionLabel right={`${DEPT_HEALTH.length} departments`}>
           Revenue health by department
         </SectionLabel>
         <DataTable

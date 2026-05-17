@@ -15,8 +15,12 @@ const SECTION_LABEL: Record<string, string> = {
 };
 
 const SECTION_HREF: Record<string, string> = {
-  SAL: "/annual/sections", WKL: "/annual/sections", CAP: "/annual/sections",
-  FEE: "/annual/sections", SVC: "/annual/sections", OPS: "/annual/sections",
+  SAL: "/build/salary",
+  WKL: "/build/workload",
+  CAP: "/build/cap",
+  FEE: "/build/feestudy",
+  SVC: "/build/services",
+  OPS: "/build/operating",
 };
 
 function sectionFor(change: string): string {
