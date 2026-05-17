@@ -143,7 +143,7 @@ export function AllocationMatrixByCenter() {
                         fontFamily: "var(--ff-mono)",
                         fontVariantNumeric: "tabular-nums",
                         color: zero ? "var(--ink-4)" : "var(--ink)",
-                        fontWeight: isOpen ? 700 : 500,
+                        fontWeight: isOpen ? 600 : 400,
                         background: isOpen ? "var(--accent-tint)" : "transparent",
                         border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
                         cursor: zero ? "default" : "pointer",
@@ -154,7 +154,7 @@ export function AllocationMatrixByCenter() {
                   );
                 })}
                 <div className="num" style={{
-                  textAlign: "right", fontSize: 12, fontWeight: 600,
+                  textAlign: "right", fontSize: 12,
                 }}>{fmt.dollarsK(rt)}</div>
               </div>
             );
@@ -174,7 +174,7 @@ export function AllocationMatrixByCenter() {
               fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase",
             }}>Column total</div>
-            <div className="num" style={{ textAlign: "right", fontSize: 12.5, fontWeight: 600 }}>
+            <div className="num" style={{ textAlign: "right", fontSize: 12.5 }}>
               {fmt.dollarsK(totalCap)}
             </div>
             <div/>
@@ -183,13 +183,13 @@ export function AllocationMatrixByCenter() {
               const zero = t < 0.5;
               return (
                 <div key={d.code} className="num" style={{
-                  textAlign: "right", fontSize: 12, fontWeight: 600,
+                  textAlign: "right", fontSize: 12,
                   color: zero ? "var(--ink-4)" : "var(--ink)",
                 }}>{zero ? "—" : fmt.dollarsK(t)}</div>
               );
             })}
             <div className="num" style={{
-              textAlign: "right", fontSize: 13, fontWeight: 700,
+              textAlign: "right", fontSize: 13,
             }}>{fmt.dollarsK(grandTotal)}</div>
           </div>
         </div>

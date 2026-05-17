@@ -227,7 +227,6 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
         style={{
           textAlign: "right",
           color: pool.eligiblePercent === 0 ? "var(--ink-4)" : "var(--ink)",
-          fontWeight: 500,
         }}
       >
         {fmt.dollars(eligibleAmount)}
