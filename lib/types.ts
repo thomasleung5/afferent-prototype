@@ -118,10 +118,30 @@ export interface CapPool {
   center: string;
   pool: string;
   amount: number;
+  /** Foreign key into BuildState.allocationBases. Drives which catalog
+   *  entry's source/methodology display under the pool's basis cell. */
+  basisId: string;
+  /** Denormalized display text — kept in sync with the catalog name on
+   *  selection so exports/legacy readers don't need catalog access. */
   basis: string;
   receiving: string;
   recoverability: string;
   review: "Reviewed" | "Review";
+}
+
+/** Reusable allocation basis (denominator) used by one or more cost pools.
+ *  The catalog is study-scoped — users can pick from canonical bases or
+ *  create their own. */
+export interface AllocationBasis {
+  id: string;
+  name: string;
+  /** Where the denominator comes from — e.g. "HRIS import", "Clerk report". */
+  source: string;
+  /** Optional longer methodology explanation, shown on hover/drilldown. */
+  methodologyNote?: string;
+  validationStatus?: "verified" | "draft" | "needs-review";
+  createdBy?: string;
+  createdAt: string;
 }
 
 /** Final CAP allocation, per direct department. */

@@ -4,12 +4,13 @@ import { persist } from "zustand/middleware";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
 import { CAP_ALLOCATION, CAP_POOLS } from "@/lib/data/cap";
+import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import type {
-  CapAllocation, CapPool, DeptCode, OperatingLine, PolicyException, PolicyTarget,
-  Position, Service, WorkloadRow,
+  AllocationBasis, CapAllocation, CapPool, DeptCode, OperatingLine, PolicyException,
+  PolicyTarget, Position, Service, WorkloadRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -39,6 +40,9 @@ interface BuildState {
   operating: OperatingLine[];
   capAllocation: Record<DeptCode, CapAllocation>;
   capPools: CapPool[];
+  /** Study-scoped catalog of named allocation bases. Seeded with canonical
+   *  entries; users can extend at runtime via AllocationBasisCombobox. */
+  allocationBases: AllocationBasis[];
   workload: WorkloadRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
@@ -71,6 +75,8 @@ interface BuildActions {
   addCapCenter: () => void;
   updateCapPool: (id: string, patch: Partial<CapPool>) => void;
   renameCapCenter: (oldName: string, newName: string) => void;
+  /** Append a user-defined allocation basis to the catalog. Returns the new id. */
+  addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
@@ -119,6 +125,7 @@ const initialState = (): BuildState => {
       ENG:  { ...CAP_ALLOCATION.ENG },
     },
     capPools: pools,
+    allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
     workload: WORKLOAD.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
@@ -318,6 +325,7 @@ function applyAccepted(
         center: String(entity.sourceDepartment ?? entity.center ?? ""),
         pool: String(entity.poolName ?? entity.pool ?? m.proposedTargetLabel),
         amount: Number(entity.allocatedAmount ?? entity.amount ?? 0) || 0,
+        basisId: "",
         basis: String(entity.allocationBasis ?? entity.basis ?? "FY budgeted"),
         receiving: String(entity.targetDepartment ?? "Multiple departments"),
         recoverability: String(entity.recoverability ?? "Partially recoverable"),
@@ -441,7 +449,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capPools: [
             ...s.capPools,
             { id: `cap-${Date.now()}`, center, pool: "New pool", amount: 0,
-              basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+              basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
           ],
         })),
 
@@ -452,7 +460,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capPools: [
               ...s.capPools,
               { id: `cap-${Date.now()}`, center: name, pool: "New pool", amount: 0,
-                basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+                basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
             ],
             capCenterOrder: s.capCenterOrder.includes(name)
               ? s.capCenterOrder
@@ -475,6 +483,25 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
           };
         }),
+
+      addAllocationBasis: ({ name, source, methodologyNote }) => {
+        const id = `bas-user-${Date.now()}`;
+        set((s) => ({
+          allocationBases: [
+            ...s.allocationBases,
+            {
+              id,
+              name: name.trim(),
+              source: source.trim(),
+              methodologyNote: methodologyNote?.trim() || undefined,
+              validationStatus: "draft",
+              createdBy: "current user",
+              createdAt: new Date().toISOString(),
+            },
+          ],
+        }));
+        return id;
+      },
 
       mergePositions: (r, fileName) => {
         const result = toApplyResult("positions", fileName, r);
@@ -638,6 +665,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             ENG:  { ...CAP_ALLOCATION.ENG },
           },
           capPools: pools,
+          allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
         });
       },
@@ -648,6 +676,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           positions: [],
           operating: [],
           capPools: [],
+          allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capAllocation: {
             PLAN: { dept: "PLAN", allocated: 0 },
             BLDG: { dept: "BLDG", allocated: 0 },

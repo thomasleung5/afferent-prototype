@@ -1,12 +1,12 @@
 
-import { AddRowButton, CellInput } from "@/components/ui";
+import { AddRowButton, AllocationBasisCombobox, CellInput } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { CapPool } from "@/lib/types";
+import type { AllocationBasis, CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 export function CapPoolsTable() {
-  const { capPools, capCenterOrder, addCapPool, updateCapPool } = useBuildState();
+  const { capPools, capCenterOrder, allocationBases, addCapPool, updateCapPool, addAllocationBasis } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
@@ -19,8 +19,10 @@ export function CapPoolsTable() {
             name={c.name}
             pools={pools}
             total={c.total}
+            bases={allocationBases}
             onAddPool={() => addCapPool(c.name)}
             onUpdatePool={updateCapPool}
+            onCreateBasis={addAllocationBasis}
           />
         );
       })}
@@ -38,11 +40,13 @@ interface SectionProps {
   name: string;
   pools: CapPool[];
   total: number;
+  bases: AllocationBasis[];
   onAddPool: () => void;
   onUpdatePool: (id: string, patch: Partial<CapPool>) => void;
+  onCreateBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
 }
 
-function CenterSection({ name, pools, total, onAddPool, onUpdatePool }: SectionProps) {
+function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
   return (
     <div style={{
       background: "var(--paper)",
@@ -90,7 +94,9 @@ function CenterSection({ name, pools, total, onAddPool, onUpdatePool }: SectionP
             pool={p}
             centerTotal={total}
             isLast={isLast}
+            bases={bases}
             onUpdate={(patch) => onUpdatePool(p.id, patch)}
+            onCreateBasis={onCreateBasis}
           />
         );
       })}
@@ -131,10 +137,12 @@ interface RowProps {
   pool: CapPool;
   centerTotal: number;
   isLast: boolean;
+  bases: AllocationBasis[];
   onUpdate: (patch: Partial<CapPool>) => void;
+  onCreateBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
 }
 
-function PoolRow({ pool, centerTotal, isLast, onUpdate }: RowProps) {
+function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: RowProps) {
   const pct = centerTotal > 0 ? Math.round((pool.amount / centerTotal) * 100) : 0;
   return (
     <div style={{
@@ -159,9 +167,12 @@ function PoolRow({ pool, centerTotal, isLast, onUpdate }: RowProps) {
         onChange={(v) => onUpdate({ amount: Number(v) || 0 })}
         align="right" prefix="$"
       />
-      <CellInput
-        value={pool.basis}
-        onChange={(v) => onUpdate({ basis: String(v) })}
+      <AllocationBasisCombobox
+        bases={bases}
+        selectedId={pool.basisId}
+        fallbackText={pool.basis}
+        onSelect={(basisId, basisName) => onUpdate({ basisId, basis: basisName })}
+        onCreate={onCreateBasis}
       />
       <CellInput
         value={pool.recoverability}
