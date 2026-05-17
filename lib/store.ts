@@ -701,8 +701,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
     {
       name: STORAGE_KEY,
       onRehydrateStorage: () => (state) => {
-        if (state && (!state.capCenterOrder || state.capCenterOrder.length === 0)) {
+        if (!state) return;
+        if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
+        }
+        // Backfill for state persisted before allocationBases existed.
+        // Without this, basisForPool(pool, undefined) crashes the matrix.
+        if (!state.allocationBases || state.allocationBases.length === 0) {
+          state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
         }
       },
     },
