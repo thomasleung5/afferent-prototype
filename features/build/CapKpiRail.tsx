@@ -49,7 +49,6 @@ export function CapKpiRail() {
         label="Total CAP scope"
         value={fmt.dollarsK(total)}
         sub={`${centers.length} cost centers`}
-        source="CAP report"
       />
       <KpiTile
         label="Indirect departments"
