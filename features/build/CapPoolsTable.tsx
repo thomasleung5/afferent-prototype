@@ -26,12 +26,6 @@ export function CapPoolsTable() {
           />
         );
       })}
-      <div style={{
-        fontSize: 11.5, color: "var(--ink-3)",
-        padding: "4px 2px",
-      }}>
-        {centers.length} cost centers · {capPools.length} pools
-      </div>
     </div>
   );
 }
@@ -47,6 +41,9 @@ interface SectionProps {
 }
 
 const GRID = "minmax(220px, 1.6fr) 60px 120px 80px 120px minmax(260px, 2fr)";
+// Σ of column minimums + gap (5 × 14) — anything narrower clips the
+// rightmost cell, so we scroll horizontally below this width.
+const GRID_MIN_WIDTH = 930;
 
 function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
   const eligibleTotal = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
@@ -67,77 +64,81 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         border: "1px solid var(--rule)",
         overflow: "hidden",
       }}>
-      {/* Column header */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: GRID,
-        gap: 14,
-        padding: "8px 18px",
-        background: "var(--paper-2)",
-        borderBottom: "1px solid var(--rule)",
-        fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
-        letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
-      }}>
-        <div>Pool</div>
-        <div style={{ textAlign: "right" }}>%</div>
-        <div style={{ textAlign: "right" }}>$</div>
-        <div style={{ textAlign: "right" }}>Eligible %</div>
-        <div style={{ textAlign: "right" }}>Eligible $</div>
-        <div>Basis</div>
-      </div>
+      <div style={{ overflowX: "auto" }}>
+        <div style={{ minWidth: GRID_MIN_WIDTH }}>
+          {/* Column header */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: GRID,
+            gap: 14,
+            padding: "8px 18px",
+            background: "var(--paper-2)",
+            borderBottom: "1px solid var(--rule)",
+            fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
+            letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
+          }}>
+            <div>Pool</div>
+            <div style={{ textAlign: "right" }}>%</div>
+            <div style={{ textAlign: "right" }}>$</div>
+            <div style={{ textAlign: "right" }}>Eligible %</div>
+            <div style={{ textAlign: "right" }}>Eligible $</div>
+            <div>Basis</div>
+          </div>
 
-      {/* Rows */}
-      {pools.map((p, i) => {
-        const isLast = i === pools.length - 1;
-        return (
-          <PoolRow
-            key={p.id}
-            pool={p}
-            centerTotal={total}
-            isLast={isLast}
-            bases={bases}
-            onUpdate={(patch) => onUpdatePool(p.id, patch)}
-            onCreateBasis={onCreateBasis}
-          />
-        );
-      })}
+          {/* Rows */}
+          {pools.map((p, i) => {
+            const isLast = i === pools.length - 1;
+            return (
+              <PoolRow
+                key={p.id}
+                pool={p}
+                centerTotal={total}
+                isLast={isLast}
+                bases={bases}
+                onUpdate={(patch) => onUpdatePool(p.id, patch)}
+                onCreateBasis={onCreateBasis}
+              />
+            );
+          })}
 
-      {/* Reconciliation row — Total | sum% | raw $ | weighted % | eligible $ | */}
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: GRID,
-        gap: 14,
-        padding: "9px 18px",
-        borderTop: "2px solid var(--ink)",
-        background: "var(--paper-2)",
-        fontSize: 12, fontWeight: 600,
-      }}>
-        <div className="mono" style={{
-          fontSize: 10, letterSpacing: "0.1em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Total</div>
-        <div
-          className="num"
-          style={{
-            textAlign: "right",
-            color: balanced ? "var(--ink)" : "var(--warn)",
-          }}
-          title={balanced
-            ? "Allocation rebalanced to 100%"
-            : `Allocation drifted to ${allocPctSum.toFixed(1)}% — edit pool shares to rebalance`}
-        >
-          {Math.round(allocPctSum)}%
+          {/* Reconciliation row — Total | sum% | raw $ | weighted % | eligible $ | */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: GRID,
+            gap: 14,
+            padding: "9px 18px",
+            borderTop: "2px solid var(--ink)",
+            background: "var(--paper-2)",
+            fontSize: 12, fontWeight: 600,
+          }}>
+            <div className="mono" style={{
+              fontSize: 10, letterSpacing: "0.1em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}>Total</div>
+            <div
+              className="num"
+              style={{
+                textAlign: "right",
+                color: balanced ? "var(--ink)" : "var(--warn)",
+              }}
+              title={balanced
+                ? "Allocation rebalanced to 100%"
+                : `Allocation drifted to ${allocPctSum.toFixed(1)}% — edit pool shares to rebalance`}
+            >
+              {Math.round(allocPctSum)}%
+            </div>
+            <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
+            <div
+              className="num"
+              style={{ textAlign: "right", color: "var(--ink-2)" }}
+              title={total > 0 ? `${fmt.dollars(eligibleTotal)} eligible of ${fmt.dollars(total)} raw` : undefined}
+            >
+              {total > 0 ? `${weightedEligiblePct}%` : "—"}
+            </div>
+            <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(eligibleTotal)}</div>
+            <div/>
+          </div>
         </div>
-        <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
-        <div
-          className="num"
-          style={{ textAlign: "right", color: "var(--ink-2)" }}
-          title={total > 0 ? `${fmt.dollars(eligibleTotal)} eligible of ${fmt.dollars(total)} raw` : undefined}
-        >
-          {total > 0 ? `${weightedEligiblePct}%` : "—"}
-        </div>
-        <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(eligibleTotal)}</div>
-        <div/>
       </div>
 
       {/* Add-row footer */}

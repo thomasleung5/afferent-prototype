@@ -1,13 +1,19 @@
 ﻿
 import { useMemo, useState } from "react";
-import { Icon, SectionLabel } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALL_DEPTS, DIRECT_DEPTS,
   basisForPool, computeStepDown,
   type MatrixDeptCode,
 } from "@/lib/data/capStepDown";
+import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
+import {
+  TracePanel, TraceSection, SummaryStrip, TraceStat,
+  DistributionList, CollapsibleMetadata, MetadataRow,
+  type DistributionRow,
+} from "./TracePanel";
 
 interface OpenCell {
   center: string;
@@ -240,116 +246,211 @@ function CenterCellTrace({
 
   const pools = capPools.filter((p) => p.center === center);
   const allocSrc = model.alloc2;
+
+  // This center's contribution to each direct recipient — used to compute
+  // ranking, share-of-center, and the distribution visualization.
+  const recipientRows: DistributionRow[] = DIRECT_DEPTS
+    .map((d) => {
+      const v = pools.reduce((a, p) => a + (allocSrc[p.id]?.[d.code] ?? 0), 0);
+      return {
+        id: d.code, name: d.name, value: v,
+        percent: 0, // filled below once we know the row total
+        active: d.code === deptCode,
+      };
+    })
+    .filter((r) => r.value > 0.5);
+  const recipientTotal = recipientRows.reduce((a, r) => a + r.value, 0);
+  recipientRows.forEach((r) => {
+    r.percent = recipientTotal > 0 ? (r.value / recipientTotal) * 100 : 0;
+  });
+  const ranked = [...recipientRows].sort((a, b) => b.value - a.value);
+  const rank = ranked.findIndex((r) => r.id === deptCode) + 1;
+  const topRecipient = ranked[0];
+
+  // Contributing pools — one row per pool that lands non-zero $ on the
+  // selected dept. Sorted desc for the breakdown.
   const contribs = pools
-    .map((p) => ({
-      pool: p,
-      value: allocSrc[p.id]?.[deptCode] ?? 0,
-      basis: basisForPool(p, allocationBases).basis,
-    }))
+    .map((p) => {
+      const value = allocSrc[p.id]?.[deptCode] ?? 0;
+      const { basis } = basisForPool(p, allocationBases);
+      const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
+      return { pool: p, value, basis, basisLongName: basisMeta?.longName ?? basis };
+    })
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);
-  const total = contribs.reduce((a, c) => a + c.value, 0);
-  const centerTotal = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+  const totalToDept = contribs.reduce((a, c) => a + c.value, 0);
+  const centerEligible = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+  const centerShare = centerEligible > 0 ? (totalToDept / centerEligible) * 100 : 0;
 
   return (
-    <div style={{ background: "var(--paper)", border: "1px solid var(--accent)" }}>
-      <div style={{
-        display: "flex", alignItems: "center",
-        padding: "12px 16px", borderBottom: "1px solid var(--rule)",
-        background: "var(--accent-tint)",
-      }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-          color: "var(--accent)", textTransform: "uppercase",
-        }}>Cell trace</div>
-        <div style={{ marginLeft: 12, fontSize: 13, fontWeight: 600 }}>
-          {center} <span style={{ color: "var(--ink-3)" }}>→</span> {dept.name}
-        </div>
-        <button onClick={onClose} style={{
-          marginLeft: "auto", color: "var(--ink-3)",
-          background: "transparent", border: "none", cursor: "pointer",
-        }} aria-label="Close trace">
-          <Icon name="close" size={13}/>
-        </button>
-      </div>
+    <TracePanel
+      eyebrow="Center allocation trace"
+      from={center}
+      to={dept.name}
+      onClose={onClose}
+    >
+      {/* Section 1 — Summary */}
+      <TraceSection>
+        <SummaryStrip cols={4}>
+          <TraceStat
+            label="Center eligible cost"
+            value={fmt.dollars(centerEligible)}
+            sub={`${pools.length} pool${pools.length === 1 ? "" : "s"} in ${center}`}
+          />
+          <TraceStat
+            label="Share of center"
+            value={`${centerShare.toFixed(1)}%`}
+            sub={`Reaching ${dept.name} after step-down`}
+          />
+          <TraceStat
+            label="Rank among recipients"
+            value={ranked.length > 0 ? `#${rank} of ${ranked.length}` : "—"}
+            sub={topRecipient && topRecipient.id !== deptCode
+              ? `Top: ${topRecipient.name} (${fmt.dollarsK(topRecipient.value)})`
+              : topRecipient?.id === deptCode
+                ? "Largest recipient"
+                : undefined}
+          />
+          <TraceStat
+            label="Final allocation"
+            value={fmt.dollars(totalToDept)}
+            sub={contribs.length > 0
+              ? `Built from ${contribs.length} pool${contribs.length === 1 ? "" : "s"}`
+              : "No contributions"}
+            emphasis
+          />
+        </SummaryStrip>
+      </TraceSection>
 
-      <div style={{
-        padding: "14px 16px",
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24,
-      }}>
-        {/* Center inputs */}
-        <div>
-          <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8,
-          }}>Center inputs</div>
+      {/* Section 2 — Pool-by-pool breakdown (the "math" for a center cell) */}
+      <TraceSection title="How this allocation was built">
+        {contribs.length === 0 ? (
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr auto", gap: "5px 12px",
-            fontSize: 12,
+            padding: "14px 18px",
+            background: "var(--paper-2)",
+            border: "1px solid var(--rule)",
+            fontSize: 12.5, color: "var(--ink-3)",
           }}>
-            <div style={{ color: "var(--ink-3)" }}>Center</div>
-            <div>{center}</div>
-            <div style={{ color: "var(--ink-3)" }}>Pools</div>
-            <div className="num">{pools.length}</div>
-            <div style={{ color: "var(--ink-3)" }}>Eligible amount</div>
-            <div className="num" style={{ fontWeight: 600 }}>{fmt.dollars(centerTotal)}</div>
-            <div style={{ color: "var(--ink-3)" }}>To {dept.code}</div>
-            <div className="num" style={{ fontWeight: 600, color: "var(--accent)" }}>
-              {fmt.dollars(total)}
+            No pool from <strong>{center}</strong> contributes to <strong>{dept.name}</strong>.
+          </div>
+        ) : (
+          <div style={{
+            border: "1px solid var(--rule)",
+            background: "var(--paper-2)",
+          }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
+              gap: 14,
+              padding: "10px 16px",
+              borderBottom: "1px solid var(--rule)",
+              background: "var(--paper)",
+            }}>
+              {["Pool", "Basis", "Share of total", ""].map((h, i) => (
+                <div key={i} className="mono" style={{
+                  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+                  color: "var(--ink-3)", textTransform: "uppercase",
+                  textAlign: i === 3 ? "right" : "left",
+                }}>{h || "Contribution"}</div>
+              ))}
+            </div>
+            {contribs.map((c, i) => {
+              const pct = totalToDept > 0 ? (c.value / totalToDept) * 100 : 0;
+              return (
+                <div key={c.pool.id} style={{
+                  display: "grid",
+                  gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
+                  gap: 14, alignItems: "center",
+                  padding: "10px 16px",
+                  borderBottom: i < contribs.length - 1 ? "1px solid var(--rule)" : "none",
+                  fontSize: 12.5,
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: 500, color: "var(--ink)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{c.pool.pool}</div>
+                  </div>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{ color: "var(--ink-2)", fontSize: 12 }}>{c.basisLongName}</div>
+                    <div className="mono" style={{
+                      fontSize: 10, color: "var(--ink-4)",
+                      letterSpacing: "0.08em", marginTop: 2,
+                    }}>{c.basis}</div>
+                  </div>
+                  <div style={{
+                    height: 6, background: "var(--paper)",
+                    border: "1px solid var(--rule)", overflow: "hidden",
+                  }}>
+                    <div style={{
+                      width: `${pct}%`, height: "100%",
+                      background: "var(--accent)",
+                      transition: "width 240ms ease-out",
+                    }}/>
+                  </div>
+                  <div className="num" style={{
+                    textAlign: "right", fontVariantNumeric: "tabular-nums",
+                    fontSize: 12.5, fontWeight: 500,
+                  }}>{fmt.dollars(c.value)}</div>
+                </div>
+              );
+            })}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
+              gap: 14, alignItems: "center",
+              padding: "12px 16px",
+              borderTop: "2px solid var(--ink)",
+              background: "var(--paper)",
+              fontSize: 13, fontWeight: 700,
+            }}>
+              <div>Total to {dept.name}</div>
+              <div/>
+              <div/>
+              <div className="num" style={{
+                textAlign: "right", color: "var(--accent)",
+                fontVariantNumeric: "tabular-nums",
+              }}>{fmt.dollars(totalToDept)}</div>
             </div>
           </div>
-        </div>
+        )}
+      </TraceSection>
 
-        {/* Pool breakdown */}
-        <div>
-          <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8,
-          }}>Pool breakdown</div>
-          {contribs.length === 0 ? (
-            <div style={{
-              fontSize: 12.5, fontFamily: "var(--ff-mono)",
-              padding: "10px 12px", background: "var(--paper-2)",
-              border: "1px solid var(--rule)", color: "var(--ink-3)",
-            }}>No pool contributions to {dept.code}.</div>
-          ) : (
-            <div style={{ border: "1px solid var(--rule)" }}>
-              {contribs.map((c, i) => (
-                <div key={c.pool.id} style={{
-                  display: "flex", justifyContent: "space-between", gap: 12,
-                  alignItems: "baseline",
-                  padding: "5px 10px",
-                  fontSize: 11.5,
-                  borderBottom: i < contribs.length - 1 ? "1px solid var(--rule)" : "none",
-                }}>
-                  <span style={{ color: "var(--ink-3)" }}>
-                    <span style={{ color: "var(--ink-2)" }}>{c.pool.pool}</span>
-                    <span className="mono" style={{
-                      fontSize: 9.5, color: "var(--ink-4)", marginLeft: 6,
-                    }}>{c.basis}</span>
-                  </span>
-                  <span className="num mono" style={{
-                    fontWeight: 500, whiteSpace: "nowrap",
-                    fontVariantNumeric: "tabular-nums",
-                  }}>{fmt.dollars(c.value)}</span>
-                </div>
-              ))}
-              <div style={{
-                display: "flex", justifyContent: "space-between",
-                padding: "6px 10px",
-                background: "var(--paper-2)",
-                fontSize: 12, fontWeight: 700,
-                borderTop: "2px solid var(--ink)",
-              }}>
-                <span>Final</span>
-                <span className="num mono" style={{
-                  fontVariantNumeric: "tabular-nums",
-                }}>{fmt.dollars(total)}</span>
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
-    </div>
+      {/* Section 3 — Distribution across all recipients */}
+      {ranked.length > 0 && (
+        <TraceSection title="Where this center's cost lands">
+          <DistributionList
+            rows={recipientRows}
+            valueFmt={(v) => fmt.dollars(v)}
+            caption={
+              <span>
+                <strong>{center}</strong> distributes across <strong>{ranked.length}</strong>{" "}
+                direct department{ranked.length === 1 ? "" : "s"} after step-down.{" "}
+                {topRecipient && topRecipient.id !== deptCode && (
+                  <>
+                    Largest recipient is <strong>{topRecipient.name}</strong>{" "}
+                    ({fmt.dollars(topRecipient.value)}, {topRecipient.percent.toFixed(1)}%).{" "}
+                  </>
+                )}
+                {dept.name} ranks <strong>#{rank}</strong>{" "}
+                {rank === 1 ? "(largest)" : rank === ranked.length ? "(smallest)" : ""}.
+              </span>
+            }
+          />
+        </TraceSection>
+      )}
+
+      {/* Section 4 — Auditor metadata */}
+      <CollapsibleMetadata title="Allocation metadata">
+        <MetadataRow label="Center">{center}</MetadataRow>
+        <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
+        <MetadataRow label="Eligible (center)">{fmt.dollars(centerEligible)}</MetadataRow>
+        <MetadataRow label="Recipient">{dept.name} ({dept.code})</MetadataRow>
+        <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToDept)}</MetadataRow>
+        <MetadataRow label="Share of center">{centerShare.toFixed(2)}%</MetadataRow>
+        <MetadataRow label="Rank">#{rank} of {ranked.length}</MetadataRow>
+        <MetadataRow label="Contributing pools">{contribs.length.toString()}</MetadataRow>
+      </CollapsibleMetadata>
+    </TracePanel>
   );
 }

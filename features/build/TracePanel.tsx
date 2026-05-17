@@ -1,0 +1,407 @@
+import { useState, type ReactNode } from "react";
+import { Icon } from "@/components/ui";
+
+/* ──────────────────────────────────────────────────────────────────────────
+ * Unified explainability shell for every CAP "cell trace" panel.
+ *
+ * The three CAP screens (Allocation Bases, Pool Allocations, Allocation
+ * Matrix) all open a drilldown when the user clicks a cell. To make those
+ * explanations feel like one auditable system rather than three separate
+ * spreadsheet probes, every trace composes the same four sections in order:
+ *
+ *   1. Summary       — what is being allocated, where it goes, the result
+ *   2. Logic         — the actual formula or vertical flow that produced it
+ *   3. Distribution  — visual share / ranked context against peers
+ *   4. Metadata      — auditor-facing fields, hidden until clicked
+ *
+ * Visual language: lots of whitespace, big numbers for outcomes, monospace
+ * only for math, accent color reserved for the final/answer value.
+ * ──────────────────────────────────────────────────────────────────────── */
+
+// ============================================================================
+// Outer shell
+// ============================================================================
+
+interface PanelProps {
+  /** Tiny uppercase tag — e.g. "Allocation trace", "Pool trace". */
+  eyebrow: string;
+  /** Left side of the title — usually the source of the allocation. */
+  from: string;
+  /** Right side of the title — usually the destination. Omit for one-sided. */
+  to?: string;
+  onClose: () => void;
+  children: ReactNode;
+}
+
+export function TracePanel({ eyebrow, from, to, onClose, children }: PanelProps) {
+  return (
+    <div role="region" aria-label={`${eyebrow}: ${from}${to ? ` to ${to}` : ""}`} style={{
+      background: "var(--paper)",
+      border: "1px solid var(--accent)",
+      boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "center", gap: 14,
+        padding: "14px 22px",
+        borderBottom: "1px solid var(--rule)",
+        background: "var(--accent-tint)",
+      }}>
+        <div className="mono" style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          color: "var(--accent)", textTransform: "uppercase",
+          whiteSpace: "nowrap",
+        }}>{eyebrow}</div>
+        <div style={{
+          fontSize: 14, fontWeight: 600, color: "var(--ink)",
+          minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {from}
+          {to && (
+            <>
+              <span style={{ color: "var(--ink-3)", margin: "0 10px", fontWeight: 400 }}>→</span>
+              {to}
+            </>
+          )}
+        </div>
+        <button onClick={onClose} type="button" style={{
+          marginLeft: "auto", color: "var(--ink-3)",
+          background: "transparent", border: "none", cursor: "pointer",
+          padding: 4,
+        }} aria-label="Close trace">
+          <Icon name="close" size={14}/>
+        </button>
+      </div>
+      <div>{children}</div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Sections
+// ============================================================================
+
+interface SectionProps {
+  title?: string;
+  children: ReactNode;
+}
+
+export function TraceSection({ title, children }: SectionProps) {
+  return (
+    <section style={{
+      padding: "22px 26px",
+      borderTop: "1px solid var(--rule)",
+    }}>
+      {title && (
+        <div className="mono" style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          color: "var(--ink-3)", textTransform: "uppercase",
+          marginBottom: 16,
+        }}>{title}</div>
+      )}
+      {children}
+    </section>
+  );
+}
+
+// ============================================================================
+// Summary — labeled stat blocks
+// ============================================================================
+
+export function SummaryStrip({ children, cols = 4 }: { children: ReactNode; cols?: number }) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: `repeat(${cols}, minmax(0, 1fr))`,
+      gap: "20px 28px",
+      alignItems: "start",
+    }}>
+      {children}
+    </div>
+  );
+}
+
+interface StatProps {
+  label: string;
+  value: ReactNode;
+  sub?: ReactNode;
+  /** Promote this stat to the headline outcome (large, accent color). */
+  emphasis?: boolean;
+}
+
+export function TraceStat({ label, value, sub, emphasis }: StatProps) {
+  return (
+    <div style={{ minWidth: 0 }}>
+      <div className="mono" style={{
+        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.14em",
+        color: "var(--ink-3)", textTransform: "uppercase",
+        marginBottom: 8,
+      }}>{label}</div>
+      <div style={{
+        fontSize: emphasis ? 26 : 16,
+        fontWeight: emphasis ? 700 : 500,
+        color: emphasis ? "var(--accent)" : "var(--ink)",
+        lineHeight: 1.15,
+        fontVariantNumeric: "tabular-nums",
+        wordBreak: "break-word",
+      }}>{value}</div>
+      {sub && (
+        <div style={{
+          fontSize: 11.5, color: "var(--ink-3)",
+          marginTop: 6, lineHeight: 1.4,
+        }}>{sub}</div>
+      )}
+    </div>
+  );
+}
+
+// ============================================================================
+// Logic — large formula and vertical flow
+// ============================================================================
+
+export function BigFormula({ children }: { children: ReactNode }) {
+  return (
+    <div style={{
+      fontFamily: "var(--ff-mono)",
+      fontVariantNumeric: "tabular-nums",
+      fontSize: 18, fontWeight: 500,
+      color: "var(--ink)",
+      lineHeight: 1.55,
+      letterSpacing: "0.01em",
+      padding: "18px 22px",
+      background: "var(--paper-2)",
+      borderLeft: "3px solid var(--accent)",
+    }}>{children}</div>
+  );
+}
+
+export interface FlowStep {
+  label: string;
+  value: ReactNode;
+  /** Optional smaller line under the value (e.g. units or formula fragment). */
+  detail?: ReactNode;
+  /** Promote to outcome styling (accent, bigger). */
+  emphasis?: boolean;
+}
+
+export function FlowDiagram({ steps }: { steps: FlowStep[] }) {
+  return (
+    <ol style={{
+      listStyle: "none", margin: 0, padding: 0,
+      display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0,
+    }}>
+      {steps.map((s, i) => (
+        <li key={i}>
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "160px 1fr",
+            gap: 16,
+            alignItems: "baseline",
+            padding: "14px 18px",
+            background: s.emphasis ? "var(--accent-tint)" : "var(--paper-2)",
+            border: `1px solid ${s.emphasis ? "var(--accent)" : "var(--rule)"}`,
+          }}>
+            <div className="mono" style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+              color: s.emphasis ? "var(--accent)" : "var(--ink-3)",
+              textTransform: "uppercase",
+            }}>{s.label}</div>
+            <div>
+              <div style={{
+                fontSize: s.emphasis ? 18 : 15,
+                fontWeight: s.emphasis ? 700 : 500,
+                color: s.emphasis ? "var(--accent)" : "var(--ink)",
+                fontVariantNumeric: "tabular-nums",
+                lineHeight: 1.3,
+              }}>{s.value}</div>
+              {s.detail && (
+                <div className="mono" style={{
+                  fontSize: 11, color: "var(--ink-3)", marginTop: 4,
+                  fontVariantNumeric: "tabular-nums",
+                }}>{s.detail}</div>
+              )}
+            </div>
+          </div>
+          {i < steps.length - 1 && (
+            <div aria-hidden="true" style={{
+              display: "flex", justifyContent: "center",
+              padding: "6px 0",
+              color: "var(--ink-4)", fontSize: 14, lineHeight: 1,
+            }}>↓</div>
+          )}
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+// ============================================================================
+// Distribution — ranked horizontal bars
+// ============================================================================
+
+export interface DistributionRow {
+  id: string;
+  name: string;
+  /** Raw numeric value used both for bar width and label. */
+  value: number;
+  /** Pre-computed % of the column total (0–100). */
+  percent: number;
+  /** Optional tiny meta tag shown after the name. */
+  meta?: string;
+  /** Highlight as the currently-selected row. */
+  active?: boolean;
+}
+
+interface DistributionProps {
+  rows: DistributionRow[];
+  /** Formatter for the value column (e.g. fmt.dollarsK or formatCell). */
+  valueFmt: (v: number) => string;
+  /** Optional caption shown above the list. */
+  caption?: ReactNode;
+}
+
+export function DistributionList({ rows, valueFmt, caption }: DistributionProps) {
+  const sorted = [...rows].sort((a, b) => b.value - a.value);
+  const max = sorted[0]?.value ?? 0;
+  return (
+    <div>
+      {caption && (
+        <div style={{
+          fontSize: 12, color: "var(--ink-2)",
+          marginBottom: 12, lineHeight: 1.5,
+        }}>{caption}</div>
+      )}
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {sorted.map((r, i) => {
+          const rank = i + 1;
+          const width = max > 0 ? (r.value / max) * 100 : 0;
+          return (
+            <div key={r.id} style={{
+              display: "grid",
+              gridTemplateColumns: "32px minmax(140px, 1.4fr) minmax(120px, 2fr) 90px 64px",
+              gap: 14, alignItems: "center",
+              padding: "7px 8px",
+              background: r.active ? "var(--accent-tint)" : "transparent",
+              borderLeft: r.active ? "2px solid var(--accent)" : "2px solid transparent",
+              transition: "background 120ms",
+            }}>
+              <span className="mono" style={{
+                fontSize: 10.5,
+                color: r.active ? "var(--accent)" : "var(--ink-4)",
+                fontWeight: r.active ? 700 : 500,
+              }}>#{rank}</span>
+              <span style={{
+                fontSize: 12.5,
+                color: r.active ? "var(--ink)" : "var(--ink-2)",
+                fontWeight: r.active ? 600 : 500,
+                minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                {r.name}
+                {r.meta && (
+                  <span className="mono" style={{
+                    color: "var(--ink-4)", marginLeft: 8, fontSize: 10.5,
+                  }}>{r.meta}</span>
+                )}
+              </span>
+              <div style={{
+                height: 6, background: "var(--paper-2)",
+                border: "1px solid var(--rule)",
+                position: "relative", overflow: "hidden",
+              }}>
+                <div style={{
+                  width: `${width}%`, height: "100%",
+                  background: r.active ? "var(--accent)" : "var(--ink-3)",
+                  transition: "width 240ms ease-out",
+                }}/>
+              </div>
+              <span className="num" style={{
+                fontSize: 12, textAlign: "right",
+                fontVariantNumeric: "tabular-nums",
+                color: r.active ? "var(--ink)" : "var(--ink-2)",
+                fontWeight: r.active ? 600 : 400,
+              }}>{valueFmt(r.value)}</span>
+              <span className="num" style={{
+                fontSize: 11, textAlign: "right",
+                fontVariantNumeric: "tabular-nums",
+                color: r.active ? "var(--ink-2)" : "var(--ink-3)",
+              }}>{r.percent.toFixed(1)}%</span>
+            </div>
+          );
+        })}
+      </div>
+    </div>
+  );
+}
+
+// ============================================================================
+// Metadata — collapsible auditor detail
+// ============================================================================
+
+interface MetadataProps {
+  title?: string;
+  defaultOpen?: boolean;
+  children: ReactNode;
+}
+
+export function CollapsibleMetadata({
+  title = "Allocation metadata",
+  defaultOpen = false,
+  children,
+}: MetadataProps) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <section style={{
+      padding: "16px 26px 20px",
+      borderTop: "1px solid var(--rule)",
+      background: "var(--paper-2)",
+    }}>
+      <button
+        type="button"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        style={{
+          all: "unset", cursor: "pointer",
+          display: "inline-flex", alignItems: "center", gap: 10,
+          color: "var(--ink-3)",
+        }}
+      >
+        <span aria-hidden="true" style={{
+          display: "inline-block",
+          transform: open ? "rotate(90deg)" : "none",
+          transition: "transform 120ms",
+          fontFamily: "var(--ff-mono)", fontSize: 9, lineHeight: 1,
+          color: "var(--ink-3)",
+        }}>▶</span>
+        <span className="mono" style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          textTransform: "uppercase",
+        }}>
+          {open ? `Hide ${title.toLowerCase()}` : `View ${title.toLowerCase()}`}
+        </span>
+      </button>
+      {open && (
+        <div style={{
+          marginTop: 14,
+          display: "grid",
+          gridTemplateColumns: "minmax(150px, auto) 1fr",
+          rowGap: 8, columnGap: 22,
+          fontSize: 12,
+        }}>
+          {children}
+        </div>
+      )}
+    </section>
+  );
+}
+
+export function MetadataRow({ label, children }: { label: string; children: ReactNode }) {
+  return (
+    <>
+      <div style={{ color: "var(--ink-3)", fontSize: 11.5 }}>{label}</div>
+      <div className="mono" style={{
+        color: "var(--ink-2)", fontSize: 11.5,
+        fontVariantNumeric: "tabular-nums",
+        wordBreak: "break-word",
+      }}>{children}</div>
+    </>
+  );
+}

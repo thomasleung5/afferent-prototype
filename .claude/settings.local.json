@@ -26,7 +26,15 @@
       "Bash(pkill -f \"tsx watch server/index.ts\")",
       "Bash(pkill -f \"node.*vite\")",
       "Bash(pkill -f \"concurrently\")",
-      "Bash(lsof -nP -iTCP:8787 -sTCP:LISTEN)"
+      "Bash(lsof -nP -iTCP:8787 -sTCP:LISTEN)",
+      "Bash(curl -s -o /dev/null -w \"client:%{http_code} \" http://localhost:3000/)",
+      "Bash(curl -s -o /dev/null -w \"api:%{http_code}\\\\n\" http://localhost:8787/)",
+      "Bash(grep -n \"^    />\\\\|^    \\\\/>$\\\\|^\\\\s*\\\\/>\\\\s*$\" /Users/thomasleung/Developer/afferent-prototype/features/build/FeeScheduleTable.tsx)",
+      "Bash(grep -v \"^$\\\\|services\\\\.tsx\\\\|salary\\\\.tsx\\\\|fees\\\\.tsx\\\\|feestudy\\\\.tsx\")",
+      "Bash(grep -n \"^export\\\\|^}\\\\|^  }$\\\\|^};$\" /Users/thomasleung/Developer/afferent-prototype/lib/data/annual.ts)",
+      "Bash(grep -E \"\\\\\\\\.tsx$\")",
+      "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000)",
+      "Bash(pkill -f \"vite\\\\|node.*server\")"
     ]
   }
 }

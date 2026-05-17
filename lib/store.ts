@@ -484,26 +484,48 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         }),
 
       // Keep allocationPercent and amount in sync. Editing % rederives $
-      // from the center's source-dept total. Editing $ rederives % (and
-      // implicitly redefines the center total if no other reference exists).
+      // from the center's source-dept total. Editing $ rederives % when a
+      // reference total exists; when the center total is missing or zero,
+      // the new $ value redefines the center total (Σ pool.amount) and
+      // every pool's % is rederived against it so the Centers table, the
+      // Pools table, and the KPI rail agree.
       updateCapPool: (id, patch) =>
-        set((s) => ({
-          capPools: s.capPools.map((p) => {
+        set((s) => {
+          const target = s.capPools.find((p) => p.id === id);
+          if (!target) return s;
+          const centerTotal = s.capCenterTotals[target.center] ?? 0;
+
+          let nextPools = s.capPools.map((p) => {
             if (p.id !== id) return p;
-            const centerTotal = s.capCenterTotals[p.center] ?? 0;
             let next = { ...p, ...patch };
             if (patch.allocationPercent != null && patch.amount == null) {
               // % drives $
               next.amount = centerTotal * (next.allocationPercent / 100);
-            } else if (patch.amount != null && patch.allocationPercent == null) {
-              // $ drives %  — fall back to no-op when centerTotal is 0
-              next.allocationPercent = centerTotal > 0
-                ? (next.amount / centerTotal) * 100
-                : next.allocationPercent;
+            } else if (patch.amount != null && patch.allocationPercent == null && centerTotal > 0) {
+              // $ drives % when we have a reference total. When centerTotal
+              // is 0/missing, defer to the rebuild below.
+              next.allocationPercent = (next.amount / centerTotal) * 100;
             }
             return next;
-          }),
-        })),
+          });
+
+          let nextTotals = s.capCenterTotals;
+          if (patch.amount != null && centerTotal === 0) {
+            const derivedTotal = nextPools
+              .filter((p) => p.center === target.center)
+              .reduce((a, p) => a + p.amount, 0);
+            if (derivedTotal > 0) {
+              nextTotals = { ...s.capCenterTotals, [target.center]: derivedTotal };
+              nextPools = nextPools.map((p) =>
+                p.center === target.center
+                  ? { ...p, allocationPercent: (p.amount / derivedTotal) * 100 }
+                  : p,
+              );
+            }
+          }
+
+          return { capPools: nextPools, capCenterTotals: nextTotals };
+        }),
 
       renameCapCenter: (oldName, newName) =>
         set((s) => {

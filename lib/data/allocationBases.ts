@@ -10,17 +10,17 @@
  * Source: Town of Los Altos Hills CAP workbook, FY 2025–26. */
 
 export const ALLOCATION_BASES = [
-  { key: "FTE",      label: "FTE",       unit: "FTE",     fmt: "decimal", note: "FY 24/25 budgeted FTE" },
-  { key: "EXPEND",   label: "EXPEND",    unit: "$000",    fmt: "k",       note: "Budgeted expenditures excl. debt, capital, transfers" },
-  { key: "EXPEND_X", label: "EXPEND_X",  unit: "$000",    fmt: "k",       note: "Budgeted expenditures excl. Planning, Building, Engineering" },
-  { key: "PAYROLL",  label: "PAYROLL",   unit: "txns/yr", fmt: "int",     note: "Payroll transactions, FY 23/24" },
-  { key: "ACCT",     label: "ACCT",      unit: "txns/yr", fmt: "int",     note: "Accounting transactions, FY 23/24" },
-  { key: "AGENDA",   label: "AGENDA",    unit: "items/yr",fmt: "int",     note: "Council agenda item count, FY 23/24" },
-  { key: "PRA",      label: "PRA",       unit: "req/yr",  fmt: "int",     note: "Public records requests, FY 23/24" },
-  { key: "CONTRACT", label: "CONTRACT",  unit: "count/yr",fmt: "int",     note: "Contracts executed, FY 23/24" },
-  { key: "SQFT",     label: "SQFT",      unit: "sq ft",   fmt: "int",     note: "Town Hall sq ft occupied" },
-  { key: "VEHICLE",  label: "VEHICLE",   unit: "$000",    fmt: "k",       note: "Vehicle depreciation, FY 23/24" },
-  { key: "COMMITS",  label: "COMMITS",   unit: "count",   fmt: "int",     note: "Standing committees supported" },
+  { key: "FTE",      label: "FTE",       longName: "Full-Time Equivalents",                       unit: "FTE",     unitLong: "Budgeted FTE",                       fmt: "decimal", note: "FY 24/25 budgeted FTE" },
+  { key: "EXPEND",   label: "EXPEND",    longName: "Operating Expenditures",                      unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Budgeted expenditures excl. debt, capital, transfers" },
+  { key: "EXPEND_X", label: "EXPEND_X",  longName: "Operating Expenditures (excl. Dev Services)", unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Budgeted expenditures excl. Planning, Building, Engineering" },
+  { key: "PAYROLL",  label: "PAYROLL",   longName: "Payroll Transactions per Year",               unit: "txns/yr", unitLong: "Payroll transactions per year",      fmt: "int",     note: "Payroll transactions, FY 23/24" },
+  { key: "ACCT",     label: "ACCT",      longName: "Accounting Transactions per Year",            unit: "txns/yr", unitLong: "Accounting transactions per year",   fmt: "int",     note: "Accounting transactions, FY 23/24" },
+  { key: "AGENDA",   label: "AGENDA",    longName: "Council Agenda Items per Year",               unit: "items/yr",unitLong: "Council agenda items per year",      fmt: "int",     note: "Council agenda item count, FY 23/24" },
+  { key: "PRA",      label: "PRA",       longName: "Public Records Requests per Year",            unit: "req/yr",  unitLong: "Public records requests per year",   fmt: "int",     note: "Public records requests, FY 23/24" },
+  { key: "CONTRACT", label: "CONTRACT",  longName: "Contracts Executed per Year",                 unit: "count/yr",unitLong: "Contracts executed per year",        fmt: "int",     note: "Contracts executed, FY 23/24" },
+  { key: "SQFT",     label: "SQFT",      longName: "Town Hall Square Footage",                    unit: "sq ft",   unitLong: "Square feet occupied",               fmt: "int",     note: "Town Hall sq ft occupied" },
+  { key: "VEHICLE",  label: "VEHICLE",   longName: "Vehicle Depreciation",                        unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Vehicle depreciation, FY 23/24" },
+  { key: "COMMITS",  label: "COMMITS",   longName: "Standing Committees Supported",               unit: "count",   unitLong: "Committee count",                    fmt: "int",     note: "Standing committees supported" },
 ] as const;
 
 export type AllocationBasisKey = (typeof ALLOCATION_BASES)[number]["key"];

@@ -1,11 +1,16 @@
 ﻿
 import { useState } from "react";
-import { Icon, SectionLabel } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALLOCATION_BASES, ALLOCATION_BASIS_ROWS,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
+import {
+  TracePanel, TraceSection, SummaryStrip, TraceStat,
+  BigFormula, DistributionList, CollapsibleMetadata, MetadataRow,
+  type DistributionRow,
+} from "./TracePanel";
 
 interface OpenCell {
   basisKey: AllocationBasisKey;
@@ -232,7 +237,7 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-empty cell to see its basis, raw denominator, total, and allocation share.</span>
+      <span>Click any non-empty cell to see its basis, formula, share, and how every other department contributes to the same basis.</span>
     </div>
   );
 }
@@ -252,51 +257,123 @@ function CellTrace({
   const total = colTotal(basisKey, ALLOCATION_BASIS_ROWS);
   const share = total > 0 ? (raw / total) * 100 : 0;
 
+  // Build the full contributor distribution — every department with a
+  // non-zero share, sorted from largest to smallest. The DistributionList
+  // re-sorts internally; we hand it the unsorted rows.
+  const contributors = ALLOCATION_BASIS_ROWS
+    .map<DistributionRow & { rawValue: number }>((r) => {
+      const v = r.values[basisKey] ?? 0;
+      return {
+        id: r.code, name: r.name, value: v, rawValue: v,
+        percent: total > 0 ? (v / total) * 100 : 0,
+        meta: r.group === "indirect" ? "indirect" : "direct",
+        active: r.code === row.code,
+      };
+    })
+    .filter((r) => r.value > 0);
+
+  const ranked = [...contributors].sort((a, b) => b.value - a.value);
+  const rank = ranked.findIndex((r) => r.id === row.code) + 1;
+  const top = ranked[0];
+  const bottom = ranked[ranked.length - 1];
+  // Herfindahl concentration index — Σ share² normalized to [0,1]. >0.25
+  // = concentrated, <0.15 = broad. Useful for auditors to tell at a glance
+  // whether a basis is dominated by one department.
+  const hhi = ranked.reduce((a, r) => a + (r.percent / 100) ** 2, 0);
+  const concentrationLabel =
+    hhi >= 0.25 ? "Concentrated" : hhi >= 0.15 ? "Moderate spread" : "Broadly distributed";
+
+  const valueWithUnit = `${formatCell(raw, basis.fmt)} ${basis.unit}`;
+  const totalWithUnit = `${formatCell(total, basis.fmt)} ${basis.unit}`;
+
   return (
-    <div style={{ background: "var(--paper)", border: "1px solid var(--accent)" }}>
-      <div style={{
-        display: "flex", alignItems: "center",
-        padding: "12px 16px", borderBottom: "1px solid var(--rule)",
-        background: "var(--accent-tint)",
-      }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-          color: "var(--accent)", textTransform: "uppercase",
-        }}>{basis.label} basis</div>
-        <div style={{ marginLeft: 12, fontSize: 13, fontWeight: 600 }}>
-          {row.name}
-        </div>
-        <button onClick={onClose} style={{
-          marginLeft: "auto", color: "var(--ink-3)",
-          background: "transparent", border: "none", cursor: "pointer",
-        }} aria-label="Close trace">
-          <Icon name="close" size={13}/>
-        </button>
-      </div>
+    <TracePanel
+      eyebrow="Allocation basis trace"
+      from={row.name}
+      to={`${basis.label} basis`}
+      onClose={onClose}
+    >
+      {/* Section 1 — Summary */}
+      <TraceSection>
+        <SummaryStrip cols={4}>
+          <TraceStat
+            label="Basis"
+            value={basis.longName}
+            sub={<span className="mono" style={{ letterSpacing: "0.1em" }}>{basis.label}</span>}
+          />
+          <TraceStat
+            label="Department"
+            value={row.name}
+            sub={row.group === "indirect" ? "Indirect cost center" : "Direct department"}
+          />
+          <TraceStat
+            label="Department units"
+            value={valueWithUnit}
+            sub={`of ${totalWithUnit} total`}
+          />
+          <TraceStat
+            label="Allocation share"
+            value={`${share.toFixed(1)}%`}
+            sub={ranked.length > 0 ? `Rank #${rank} of ${ranked.length} contributors` : undefined}
+            emphasis
+          />
+        </SummaryStrip>
+      </TraceSection>
 
-      <div style={{
-        padding: "14px 16px",
-        display: "grid", gridTemplateColumns: "1fr auto", gap: "6px 24px",
-        fontSize: 12, maxWidth: 520,
-      }}>
-        <div style={{ color: "var(--ink-3)" }}>{row.name}</div>
-        <div className="num">
-          {formatCell(raw, basis.fmt)} <span style={{ color: "var(--ink-3)" }}>{basis.unit}</span>
+      {/* Section 2 — Logic / Formula */}
+      <TraceSection title="How this share is calculated">
+        <BigFormula>
+          {formatCell(raw, basis.fmt)} {basis.unit}
+          {"  ÷  "}
+          {formatCell(total, basis.fmt)} {basis.unit}
+          {"  =  "}
+          <span style={{ color: "var(--accent)", fontWeight: 700 }}>{share.toFixed(1)}%</span>
+        </BigFormula>
+        <div style={{
+          marginTop: 12, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
+        }}>
+          {row.name} contributes {formatCell(raw, basis.fmt)} of the{" "}
+          {formatCell(total, basis.fmt)} {basis.unitLong.toLowerCase()} that make
+          up the <strong>{basis.longName}</strong> basis — a{" "}
+          <strong>{share.toFixed(1)}%</strong> share of the citywide denominator.
         </div>
+      </TraceSection>
 
-        <div style={{ color: "var(--ink-3)" }}>Total</div>
-        <div className="num">
-          {formatCell(total, basis.fmt)} <span style={{ color: "var(--ink-3)" }}>{basis.unit}</span>
-        </div>
+      {/* Section 3 — Visual share / distribution */}
+      <TraceSection title="Contributors to this basis">
+        <DistributionList
+          rows={contributors}
+          valueFmt={(v) => formatCell(v, basis.fmt)}
+          caption={
+            <span>
+              {ranked.length} departments contribute to <strong>{basis.longName}</strong>.{" "}
+              {top && (
+                <>
+                  Largest: <strong>{top.name}</strong> ({top.percent.toFixed(1)}%).{" "}
+                </>
+              )}
+              {bottom && bottom.id !== top?.id && (
+                <>
+                  Smallest non-zero: <strong>{bottom.name}</strong> ({bottom.percent.toFixed(1)}%).{" "}
+                </>
+              )}
+              Distribution: <strong>{concentrationLabel.toLowerCase()}</strong>.
+            </span>
+          }
+        />
+      </TraceSection>
 
-        <div style={{ color: "var(--ink-3)", paddingTop: 4, borderTop: "1px solid var(--rule)" }}>
-          Allocation share
-        </div>
-        <div className="num" style={{
-          paddingTop: 4, borderTop: "1px solid var(--rule)", fontWeight: 600,
-        }}>{share.toFixed(1)}%</div>
-      </div>
-    </div>
+      {/* Section 4 — Auditor metadata */}
+      <CollapsibleMetadata title="Basis metadata">
+        <MetadataRow label="Basis code">{basis.label}</MetadataRow>
+        <MetadataRow label="Long name">{basis.longName}</MetadataRow>
+        <MetadataRow label="Unit">{basis.unitLong} ({basis.unit})</MetadataRow>
+        <MetadataRow label="Source">{basis.note}</MetadataRow>
+        <MetadataRow label="Department code">{row.code}</MetadataRow>
+        <MetadataRow label="Department group">{row.group === "indirect" ? "Indirect cost center" : "Direct department"}</MetadataRow>
+        <MetadataRow label="Concentration index">{hhi.toFixed(3)} ({concentrationLabel})</MetadataRow>
+      </CollapsibleMetadata>
+    </TracePanel>
   );
 }
 

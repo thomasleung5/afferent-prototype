@@ -162,19 +162,38 @@ export function DataTable<Row extends DataTableRow>({
               const k = typeof c.sortKey === "string" ? c.sortKey : c.key;
               const sorted = sortKey === k;
               const justify = c.align === "right" ? "flex-end" : c.align === "center" ? "center" : "flex-start";
+              const ariaSort: "ascending" | "descending" | "none" | undefined = c.sortable
+                ? (sorted ? (sortDir === "asc" ? "ascending" : "descending") : "none")
+                : undefined;
               return (
                 <div
                   key={c.key}
-                  onClick={c.sortable ? () => handleSort(c) : undefined}
+                  role="columnheader"
+                  aria-sort={ariaSort}
                   style={{
-                    cursor: c.sortable ? "pointer" : "default",
                     color: sorted ? "var(--ink)" : "var(--ink-3)",
                     userSelect: "none",
                     display: "flex", justifyContent: justify, alignItems: "baseline",
                   }}
                 >
-                  <span>{c.label}</span>
-                  {c.sortable && <SortCaret dir={sorted ? sortDir : null}/>}
+                  {c.sortable ? (
+                    <button
+                      type="button"
+                      onClick={() => handleSort(c)}
+                      style={{
+                        all: "unset",
+                        cursor: "pointer",
+                        display: "inline-flex", alignItems: "baseline",
+                        font: "inherit", color: "inherit",
+                        letterSpacing: "inherit", textTransform: "inherit",
+                      }}
+                    >
+                      <span>{c.label}</span>
+                      <SortCaret dir={sorted ? sortDir : null}/>
+                    </button>
+                  ) : (
+                    <span>{c.label}</span>
+                  )}
                 </div>
               );
             })}
@@ -202,10 +221,21 @@ export function DataTable<Row extends DataTableRow>({
                  selected ? "3px solid var(--accent)" : "3px solid transparent");
               const isOpen = openId != null && r.id === openId;
 
+              const drilldownId = renderDrilldown && r.id ? `drilldown-${r.id}` : undefined;
               return (
                 <div key={r.id ?? i}>
                   <div
                     onClick={onRowClick ? () => onRowClick(r) : undefined}
+                    onKeyDown={onRowClick ? (e) => {
+                      if (e.key === "Enter" || e.key === " ") {
+                        e.preventDefault();
+                        onRowClick(r);
+                      }
+                    } : undefined}
+                    role={onRowClick ? "button" : undefined}
+                    tabIndex={onRowClick ? 0 : undefined}
+                    aria-expanded={renderDrilldown ? isOpen : undefined}
+                    aria-controls={isOpen ? drilldownId : undefined}
                     style={{
                       display: "grid", gridTemplateColumns: grid, gap: 14,
                       padding: "10px 16px 10px 13px",
@@ -251,11 +281,15 @@ export function DataTable<Row extends DataTableRow>({
                     )}
                   </div>
                   {isOpen && renderDrilldown && (
-                    <div style={{
-                      padding: "16px 20px",
-                      background: "var(--paper-2)",
-                      borderBottom: i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
-                    }}>
+                    <div
+                      id={drilldownId}
+                      role="region"
+                      style={{
+                        padding: "16px 20px",
+                        background: "var(--paper-2)",
+                        borderBottom: i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
+                      }}
+                    >
                       {renderDrilldown(r)}
                     </div>
                   )}

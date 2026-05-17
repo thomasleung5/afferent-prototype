@@ -1,13 +1,19 @@
 ﻿
 import { useMemo, useState, type ReactNode } from "react";
-import { Icon, SectionLabel } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALL_DEPTS, DIRECT_DEPTS, INDIRECT_DEPTS,
   basisForPool, computeStepDown, DRIVERS,
   type MatrixDept, type MatrixDeptCode,
 } from "@/lib/data/capStepDown";
+import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
+import {
+  TracePanel, TraceSection, SummaryStrip, TraceStat,
+  FlowDiagram, DistributionList, CollapsibleMetadata, MetadataRow,
+  type DistributionRow, type FlowStep,
+} from "./TracePanel";
 
 type View = "initial" | "final";
 
@@ -296,185 +302,275 @@ function CellTrace({
   const isDirectCharge = basis === "DIRECT";
   const initialValue = model.alloc1[pool.id]?.[dept.code] ?? 0;
   const finalValue   = model.alloc2[pool.id]?.[dept.code] ?? 0;
+  const allocSrc = view === "initial" ? model.alloc1 : model.alloc2;
+  const cellValue = view === "initial" ? initialValue : finalValue;
 
-  // Pull this cell's step-down contributions from the trace.
+  // Driver values across all receiving depts for this pool's basis. These
+  // are the denominators every direct-dept share is built from.
+  const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
+  const driverByDept = isDirectCharge
+    ? {} as Record<MatrixDeptCode, number>
+    : Object.fromEntries(
+        ALL_DEPTS.map((d) => [d.code, DRIVERS[d.code]?.[basis] ?? 0]),
+      ) as Record<MatrixDeptCode, number>;
+  const driverTotal = isDirectCharge
+    ? 0
+    : Object.values(driverByDept).reduce((a, v) => a + v, 0);
+  const deptDriver = driverByDept[dept.code] ?? 0;
+  const deptShare = driverTotal > 0 ? (deptDriver / driverTotal) * 100 : 0;
+  const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
+
+  // Distribution of this pool across recipients in the current view.
+  const recipientCols = view === "initial" ? ALL_DEPTS : DIRECT_DEPTS;
+  const recipientTotal = recipientCols.reduce(
+    (a, d) => a + (allocSrc[pool.id]?.[d.code] ?? 0), 0,
+  );
+  const distRows: DistributionRow[] = recipientCols
+    .map((d) => {
+      const v = allocSrc[pool.id]?.[d.code] ?? 0;
+      return {
+        id: d.code, name: d.name, value: v,
+        percent: recipientTotal > 0 ? (v / recipientTotal) * 100 : 0,
+        meta: d.kind === "direct" ? "direct" : "indirect",
+        active: d.code === dept.code,
+      };
+    })
+    .filter((r) => r.value > 0.5);
+  const ranked = [...distRows].sort((a, b) => b.value - a.value);
+  const rank = ranked.findIndex((r) => r.id === dept.code) + 1;
+
+  // Step-down contributions (only meaningful in final view when the pool
+  // sat on an indirect dept that was closed into this direct recipient).
   const stepContribs = model.contributions
     .filter((c) => c.poolId === pool.id && c.toCode === dept.code && c.amount > 0.5)
     .sort((a, b) => a.stepIndex - b.stepIndex);
 
+  // Build the vertical flow steps. In the Initial-placement view, the pool
+  // simply sits on its home center untouched by basis math — the flow
+  // collapses to a 2-step "pool placed here" explanation. The full
+  // driver-based flow only appears once the user switches to Final.
+  const flowSteps: FlowStep[] = view === "initial"
+    ? [
+        {
+          label: "Eligible cost pool",
+          value: fmt.dollars(eligibleAmount),
+          detail: pool.eligiblePercent < 100
+            ? `${fmt.dollars(pool.amount)} raw × ${pool.eligiblePercent}% eligible`
+            : "100% eligible",
+        },
+        {
+          label: "Initial placement",
+          value: `Sits on ${pool.center}`,
+          detail: "Step-down has not run yet — no basis math applied",
+          emphasis: true,
+        },
+      ]
+    : isDirectCharge
+    ? [
+        {
+          label: "Eligible cost pool",
+          value: fmt.dollars(eligibleAmount),
+          detail: pool.eligiblePercent < 100
+            ? `${fmt.dollars(pool.amount)} raw × ${pool.eligiblePercent}% eligible`
+            : "100% eligible",
+        },
+        {
+          label: "Allocation method",
+          value: "Direct charge",
+          detail: directTo
+            ? `Routed entirely to ${ALL_DEPTS.find((d) => d.code === directTo)?.name ?? directTo}`
+            : "Routed to a single department",
+        },
+        {
+          label: "Final allocation",
+          value: fmt.dollars(cellValue),
+          detail: `${dept.name}'s full share of the pool`,
+          emphasis: true,
+        },
+      ]
+    : [
+        {
+          label: "Eligible cost pool",
+          value: fmt.dollars(eligibleAmount),
+          detail: pool.eligiblePercent < 100
+            ? `${fmt.dollars(pool.amount)} raw × ${pool.eligiblePercent}% eligible`
+            : "100% eligible",
+        },
+        {
+          label: "Allocation basis",
+          value: basisMeta?.longName ?? basis,
+          detail: basisMeta ? `${basisMeta.unitLong} (${basisMeta.label})` : basis,
+        },
+        {
+          label: `${dept.name} share`,
+          value: `${deptDriver.toLocaleString()} / ${driverTotal.toLocaleString()} ${basisMeta?.unit ?? "units"}`,
+          detail: "Department's slice of the basis denominator",
+        },
+        {
+          label: "Allocation %",
+          value: `${deptShare.toFixed(1)}%`,
+          detail: `${deptDriver.toLocaleString()} ÷ ${driverTotal.toLocaleString()}`,
+        },
+        {
+          label: "Final allocation",
+          value: fmt.dollars(cellValue),
+          detail: `${deptShare.toFixed(1)}% × ${fmt.dollars(eligibleAmount)}`,
+          emphasis: true,
+        },
+      ];
+
+  const summarySource = `${pool.center} · ${pool.pool}`;
+  const stepDownNote = view === "final" && stepContribs.length > 0
+    ? `Built from ${stepContribs.length} step-down contribution${stepContribs.length === 1 ? "" : "s"}`
+    : undefined;
+
   return (
-    <div style={{ background: "var(--paper)", border: "1px solid var(--accent)" }}>
-      <div style={{
-        display: "flex", alignItems: "center",
-        padding: "12px 16px", borderBottom: "1px solid var(--rule)",
-        background: "var(--accent-tint)",
-      }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-          color: "var(--accent)", textTransform: "uppercase",
-        }}>Cell trace</div>
-        <div style={{ marginLeft: 12, fontSize: 13, fontWeight: 600 }}>
-          {pool.pool} <span style={{ color: "var(--ink-3)" }}>→</span> {dept.name}
-        </div>
-        <button onClick={onClose} style={{
-          marginLeft: "auto", color: "var(--ink-3)",
-          background: "transparent", border: "none", cursor: "pointer",
-        }} aria-label="Close trace">
-          <Icon name="close" size={13}/>
-        </button>
-      </div>
+    <TracePanel
+      eyebrow="Pool allocation trace"
+      from={summarySource}
+      to={dept.name}
+      onClose={onClose}
+    >
+      {/* Section 1 — Summary */}
+      <TraceSection>
+        <SummaryStrip cols={4}>
+          <TraceStat
+            label="Eligible cost pool"
+            value={fmt.dollars(eligibleAmount)}
+            sub={pool.eligiblePercent < 100
+              ? `${pool.eligiblePercent}% of ${fmt.dollars(pool.amount)} raw`
+              : "100% fee-eligible"}
+          />
+          <TraceStat
+            label="Allocation basis"
+            value={isDirectCharge ? "Direct charge" : (basisMeta?.longName ?? basis)}
+            sub={isDirectCharge
+              ? "Single-department routing"
+              : basisMeta ? <span className="mono" style={{ letterSpacing: "0.1em" }}>{basisMeta.label}</span> : undefined}
+          />
+          <TraceStat
+            label="Department share"
+            value={
+              view === "initial" ? "100%"
+              : isDirectCharge ? "100%"
+              : `${deptShare.toFixed(1)}%`
+            }
+            sub={
+              view === "initial" ? "Pre-step-down placement"
+              : isDirectCharge ? "Routed to a single department"
+              : `Rank #${rank} of ${ranked.length} recipients`
+            }
+          />
+          <TraceStat
+            label={view === "initial" ? "Initial placement" : "Final allocation"}
+            value={fmt.dollars(cellValue)}
+            sub={stepDownNote ?? (view === "initial" ? "Pool sits on home center" : "After step-down")}
+            emphasis
+          />
+        </SummaryStrip>
+      </TraceSection>
 
-      <div style={{
-        padding: "14px 16px",
-        display: "grid", gridTemplateColumns: "1fr 1fr", gap: 24,
-      }}>
-        {/* Pool inputs */}
-        <div>
-          <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8,
-          }}>Pool inputs</div>
+      {/* Section 2 — Allocation logic / vertical flow */}
+      <TraceSection title="How this allocation was built">
+        <FlowDiagram steps={flowSteps}/>
+        {view === "final" && stepContribs.length > 0 && (
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr auto", gap: "5px 12px",
-            fontSize: 12,
+            marginTop: 16,
+            border: "1px solid var(--rule)",
+            background: "var(--paper-2)",
           }}>
-            <div style={{ color: "var(--ink-3)" }}>Pool ID</div>
-            <div className="mono">{pool.id}</div>
-            <div style={{ color: "var(--ink-3)" }}>Center</div>
-            <div>{pool.center}</div>
-            <div style={{ color: "var(--ink-3)" }}>Raw amount</div>
-            <div className="num">{fmt.dollars(pool.amount)}</div>
-            <div style={{ color: "var(--ink-3)" }}>Eligible %</div>
-            <div className="num">{pool.eligiblePercent}%</div>
-            <div style={{ color: "var(--ink-3)" }}>Eligible amount</div>
-            <div className="num" style={{ fontWeight: 600 }}>
-              {fmt.dollars(pool.amount * (pool.eligiblePercent / 100))}
-            </div>
-            {pool.eligiblePercent < 100 && (
-              <>
-                <div style={{ color: "var(--ink-3)" }}>Excluded</div>
-                <div className="num" style={{ color: "var(--ink-3)" }}>
-                  {fmt.dollars(pool.amount * (1 - pool.eligiblePercent / 100))}
-                </div>
-              </>
-            )}
-            <div style={{ color: "var(--ink-3)" }}>Basis</div>
-            <div className="mono">{basis}</div>
-            {isDirectCharge ? (
-              <>
-                <div style={{ color: "var(--ink-3)" }}>Direct to</div>
-                <div>{directTo ? ALL_DEPTS.find((d) => d.code === directTo)?.name : "—"}</div>
-              </>
-            ) : (
-              <>
-                <div style={{ color: "var(--ink-3)" }}>{dept.code} driver</div>
-                <div className="num">{(DRIVERS[dept.code]?.[basis] ?? 0).toLocaleString()}</div>
-              </>
-            )}
-          </div>
-          <div style={{
-            marginTop: 12, padding: "8px 10px", background: "var(--paper-2)",
-            fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.5,
-            borderLeft: "2px solid var(--ink-3)",
-          }}>
-            <span className="mono" style={{
-              fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
-              color: "var(--ink-3)", textTransform: "uppercase", marginRight: 6,
-            }}>Rationale</span>
-            {pool.basis}
-          </div>
-        </div>
-
-        {/* Computation */}
-        <div>
-          <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 8,
-          }}>Computation</div>
-
-          {isDirectCharge ? (
-            <div style={{
-              fontSize: 12.5, fontFamily: "var(--ff-mono)",
-              padding: "10px 12px", background: "var(--paper-2)",
-              border: "1px solid var(--rule)", lineHeight: 1.7,
-            }}>
-              {pool.eligiblePercent < 100 && (
-                <div style={{ color: "var(--ink-3)" }}>
-                  {fmt.dollarsK(pool.amount)} × {pool.eligiblePercent}% eligible
-                </div>
-              )}
-              <div>direct charge → {fmt.dollars(pool.amount * (pool.eligiblePercent / 100))}</div>
-            </div>
-          ) : (
-            <div style={{
-              fontSize: 12.5, fontFamily: "var(--ff-mono)",
-              padding: "10px 12px", background: "var(--paper-2)",
-              border: "1px solid var(--rule)", lineHeight: 1.7,
-            }}>
-              {pool.eligiblePercent < 100 && (
-                <div style={{ color: "var(--ink-3)" }}>
-                  {fmt.dollarsK(pool.amount)} × {pool.eligiblePercent}% eligible = {fmt.dollarsK(pool.amount * (pool.eligiblePercent / 100))} allocatable
-                </div>
-              )}
-              <div>Initial = {fmt.dollarsK(pool.amount * (pool.eligiblePercent / 100))} on {pool.center}</div>
-              {view === "initial" && dept.kind === "indirect" ? (
-                <div style={{ color: "var(--accent)", fontWeight: 600 }}>
-                  Initial = {fmt.dollars(initialValue)}
-                </div>
-              ) : null}
-              {view === "final" ? (
-                <div style={{ color: "var(--ink-3)" }}>
-                  Final = Σ step-down contributions →
-                </div>
-              ) : null}
-            </div>
-          )}
-
-          {view === "final" && stepContribs.length > 0 ? (
-            <>
-              <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-                color: "var(--ink-3)", textTransform: "uppercase",
-                margin: "14px 0 6px",
-              }}>Step-down contributions</div>
-              <div style={{ border: "1px solid var(--rule)" }}>
-                {stepContribs.map((c, i) => (
-                  <div key={`${c.stepIndex}-${c.fromCode}`} style={{
-                    display: "flex", justifyContent: "space-between", gap: 12,
-                    alignItems: "baseline",
-                    padding: "5px 10px",
-                    fontSize: 11.5,
-                    borderBottom: i < stepContribs.length - 1 ? "1px solid var(--rule)" : "none",
-                  }}>
-                    <span style={{ color: "var(--ink-3)" }}>
-                      <span className="mono" style={{
-                        fontSize: 9.5, color: "var(--ink-4)", marginRight: 6,
-                      }}>step {c.stepIndex}</span>
-                      {c.fromName}
-                    </span>
-                    <span className="num mono" style={{
-                      fontWeight: 500, whiteSpace: "nowrap",
-                      fontVariantNumeric: "tabular-nums",
-                    }}>{fmt.dollars(c.amount)}</span>
-                  </div>
-                ))}
-                <div style={{
-                  display: "flex", justifyContent: "space-between",
-                  padding: "6px 10px",
-                  background: "var(--paper-2)",
-                  fontSize: 12, fontWeight: 700,
-                  borderTop: "2px solid var(--ink)",
-                }}>
-                  <span>Final</span>
-                  <span className="num mono" style={{
-                    fontVariantNumeric: "tabular-nums",
-                  }}>{fmt.dollars(finalValue)}</span>
-                </div>
+            <div className="mono" style={{
+              padding: "8px 14px",
+              borderBottom: "1px solid var(--rule)",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}>Step-down contributions</div>
+            {stepContribs.map((c, i) => (
+              <div key={`${c.stepIndex}-${c.fromCode}`} style={{
+                display: "grid",
+                gridTemplateColumns: "44px 1fr auto",
+                gap: 12, alignItems: "baseline",
+                padding: "8px 14px",
+                fontSize: 12,
+                borderBottom: i < stepContribs.length - 1 ? "1px solid var(--rule)" : "none",
+              }}>
+                <span className="mono" style={{
+                  fontSize: 10, color: "var(--ink-4)", fontWeight: 600,
+                }}>step {c.stepIndex}</span>
+                <span style={{ color: "var(--ink-2)" }}>
+                  From <strong style={{ color: "var(--ink)" }}>{c.fromName}</strong>
+                </span>
+                <span className="num mono" style={{
+                  fontVariantNumeric: "tabular-nums",
+                  color: "var(--ink)", fontWeight: 500,
+                }}>{fmt.dollars(c.amount)}</span>
               </div>
-            </>
-          ) : null}
-        </div>
-      </div>
-    </div>
+            ))}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: "44px 1fr auto",
+              gap: 12, alignItems: "baseline",
+              padding: "10px 14px",
+              borderTop: "2px solid var(--ink)",
+              fontSize: 12, fontWeight: 700,
+              background: "var(--paper)",
+            }}>
+              <span/>
+              <span>Final allocation to {dept.name}</span>
+              <span className="num mono" style={{
+                fontVariantNumeric: "tabular-nums",
+                color: "var(--accent)",
+              }}>{fmt.dollars(finalValue)}</span>
+            </div>
+          </div>
+        )}
+      </TraceSection>
+
+      {/* Section 3 — Distribution */}
+      {distRows.length > 0 && (
+        <TraceSection title={`Where this pool lands (${view === "initial" ? "initial" : "final"})`}>
+          <DistributionList
+            rows={distRows}
+            valueFmt={(v) => fmt.dollars(v)}
+            caption={
+              <span>
+                <strong>{pool.pool}</strong> distributes across{" "}
+                <strong>{ranked.length}</strong> recipient{ranked.length === 1 ? "" : "s"}.{" "}
+                {ranked[0] && (
+                  <>
+                    Largest: <strong>{ranked[0].name}</strong> ({fmt.dollars(ranked[0].value)},{" "}
+                    {ranked[0].percent.toFixed(1)}%).{" "}
+                  </>
+                )}
+                {dept.name} ranks <strong>#{rank}</strong>.
+              </span>
+            }
+          />
+        </TraceSection>
+      )}
+
+      {/* Section 4 — Auditor metadata */}
+      <CollapsibleMetadata title="Allocation metadata">
+        <MetadataRow label="Pool ID">{pool.id}</MetadataRow>
+        <MetadataRow label="Cost center">{pool.center}</MetadataRow>
+        <MetadataRow label="Pool name">{pool.pool}</MetadataRow>
+        <MetadataRow label="Raw amount">{fmt.dollars(pool.amount)}</MetadataRow>
+        <MetadataRow label="Eligible %">{pool.eligiblePercent}%</MetadataRow>
+        <MetadataRow label="Excluded">{fmt.dollars(pool.amount * (1 - pool.eligiblePercent / 100))}</MetadataRow>
+        <MetadataRow label="Basis code">{basis}</MetadataRow>
+        {pool.basis && <MetadataRow label="Basis rationale">{pool.basis}</MetadataRow>}
+        {isDirectCharge && directTo && (
+          <MetadataRow label="Direct target">{ALL_DEPTS.find((d) => d.code === directTo)?.name ?? directTo}</MetadataRow>
+        )}
+        {!isDirectCharge && (
+          <>
+            <MetadataRow label={`${dept.code} driver value`}>{deptDriver.toLocaleString()} {basisMeta?.unit ?? ""}</MetadataRow>
+            <MetadataRow label="Total driver">{driverTotal.toLocaleString()} {basisMeta?.unit ?? ""}</MetadataRow>
+          </>
+        )}
+        <MetadataRow label="Initial placement">{fmt.dollars(initialValue)}</MetadataRow>
+        <MetadataRow label="Final placement">{fmt.dollars(finalValue)}</MetadataRow>
+      </CollapsibleMetadata>
+    </TracePanel>
   );
 }
