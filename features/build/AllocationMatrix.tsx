@@ -1,6 +1,6 @@
 ﻿
 import { useMemo, useState, type ReactNode } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALL_DEPTS, DIRECT_DEPTS, INDIRECT_DEPTS,
@@ -51,10 +51,14 @@ export function AllocationMatrix() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{
-        background: "var(--paper)", border: "1px solid var(--rule)",
-        overflowX: "auto",
-      }}>
+      <div>
+        <SectionLabel right={`${capPools.length} pools · ${cols.length} ${view === "initial" ? "depts" : "direct depts"}`}>
+          Pool allocations
+        </SectionLabel>
+        <div style={{
+          background: "var(--paper)", border: "1px solid var(--rule)",
+          overflowX: "auto",
+        }}>
         <Header view={view} setView={setView}/>
         <div style={{ minWidth: view === "initial" ? 1280 : 960 }}>
           {/* Header */}
@@ -181,6 +185,7 @@ export function AllocationMatrix() {
             }}>{fmt.dollarsK(grandTotal)}</div>
           </div>
         </div>
+        </div>
       </div>
 
       {openCell ? (
@@ -212,11 +217,7 @@ function Header({
       display: "flex", alignItems: "stretch", gap: 0,
       borderBottom: "1px solid var(--rule)", background: "var(--paper)",
     }}>
-      <div style={{ flex: 1, padding: "12px 16px" }}>
-        <div className="display" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
-          Pool allocations
-        </div>
-      </div>
+      <div style={{ flex: 1 }}/>
       <div style={{
         display: "flex", alignItems: "stretch",
         borderLeft: "1px solid var(--rule)",
@@ -231,7 +232,7 @@ function Header({
               key={opt.id}
               onClick={() => setView(opt.id)}
               style={{
-                padding: "0 18px",
+                padding: "8px 18px",
                 fontSize: 11.5, fontWeight: 600,
                 background: active ? "var(--ink)" : "var(--paper)",
                 color:      active ? "var(--paper)" : "var(--ink-2)",

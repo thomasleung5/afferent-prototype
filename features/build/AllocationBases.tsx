@@ -1,4 +1,5 @@
 ﻿
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALLOCATION_BASES, ALLOCATION_BASIS_ROWS,
@@ -38,19 +39,14 @@ function Matrix() {
   const grid = `40px ${labelCol} ${ALLOCATION_BASES.map(() => "minmax(76px, 1fr)").join(" ")}`;
 
   return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      overflow: "hidden",
-    }}>
+    <div>
+      <SectionLabel right={`${ALLOCATION_BASIS_ROWS.length} departments · ${ALLOCATION_BASES.length} bases`}>
+        Allocation Bases
+      </SectionLabel>
       <div style={{
-        padding: "12px 16px",
-        borderBottom: "1px solid var(--rule)",
+        background: "var(--paper)", border: "1px solid var(--rule)",
+        overflow: "hidden",
       }}>
-        <div className="display" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
-          Allocation Bases
-        </div>
-      </div>
-
       <div style={{ overflowX: "auto" }}>
         <div style={{ minWidth: 1280 }}>
           {/* Header */}
@@ -123,6 +119,7 @@ function Matrix() {
             ))}
           </div>
         </div>
+      </div>
       </div>
     </div>
   );

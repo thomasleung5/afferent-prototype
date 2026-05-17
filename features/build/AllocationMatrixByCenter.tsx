@@ -1,6 +1,6 @@
 ﻿
 import { useMemo, useState } from "react";
-import { Icon } from "@/components/ui";
+import { Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALL_DEPTS, DIRECT_DEPTS,
@@ -68,18 +68,14 @@ export function AllocationMatrixByCenter() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div style={{
-        background: "var(--paper)", border: "1px solid var(--rule)",
-        overflowX: "auto",
-      }}>
+      <div>
+        <SectionLabel right={`${capCenterOrder.length} centers · ${DIRECT_DEPTS.length} direct depts`}>
+          Allocation Matrix
+        </SectionLabel>
         <div style={{
-          padding: "12px 16px",
-          borderBottom: "1px solid var(--rule)",
+          background: "var(--paper)", border: "1px solid var(--rule)",
+          overflowX: "auto",
         }}>
-          <div className="display" style={{ fontSize: 14, fontWeight: 600, lineHeight: 1.2 }}>
-            Allocation Matrix
-          </div>
-        </div>
         <div style={{ minWidth: 960 }}>
           {/* Header */}
           <div style={{
@@ -192,6 +188,7 @@ export function AllocationMatrixByCenter() {
               textAlign: "right", fontSize: 13,
             }}>{fmt.dollarsK(grandTotal)}</div>
           </div>
+        </div>
         </div>
       </div>
 
