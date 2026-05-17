@@ -1,8 +1,6 @@
 ﻿
 import { DataTable, type Column } from "@/components/table";
 import { CellInput, SectionLabel } from "@/components/ui";
-import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
@@ -11,7 +9,6 @@ interface Row {
   idx: number;
   code: string;
   name: string;
-  fy: string;
   totalCost: number;
   poolCount: number;
 }
@@ -35,7 +32,6 @@ export function CapCentersTable() {
       idx: i + 1,
       code: samplePool?.id.replace(/^cap-/, "").split("-")[0] ?? "—",
       name: c.name,
-      fy: CITY.fiscal,
       // Source-department total cost — the 100% reference. Falls back to
       // the derived sum (Σ pool.amount) for centers whose totals haven't
       // been persisted yet.
@@ -69,7 +65,7 @@ export function CapCentersTable() {
     {
       key: "name",
       label: "Center",
-      width: "minmax(220px, 2fr)",
+      width: "minmax(260px, 2.4fr)",
       sortable: true,
       render: (r) => (
         <CellInput
@@ -80,13 +76,6 @@ export function CapCentersTable() {
           }}
         />
       ),
-    },
-    {
-      key: "fy",
-      label: "Fiscal year",
-      width: "130px",
-      sortable: true,
-      render: (r) => <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-2)" }}>{r.fy}</span>,
     },
     {
       key: "totalCost",
