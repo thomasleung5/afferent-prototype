@@ -1,5 +1,5 @@
 
-import { AddRowButton, AllocationBasisCombobox, CellInput } from "@/components/ui";
+import { AddRowButton, AllocationBasisCombobox, CellInput, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { AllocationBasis, CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -58,25 +58,15 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
   const allocPctSum = pools.reduce((a, p) => a + p.allocationPercent, 0);
   const balanced = Math.abs(allocPctSum - 100) < 0.5;
   return (
-    <div style={{
-      background: "var(--paper)",
-      border: "1px solid var(--rule)",
-      overflow: "hidden",
-    }}>
-      {/* Header strip — center name */}
+    <div>
+      <SectionLabel right={`${pools.length} pool${pools.length === 1 ? "" : "s"}`}>
+        {name}
+      </SectionLabel>
       <div style={{
-        display: "flex", justifyContent: "space-between", alignItems: "baseline",
-        padding: "13px 18px 12px",
-        borderBottom: "1px solid var(--rule-strong)",
         background: "var(--paper)",
+        border: "1px solid var(--rule)",
+        overflow: "hidden",
       }}>
-        <div>
-          <div className="display" style={{ fontSize: 14, fontWeight: 600, color: "var(--ink)" }}>
-            {name}
-          </div>
-        </div>
-      </div>
-
       {/* Column header */}
       <div style={{
         display: "grid",
@@ -157,6 +147,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         background: "var(--paper-2)",
       }}>
         <AddRowButton label="Add cost pool" onClick={onAddPool}/>
+      </div>
       </div>
     </div>
   );
