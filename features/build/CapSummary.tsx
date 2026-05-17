@@ -14,18 +14,21 @@ const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Bui
  *  Allocated $ is read-only here — it's an output of the step-down engine over
  *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
-  const { capAllocation, capPools, capCenterOrder, allocationBases, derived } = useBuildState();
-  const totalAllocated = ORDER.reduce((a, d) => a + capAllocation[d].allocated, 0);
+  const { capPools, capCenterOrder, allocationBases, derived } = useBuildState();
+  const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
   const eligibleTotal = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
 
+  // Local model is still needed for the per-pool drilldown breakdown
+  // (model.alloc2[poolId][deptCode]); the per-dept totals come from
+  // derived.capAllocated, which is sourced from the same step-down model.
   const model = useMemo(
     () => computeStepDown(capPools, capCenterOrder, allocationBases),
     [capPools, capCenterOrder, allocationBases],
   );
 
   const rows: DeptSummaryRow[] = ORDER.map((d) => {
-    const c = capAllocation[d];
+    const allocated = derived.capAllocated[d];
     const rate = derived.fbhr[d].capRate;
     const sorted = capPools
       .map((p) => ({ poolId: p.id, allocated: model.alloc2[p.id]?.[d as MatrixDeptCode] ?? 0 }))
@@ -33,7 +36,7 @@ export function CapSummary() {
       .sort((a, b) => b.allocated - a.allocated);
     const top = sorted[0];
     const topPool = top ? capPools.find((p) => p.id === top.poolId) : null;
-    const topPct = top && c.allocated > 0 ? Math.round((top.allocated / c.allocated) * 100) : 0;
+    const topPct = top && allocated > 0 ? Math.round((top.allocated / allocated) * 100) : 0;
 
     return {
       key: d,
@@ -44,7 +47,7 @@ export function CapSummary() {
             <span style={{ fontWeight: 500 }}>{labelOf(d)}</span>
           </span>
         ),
-        alloc: <span className="num">{fmt.dollars(c.allocated)}</span>,
+        alloc: <span className="num">{fmt.dollars(allocated)}</span>,
         perHr: rate > 0 ? `$${Math.round(rate)}` : "—",
         pools: sorted.length,
         top: topPool ? (
@@ -65,7 +68,7 @@ export function CapSummary() {
             ]}
             rows={sorted.filter((p) => p.allocated > 0).slice(0, 8).map((p) => {
               const pool = capPools.find((x) => x.id === p.poolId);
-              const pct = c.allocated > 0 ? Math.round((p.allocated / c.allocated) * 100) : 0;
+              const pct = allocated > 0 ? Math.round((p.allocated / allocated) * 100) : 0;
               return {
                 key: p.poolId,
                 cells: {
@@ -85,7 +88,7 @@ export function CapSummary() {
               ),
               basis: "",
               share: <span className="num">100%</span>,
-              alloc: <span className="num">{fmt.dollars(c.allocated)}</span>,
+              alloc: <span className="num">{fmt.dollars(allocated)}</span>,
             }}
           />
           <MetaGrid
@@ -96,7 +99,7 @@ export function CapSummary() {
                 <>
                   <Formula>$/hr = allocated $ ÷ productive hrs</Formula>
                   <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(c.allocated)} ÷ {Math.round(derived.fbhr[d].productiveHours).toLocaleString()} hrs
+                    = {fmt.dollarsK(allocated)} ÷ {Math.round(derived.fbhr[d].productiveHours).toLocaleString()} hrs
                     {rate > 0 && (
                       <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
                         = ${Math.round(rate)}/hr

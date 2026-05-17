@@ -17,6 +17,7 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
+import { computeStepDown } from "@/lib/data/capStepDown";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 import type { ImportBatch, ImportDecision, MappingCandidate, MappingStatus } from "@/lib/import/types";
 
@@ -965,6 +966,12 @@ export interface BuildDerived {
   costs: ServiceCost[];
   comparisons: FeeComparison[];
   impact: PolicyImpact;
+  /** Per-dept total $ landing on direct departments after the step-down
+   *  closes every indirect center. Derived from capPools + capCenterOrder +
+   *  allocationBases via computeStepDown; flows into deptFBHR so the CAP
+   *  rate ($/hr) reconciles to the pool inventory. The `state.capAllocation`
+   *  field is deprecated and no longer read by the fee-study math. */
+  capAllocated: Record<DeptCode, number>;
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */
@@ -980,15 +987,34 @@ export function useBuildState() {
       ENG:  labor.ENG.productiveHours,
     };
     const operatingByDept = deptOperating(state.operating, hoursByDept);
-    const fbhr = deptFBHR(labor, operatingByDept, state.capAllocation);
+
+    // Per-dept allocated $ is now derived from the step-down engine over
+    // the pool inventory — the source of truth. The legacy
+    // state.capAllocation field is no longer load-bearing for FBHR or any
+    // downstream cost calculation; it persists only for backwards
+    // compatibility with stored sessions.
+    const stepDown = computeStepDown(state.capPools, state.capCenterOrder, state.allocationBases);
+    const capAllocated: Record<DeptCode, number> = {
+      PLAN: stepDown.directTotals.PLAN ?? 0,
+      BLDG: stepDown.directTotals.BLDG ?? 0,
+      ENG:  stepDown.directTotals.ENG  ?? 0,
+    };
+    const derivedCapAllocation: Record<DeptCode, CapAllocation> = {
+      PLAN: { dept: "PLAN", allocated: capAllocated.PLAN },
+      BLDG: { dept: "BLDG", allocated: capAllocated.BLDG },
+      ENG:  { dept: "ENG",  allocated: capAllocated.ENG  },
+    };
+
+    const fbhr = deptFBHR(labor, operatingByDept, derivedCapAllocation);
     const costs = serviceCosts(state.services, fbhr);
     const comparisons = feeComparisons(
       costs, state.services, state.policyTargets, state.policyExceptions,
     );
     const impact = policyImpact(comparisons);
-    return { labor, operatingByDept, fbhr, costs, comparisons, impact };
+    return { labor, operatingByDept, fbhr, costs, comparisons, impact, capAllocated };
   }, [
-    state.positions, state.operating, state.capAllocation,
+    state.positions, state.operating,
+    state.capPools, state.capCenterOrder, state.allocationBases,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 
