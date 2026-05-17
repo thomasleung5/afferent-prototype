@@ -1,6 +1,6 @@
 ﻿
 import { DataTable, type Column } from "@/components/table";
-import { SectionLabel } from "@/components/ui";
+import { CellInput, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
 import { useBuildState } from "@/lib/store";
@@ -20,7 +20,7 @@ interface Row {
  *  Mirrors the legacy CapCentersTable shape so the screen reads as a faithful
  *  port of the original Claude Design CAP Step-1 view. */
 export function CapCentersTable() {
-  const { capPools, capCenterOrder, addCapCenter } = useBuildState();
+  const { capPools, capCenterOrder, addCapCenter, renameCapCenter } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
     // Synthesize a fund-program code from the first pool that belongs to
@@ -65,7 +65,15 @@ export function CapCentersTable() {
       label: "Center",
       width: "minmax(220px, 2fr)",
       sortable: true,
-      render: (r) => <span style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</span>,
+      render: (r) => (
+        <CellInput
+          value={r.name}
+          onChange={(v) => {
+            const next = String(v).trim();
+            if (next && next !== r.name) renameCapCenter(r.name, next);
+          }}
+        />
+      ),
     },
     {
       key: "fy",

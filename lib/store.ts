@@ -69,6 +69,8 @@ interface BuildActions {
   addOperatingLine: () => void;
   addCapPool: (center: string) => void;
   addCapCenter: () => void;
+  updateCapPool: (id: string, patch: Partial<CapPool>) => void;
+  renameCapCenter: (oldName: string, newName: string) => void;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
@@ -455,6 +457,22 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterOrder: s.capCenterOrder.includes(name)
               ? s.capCenterOrder
               : [...s.capCenterOrder, name],
+          };
+        }),
+
+      updateCapPool: (id, patch) =>
+        set((s) => ({
+          capPools: s.capPools.map((p) => p.id === id ? { ...p, ...patch } : p),
+        })),
+
+      renameCapCenter: (oldName, newName) =>
+        set((s) => {
+          if (oldName === newName) return s;
+          return {
+            capPools: s.capPools.map((p) =>
+              p.center === oldName ? { ...p, center: newName } : p,
+            ),
+            capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
           };
         }),
 

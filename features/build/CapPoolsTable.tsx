@@ -1,12 +1,12 @@
 
-import { AddRowButton } from "@/components/ui";
+import { AddRowButton, CellInput } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 export function CapPoolsTable() {
-  const { capPools, capCenterOrder, addCapPool } = useBuildState();
+  const { capPools, capCenterOrder, addCapPool, updateCapPool } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
@@ -20,6 +20,7 @@ export function CapPoolsTable() {
             pools={pools}
             total={c.total}
             onAddPool={() => addCapPool(c.name)}
+            onUpdatePool={updateCapPool}
           />
         );
       })}
@@ -38,9 +39,10 @@ interface SectionProps {
   pools: CapPool[];
   total: number;
   onAddPool: () => void;
+  onUpdatePool: (id: string, patch: Partial<CapPool>) => void;
 }
 
-function CenterSection({ name, pools, total, onAddPool }: SectionProps) {
+function CenterSection({ name, pools, total, onAddPool, onUpdatePool }: SectionProps) {
   return (
     <div style={{
       background: "var(--paper)",
@@ -88,6 +90,7 @@ function CenterSection({ name, pools, total, onAddPool }: SectionProps) {
             pool={p}
             centerTotal={total}
             isLast={isLast}
+            onUpdate={(patch) => onUpdatePool(p.id, patch)}
           />
         );
       })}
@@ -128,9 +131,10 @@ interface RowProps {
   pool: CapPool;
   centerTotal: number;
   isLast: boolean;
+  onUpdate: (patch: Partial<CapPool>) => void;
 }
 
-function PoolRow({ pool, centerTotal, isLast }: RowProps) {
+function PoolRow({ pool, centerTotal, isLast, onUpdate }: RowProps) {
   const pct = centerTotal > 0 ? Math.round((pool.amount / centerTotal) * 100) : 0;
   return (
     <div style={{
@@ -143,21 +147,26 @@ function PoolRow({ pool, centerTotal, isLast }: RowProps) {
       background: "var(--paper)",
       fontSize: 12.5,
     }}>
-      <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>
-        {pool.pool}
-      </div>
+      <CellInput
+        value={pool.pool}
+        onChange={(v) => onUpdate({ pool: String(v) })}
+      />
       <div className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
         {pct}%
       </div>
-      <div className="num" style={{ textAlign: "right", color: "var(--ink)" }}>
-        {fmt.dollars(pool.amount)}
-      </div>
-      <div style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5 }}>
-        {pool.basis}
-      </div>
-      <div style={{ fontSize: 12, color: "var(--ink-2)", lineHeight: 1.5 }}>
-        {pool.recoverability}
-      </div>
+      <CellInput
+        type="number" value={pool.amount} step={1000} min={0}
+        onChange={(v) => onUpdate({ amount: Number(v) || 0 })}
+        align="right" prefix="$"
+      />
+      <CellInput
+        value={pool.basis}
+        onChange={(v) => onUpdate({ basis: String(v) })}
+      />
+      <CellInput
+        value={pool.recoverability}
+        onChange={(v) => onUpdate({ recoverability: String(v) })}
+      />
     </div>
   );
 }
