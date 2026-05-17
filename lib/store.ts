@@ -90,6 +90,24 @@ interface BuildActions {
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeWorkload: (r: ExtractionResult<WorkloadRow>, fileName: string) => ImportApplyResult;
   mergeCap: (r: ExtractionResult<CapPool>, fileName: string) => ImportApplyResult;
+  /** Bulk-import a CAP bundle covering any of three sections: cost centers,
+   *  allocation bases, and cost pools. Centers upsert into capCenterTotals
+   *  by name; bases upsert into allocationBases by name (existing entries
+   *  keep their id); pools merge through the same mergeRows helper as
+   *  mergeCap. Returns one combined ImportApplyResult so the UI can read
+   *  the per-section counts off `mapped`. */
+  mergeCapBundle: (
+    r: {
+      centers: ExtractionResult<{ name: string; totalCost: number }>;
+      bases: ExtractionResult<AllocationBasis>;
+      pools: ExtractionResult<CapPool>;
+    },
+    fileName: string,
+  ) => ImportApplyResult & {
+    centersImported: number;
+    basesImported: number;
+    poolsImported: number;
+  };
   moveCenter: (name: string, direction: "up" | "down") => void;
   /** Replace the active batch (or clear with null). */
   setCurrentBatch: (batch: ImportBatch | null) => void;
@@ -660,6 +678,132 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           };
         });
         return result;
+      },
+
+      mergeCapBundle: (r, fileName) => {
+        const centersIn = [...r.centers.mapped, ...r.centers.lowConfidence];
+        const basesIn   = [...r.bases.mapped,   ...r.bases.lowConfidence];
+        const poolsIn   = [...r.pools.mapped,   ...r.pools.lowConfidence];
+
+        const totalMapped =
+          r.centers.stats.mapped + r.bases.stats.mapped + r.pools.stats.mapped;
+        const totalLow =
+          r.centers.stats.lowConfidence + r.bases.stats.lowConfidence + r.pools.stats.lowConfidence;
+        const totalRows =
+          r.centers.stats.total + r.bases.stats.total + r.pools.stats.total;
+
+        const at = new Date().toISOString();
+        const result: ImportApplyResult = {
+          domain: "cap", fileName,
+          detected: "CAP bundle (AI parsed)",
+          rows: totalRows,
+          mapped: totalMapped,
+          lowConfidence: totalLow,
+          unmapped: 0,
+          duplicates: 0,
+          warnings: [],
+        };
+
+        set((s) => {
+          // ── 1. Centers ─────────────────────────────────────────────────
+          // Upsert totals by name; append unseen names to the step-down order.
+          const nextTotals = { ...s.capCenterTotals };
+          const nextOrder = [...s.capCenterOrder];
+          for (const { entity } of centersIn) {
+            nextTotals[entity.name] = entity.totalCost;
+            if (!nextOrder.includes(entity.name)) nextOrder.push(entity.name);
+          }
+
+          // ── 2. Bases ───────────────────────────────────────────────────
+          // Match by case-insensitive name. Existing entries keep their id
+          // (so pools already referencing them by id don't break); new
+          // entries are appended with their fresh AI-generated ids. We also
+          // record which AI ids collapsed onto existing ids so pool
+          // resolution below can fix up basisId references.
+          const nextBases = [...s.allocationBases];
+          const byName = new Map(nextBases.map((b) => [b.name.toLowerCase(), b]));
+          /** AI-generated id → kept existing id (for pool basisId fixup). */
+          const basisIdRemap = new Map<string, string>();
+          for (const { entity } of basesIn) {
+            const lc = entity.name.toLowerCase();
+            const existing = byName.get(lc);
+            if (existing) {
+              basisIdRemap.set(entity.id, existing.id);
+              // Update source/methodologyNote/driverKey from the import,
+              // but keep the original id + createdAt for stability.
+              const patched: AllocationBasis = {
+                ...existing,
+                source: entity.source,
+                methodologyNote: entity.methodologyNote ?? existing.methodologyNote,
+                driverKey: entity.driverKey,
+                ...(entity.directTo ? { directTo: entity.directTo } : {}),
+              };
+              const idx = nextBases.findIndex((b) => b.id === existing.id);
+              if (idx >= 0) nextBases[idx] = patched;
+              byName.set(lc, patched);
+            } else {
+              nextBases.push(entity);
+              byName.set(lc, entity);
+            }
+          }
+
+          // ── 3. Pools ───────────────────────────────────────────────────
+          // Re-resolve basisId against the post-merge basis catalog so pools
+          // that referenced a basis imported in the same bundle (or just
+          // matched by name to seed) bind correctly.
+          const fixedPools = poolsIn.map(({ entity, lineage }) => {
+            let basisId = entity.basisId;
+            // Trust an existing basisId only if it survived the remap or
+            // already points at a real catalog entry.
+            if (basisId && basisIdRemap.has(basisId)) {
+              basisId = basisIdRemap.get(basisId)!;
+            } else if (!basisId || !nextBases.some((b) => b.id === basisId)) {
+              const match = nextBases.find(
+                (b) => b.name.toLowerCase() === entity.basis.toLowerCase(),
+              );
+              basisId = match?.id ?? "";
+            }
+            return { entity: { ...entity, basisId }, lineage };
+          });
+
+          const poolResult: ExtractionResult<CapPool> = {
+            ...r.pools,
+            mapped: fixedPools.filter((_, i) => i < r.pools.mapped.length),
+            lowConfidence: fixedPools.filter((_, i) => i >= r.pools.mapped.length),
+          };
+          const { merged: mergedPools, lineagePatch: poolLineage } =
+            mergeRows(s.capPools, poolResult);
+
+          // ── 4. Center / basis lineage ──────────────────────────────────
+          // Centers don't have ids — key lineage on a "cap-center:<name>"
+          // synthetic id so the source drilldown can still find it. Bases
+          // already have ids; key lineage on the (possibly remapped) id.
+          const centerLineage: Record<string, SourceLineage> = {};
+          for (const { entity, lineage } of centersIn) {
+            centerLineage[`cap-center:${entity.name}`] = lineage;
+          }
+          const basisLineage: Record<string, SourceLineage> = {};
+          for (const { entity, lineage } of basesIn) {
+            const id = basisIdRemap.get(entity.id) ?? entity.id;
+            basisLineage[id] = lineage;
+          }
+
+          return {
+            capPools: mergedPools,
+            capCenterTotals: nextTotals,
+            capCenterOrder: nextOrder,
+            allocationBases: nextBases,
+            lineage: { ...s.lineage, ...centerLineage, ...basisLineage, ...poolLineage },
+            imports: [...s.imports, { id: Date.now(), domain: "cap", result, at }],
+          };
+        });
+
+        return {
+          ...result,
+          centersImported: centersIn.length,
+          basesImported: basesIn.length,
+          poolsImported: poolsIn.length,
+        };
       },
 
       moveCenter: (name, direction) =>
