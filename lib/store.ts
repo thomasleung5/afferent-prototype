@@ -684,11 +684,9 @@ export function useBuildState() {
     const fbhr = deptFBHR(labor, operatingByDept, state.capAllocation);
     const costs = serviceCosts(state.services, fbhr);
     const comparisons = feeComparisons(
-      state.services, fbhr, state.policyTargets, state.policyExceptions,
+      costs, state.services, state.policyTargets, state.policyExceptions,
     );
-    const impact = policyImpact(
-      state.services, fbhr, state.policyTargets, state.policyExceptions,
-    );
+    const impact = policyImpact(comparisons);
     return { labor, operatingByDept, fbhr, costs, comparisons, impact };
   }, [
     state.positions, state.operating, state.capAllocation,

@@ -204,13 +204,14 @@ export interface FeeComparison extends ServiceCost {
 }
 
 export function feeComparisons(
+  costs: ServiceCost[],
   services: Service[],
-  fbhr: Record<DeptCode, FBHR>,
   deptTargets: PolicyTarget[],
   exceptions: PolicyException[],
 ): FeeComparison[] {
-  return serviceCosts(services, fbhr).map((c) => {
-    const svc = services.find((s) => s.id === c.id)!;
+  const serviceById = new Map(services.map((s) => [s.id, s]));
+  return costs.map((c) => {
+    const svc = serviceById.get(c.id)!;
     const target = targetFor(svc, deptTargets, exceptions);
     const recommended = Math.round((c.unitCost * target) / 100 / 5) * 5;
     const recoveryPct = c.unitCost > 0 ? (c.fee / c.unitCost) * 100 : 0;
@@ -236,15 +237,9 @@ export interface PolicyImpact {
   recoverableGap: number;
 }
 
-export function policyImpact(
-  services: Service[],
-  fbhr: Record<DeptCode, FBHR>,
-  deptTargets: PolicyTarget[],
-  exceptions: PolicyException[],
-): PolicyImpact {
-  const costs = feeComparisons(services, fbhr, deptTargets, exceptions);
+export function policyImpact(comparisons: FeeComparison[]): PolicyImpact {
   let totalCost = 0, intendedRevenue = 0, currentRevenue = 0;
-  for (const c of costs) {
+  for (const c of comparisons) {
     totalCost += c.annualCost;
     intendedRevenue += c.annualCost * (c.target / 100);
     currentRevenue += c.annualRevenue;

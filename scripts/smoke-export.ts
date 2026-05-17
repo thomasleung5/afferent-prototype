@@ -30,8 +30,8 @@ async function main() {
   const operatingByDept = deptOperating(OPERATING, hoursByDept);
   const fbhr = deptFBHR(labor, operatingByDept, CAP_ALLOCATION);
   const costs = serviceCosts(SERVICES, fbhr);
-  const comparisons = feeComparisons(SERVICES, fbhr, POLICY_TARGETS, POLICY_EXCEPTIONS);
-  const impact = policyImpact(SERVICES, fbhr, POLICY_TARGETS, POLICY_EXCEPTIONS);
+  const comparisons = feeComparisons(costs, SERVICES, POLICY_TARGETS, POLICY_EXCEPTIONS);
+  const impact = policyImpact(comparisons);
 
   const payload = buildExportPayload({
     positions: POSITIONS,
