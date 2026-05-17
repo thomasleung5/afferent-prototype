@@ -23,8 +23,16 @@ Return ONLY this JSON, no prose:
     { "name": "Direct to Parks", "source": "Manual assignment",   "driverKey": "DIRECT", "directTo": "PARKS", "confidence": "low" }
   ],
   "pools": [
-    { "center": "City Manager", "pool": "Human Resources", "allocationPercent": 38.62, "amount": 424820, "eligiblePercent": 100, "basis": "Budgeted FTE", "receiving": "All depts", "recoverability": "Fully recoverable", "confidence": "high" },
-    { "center": "City Attorney", "pool": "Contract review", "allocationPercent": 12.5, "amount": 22500, "eligiblePercent": 100, "basis": "Contract count", "receiving": "PLAN, BLDG, ENG", "recoverability": "Fully recoverable", "confidence": "high" }
+    {
+      "center": "City Manager", "pool": "Human Resources",
+      "allocationPercent": 38.62, "amount": 424820, "eligiblePercent": 100,
+      "basis": "Budgeted FTE",
+      "receivers": [
+        { "dept": "Planning Admin", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "confidence": "high" },
+        { "dept": "Building Admin", "deptCode": "BLDG", "units": 2.81, "percent": 18.08, "amount": 22066, "confidence": "high" }
+      ],
+      "recoverability": "Fully recoverable", "confidence": "high"
+    }
   ]
 }
 
@@ -80,7 +88,16 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
 - amount: the dollar amount allocated by this pool. Plain number, NO $ sign, NO commas. (e.g. "$424,820" → 424820.)
 - eligiblePercent: the fee-eligible share, 0–100. DEFAULT to 100 (fully fee-eligible). Set lower ONLY when the document explicitly excludes part of the pool from fee-supported allocations. NEVER set above 100.
 - basis: the allocation basis name. MUST be either a name from Section 2 of the same document, or one of the canonical seed names ("Budgeted FTE", "Actual FTE", "Salaries", "Payroll transactions", "AP invoices", "Agenda item count", "Contract count", "Square footage", "Direct labor hours", "Permit volume", "Operating expenditures", "Accounting transactions", "Time study %", "Population", "Vehicle depreciation", "Operating expenditures (excl. development)", "PRA request count", "Number of committees", "Direct allocation"). If the document uses a wording that clearly matches one of these, use the canonical name.
-- receiving: a short label describing which departments receive this pool (e.g. "All depts", "PLAN, BLDG, ENG", "Multiple departments"). Omit if not stated.
+- receivers: the full list of budget units that receive a non-zero share of this pool, taken from the pool's allocation-detail schedule (the "X - Allocations" pages). Each receiver is an object:
+  * dept: the receiving budget unit name exactly as written.
+  * deptCode: the receiver's MatrixDeptCode — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" if the receiver is a fund/program with no matching code (CIP funds, grant funds, "All Other"). Set the receiver's confidence to "low" whenever deptCode is "OTHER".
+  * units: the raw allocation-factor units for this receiver (the "Allocation Units" column), plain number. Omit if no unit count shown.
+  * percent: the receiver's share of the pool, 0-100, plain number, no % sign (the "Allocated Percent" column).
+  * amount: the dollar amount allocated to this receiver. Use the GROSS / FIRST-PASS allocation amount, NOT the post-step-down "Total" column, so receiver amounts sum to the pool amount. Plain number, no $ or commas.
+  * confidence: "high" if dept, percent, and amount are unambiguous; "low" otherwise.
+- SKIP receiver rows whose allocated amount is zero.
+- Allocation schedules list BOTH "ALLOCABLE BUDGET UNITS" (other indirect cost centers — these receive during the step-down) and "RECEIVING BUDGET UNITS" (direct departments). Include BOTH. In a two-step CAP, indirect centers receive from each other before the second pass pushes costs to direct departments; omitting the allocable-budget-unit rows will cause receiver amounts to under-sum the pool total.
+- Receivers' amount values must sum (within rounding) to the pool's amount; receivers' percent values must sum to ~100.
 - recoverability: a short policy note quoting the document (e.g. "Fully recoverable", "Partially recoverable", "Excluded — General Fund subsidy"). Omit if not stated.
 - SKIP center subtotals, "Total" / "Grand Total" rows, narrative footnotes, blank rows, and any row whose center or pool field is missing.
 - SKIP pool rows whose amount is zero or missing.
@@ -110,6 +127,18 @@ interface BasisRow {
   confidence: "high" | "low";
 }
 
+interface ReceiverRow {
+  dept: string;
+  /** MatrixDeptCode (BLDG_USE / EQUIP / COUNCIL / CMGR / CLERK / FAS / ATTY /
+   *  INS / CMTE / PLAN / BLDG / ENG / PW / PARKS / PD / FIRE), or "OTHER"
+   *  when the receiver is a fund/program with no matching code. */
+  deptCode: string;
+  units?: number;
+  percent: number;
+  amount: number;
+  confidence: "high" | "low";
+}
+
 interface PoolRow {
   center: string;
   pool: string;
@@ -117,6 +146,12 @@ interface PoolRow {
   amount: number;
   eligiblePercent?: number;
   basis: string;
+  /** Per-receiver allocation breakdown lifted from the pool's allocation-
+   *  detail schedule. Receivers' `amount` values sum to the pool's `amount`. */
+  receivers?: ReceiverRow[];
+  /** Legacy free-text receiver label. Kept for back-compat with extracts
+   *  produced before the structured `receivers` array existed; new prompts
+   *  no longer populate it. */
   receiving?: string;
   recoverability?: string;
   confidence: "high" | "low";
@@ -168,7 +203,12 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
   try {
     const response = await client.messages.create({
       model: MODEL,
-      max_tokens: 8192,
+      // 32k output ceiling — a full CAP returns ~17 pools × up to ~30
+      // receivers each ≈ 500 structured rows. The default 8192 budget
+      // truncates partway through the receivers array on real documents;
+      // 32k leaves headroom for the worst-case shape plus the centers /
+      // bases sections in the same response.
+      max_tokens: 32000,
       system: SYSTEM,
       messages: [{
         role: "user",
@@ -213,7 +253,13 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       };
       centers = recover<CenterRow>(/\{[^{}]*"totalCost"\s*:[^{}]*\}/g);
       bases   = recover<BasisRow>(/\{[^{}]*"driverKey"\s*:[^{}]*\}/g);
-      pools   = recover<PoolRow>(/\{[^{}]*"pool"\s*:[^{}]*\}/g);
+      // Pools may carry a nested `receivers: [{...}, {...}]` array, so the
+      // simple `[^{}]*` body used above fails as soon as receivers exist.
+      // This pattern tolerates one level of nested objects (good enough for
+      // receivers, which are themselves flat). If truncation lands mid-
+      // receivers the outer pool won't match and is dropped — that's the
+      // right call: a partial pool would otherwise sum incorrectly.
+      pools   = recover<PoolRow>(/\{(?:[^{}]|\{[^{}]*\})*"pool"\s*:(?:[^{}]|\{[^{}]*\})*\}/g);
       if (centers.length + bases.length + pools.length === 0) {
         return json({ ok: false, message: "Response was truncated and no complete CAP rows could be recovered. Try a shorter document or split it by section." }, { status: 502 });
       }
