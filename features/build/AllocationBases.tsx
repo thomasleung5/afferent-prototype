@@ -8,8 +8,7 @@ import {
 } from "@/lib/data/allocationBases";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  BigFormula, DistributionList, CollapsibleMetadata, MetadataRow,
-  type DistributionRow,
+  BigFormula, CollapsibleMetadata, MetadataRow,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -257,32 +256,6 @@ function CellTrace({
   const total = colTotal(basisKey, ALLOCATION_BASIS_ROWS);
   const share = total > 0 ? (raw / total) * 100 : 0;
 
-  // Build the full contributor distribution — every department with a
-  // non-zero share, sorted from largest to smallest. The DistributionList
-  // re-sorts internally; we hand it the unsorted rows.
-  const contributors = ALLOCATION_BASIS_ROWS
-    .map<DistributionRow & { rawValue: number }>((r) => {
-      const v = r.values[basisKey] ?? 0;
-      return {
-        id: r.code, name: r.name, value: v, rawValue: v,
-        percent: total > 0 ? (v / total) * 100 : 0,
-        meta: r.group === "indirect" ? "indirect" : "direct",
-        active: r.code === row.code,
-      };
-    })
-    .filter((r) => r.value > 0);
-
-  const ranked = [...contributors].sort((a, b) => b.value - a.value);
-  const rank = ranked.findIndex((r) => r.id === row.code) + 1;
-  const top = ranked[0];
-  const bottom = ranked[ranked.length - 1];
-  // Herfindahl concentration index — Σ share² normalized to [0,1]. >0.25
-  // = concentrated, <0.15 = broad. Useful for auditors to tell at a glance
-  // whether a basis is dominated by one department.
-  const hhi = ranked.reduce((a, r) => a + (r.percent / 100) ** 2, 0);
-  const concentrationLabel =
-    hhi >= 0.25 ? "Concentrated" : hhi >= 0.15 ? "Moderate spread" : "Broadly distributed";
-
   const valueWithUnit = `${formatCell(raw, basis.fmt)} ${basis.unit}`;
   const totalWithUnit = `${formatCell(total, basis.fmt)} ${basis.unit}`;
 
@@ -314,7 +287,6 @@ function CellTrace({
           <TraceStat
             label="Allocation share"
             value={`${share.toFixed(1)}%`}
-            sub={ranked.length > 0 ? `Rank #${rank} of ${ranked.length} contributors` : undefined}
             emphasis
           />
         </SummaryStrip>
@@ -339,31 +311,7 @@ function CellTrace({
         </div>
       </TraceSection>
 
-      {/* Section 3 — Visual share / distribution */}
-      <TraceSection title="Contributors to this basis">
-        <DistributionList
-          rows={contributors}
-          valueFmt={(v) => formatCell(v, basis.fmt)}
-          caption={
-            <span>
-              {ranked.length} departments contribute to <strong>{basis.longName}</strong>.{" "}
-              {top && (
-                <>
-                  Largest: <strong>{top.name}</strong> ({top.percent.toFixed(1)}%).{" "}
-                </>
-              )}
-              {bottom && bottom.id !== top?.id && (
-                <>
-                  Smallest non-zero: <strong>{bottom.name}</strong> ({bottom.percent.toFixed(1)}%).{" "}
-                </>
-              )}
-              Distribution: <strong>{concentrationLabel.toLowerCase()}</strong>.
-            </span>
-          }
-        />
-      </TraceSection>
-
-      {/* Section 4 — Auditor metadata */}
+      {/* Section 3 — Auditor metadata */}
       <CollapsibleMetadata title="Basis metadata">
         <MetadataRow label="Basis code">{basis.label}</MetadataRow>
         <MetadataRow label="Long name">{basis.longName}</MetadataRow>
@@ -371,7 +319,6 @@ function CellTrace({
         <MetadataRow label="Source">{basis.note}</MetadataRow>
         <MetadataRow label="Department code">{row.code}</MetadataRow>
         <MetadataRow label="Department group">{row.group === "indirect" ? "Indirect cost center" : "Direct department"}</MetadataRow>
-        <MetadataRow label="Concentration index">{hhi.toFixed(3)} ({concentrationLabel})</MetadataRow>
       </CollapsibleMetadata>
     </TracePanel>
   );

@@ -11,8 +11,8 @@ import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  FlowDiagram, DistributionList, CollapsibleMetadata, MetadataRow,
-  type DistributionRow, type FlowStep,
+  FlowDiagram, CollapsibleMetadata, MetadataRow,
+  type FlowStep,
 } from "./TracePanel";
 
 type View = "initial" | "final";
@@ -302,7 +302,6 @@ function CellTrace({
   const isDirectCharge = basis === "DIRECT";
   const initialValue = model.alloc1[pool.id]?.[dept.code] ?? 0;
   const finalValue   = model.alloc2[pool.id]?.[dept.code] ?? 0;
-  const allocSrc = view === "initial" ? model.alloc1 : model.alloc2;
   const cellValue = view === "initial" ? initialValue : finalValue;
 
   // Driver values across all receiving depts for this pool's basis. These
@@ -319,25 +318,6 @@ function CellTrace({
   const deptDriver = driverByDept[dept.code] ?? 0;
   const deptShare = driverTotal > 0 ? (deptDriver / driverTotal) * 100 : 0;
   const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
-
-  // Distribution of this pool across recipients in the current view.
-  const recipientCols = view === "initial" ? ALL_DEPTS : DIRECT_DEPTS;
-  const recipientTotal = recipientCols.reduce(
-    (a, d) => a + (allocSrc[pool.id]?.[d.code] ?? 0), 0,
-  );
-  const distRows: DistributionRow[] = recipientCols
-    .map((d) => {
-      const v = allocSrc[pool.id]?.[d.code] ?? 0;
-      return {
-        id: d.code, name: d.name, value: v,
-        percent: recipientTotal > 0 ? (v / recipientTotal) * 100 : 0,
-        meta: d.kind === "direct" ? "direct" : "indirect",
-        active: d.code === dept.code,
-      };
-    })
-    .filter((r) => r.value > 0.5);
-  const ranked = [...distRows].sort((a, b) => b.value - a.value);
-  const rank = ranked.findIndex((r) => r.id === dept.code) + 1;
 
   // Step-down contributions (only meaningful in final view when the pool
   // sat on an indirect dept that was closed into this direct recipient).
@@ -458,7 +438,7 @@ function CellTrace({
             sub={
               view === "initial" ? "Pre-step-down placement"
               : isDirectCharge ? "Routed to a single department"
-              : `Rank #${rank} of ${ranked.length} recipients`
+              : `${deptDriver.toLocaleString()} ÷ ${driverTotal.toLocaleString()} ${basisMeta?.unit ?? ""}`
             }
           />
           <TraceStat
@@ -527,29 +507,7 @@ function CellTrace({
       </TraceSection>
 
       {/* Section 3 — Distribution */}
-      {distRows.length > 0 && (
-        <TraceSection title={`Where this pool lands (${view === "initial" ? "initial" : "final"})`}>
-          <DistributionList
-            rows={distRows}
-            valueFmt={(v) => fmt.dollars(v)}
-            caption={
-              <span>
-                <strong>{pool.pool}</strong> distributes across{" "}
-                <strong>{ranked.length}</strong> recipient{ranked.length === 1 ? "" : "s"}.{" "}
-                {ranked[0] && (
-                  <>
-                    Largest: <strong>{ranked[0].name}</strong> ({fmt.dollars(ranked[0].value)},{" "}
-                    {ranked[0].percent.toFixed(1)}%).{" "}
-                  </>
-                )}
-                {dept.name} ranks <strong>#{rank}</strong>.
-              </span>
-            }
-          />
-        </TraceSection>
-      )}
-
-      {/* Section 4 — Auditor metadata */}
+      {/* Section 3 — Auditor metadata */}
       <CollapsibleMetadata title="Allocation metadata">
         <MetadataRow label="Pool ID">{pool.id}</MetadataRow>
         <MetadataRow label="Cost center">{pool.center}</MetadataRow>

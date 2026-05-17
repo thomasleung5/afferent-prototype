@@ -11,8 +11,7 @@ import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  DistributionList, CollapsibleMetadata, MetadataRow,
-  type DistributionRow,
+  CollapsibleMetadata, MetadataRow,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -247,26 +246,6 @@ function CenterCellTrace({
   const pools = capPools.filter((p) => p.center === center);
   const allocSrc = model.alloc2;
 
-  // This center's contribution to each direct recipient — used to compute
-  // ranking, share-of-center, and the distribution visualization.
-  const recipientRows: DistributionRow[] = DIRECT_DEPTS
-    .map((d) => {
-      const v = pools.reduce((a, p) => a + (allocSrc[p.id]?.[d.code] ?? 0), 0);
-      return {
-        id: d.code, name: d.name, value: v,
-        percent: 0, // filled below once we know the row total
-        active: d.code === deptCode,
-      };
-    })
-    .filter((r) => r.value > 0.5);
-  const recipientTotal = recipientRows.reduce((a, r) => a + r.value, 0);
-  recipientRows.forEach((r) => {
-    r.percent = recipientTotal > 0 ? (r.value / recipientTotal) * 100 : 0;
-  });
-  const ranked = [...recipientRows].sort((a, b) => b.value - a.value);
-  const rank = ranked.findIndex((r) => r.id === deptCode) + 1;
-  const topRecipient = ranked[0];
-
   // Contributing pools — one row per pool that lands non-zero $ on the
   // selected dept. Sorted desc for the breakdown.
   const contribs = pools
@@ -291,7 +270,7 @@ function CenterCellTrace({
     >
       {/* Section 1 — Summary */}
       <TraceSection>
-        <SummaryStrip cols={4}>
+        <SummaryStrip cols={3}>
           <TraceStat
             label="Center eligible cost"
             value={fmt.dollars(centerEligible)}
@@ -301,15 +280,6 @@ function CenterCellTrace({
             label="Share of center"
             value={`${centerShare.toFixed(1)}%`}
             sub={`Reaching ${dept.name} after step-down`}
-          />
-          <TraceStat
-            label="Rank among recipients"
-            value={ranked.length > 0 ? `#${rank} of ${ranked.length}` : "—"}
-            sub={topRecipient && topRecipient.id !== deptCode
-              ? `Top: ${topRecipient.name} (${fmt.dollarsK(topRecipient.value)})`
-              : topRecipient?.id === deptCode
-                ? "Largest recipient"
-                : undefined}
           />
           <TraceStat
             label="Final allocation"
@@ -416,31 +386,7 @@ function CenterCellTrace({
         )}
       </TraceSection>
 
-      {/* Section 3 — Distribution across all recipients */}
-      {ranked.length > 0 && (
-        <TraceSection title="Where this center's cost lands">
-          <DistributionList
-            rows={recipientRows}
-            valueFmt={(v) => fmt.dollars(v)}
-            caption={
-              <span>
-                <strong>{center}</strong> distributes across <strong>{ranked.length}</strong>{" "}
-                direct department{ranked.length === 1 ? "" : "s"} after step-down.{" "}
-                {topRecipient && topRecipient.id !== deptCode && (
-                  <>
-                    Largest recipient is <strong>{topRecipient.name}</strong>{" "}
-                    ({fmt.dollars(topRecipient.value)}, {topRecipient.percent.toFixed(1)}%).{" "}
-                  </>
-                )}
-                {dept.name} ranks <strong>#{rank}</strong>{" "}
-                {rank === 1 ? "(largest)" : rank === ranked.length ? "(smallest)" : ""}.
-              </span>
-            }
-          />
-        </TraceSection>
-      )}
-
-      {/* Section 4 — Auditor metadata */}
+      {/* Section 3 — Auditor metadata */}
       <CollapsibleMetadata title="Allocation metadata">
         <MetadataRow label="Center">{center}</MetadataRow>
         <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
@@ -448,7 +394,6 @@ function CenterCellTrace({
         <MetadataRow label="Recipient">{dept.name} ({dept.code})</MetadataRow>
         <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToDept)}</MetadataRow>
         <MetadataRow label="Share of center">{centerShare.toFixed(2)}%</MetadataRow>
-        <MetadataRow label="Rank">#{rank} of {ranked.length}</MetadataRow>
         <MetadataRow label="Contributing pools">{contribs.length.toString()}</MetadataRow>
       </CollapsibleMetadata>
     </TracePanel>

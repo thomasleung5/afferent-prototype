@@ -124,7 +124,8 @@ interface StatProps {
   label: string;
   value: ReactNode;
   sub?: ReactNode;
-  /** Promote this stat to the headline outcome (large, accent color). */
+  /** Promote this stat to the headline outcome — same size, heavier weight,
+   *  accent color. Emphasis carries through tone/weight, not scale. */
   emphasis?: boolean;
 }
 
@@ -137,10 +138,10 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
         marginBottom: 8,
       }}>{label}</div>
       <div style={{
-        fontSize: emphasis ? 26 : 16,
+        fontSize: 14,
         fontWeight: emphasis ? 700 : 500,
         color: emphasis ? "var(--accent)" : "var(--ink)",
-        lineHeight: 1.15,
+        lineHeight: 1.3,
         fontVariantNumeric: "tabular-nums",
         wordBreak: "break-word",
       }}>{value}</div>
@@ -155,7 +156,7 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
 }
 
 // ============================================================================
-// Logic — large formula and vertical flow
+// Logic — formula chip and vertical flow
 // ============================================================================
 
 export function BigFormula({ children }: { children: ReactNode }) {
@@ -163,11 +164,10 @@ export function BigFormula({ children }: { children: ReactNode }) {
     <div style={{
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 18, fontWeight: 500,
+      fontSize: 13.5, fontWeight: 500,
       color: "var(--ink)",
       lineHeight: 1.55,
-      letterSpacing: "0.01em",
-      padding: "18px 22px",
+      padding: "12px 16px",
       background: "var(--paper-2)",
       borderLeft: "3px solid var(--accent)",
     }}>{children}</div>
@@ -207,11 +207,11 @@ export function FlowDiagram({ steps }: { steps: FlowStep[] }) {
             }}>{s.label}</div>
             <div>
               <div style={{
-                fontSize: s.emphasis ? 18 : 15,
+                fontSize: 13.5,
                 fontWeight: s.emphasis ? 700 : 500,
                 color: s.emphasis ? "var(--accent)" : "var(--ink)",
                 fontVariantNumeric: "tabular-nums",
-                lineHeight: 1.3,
+                lineHeight: 1.35,
               }}>{s.value}</div>
               {s.detail && (
                 <div className="mono" style={{
@@ -231,104 +231,6 @@ export function FlowDiagram({ steps }: { steps: FlowStep[] }) {
         </li>
       ))}
     </ol>
-  );
-}
-
-// ============================================================================
-// Distribution — ranked horizontal bars
-// ============================================================================
-
-export interface DistributionRow {
-  id: string;
-  name: string;
-  /** Raw numeric value used both for bar width and label. */
-  value: number;
-  /** Pre-computed % of the column total (0–100). */
-  percent: number;
-  /** Optional tiny meta tag shown after the name. */
-  meta?: string;
-  /** Highlight as the currently-selected row. */
-  active?: boolean;
-}
-
-interface DistributionProps {
-  rows: DistributionRow[];
-  /** Formatter for the value column (e.g. fmt.dollarsK or formatCell). */
-  valueFmt: (v: number) => string;
-  /** Optional caption shown above the list. */
-  caption?: ReactNode;
-}
-
-export function DistributionList({ rows, valueFmt, caption }: DistributionProps) {
-  const sorted = [...rows].sort((a, b) => b.value - a.value);
-  const max = sorted[0]?.value ?? 0;
-  return (
-    <div>
-      {caption && (
-        <div style={{
-          fontSize: 12, color: "var(--ink-2)",
-          marginBottom: 12, lineHeight: 1.5,
-        }}>{caption}</div>
-      )}
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {sorted.map((r, i) => {
-          const rank = i + 1;
-          const width = max > 0 ? (r.value / max) * 100 : 0;
-          return (
-            <div key={r.id} style={{
-              display: "grid",
-              gridTemplateColumns: "32px minmax(140px, 1.4fr) minmax(120px, 2fr) 90px 64px",
-              gap: 14, alignItems: "center",
-              padding: "7px 8px",
-              background: r.active ? "var(--accent-tint)" : "transparent",
-              borderLeft: r.active ? "2px solid var(--accent)" : "2px solid transparent",
-              transition: "background 120ms",
-            }}>
-              <span className="mono" style={{
-                fontSize: 10.5,
-                color: r.active ? "var(--accent)" : "var(--ink-4)",
-                fontWeight: r.active ? 700 : 500,
-              }}>#{rank}</span>
-              <span style={{
-                fontSize: 12.5,
-                color: r.active ? "var(--ink)" : "var(--ink-2)",
-                fontWeight: r.active ? 600 : 500,
-                minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>
-                {r.name}
-                {r.meta && (
-                  <span className="mono" style={{
-                    color: "var(--ink-4)", marginLeft: 8, fontSize: 10.5,
-                  }}>{r.meta}</span>
-                )}
-              </span>
-              <div style={{
-                height: 6, background: "var(--paper-2)",
-                border: "1px solid var(--rule)",
-                position: "relative", overflow: "hidden",
-              }}>
-                <div style={{
-                  width: `${width}%`, height: "100%",
-                  background: r.active ? "var(--accent)" : "var(--ink-3)",
-                  transition: "width 240ms ease-out",
-                }}/>
-              </div>
-              <span className="num" style={{
-                fontSize: 12, textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                color: r.active ? "var(--ink)" : "var(--ink-2)",
-                fontWeight: r.active ? 600 : 400,
-              }}>{valueFmt(r.value)}</span>
-              <span className="num" style={{
-                fontSize: 11, textAlign: "right",
-                fontVariantNumeric: "tabular-nums",
-                color: r.active ? "var(--ink-2)" : "var(--ink-3)",
-              }}>{r.percent.toFixed(1)}%</span>
-            </div>
-          );
-        })}
-      </div>
-    </div>
   );
 }
 
