@@ -12,7 +12,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
-import { StateChip, ConfReason, type FeeState } from "./StateChip";
+import { StateChip, ConfReason, type FeeState } from "@/components/ui";
 
 type Confidence = "high" | "med" | "low";
 

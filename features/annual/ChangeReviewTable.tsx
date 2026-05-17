@@ -1,7 +1,7 @@
 import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { TableToolbar, StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/components/ui";
-import { ConfReason } from "@/features/build/StateChip";
+import { ConfReason } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { ANNUAL_CHANGES, RECOVERY_DELTAS, type AnnualChange } from "@/lib/data/annual";
 
