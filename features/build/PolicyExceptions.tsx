@@ -1,5 +1,5 @@
 ﻿
-import { AddRowButton, EditableNumber, EditableText, Icon } from "@/components/ui";
+import { AddRowButton, CellInput, Icon } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 
 export function PolicyExceptions() {
@@ -41,28 +41,24 @@ export function PolicyExceptions() {
           borderBottom: i < policyExceptions.length - 1 ? "1px solid var(--rule)" : "none",
           alignItems: "center",
         }}>
-          <EditableText
+          <CellInput
             value={e.fee}
-            onChange={(v) => updatePolicyException(e.id, { fee: v })}
+            onChange={(v) => updatePolicyException(e.id, { fee: String(v) })}
             placeholder="Fee name"
-            compact
-            bold
           />
-          <EditableNumber
+          <CellInput
+            type="number"
             value={e.target}
-            onChange={(v) => updatePolicyException(e.id, { target: v })}
+            onChange={(v) => updatePolicyException(e.id, { target: Number(v) || 0 })}
             suffix="%"
             min={0}
             max={200}
             align="right"
-            compact
-            bold
           />
-          <EditableText
+          <CellInput
             value={e.note}
-            onChange={(v) => updatePolicyException(e.id, { note: v })}
+            onChange={(v) => updatePolicyException(e.id, { note: String(v) })}
             placeholder="Optional policy note"
-            compact
           />
           <button
             onClick={() => removePolicyException(e.id)}

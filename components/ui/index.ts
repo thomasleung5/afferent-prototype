@@ -9,8 +9,6 @@ export { RecoveryMeter } from "./RecoveryMeter";
 export { DeptChip } from "./DeptChip";
 export { SectionLabel } from "./SectionLabel";
 export { Drawer } from "./Drawer";
-export { EditableNumber } from "./EditableNumber";
-export { EditableText } from "./EditableText";
 export { ExportMenu } from "./ExportMenu";
 export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";

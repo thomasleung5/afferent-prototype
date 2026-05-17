@@ -1,5 +1,5 @@
 ﻿
-import { DeptChip, EditableNumber, EditableText } from "@/components/ui";
+import { CellInput, DeptChip } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
@@ -64,24 +64,23 @@ export function DepartmentTargets() {
           </div>
           <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
             <Bar pct={t.target}/>
-            <EditableNumber
-              value={t.target}
-              onChange={(v) => updatePolicyTarget(t.id, { target: v })}
-              suffix="%"
-              min={0}
-              max={100}
-              align="left"
-              compact
-              width={70}
-              bold
-            />
+            <div style={{ width: 70 }}>
+              <CellInput
+                type="number"
+                value={t.target}
+                onChange={(v) => updatePolicyTarget(t.id, { target: Number(v) || 0 })}
+                suffix="%"
+                min={0}
+                max={100}
+                align="right"
+              />
+            </div>
             <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{intent(t.target)}</span>
           </div>
-          <EditableText
+          <CellInput
             value={t.note}
-            onChange={(v) => updatePolicyTarget(t.id, { note: v })}
+            onChange={(v) => updatePolicyTarget(t.id, { note: String(v) })}
             placeholder="Optional policy note"
-            compact
           />
         </div>
       ))}
