@@ -4,19 +4,20 @@ import type {
 } from "./types";
 
 export interface TopFix extends EnrichedService {
-  /** Recommended fee at target recovery, snapped to $5. */
+  /** Recommended fee for display, rounded to nearest $1. */
   recommended: number;
-  /** Annual revenue lift if recommended fee is adopted. */
+  /** Annual revenue lift if recommended fee is adopted (full-precision math). */
   annualUplift: number;
 }
 
 export function topFixes(services: Service[], limit = 6): TopFix[] {
   return services
     .map<TopFix>((s) => {
-      const recommended = Math.round((s.cost * (s.target || 100)) / 100 / 5) * 5;
+      const calculatedRecommendedFee = (s.cost * (s.target || 100)) / 100;
+      const recommended = Math.round(calculatedRecommendedFee);
       const recovery = s.cost > 0 ? (s.fee / s.cost) * 100 : 0;
       const gap = (s.cost - s.fee) * s.volume;
-      const annualUplift = (recommended - s.fee) * s.volume;
+      const annualUplift = (calculatedRecommendedFee - s.fee) * s.volume;
       return { ...s, recovery, gap, recommended, annualUplift };
     })
     .filter((s) => s.annualUplift > 0)
@@ -197,9 +198,17 @@ function targetFor(
 export interface FeeComparison extends ServiceCost {
   recoveryPct: number;
   target: number;
-  /** unitCost × target, snapped to nearest $5. */
+  /** Full-precision recommended fee = unitCost × (target/100). Use this for
+   *  all financial reconciliation math (Target Revenue, Net Adoption Impact,
+   *  Recoverable Revenue, totals). Never round before aggregating. */
+  calculatedRecommendedFee: number;
+  /** calculatedRecommendedFee rounded to nearest $1 for display/export only.
+   *  NEVER use for financial math — totals will drift from policy intent. */
   recommended: number;
-  /** (recommended − fee) × volume. */
+  /** Net uplift if recommended fee adopted, using full precision:
+   *  (calculatedRecommendedFee − fee) × volume. Unclamped — can be negative
+   *  when current fee exceeds target. Summing this across all rows reconciles
+   *  with Recovery Policy's recoverableGap (same underlying math). */
   annualUplift: number;
 }
 
@@ -213,14 +222,16 @@ export function feeComparisons(
   return costs.map((c) => {
     const svc = serviceById.get(c.id)!;
     const target = targetFor(svc, deptTargets, exceptions);
-    const recommended = Math.round((c.unitCost * target) / 100 / 5) * 5;
+    const calculatedRecommendedFee = (c.unitCost * target) / 100;
+    const recommended = Math.round(calculatedRecommendedFee);
     const recoveryPct = c.unitCost > 0 ? (c.fee / c.unitCost) * 100 : 0;
     return {
       ...c,
       recoveryPct,
       target,
+      calculatedRecommendedFee,
       recommended,
-      annualUplift: (recommended - c.fee) * c.volume,
+      annualUplift: (calculatedRecommendedFee - c.fee) * c.volume,
     };
   });
 }
@@ -231,9 +242,13 @@ export interface PolicyImpact {
   currentRevenue: number;
   /** intendedRevenue / totalCost as a percent. */
   overallPct: number;
-  /** totalCost − intendedRevenue: the policy-driven subsidy. */
+  /** totalCost − intendedRevenue: the policy-driven subsidy (always ≥ 0
+   *  in practice; clamped because over-recovery shouldn't read as negative
+   *  subsidy in the UI). */
   subsidy: number;
-  /** max(0, intendedRevenue − currentRevenue): the closeable gap. */
+  /** intendedRevenue − currentRevenue: the closeable gap. UNCLAMPED so it
+   *  reconciles exactly with Fee Schedule's Net Adoption Impact. Negative
+   *  values mean current revenue already exceeds policy intent. */
   recoverableGap: number;
 }
 
@@ -250,6 +265,6 @@ export function policyImpact(comparisons: FeeComparison[]): PolicyImpact {
     currentRevenue,
     overallPct: totalCost > 0 ? (intendedRevenue / totalCost) * 100 : 0,
     subsidy: Math.max(0, totalCost - intendedRevenue),
-    recoverableGap: Math.max(0, intendedRevenue - currentRevenue),
+    recoverableGap: intendedRevenue - currentRevenue,
   };
 }

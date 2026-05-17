@@ -298,7 +298,7 @@ export function FeeScheduleTable() {
                 <div>{svc.hours} hrs × ${Math.round(fbhr)}/hr</div>
                 <div style={{ color: "var(--ink-3)" }}>= ${Math.round(r.unitCost)} unit cost</div>
                 <div style={{ color: "var(--ink-3)" }}>× {r.target}% recovery target</div>
-                <div style={{ color: "var(--ink-3)" }}>→ rounded to $5</div>
+                <div style={{ color: "var(--ink-3)" }}>→ rounded to $1</div>
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
                   recommended: <b>{fmt.dollars(r.recommended)}</b>
                 </div>

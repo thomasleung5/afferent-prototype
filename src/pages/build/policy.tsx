@@ -23,9 +23,10 @@ export default function RecoveryPolicyPage() {
       <StatusRow items={[
         { label: "Departments",         value: `${policyTargets.length}` },
         { label: "Fee exceptions",      value: `${policyExceptions.length}` },
-        { label: "Overall recovery",    value: `${Math.round(impact.overallPct)}%` },
-        { label: "Annual subsidy",      value: fmt.dollarsK(impact.subsidy) },
-        { label: "Recoverable revenue", value: fmt.dollarsK(impact.recoverableGap) },
+        { label: "Target recovery",     value: `${Math.round(impact.overallPct)}%` },
+        { label: "Policy subsidy",      value: `${fmt.dollarsK(impact.subsidy)}/yr` },
+        { label: "Recoverable revenue", value: `${impact.recoverableGap >= 0 ? "" : "−"}${fmt.dollarsK(Math.abs(impact.recoverableGap))}/yr` },
+        { label: "Total gap",           value: `${fmt.dollarsK(impact.totalCost - impact.currentRevenue)}/yr`, tone: "neg" },
       ]}/>
 
       <div style={{ paddingTop: 8 }}>

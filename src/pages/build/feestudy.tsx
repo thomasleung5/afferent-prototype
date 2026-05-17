@@ -17,11 +17,16 @@ export default function FeeSchedulePage() {
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const comparisons = derived.comparisons;
 
-  const totalUplift = comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
-  const underRecovery = comparisons.filter((c) => c.recoveryPct < 100).length;
-  const adoptedAt = comparisons.filter((c) => Math.abs(c.recommended - c.fee) < 1).length;
+  // Net adoption impact: full-precision sum (recommended − fee) × volume across
+  // every fee row, NOT clamped. Reconciles exactly with Recovery Policy's
+  // Recoverable Revenue — both derive from the same calculatedRecommendedFee.
+  const netAdoptionImpact = comparisons.reduce((a, c) => a + c.annualUplift, 0);
+  const belowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
+  const atTarget = comparisons.filter((c) => Math.abs(c.recommended - c.fee) < 1).length;
   const revenueNow = comparisons.reduce((a, c) => a + c.annualRevenue, 0);
-  const revenueRec = comparisons.reduce((a, c) => a + c.recommended * c.volume, 0);
+  // Target Revenue: sum of full-precision recommended × volume. NEVER use
+  // c.recommended (rounded for display) — rounding drift breaks reconciliation.
+  const targetRevenue = comparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
   const reviewing = currentBatch
     ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
     : 0;
@@ -87,12 +92,12 @@ export default function FeeSchedulePage() {
       />
 
       <StatusRow items={[
-        { label: "Fees",              value: `${comparisons.length}` },
-        { label: "At recommended",    value: `${adoptedAt}` },
-        { label: "Under target",      value: `${underRecovery}` },
-        { label: "Current revenue",   value: fmt.dollarsK(revenueNow) },
-        { label: "Recommended revenue", value: fmt.dollarsK(revenueRec) },
-        { label: "Annual uplift",     value: `+${fmt.dollarsK(totalUplift)}/yr`, tone: "pos" },
+        { label: "Fees",                value: `${comparisons.length}` },
+        { label: "At target",           value: `${atTarget}` },
+        { label: "Below target",        value: `${belowTarget}` },
+        { label: "Current revenue",     value: `${fmt.dollarsK(revenueNow)}/yr` },
+        { label: "Target revenue",      value: `${fmt.dollarsK(targetRevenue)}/yr` },
+        { label: "Net adoption impact", value: `${netAdoptionImpact >= 0 ? "+" : ""}${fmt.dollarsK(netAdoptionImpact)}/yr`, tone: netAdoptionImpact >= 0 ? "pos" : "neg" },
         ...(reviewing > 0
           ? [{ label: "For review", value: `${reviewing}`, tone: "warn" as const }]
           : []),
