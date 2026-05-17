@@ -20,7 +20,10 @@ interface Row {
  *  Mirrors the legacy CapCentersTable shape so the screen reads as a faithful
  *  port of the original Claude Design CAP Step-1 view. */
 export function CapCentersTable() {
-  const { capPools, capCenterOrder, addCapCenter, renameCapCenter } = useBuildState();
+  const {
+    capPools, capCenterOrder, capCenterTotals,
+    addCapCenter, renameCapCenter, updateCenterTotal,
+  } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
     // Synthesize a fund-program code from the first pool that belongs to
@@ -33,7 +36,10 @@ export function CapCentersTable() {
       code: samplePool?.id.replace(/^cap-/, "").split("-")[0] ?? "—",
       name: c.name,
       fy: CITY.fiscal,
-      totalCost: c.total,
+      // Source-department total cost — the 100% reference. Falls back to
+      // the derived sum (Σ pool.amount) for centers whose totals haven't
+      // been persisted yet.
+      totalCost: capCenterTotals[c.name] ?? c.total,
       poolCount: c.pools,
     };
   });
@@ -85,10 +91,16 @@ export function CapCentersTable() {
     {
       key: "totalCost",
       label: "Total cost",
-      width: "120px",
+      width: "140px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num">{fmt.dollarsK(r.totalCost)}</span>,
+      render: (r) => (
+        <CellInput
+          type="number" value={Math.round(r.totalCost)} step={1000} min={0}
+          onChange={(v) => updateCenterTotal(r.name, Number(v) || 0)}
+          align="right" prefix="$"
+        />
+      ),
     },
     {
       key: "poolCount",

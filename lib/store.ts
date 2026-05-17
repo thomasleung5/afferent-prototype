@@ -79,6 +79,9 @@ interface BuildActions {
   addCapCenter: () => void;
   updateCapPool: (id: string, patch: Partial<CapPool>) => void;
   renameCapCenter: (oldName: string, newName: string) => void;
+  /** Set a cost center's source-department total cost. Rescales every pool
+   *  in that center: pool.amount = totalCost × pool.allocationPercent / 100. */
+  updateCenterTotal: (centerName: string, totalCost: number) => void;
   /** Append a user-defined allocation basis to the catalog. Returns the new id. */
   addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
@@ -518,6 +521,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
           };
         }),
+
+      updateCenterTotal: (centerName, totalCost) =>
+        set((s) => ({
+          capCenterTotals: { ...s.capCenterTotals, [centerName]: totalCost },
+          capPools: s.capPools.map((p) =>
+            p.center === centerName
+              ? { ...p, amount: totalCost * (p.allocationPercent / 100) }
+              : p,
+          ),
+        })),
 
       addAllocationBasis: ({ name, source, methodologyNote }) => {
         const id = `bas-user-${Date.now()}`;
