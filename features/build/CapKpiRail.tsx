@@ -1,5 +1,5 @@
 ﻿
-import { KpiTile } from "@/components/ui";
+import { KpiTile, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
 import { defaultCenterOrder, useBuildState } from "@/lib/store";
@@ -78,26 +78,18 @@ export function StepDownSequence() {
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
-    <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
+    <div>
+      <SectionLabel right={`${centers.length} indirect cost centers`}>
+        Step-down sequence
+      </SectionLabel>
       <div style={{
-        display: "flex", alignItems: "center",
-        padding: "12px 18px", borderBottom: "1px solid var(--rule)",
-        background: "var(--paper-2)",
+        fontSize: 11.5, color: "var(--ink-3)",
+        lineHeight: 1.4, maxWidth: 720, marginBottom: 8,
       }}>
-        <div>
-          <div className="display" style={{ fontSize: 13.5, fontWeight: 600 }}>
-            Step-down sequence
-          </div>
-          <div style={{
-            fontSize: 11.5, color: "var(--ink-3)", marginTop: 2,
-            lineHeight: 1.4, maxWidth: 720,
-          }}>
-            Order indirect depts are closed out. When dept N is stepped down, its current balance
-            is pushed to depts N+1…end + all directs. Convention: list broadest-service providers first.
-          </div>
-        </div>
+        Order indirect depts are closed out. When dept N is stepped down, its current balance
+        is pushed to depts N+1…end + all directs. Convention: list broadest-service providers first.
       </div>
-
+      <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
         {centers.map((c, i) => {
           const isFirst = i === 0;
@@ -134,6 +126,7 @@ export function StepDownSequence() {
             </div>
           );
         })}
+      </div>
       </div>
     </div>
   );
