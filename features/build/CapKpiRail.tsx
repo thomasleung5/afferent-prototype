@@ -82,13 +82,6 @@ export function StepDownSequence() {
       <SectionLabel right={`${centers.length} indirect cost centers`}>
         Step-down sequence
       </SectionLabel>
-      <div style={{
-        fontSize: 11.5, color: "var(--ink-3)",
-        lineHeight: 1.4, maxWidth: 720, marginBottom: 8,
-      }}>
-        Order indirect depts are closed out. When dept N is stepped down, its current balance
-        is pushed to depts N+1…end + all directs. Convention: list broadest-service providers first.
-      </div>
       <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)" }}>
         {centers.map((c, i) => {
