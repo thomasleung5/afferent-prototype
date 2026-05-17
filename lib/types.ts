@@ -137,8 +137,14 @@ export interface CapPool {
   id: string;
   center: string;
   pool: string;
-  /** Raw pool amount before fee-eligibility filtering. This is the full
-   *  cost on the source department's books. */
+  /** This pool's claimed share of the source department's total cost. The
+   *  source of truth for the "%" column. Sum of allocationPercent across a
+   *  center should normally reconcile to 100% but may temporarily drift
+   *  during editing. */
+  allocationPercent: number;
+  /** Denormalized derived value: capCenterTotals[center] × allocationPercent / 100.
+   *  Kept in sync by updateCapPool/updateCenterTotal so downstream readers
+   *  (step-down engine, exports) can ignore the percent indirection. */
   amount: number;
   /** Fee-eligibility policy: the share of `amount` that is allowed to flow
    *  into fee-supported allocations. Range 0-100. The step-down engine

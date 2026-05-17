@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
-import { CAP_ALLOCATION, CAP_POOLS } from "@/lib/data/cap";
+import { CAP_ALLOCATION, CAP_CENTER_TOTALS, CAP_POOLS } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
@@ -40,6 +40,10 @@ interface BuildState {
   operating: OperatingLine[];
   capAllocation: Record<DeptCode, CapAllocation>;
   capPools: CapPool[];
+  /** Source-department cost per cost center — the 100% reference for each
+   *  pool's allocationPercent. Editing a center total rescales all member
+   *  pool amounts proportionally. */
+  capCenterTotals: Record<string, number>;
   /** Study-scoped catalog of named allocation bases. Seeded with canonical
    *  entries; users can extend at runtime via AllocationBasisCombobox. */
   allocationBases: AllocationBasis[];
@@ -125,6 +129,7 @@ const initialState = (): BuildState => {
       ENG:  { ...CAP_ALLOCATION.ENG },
     },
     capPools: pools,
+    capCenterTotals: { ...CAP_CENTER_TOTALS },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
     workload: WORKLOAD.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
@@ -324,6 +329,7 @@ function applyAccepted(
         id,
         center: String(entity.sourceDepartment ?? entity.center ?? ""),
         pool: String(entity.poolName ?? entity.pool ?? m.proposedTargetLabel),
+        allocationPercent: 0,
         amount: Number(entity.allocatedAmount ?? entity.amount ?? 0) || 0,
         eligiblePercent: 100,
         basisId: "",
@@ -449,7 +455,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set((s) => ({
           capPools: [
             ...s.capPools,
-            { id: `cap-${Date.now()}`, center, pool: "New pool", amount: 0,
+            { id: `cap-${Date.now()}`, center, pool: "New pool",
+              allocationPercent: 0, amount: 0,
               eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
           ],
         })),
@@ -460,27 +467,54 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return {
             capPools: [
               ...s.capPools,
-              { id: `cap-${Date.now()}`, center: name, pool: "New pool", amount: 0,
+              { id: `cap-${Date.now()}`, center: name, pool: "New pool",
+                allocationPercent: 100, amount: 0,
                 eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
             ],
+            capCenterTotals: name in s.capCenterTotals
+              ? s.capCenterTotals
+              : { ...s.capCenterTotals, [name]: 0 },
             capCenterOrder: s.capCenterOrder.includes(name)
               ? s.capCenterOrder
               : [...s.capCenterOrder, name],
           };
         }),
 
+      // Keep allocationPercent and amount in sync. Editing % rederives $
+      // from the center's source-dept total. Editing $ rederives % (and
+      // implicitly redefines the center total if no other reference exists).
       updateCapPool: (id, patch) =>
         set((s) => ({
-          capPools: s.capPools.map((p) => p.id === id ? { ...p, ...patch } : p),
+          capPools: s.capPools.map((p) => {
+            if (p.id !== id) return p;
+            const centerTotal = s.capCenterTotals[p.center] ?? 0;
+            let next = { ...p, ...patch };
+            if (patch.allocationPercent != null && patch.amount == null) {
+              // % drives $
+              next.amount = centerTotal * (next.allocationPercent / 100);
+            } else if (patch.amount != null && patch.allocationPercent == null) {
+              // $ drives %  — fall back to no-op when centerTotal is 0
+              next.allocationPercent = centerTotal > 0
+                ? (next.amount / centerTotal) * 100
+                : next.allocationPercent;
+            }
+            return next;
+          }),
         })),
 
       renameCapCenter: (oldName, newName) =>
         set((s) => {
           if (oldName === newName) return s;
+          const nextTotals = { ...s.capCenterTotals };
+          if (oldName in nextTotals) {
+            nextTotals[newName] = nextTotals[oldName];
+            delete nextTotals[oldName];
+          }
           return {
             capPools: s.capPools.map((p) =>
               p.center === oldName ? { ...p, center: newName } : p,
             ),
+            capCenterTotals: nextTotals,
             capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
           };
         }),
@@ -671,6 +705,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             ENG:  { ...CAP_ALLOCATION.ENG },
           },
           capPools: pools,
+          capCenterTotals: { ...CAP_CENTER_TOTALS },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
         });
@@ -682,6 +717,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           positions: [],
           operating: [],
           capPools: [],
+          capCenterTotals: {},
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capAllocation: {
             PLAN: { dept: "PLAN", allocated: 0 },
@@ -717,6 +753,24 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           state.capPools = state.capPools.map((p) =>
             typeof p.eligiblePercent === "number" ? p : { ...p, eligiblePercent: 100 },
           );
+        }
+        // Backfill capCenterTotals + allocationPercent for state persisted
+        // before the % column became editable. Derive totals from Σ amount
+        // per center; derive each pool's % from amount/centerTotal.
+        if (state.capPools) {
+          if (!state.capCenterTotals || Object.keys(state.capCenterTotals).length === 0) {
+            const totals: Record<string, number> = {};
+            for (const p of state.capPools) {
+              totals[p.center] = (totals[p.center] ?? 0) + (p.amount ?? 0);
+            }
+            state.capCenterTotals = totals;
+          }
+          state.capPools = state.capPools.map((p) => {
+            if (typeof p.allocationPercent === "number") return p;
+            const total = state.capCenterTotals[p.center] ?? 0;
+            const pct = total > 0 ? (p.amount / total) * 100 : 0;
+            return { ...p, allocationPercent: pct };
+          });
         }
       },
     },

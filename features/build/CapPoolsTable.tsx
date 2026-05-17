@@ -53,6 +53,10 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
   // Weighted eligible %: total eligible $ / total raw $. NOT a simple average
   // of row percentages — a $1M pool at 50% dominates a $1K pool at 100%.
   const weightedEligiblePct = total > 0 ? Math.round((eligibleTotal / total) * 100) : 0;
+  // Sum of allocation percentages. Should normally equal 100%; drift signals
+  // an in-progress edit that needs rebalancing.
+  const allocPctSum = pools.reduce((a, p) => a + p.allocationPercent, 0);
+  const balanced = Math.abs(allocPctSum - 100) < 0.5;
   return (
     <div style={{
       background: "var(--paper)",
@@ -108,7 +112,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         );
       })}
 
-      {/* Reconciliation row — Total | 100% | raw $ | weighted % | eligible $ | */}
+      {/* Reconciliation row — Total | sum% | raw $ | weighted % | eligible $ | */}
       <div style={{
         display: "grid",
         gridTemplateColumns: GRID,
@@ -122,7 +126,18 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
           fontSize: 10, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>Total</div>
-        <div className="num" style={{ textAlign: "right" }}>100%</div>
+        <div
+          className="num"
+          style={{
+            textAlign: "right",
+            color: balanced ? "var(--ink)" : "var(--warn)",
+          }}
+          title={balanced
+            ? "Allocation rebalanced to 100%"
+            : `Allocation drifted to ${allocPctSum.toFixed(1)}% — edit pool shares to rebalance`}
+        >
+          {Math.round(allocPctSum)}%
+        </div>
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
         <div
           className="num"
@@ -157,7 +172,6 @@ interface RowProps {
 }
 
 function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: RowProps) {
-  const pct = centerTotal > 0 ? Math.round((pool.amount / centerTotal) * 100) : 0;
   const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
   return (
     <div style={{
@@ -174,11 +188,25 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
         value={pool.pool}
         onChange={(v) => onUpdate({ pool: String(v) })}
       />
-      <div className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
-        {pct}%
+      <div
+        title={centerTotal > 0
+          ? `${pool.allocationPercent.toFixed(1)}% × ${fmt.dollars(centerTotal)} = ${fmt.dollars(pool.amount)}`
+          : undefined}
+        style={{ color: "var(--ink-3)" }}
+      >
+        <CellInput
+          type="number" value={Math.round(pool.allocationPercent * 100) / 100}
+          step={0.5} min={0}
+          onChange={(v) => {
+            const n = Number(v);
+            const clamped = Number.isFinite(n) ? Math.max(0, n) : 0;
+            onUpdate({ allocationPercent: clamped });
+          }}
+          align="right" suffix="%"
+        />
       </div>
       <CellInput
-        type="number" value={pool.amount} step={1000} min={0}
+        type="number" value={Math.round(pool.amount)} step={1000} min={0}
         onChange={(v) => onUpdate({ amount: Number(v) || 0 })}
         align="right" prefix="$"
       />
