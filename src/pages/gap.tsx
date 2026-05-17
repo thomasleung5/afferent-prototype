@@ -32,7 +32,7 @@ export default function RevenueGapPage() {
         padding: "28px 32px",
       }}>
         <AnswerHeader
-          question="What revenue is the city leaving on the table?"
+          question="How much revenue is being left on the table?"
           answer={`${fmt.dollarsK(annualGap)}/yr`}
           tone="neg"
           sub="Cost of fee-supported services minus revenue collected. Closing it takes policy decisions, not just rate updates."

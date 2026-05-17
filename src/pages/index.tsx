@@ -39,7 +39,7 @@ export default function HomePage() {
           <div className="mono" style={{
             fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em",
             textTransform: "uppercase", color: "var(--ink-3)",
-          }}>Citywide cost recovery</div>
+          }}>Overall cost recovery</div>
           <div className="display" style={{
             fontSize: 40, fontWeight: 600, letterSpacing: "-0.024em", lineHeight: 1.08,
           }}>
@@ -50,7 +50,7 @@ export default function HomePage() {
             </span>
           </div>
           <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
-            See the full breakdown — cost drivers, recovery shortfalls, and source lineage — on the Revenue Gap tab.
+            See Revenue Gap for recovery drivers, shortfalls, and source traceability.
           </div>
         </div>
         <Btn kind="primary" href="/gap">
