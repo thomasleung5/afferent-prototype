@@ -62,9 +62,11 @@ Extract the catalog of named denominators (drivers) the document defines.
   * "VEHICLE"  — vehicle / fleet depreciation
   * "COMMITS"  — number of standing committees supported
   * "DIRECT"   — a one-to-one direct assignment (the pool routes entirely to one department, bypassing the step-down)
+  * "OTHER"    — the basis does not match any key above. Use ONLY as a last resort (see routing rule below).
+- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund" is "EXPEND". Use "OTHER" ONLY when the underlying driver is genuinely outside every named key (e.g. "# of Work Stations", "Council Chamber Breakout") — not merely because the wording is unfamiliar. Whenever driverKey is "OTHER", set confidence to "low" so the basis is surfaced for review. Do NOT invent new key values; "OTHER" is the only permitted overflow.
 - directTo: ONLY meaningful when driverKey === "DIRECT". The single receiving department's MatrixDeptCode — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE". Omit when driverKey !== "DIRECT".
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
-- confidence: "high" if name, source, and driverKey are unambiguous from the document, "low" otherwise.
+- confidence: "high" if name, source, and driverKey are unambiguous from the document; "low" if driverKey is "OTHER" or any field is uncertain.
 
 ================================================================
 SECTION 3 — Cost pools
