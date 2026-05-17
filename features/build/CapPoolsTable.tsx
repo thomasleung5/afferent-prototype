@@ -80,7 +80,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
       }}>
         <div>Pool</div>
         <div style={{ textAlign: "right" }}>%</div>
-        <div style={{ textAlign: "right" }}>Amount</div>
+        <div style={{ textAlign: "right" }}>$</div>
         <div style={{ textAlign: "right" }}>Eligible %</div>
         <div style={{ textAlign: "right" }}>Eligible $</div>
         <div>Basis</div>
