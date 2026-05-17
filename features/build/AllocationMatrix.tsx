@@ -23,13 +23,13 @@ interface OpenCell {
  *  driver inputs, and the step-by-step contributions that produced the value.
  */
 export function AllocationMatrix() {
-  const { capPools, capCenterOrder } = useBuildState();
+  const { capPools, capCenterOrder, allocationBases } = useBuildState();
   const [view, setView] = useState<View>("final");
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder),
-    [capPools, capCenterOrder],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases),
+    [capPools, capCenterOrder, allocationBases],
   );
 
   // Initial view shows every dept (pools sit on home indirect); Final shows
@@ -87,7 +87,7 @@ export function AllocationMatrix() {
           {capPools.map((p, i) => {
             const rt = rowTotal(p.id);
             const isLast = i === capPools.length - 1;
-            const { basis } = basisForPool(p);
+            const { basis } = basisForPool(p, allocationBases);
             return (
               <div key={p.id} style={{
                 display: "grid", gridTemplateColumns: grid, gap: 8,
@@ -280,12 +280,12 @@ function CellTrace({
   model: ReturnType<typeof computeStepDown>;
   onClose: () => void;
 }) {
-  const { capPools } = useBuildState();
+  const { capPools, allocationBases } = useBuildState();
   const pool = capPools.find((p) => p.id === poolId);
   const dept = ALL_DEPTS.find((d) => d.code === deptCode);
   if (!pool || !dept) return null;
 
-  const { basis, directTo } = basisForPool(pool);
+  const { basis, directTo } = basisForPool(pool, allocationBases);
   const isDirectCharge = basis === "DIRECT";
   const initialValue = model.alloc1[pool.id]?.[dept.code] ?? 0;
   const finalValue   = model.alloc2[pool.id]?.[dept.code] ?? 0;

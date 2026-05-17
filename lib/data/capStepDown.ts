@@ -16,19 +16,16 @@
  * Conservation: Σ pool.amount === Σ alloc2[pool][direct], up to FP rounding.
  */
 
-import type { CapPool } from "../types";
+import type { AllocationBasis, BasisKey, CapPool, MatrixDeptCode } from "../types";
 import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
+
+// Re-export for backwards compat — these types now live in lib/types.ts so
+// AllocationBasis (also in types.ts) can reference them without a cycle.
+export type { BasisKey, MatrixDeptCode };
 
 // ---------------------------------------------------------------------------
 // Departments (matrix-only)
 // ---------------------------------------------------------------------------
-
-export type MatrixDeptCode =
-  // Indirect cost centers
-  | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"
-  | "ATTY" | "INS" | "CMTE"
-  // Direct (fee-modeled or otherwise receiving final allocation)
-  | "PLAN" | "BLDG" | "ENG" | "PW" | "PARKS" | "PD" | "FIRE";
 
 export interface MatrixDept {
   code: MatrixDeptCode;
@@ -78,35 +75,19 @@ const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
 
 // ---------------------------------------------------------------------------
 // Bases
+//
+// A pool's basis is resolved by looking up pool.basisId in the AllocationBasis
+// catalog (state.allocationBases). The catalog entry's driverKey is what
+// selects the DRIVERS column for the step-down split — i.e. changing a pool's
+// basis from "Agenda item count" to "Budgeted FTE" actually changes the
+// allocation distribution because driverKey switches from AGENDA to FTE.
+//
+// inferBasis is the legacy text-matching fallback for pools whose basisId is
+// empty or orphaned (AI-imported rows, hand-crafted pools without catalog
+// reference). It guesses from the descriptive pool.basis text. Once every
+// pool has a valid basisId, inferBasis stops firing.
 // ---------------------------------------------------------------------------
 
-export type BasisKey =
-  | "FTE" | "EXPEND" | "EXPEND_X" | "PAYROLL" | "ACCT" | "AGENDA"
-  | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
-
-/** Per-pool basis key + (for DIRECT) target dept. Pool IDs match CAP_POOLS.
- *  Looking up by id is the simplest stable mapping — the descriptive `basis`
- *  text on CapPool is for display, not computation. */
-const POOL_BASIS: Record<string, { basis: BasisKey; directTo?: MatrixDeptCode }> = {
-  "cap-bldguse-th":  { basis: "SQFT" },
-  "cap-bldguse-pr":  { basis: "DIRECT",   directTo: "PARKS" },
-  "cap-equip":       { basis: "VEHICLE" },
-  "cap-council":     { basis: "AGENDA" },
-  "cap-cm-leg":      { basis: "AGENDA" },
-  "cap-cm-twdev":    { basis: "EXPEND" },
-  "cap-cm-twxdev":   { basis: "EXPEND_X" },
-  "cap-clerk":       { basis: "PRA" },
-  "cap-fas-hr":      { basis: "FTE" },
-  "cap-fas-pay":     { basis: "PAYROLL" },
-  "cap-fas-acct":    { basis: "ACCT" },
-  "cap-fas-proc":    { basis: "CONTRACT" },
-  "cap-atty":        { basis: "EXPEND" },
-  "cap-ins":         { basis: "EXPEND" },
-  "cap-cmte":        { basis: "COMMITS" },
-};
-
-/** Best-effort fallback: derive basis from the pool's descriptive text for
- *  pools that aren't in POOL_BASIS (e.g. AI-imported pools). */
 function inferBasis(p: CapPool): BasisKey {
   const t = p.basis.toLowerCase();
   if (t.includes("fte"))             return "FTE";
@@ -124,8 +105,13 @@ function inferBasis(p: CapPool): BasisKey {
   return "EXPEND";
 }
 
-export function basisForPool(p: CapPool): { basis: BasisKey; directTo?: MatrixDeptCode } {
-  return POOL_BASIS[p.id] ?? { basis: inferBasis(p) };
+export function basisForPool(
+  p: CapPool,
+  bases: AllocationBasis[],
+): { basis: BasisKey; directTo?: MatrixDeptCode } {
+  const cat = p.basisId ? bases.find((b) => b.id === p.basisId) : undefined;
+  if (cat) return { basis: cat.driverKey, directTo: cat.directTo };
+  return { basis: inferBasis(p) };
 }
 
 // ---------------------------------------------------------------------------
@@ -201,7 +187,11 @@ export function indirectOrder(centerNames: string[]): MatrixDept[] {
   return out;
 }
 
-export function computeStepDown(pools: CapPool[], centerOrder: string[]): StepDownModel {
+export function computeStepDown(
+  pools: CapPool[],
+  centerOrder: string[],
+  bases: AllocationBasis[],
+): StepDownModel {
   const stepOrder = indirectOrder(centerOrder);
   const directList = DIRECT_DEPTS;
 
@@ -213,7 +203,7 @@ export function computeStepDown(pools: CapPool[], centerOrder: string[]): StepDo
   const alloc1: Record<string, Record<MatrixDeptCode, number>> = {};
   pools.forEach((p) => {
     const row = zeroRow();
-    const { basis, directTo } = basisForPool(p);
+    const { basis, directTo } = basisForPool(p, bases);
     if (basis === "DIRECT") {
       if (directTo) row[directTo] = p.amount;
     } else {
@@ -238,7 +228,7 @@ export function computeStepDown(pools: CapPool[], centerOrder: string[]): StepDo
     pools.forEach((p) => {
       const sitting = running[p.id][I.code];
       if (sitting <= 0) return;
-      const { basis } = basisForPool(p);
+      const { basis } = basisForPool(p, bases);
       if (basis === "DIRECT") return;
 
       const totalDriver = receivers.reduce(

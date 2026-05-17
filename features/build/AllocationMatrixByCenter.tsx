@@ -21,12 +21,12 @@ interface OpenCell {
  *  each contributing pool with its basis.
  */
 export function AllocationMatrixByCenter() {
-  const { capPools, capCenterOrder } = useBuildState();
+  const { capPools, capCenterOrder, allocationBases } = useBuildState();
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder),
-    [capPools, capCenterOrder],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases),
+    [capPools, capCenterOrder, allocationBases],
   );
 
   // Final placement only — indirect depts have been closed via step-down.
@@ -235,7 +235,7 @@ function CenterCellTrace({
   model: ReturnType<typeof computeStepDown>;
   onClose: () => void;
 }) {
-  const { capPools } = useBuildState();
+  const { capPools, allocationBases } = useBuildState();
   const dept = ALL_DEPTS.find((d) => d.code === deptCode);
   if (!dept) return null;
 
@@ -245,7 +245,7 @@ function CenterCellTrace({
     .map((p) => ({
       pool: p,
       value: allocSrc[p.id]?.[deptCode] ?? 0,
-      basis: basisForPool(p).basis,
+      basis: basisForPool(p, allocationBases).basis,
     }))
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);

@@ -112,6 +112,26 @@ export interface OperatingLine {
   excludeReason?: string;
 }
 
+// ---------------------------------------------------------------------------
+// CAP step-down primitives
+//
+// MatrixDeptCode is the full institutional dept list (indirect cost centers
+// + direct fee-eligible depts). BasisKey is the denominator the step-down
+// engine uses to split a pool across receiving depts. Both live here so
+// AllocationBasis can reference them without a circular dep into capStepDown.
+// ---------------------------------------------------------------------------
+
+export type MatrixDeptCode =
+  // Indirect cost centers
+  | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"
+  | "ATTY" | "INS" | "CMTE"
+  // Direct (fee-modeled or otherwise receiving final allocation)
+  | "PLAN" | "BLDG" | "ENG" | "PW" | "PARKS" | "PD" | "FIRE";
+
+export type BasisKey =
+  | "FTE" | "EXPEND" | "EXPEND_X" | "PAYROLL" | "ACCT" | "AGENDA"
+  | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
+
 /** Indirect overhead allocated to direct departments by the CAP. */
 export interface CapPool {
   id: string;
@@ -142,6 +162,14 @@ export interface AllocationBasis {
   validationStatus?: "verified" | "draft" | "needs-review";
   createdBy?: string;
   createdAt: string;
+  /** Which DRIVERS column the step-down engine pulls denominators from.
+   *  This is what makes basis selection a real modeling input — switching
+   *  a pool's basisId switches which driver column splits its dollars. */
+  driverKey: BasisKey;
+  /** Only meaningful when driverKey === "DIRECT": the single dept that
+   *  receives the entire pool. (Direct allocations skip the step-down split.)
+   *  User-created Direct bases without this field will land in leakage. */
+  directTo?: MatrixDeptCode;
 }
 
 /** Final CAP allocation, per direct department. */

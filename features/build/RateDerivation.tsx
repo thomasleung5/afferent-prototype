@@ -29,10 +29,10 @@ interface Row {
 }
 
 export function RateDerivation() {
-  const { derived, capPools, capCenterOrder } = useBuildState();
+  const { derived, capPools, capCenterOrder, allocationBases } = useBuildState();
   const stepModel = useMemo(
-    () => computeStepDown(capPools, capCenterOrder),
-    [capPools, capCenterOrder],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases),
+    [capPools, capCenterOrder, allocationBases],
   );
   const [openId, setOpenId] = useState<string | undefined>();
 

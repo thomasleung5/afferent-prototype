@@ -497,6 +497,11 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               validationStatus: "draft",
               createdBy: "current user",
               createdAt: new Date().toISOString(),
+              // Default to EXPEND (Operating expenditures) — the most common
+              // denominator. The combobox create form doesn't yet expose
+              // driverKey; users wanting a different driver can edit it
+              // (or pick an existing catalog entry instead).
+              driverKey: "EXPEND",
             },
           ],
         }));

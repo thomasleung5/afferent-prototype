@@ -14,13 +14,13 @@ const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Bui
  *  Allocated $ is read-only here — it's an output of the step-down engine over
  *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
-  const { capAllocation, capPools, capCenterOrder, derived } = useBuildState();
+  const { capAllocation, capPools, capCenterOrder, allocationBases, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + capAllocation[d].allocated, 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder),
-    [capPools, capCenterOrder],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases),
+    [capPools, capCenterOrder, allocationBases],
   );
 
   const rows: DeptSummaryRow[] = ORDER.map((d) => {
