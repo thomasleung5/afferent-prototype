@@ -17,8 +17,27 @@ import {
   capBasesToExtractionResult,
   capPoolsToExtractionResult,
 } from "@/lib/ai/parseCap";
+import type { UnmappedRow } from "@/lib/parse/types";
 
 const SHOW_IMPORT: CapStep[] = ["centers", "pools"];
+
+/** Pull display fields out of an unmapped CAP-basis lineage. The rawCells
+ *  shape mirrors what capBasesToExtractionResult writes for OTHER /
+ *  unrecognized-driver rows. */
+function unmappedBasisDetails(u: UnmappedRow): {
+  name: string; driverKey: string; source: string; reason: string;
+} {
+  const cells = u.lineage.rawCells ?? {};
+  const fmt = (v: unknown): string => (v == null || v === "" ? "—" : String(v));
+  return {
+    name: fmt(cells.name),
+    driverKey: fmt(cells.driverKey),
+    source: fmt(cells.source),
+    reason:
+      u.reason === "missing-required-field" ? "DIRECT without target"
+      : "driver outside named keys",
+  };
+}
 
 /** Compact "3 centers, 4 bases, 15 pools" summary; omits zero sections. */
 function bundleCountsMessage(counts: { centers: number; bases: number; pools: number }): string {
@@ -36,14 +55,29 @@ export default function CapPage() {
   const [pdfStatus, setPdfStatus] = useState<{ ok: boolean; message: string } | null>(null);
   const [pdfLoading, setPdfLoading] = useState(false);
   const [pasteStatus, setPasteStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  const [unmappedBases, setUnmappedBases] = useState<UnmappedRow[]>([]);
   const pdfInputRef = useRef<HTMLInputElement>(null);
   const showImport = SHOW_IMPORT.includes(step);
+
+  function buildStatusMessage(applied: ReturnType<typeof mergeCapBundle>): string {
+    const counts = bundleCountsMessage({
+      centers: applied.centersImported,
+      bases: applied.basesImported,
+      pools: applied.poolsImported,
+    });
+    const review = applied.unmappedBases.length;
+    const tail = review > 0
+      ? `${applied.mapped} accepted, ${applied.lowConfidence} for review, ${review} bas${review === 1 ? "is" : "es"} need attention`
+      : `${applied.mapped} accepted, ${applied.lowConfidence} for review`;
+    return `${counts} imported (${tail}).`;
+  }
 
   async function uploadPdfToClaude(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0];
     if (!file) return;
     e.target.value = "";
     setPdfStatus(null);
+    setUnmappedBases([]);
     setPdfLoading(true);
     try {
       const result = await aiParseCapPdf(file);
@@ -54,12 +88,8 @@ export default function CapPage() {
         pools:   capPoolsToExtractionResult(result.pools, file.name),
       };
       const applied = mergeCapBundle(bundle, file.name);
-      const counts = bundleCountsMessage({
-        centers: applied.centersImported,
-        bases: applied.basesImported,
-        pools: applied.poolsImported,
-      });
-      setPdfStatus({ ok: true, message: `${counts} imported from PDF (${applied.mapped} accepted, ${applied.lowConfidence} for review).` });
+      setUnmappedBases(applied.unmappedBases);
+      setPdfStatus({ ok: true, message: buildStatusMessage(applied) });
     } catch (err) {
       setPdfStatus({ ok: false, message: err instanceof Error ? err.message : "PDF parsing failed." });
     } finally {
@@ -69,6 +99,7 @@ export default function CapPage() {
 
   async function pasteFromClipboard() {
     setPasteStatus(null);
+    setUnmappedBases([]);
     let text: string;
     try {
       text = await navigator.clipboard.readText();
@@ -97,12 +128,8 @@ export default function CapPage() {
         pools:   capPoolsToExtractionResult(pools as any,   "clipboard"),
       };
       const applied = mergeCapBundle(bundle, "clipboard");
-      const counts = bundleCountsMessage({
-        centers: applied.centersImported,
-        bases: applied.basesImported,
-        pools: applied.poolsImported,
-      });
-      setPasteStatus({ ok: true, message: `${counts} imported (${applied.mapped} accepted, ${applied.lowConfidence} for review).` });
+      setUnmappedBases(applied.unmappedBases);
+      setPasteStatus({ ok: true, message: buildStatusMessage(applied) });
     } catch (err) {
       setPasteStatus({ ok: false, message: err instanceof Error ? err.message : "Failed to parse JSON." });
     }
@@ -180,6 +207,69 @@ export default function CapPage() {
           </span>
         )}
       </div>
+
+      {unmappedBases.length > 0 && (
+        <div style={{
+          background: "var(--paper)", border: "1px solid var(--rule)",
+          borderTop: "none",
+        }}>
+          <div style={{
+            padding: "10px 16px",
+            background: "var(--paper-2)",
+            borderBottom: "1px solid var(--rule)",
+            display: "flex", alignItems: "baseline", gap: 10,
+          }}>
+            <span className="mono" style={{
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}>Bases for review</span>
+            <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+              {unmappedBases.length} bas{unmappedBases.length === 1 ? "is" : "es"} could not be bound to a step-down driver. Pick a real
+              driverKey for them in the bases catalog, or skip.
+            </span>
+            <button
+              type="button"
+              onClick={() => setUnmappedBases([])}
+              style={{
+                marginLeft: "auto",
+                all: "unset", cursor: "pointer",
+                fontSize: 11, color: "var(--ink-3)",
+                padding: "2px 8px",
+              }}
+            >Dismiss all</button>
+          </div>
+          {unmappedBases.map((u, i) => {
+            const d = unmappedBasisDetails(u);
+            return (
+              <div key={i} style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(220px, 2fr) 120px minmax(140px, 1.4fr) minmax(140px, 1fr) 60px",
+                gap: 12, alignItems: "baseline",
+                padding: "8px 16px",
+                fontSize: 12.5,
+                borderBottom: i < unmappedBases.length - 1 ? "1px solid var(--rule)" : "none",
+              }}>
+                <span style={{ color: "var(--ink)" }}>{d.name}</span>
+                <span className="mono" style={{
+                  fontSize: 10.5, color: "var(--ink-3)",
+                  letterSpacing: "0.06em",
+                }}>{d.driverKey}</span>
+                <span style={{ color: "var(--ink-2)", fontSize: 11.5 }}>{d.source}</span>
+                <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
+                <button
+                  type="button"
+                  onClick={() => setUnmappedBases((prev) => prev.filter((_, j) => j !== i))}
+                  style={{
+                    all: "unset", cursor: "pointer",
+                    fontSize: 11, color: "var(--ink-3)",
+                    textAlign: "right",
+                  }}
+                >Skip</button>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       <CapSummary/>
 

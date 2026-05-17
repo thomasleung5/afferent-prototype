@@ -1,7 +1,7 @@
 import type {
   AllocationBasis, BasisKey, CapPool, MatrixDeptCode,
 } from "@/lib/types";
-import type { ExtractionResult, SourceLineage } from "@/lib/parse/types";
+import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 
 // ---------------------------------------------------------------------------
@@ -122,23 +122,63 @@ export function capBasesToExtractionResult(
   const now = new Date().toISOString();
   const mapped: { entity: AllocationBasis; lineage: SourceLineage }[] = [];
   const lowConfidence: typeof mapped = [];
+  const unmapped: UnmappedRow[] = [];
 
   rows.forEach((row, i) => {
     const name = row.name?.trim();
     if (!name) return;
-    const driverKey = normBasisKey(row.driverKey);
-    if (!driverKey) return;
-    const directTo = driverKey === "DIRECT" ? normMatrixDept(row.directTo) ?? undefined : undefined;
-    if (driverKey === "DIRECT" && !directTo) return; // DIRECT requires a target
 
     const lineage: SourceLineage = {
       file: fileName,
       sheet: "AI parsed",
       row: i + 1,
-      rawCells: { name: row.name, driverKey: row.driverKey, source: row.source },
+      rawCells: {
+        name: row.name,
+        driverKey: row.driverKey,
+        source: row.source ?? null,
+        methodologyNote: row.methodologyNote ?? null,
+      },
       confidence: row.confidence === "high" ? "high" : "review",
       importedAt: now,
     };
+
+    // OTHER is the SYSTEM prompt's overflow bucket for bases whose underlying
+    // driver doesn't match any of the twelve named keys. There's no DRIVERS
+    // column for OTHER, so the step-down engine can't route it — surface to
+    // the user for review (or to redefine to a real key) instead of silently
+    // dropping it.
+    const rawKey = (row.driverKey ?? "").trim().toUpperCase();
+    if (rawKey === "OTHER") {
+      unmapped.push({
+        reason: "schema-mismatch",
+        raw: [row.name ?? "", "OTHER (no driver)", row.source ?? "", row.methodologyNote ?? ""],
+        lineage,
+      });
+      return;
+    }
+
+    const driverKey = normBasisKey(row.driverKey);
+    if (!driverKey) {
+      // Any other unknown key the model returned despite the prompt's
+      // instructions — surface it the same way as OTHER so the user can
+      // see what was rejected.
+      unmapped.push({
+        reason: "schema-mismatch",
+        raw: [row.name ?? "", row.driverKey ?? "", row.source ?? "", row.methodologyNote ?? ""],
+        lineage,
+      });
+      return;
+    }
+    const directTo = driverKey === "DIRECT" ? normMatrixDept(row.directTo) ?? undefined : undefined;
+    if (driverKey === "DIRECT" && !directTo) {
+      // DIRECT with no resolvable target — also surface for review.
+      unmapped.push({
+        reason: "missing-required-field",
+        raw: [row.name ?? "", `DIRECT → ${row.directTo ?? "(none)"}`, row.source ?? "", row.methodologyNote ?? ""],
+        lineage,
+      });
+      return;
+    }
 
     const entity: AllocationBasis = {
       id: `bas-ai-${Date.now()}-${i}`,
@@ -158,12 +198,12 @@ export function capBasesToExtractionResult(
 
   return {
     mapped, lowConfidence,
-    unmapped: [], duplicates: [],
+    unmapped, duplicates: [],
     stats: {
       total: rows.length,
       mapped: mapped.length,
       lowConfidence: lowConfidence.length,
-      unmapped: 0,
+      unmapped: unmapped.length,
       duplicates: 0,
       detected: "Allocation bases (AI parsed)",
     },

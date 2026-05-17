@@ -108,6 +108,11 @@ interface BuildActions {
     centersImported: number;
     basesImported: number;
     poolsImported: number;
+    /** Rows surfaced for human review (e.g. bases with driverKey "OTHER"
+     *  or any other unresolvable schema mismatch). Already routed into
+     *  pendingReview.cap; returned here so the page UI can show them
+     *  inline without re-reading state. */
+    unmappedBases: UnmappedRow[];
   };
   moveCenter: (name: string, direction: "up" | "down") => void;
   /** Replace the active batch (or clear with null). */
@@ -685,11 +690,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         const centersIn = [...r.centers.mapped, ...r.centers.lowConfidence];
         const basesIn   = [...r.bases.mapped,   ...r.bases.lowConfidence];
         const poolsIn   = [...r.pools.mapped,   ...r.pools.lowConfidence];
+        const unmappedBases = r.bases.unmapped;
 
         const totalMapped =
           r.centers.stats.mapped + r.bases.stats.mapped + r.pools.stats.mapped;
         const totalLow =
           r.centers.stats.lowConfidence + r.bases.stats.lowConfidence + r.pools.stats.lowConfidence;
+        const totalUnmapped =
+          r.centers.stats.unmapped + r.bases.stats.unmapped + r.pools.stats.unmapped;
         const totalRows =
           r.centers.stats.total + r.bases.stats.total + r.pools.stats.total;
 
@@ -700,7 +708,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           rows: totalRows,
           mapped: totalMapped,
           lowConfidence: totalLow,
-          unmapped: 0,
+          unmapped: totalUnmapped,
           duplicates: 0,
           warnings: [],
         };
@@ -795,6 +803,18 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
             lineage: { ...s.lineage, ...centerLineage, ...basisLineage, ...poolLineage },
+            // Append bundle-level unmapped rows to the existing CAP review
+            // queue so the user has a single place to find anything the
+            // model couldn't bind (e.g. driverKey "OTHER" bases).
+            pendingReview: {
+              ...s.pendingReview,
+              cap: [
+                ...s.pendingReview.cap,
+                ...unmappedBases,
+                ...r.centers.unmapped,
+                ...r.pools.unmapped,
+              ],
+            },
             imports: [...s.imports, { id: Date.now(), domain: "cap", result, at }],
           };
         });
@@ -804,6 +824,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           centersImported: centersIn.length,
           basesImported: basesIn.length,
           poolsImported: poolsIn.length,
+          unmappedBases,
         };
       },
 
