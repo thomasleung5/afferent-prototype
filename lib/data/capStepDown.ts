@@ -64,7 +64,7 @@ export const DIRECT_DEPTS: MatrixDept[] = [
 export const ALL_DEPTS: MatrixDept[] = [...INDIRECT_DEPTS, ...DIRECT_DEPTS];
 
 /** Center-name → indirect-dept code (matches CAP_POOLS.center text). */
-export const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
+const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
   "Building Use":                      "BLDG_USE",
   "Equipment Use":                     "EQUIP",
   "City Council":                      "COUNCIL",
@@ -87,7 +87,7 @@ export type BasisKey =
 /** Per-pool basis key + (for DIRECT) target dept. Pool IDs match CAP_POOLS.
  *  Looking up by id is the simplest stable mapping — the descriptive `basis`
  *  text on CapPool is for display, not computation. */
-export const POOL_BASIS: Record<string, { basis: BasisKey; directTo?: MatrixDeptCode }> = {
+const POOL_BASIS: Record<string, { basis: BasisKey; directTo?: MatrixDeptCode }> = {
   "cap-bldguse-th":  { basis: "SQFT" },
   "cap-bldguse-pr":  { basis: "DIRECT",   directTo: "PARKS" },
   "cap-equip":       { basis: "VEHICLE" },

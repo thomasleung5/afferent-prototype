@@ -22,45 +22,9 @@ export const CAP_POOLS: CapPool[] = [
   { id: "cap-cmte",       center: "Committees",                        pool: "Boards & Committees",                               amount: 239994, basis: "Number of committees supported",                             receiving: "Multiple departments", recoverability: "Excluded — public benefit",     review: "Reviewed" },
 ];
 
-export const CAP_TOTAL = CAP_POOLS.reduce((a, p) => a + p.amount, 0);
-
 /** Final CAP allocation per direct department (from the legacy CAP_IMPACT rollup). */
 export const CAP_ALLOCATION: Record<DeptCode, CapAllocation> = {
   PLAN: { dept: "PLAN", allocated: 420000 },
   BLDG: { dept: "BLDG", allocated: 510000 },
   ENG:  { dept: "ENG",  allocated: 190000 },
-};
-
-/** Sum of step-down contributions per dept × pool, used by the Cost Allocation drilldown. */
-export const CAP_POOL_BY_DEPT: Record<DeptCode, { poolId: string; allocated: number }[]> = {
-  PLAN: [
-    { poolId: "cap-fas-acct", allocated: 88000 },
-    { poolId: "cap-cm-leg",   allocated: 78000 },
-    { poolId: "cap-cm-twdev", allocated: 67000 },
-    { poolId: "cap-fas-proc", allocated: 54000 },
-    { poolId: "cap-ins",      allocated: 48000 },
-    { poolId: "cap-clerk",    allocated: 42000 },
-    { poolId: "cap-bldguse-th", allocated: 28000 },
-    { poolId: "cap-atty",     allocated: 15000 },
-  ],
-  BLDG: [
-    { poolId: "cap-fas-acct", allocated: 112000 },
-    { poolId: "cap-cm-leg",   allocated:  98000 },
-    { poolId: "cap-cm-twdev", allocated:  82000 },
-    { poolId: "cap-fas-proc", allocated:  67000 },
-    { poolId: "cap-ins",      allocated:  58000 },
-    { poolId: "cap-clerk",    allocated:  44000 },
-    { poolId: "cap-bldguse-th", allocated:  31000 },
-    { poolId: "cap-atty",     allocated:  18000 },
-  ],
-  ENG: [
-    { poolId: "cap-fas-acct", allocated: 44000 },
-    { poolId: "cap-cm-leg",   allocated: 36000 },
-    { poolId: "cap-cm-twdev", allocated: 30000 },
-    { poolId: "cap-fas-proc", allocated: 22000 },
-    { poolId: "cap-ins",      allocated: 21000 },
-    { poolId: "cap-clerk",    allocated: 17000 },
-    { poolId: "cap-equip",    allocated: 12000 },
-    { poolId: "cap-atty",     allocated:  8000 },
-  ],
 };

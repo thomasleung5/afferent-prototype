@@ -3,7 +3,7 @@
 import type { Domain } from "@/lib/store";
 import type { SourceLineage } from "@/lib/parse";
 
-export type AiConfidence = "high" | "med" | "low";
+type AiConfidence = "high" | "med" | "low";
 
 /** One suggestion returned by the AI extractor for a single raw row.
  *  The `entity` shape varies by domain — caller narrows on `domain`. */

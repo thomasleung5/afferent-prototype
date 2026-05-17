@@ -17,7 +17,6 @@ import {
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
-import type { AiSuggestion } from "@/lib/ai/types";
 import type { ImportBatch, ImportDecision, MappingCandidate, MappingStatus } from "@/lib/import/types";
 
 /* ── Re-exported types ── */
@@ -46,8 +45,6 @@ interface BuildState {
   policyExceptions: PolicyException[];
   lineage: Record<string, SourceLineage>;
   pendingReview: Record<Domain, UnmappedRow[]>;
-  aiSuggestions: Record<Domain, AiSuggestion[]>;
-  aiStatus: Record<Domain, { running: boolean; message?: string }>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
   /** The active pipeline batch the UI is reviewing. Null when no import is
@@ -78,12 +75,6 @@ interface BuildActions {
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeWorkload: (r: ExtractionResult<WorkloadRow>, fileName: string) => ImportApplyResult;
   mergeCap: (r: ExtractionResult<CapPool>, fileName: string) => ImportApplyResult;
-  dismissUnmapped: (domain: Domain, index: number) => void;
-  clearReview: (domain: Domain) => void;
-  setAiStatus: (domain: Domain, status: { running: boolean; message?: string }) => void;
-  addAiSuggestions: (domain: Domain, items: AiSuggestion[]) => void;
-  acceptAiSuggestion: (domain: Domain, id: string, override?: Partial<AiSuggestion["entity"]>) => void;
-  rejectAiSuggestion: (domain: Domain, id: string) => void;
   moveCenter: (name: string, direction: "up" | "down") => void;
   /** Replace the active batch (or clear with null). */
   setCurrentBatch: (batch: ImportBatch | null) => void;
@@ -107,14 +98,6 @@ interface BuildActions {
 const emptyPending: Record<Domain, UnmappedRow[]> = {
   positions: [], operating: [], services: [], fees: [], workload: [], cap: [],
 };
-const emptyAi: Record<Domain, AiSuggestion[]> = {
-  positions: [], operating: [], services: [], fees: [], workload: [], cap: [],
-};
-const emptyAiStatus: Record<Domain, { running: boolean; message?: string }> = {
-  positions: { running: false }, operating: { running: false }, services: { running: false },
-  fees: { running: false }, workload: { running: false }, cap: { running: false },
-};
-
 export function defaultCenterOrder(pools: CapPool[]): string[] {
   const totals = new Map<string, number>();
   for (const p of pools) totals.set(p.center, (totals.get(p.center) ?? 0) + p.amount);
@@ -140,8 +123,6 @@ const initialState = (): BuildState => {
     policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
     lineage: {},
     pendingReview: { ...emptyPending },
-    aiSuggestions: { ...emptyAi },
-    aiStatus: { ...emptyAiStatus },
     capCenterOrder: defaultCenterOrder(pools),
     imports: [],
     currentBatch: null,
@@ -561,161 +542,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         return result;
       },
 
-      dismissUnmapped: (domain, index) =>
-        set((s) => ({
-          pendingReview: {
-            ...s.pendingReview,
-            [domain]: s.pendingReview[domain].filter((_, i) => i !== index),
-          },
-        })),
-
-      clearReview: (domain) =>
-        set((s) => ({ pendingReview: { ...s.pendingReview, [domain]: [] } })),
-
-      setAiStatus: (domain, status) =>
-        set((s) => ({ aiStatus: { ...s.aiStatus, [domain]: status } })),
-
-      addAiSuggestions: (domain, items) => {
-        if (items.length === 0) return;
-        set((s) => ({
-          aiSuggestions: { ...s.aiSuggestions, [domain]: [...s.aiSuggestions[domain], ...items] },
-        }));
-      },
-
-      acceptAiSuggestion: (domain, id, override) => {
-        set((s) => {
-          const suggestion = s.aiSuggestions[domain].find((x) => x.id === id);
-          if (!suggestion) return s;
-          const entity = { ...suggestion.entity, ...(override ?? {}) };
-          const lineage: SourceLineage = {
-            ...suggestion.lineage,
-            confidence: suggestion.confidence,
-            importedAt: new Date().toISOString(),
-          };
-
-          let next: Partial<BuildState> = {};
-          switch (domain) {
-            case "positions": {
-              const rowId = `pos-ai-${id}`;
-              const row: Position = {
-                id: rowId,
-                title: String(entity.title ?? suggestion.label ?? "Imported position"),
-                dept: coerceDeptCode(entity.dept),
-                fte: Number(entity.fte ?? 1) || 1,
-                salary: Number(entity.salary ?? 0) || 0,
-                benefits: Number(entity.benefits ?? 0) || 0,
-                hours: Number(entity.hours ?? 1720) || 1720,
-              };
-              next = { positions: [...s.positions, row], lineage: { ...s.lineage, [rowId]: lineage } };
-              break;
-            }
-            case "operating": {
-              const rowId = `OP-AI-${id}`;
-              const row: OperatingLine = {
-                id: rowId,
-                code: String(entity.code ?? ""),
-                line: String(entity.line ?? suggestion.label ?? "Imported line"),
-                dept: coerceOpDept(entity.dept),
-                category: coerceOpCategory(entity.category),
-                amount: Number(entity.amount ?? 0) || 0,
-                source: `AI · ${suggestion.lineage.file}`,
-                include: entity.include === false ? false : true,
-              };
-              next = { operating: [...s.operating, row], lineage: { ...s.lineage, [rowId]: lineage } };
-              break;
-            }
-            case "services":
-            case "fees": {
-              const existingByName = new Map(s.services.map((sv) => [sv.name.toLowerCase().trim(), sv]));
-              const name = String(entity.name ?? suggestion.label ?? "Imported service");
-              const existing = existingByName.get(name.toLowerCase().trim());
-              const merged: Service = existing
-                ? {
-                    ...existing,
-                    fee: Number(entity.fee ?? existing.fee),
-                    peer: Number(entity.peer ?? existing.peer),
-                    target: Number(entity.target ?? existing.target),
-                    ...(entity.hours != null ? { hours: Number(entity.hours) } : {}),
-                    ...(entity.volume != null ? { volume: Number(entity.volume) } : {}),
-                  }
-                : {
-                    id: `svc-ai-${id}`,
-                    name,
-                    dept: coerceDeptCode(entity.dept),
-                    hours: Number(entity.hours ?? 0) || 0,
-                    volume: Number(entity.volume ?? 0) || 0,
-                    cost: 0,
-                    fee: Number(entity.fee ?? 0) || 0,
-                    peer: Number(entity.peer ?? 0) || 0,
-                    target: Number(entity.target ?? 100) || 100,
-                  };
-              const services = existing
-                ? s.services.map((sv) => sv.id === existing.id ? merged : sv)
-                : [...s.services, merged];
-              next = { services, lineage: { ...s.lineage, [merged.id]: lineage } };
-              break;
-            }
-            case "workload": {
-              const name = String(entity.name ?? suggestion.label ?? "");
-              const matchedService = s.services.find(
-                (sv) => sv.name.toLowerCase().trim() === name.toLowerCase().trim(),
-              );
-              if (!matchedService) return s;
-              const rowId = matchedService.id;
-              const existing = s.workload.find((w) => w.id === rowId);
-              const merged: WorkloadRow = {
-                id: rowId,
-                current: Number(entity.current ?? existing?.current ?? 0),
-                prior: entity.prior != null ? Number(entity.prior) : (existing?.prior ?? null),
-                unit: String(entity.unit ?? existing?.unit ?? "Item"),
-                source: "imported",
-                status: "Imported",
-                sourceFile: suggestion.lineage.file,
-              };
-              next = {
-                workload: existing
-                  ? s.workload.map((w) => w.id === rowId ? merged : w)
-                  : [...s.workload, merged],
-                lineage: { ...s.lineage, [rowId]: lineage },
-              };
-              break;
-            }
-            case "cap": {
-              const rowId = `cap-ai-${id}`;
-              const row: CapPool = {
-                id: rowId,
-                center: String(entity.center ?? ""),
-                pool: String(entity.pool ?? suggestion.label ?? "Imported pool"),
-                amount: Number(entity.amount ?? 0),
-                basis: String(entity.basis ?? "FY budgeted"),
-                receiving: "Multiple departments",
-                recoverability: String(entity.recoverability ?? "Partially recoverable"),
-                review: "Reviewed",
-              };
-              next = { capPools: [...s.capPools, row], lineage: { ...s.lineage, [rowId]: lineage } };
-              break;
-            }
-          }
-
-          return {
-            ...s, ...next,
-            aiSuggestions: {
-              ...s.aiSuggestions,
-              [domain]: s.aiSuggestions[domain].filter((x) => x.id !== id),
-            },
-            pendingReview: {
-              ...s.pendingReview,
-              [domain]: s.pendingReview[domain].filter((_, i) => i !== suggestion.sourceIndex),
-            },
-          };
-        });
-      },
-
-      rejectAiSuggestion: (domain, id) =>
-        set((s) => ({
-          aiSuggestions: { ...s.aiSuggestions, [domain]: s.aiSuggestions[domain].filter((x) => x.id !== id) },
-        })),
-
       moveCenter: (name, direction) =>
         set((s) => {
           const known = new Set(s.capCenterOrder);
@@ -815,8 +641,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           policyExceptions: [],
           lineage: {},
           pendingReview: { ...emptyPending },
-          aiSuggestions: { ...emptyAi },
-          aiStatus: { ...emptyAiStatus },
           capCenterOrder: [],
           imports: [],
         });
