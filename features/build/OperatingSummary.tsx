@@ -141,7 +141,7 @@ export function OperatingSummary() {
           <span style={{
             color: "var(--ink-3)", textTransform: "uppercase",
             letterSpacing: "0.06em", fontSize: 11,
-          }}>Citywide</span>
+          }}>Total</span>
         ),
         opCost: fmt.dollarsK(includedTotal),
         perHr: "—",

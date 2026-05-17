@@ -114,7 +114,7 @@ function Matrix({
             <div className="mono" style={{
               fontSize: 10.5, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "var(--ink-2)",
-            }}>Citywide total</div>
+            }}>Total</div>
             {ALLOCATION_BASES.map((b) => {
               const t = colTotal(b.key, ALLOCATION_BASIS_ROWS);
               return (
@@ -232,7 +232,7 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-empty cell to see its basis, raw denominator, citywide total, and allocation share.</span>
+      <span>Click any non-empty cell to see its basis, raw denominator, total, and allocation share.</span>
     </div>
   );
 }
@@ -284,7 +284,7 @@ function CellTrace({
           {formatCell(raw, basis.fmt)} <span style={{ color: "var(--ink-3)" }}>{basis.unit}</span>
         </div>
 
-        <div style={{ color: "var(--ink-3)" }}>Citywide total</div>
+        <div style={{ color: "var(--ink-3)" }}>Total</div>
         <div className="num">
           {formatCell(total, basis.fmt)} <span style={{ color: "var(--ink-3)" }}>{basis.unit}</span>
         </div>

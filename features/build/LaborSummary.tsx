@@ -134,7 +134,7 @@ export function LaborSummary() {
           <span style={{
             color: "var(--ink-3)", textTransform: "uppercase",
             letterSpacing: "0.06em", fontSize: 11,
-          }}>Citywide</span>
+          }}>Total</span>
         ),
         positions: (
           <span>
