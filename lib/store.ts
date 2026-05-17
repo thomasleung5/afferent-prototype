@@ -325,6 +325,7 @@ function applyAccepted(
         center: String(entity.sourceDepartment ?? entity.center ?? ""),
         pool: String(entity.poolName ?? entity.pool ?? m.proposedTargetLabel),
         amount: Number(entity.allocatedAmount ?? entity.amount ?? 0) || 0,
+        eligiblePercent: 100,
         basisId: "",
         basis: String(entity.allocationBasis ?? entity.basis ?? "FY budgeted"),
         receiving: String(entity.targetDepartment ?? "Multiple departments"),
@@ -449,7 +450,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capPools: [
             ...s.capPools,
             { id: `cap-${Date.now()}`, center, pool: "New pool", amount: 0,
-              basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+              eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
           ],
         })),
 
@@ -460,7 +461,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capPools: [
               ...s.capPools,
               { id: `cap-${Date.now()}`, center: name, pool: "New pool", amount: 0,
-                basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+                eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
             ],
             capCenterOrder: s.capCenterOrder.includes(name)
               ? s.capCenterOrder
@@ -709,6 +710,13 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         // Without this, basisForPool(pool, undefined) crashes the matrix.
         if (!state.allocationBases || state.allocationBases.length === 0) {
           state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
+        }
+        // Backfill for state persisted before eligiblePercent existed.
+        // Default to 100 (fully fee-eligible) to preserve existing math.
+        if (state.capPools) {
+          state.capPools = state.capPools.map((p) =>
+            typeof p.eligiblePercent === "number" ? p : { ...p, eligiblePercent: 100 },
+          );
         }
       },
     },

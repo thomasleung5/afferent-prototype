@@ -47,7 +47,9 @@ export function AllocationMatrixByCenter() {
   }, [capPools]);
 
   const centerAmount = (center: string): number =>
-    (poolsByCenter.get(center) ?? []).reduce((a, p) => a + p.amount, 0);
+    (poolsByCenter.get(center) ?? []).reduce(
+      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
+    );
 
   const centerCell = (center: string, deptCode: MatrixDeptCode): number =>
     (poolsByCenter.get(center) ?? []).reduce(
@@ -61,7 +63,7 @@ export function AllocationMatrixByCenter() {
   const colTotal = (deptCode: MatrixDeptCode): number =>
     capPools.reduce((a, p) => a + (allocSrc[p.id]?.[deptCode] ?? 0), 0);
 
-  const totalCap = capPools.reduce((a, p) => a + p.amount, 0);
+  const totalCap = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
   const grandTotal = capCenterOrder.reduce((a, c) => a + centerRowTotal(c), 0);
 
   return (
@@ -89,7 +91,7 @@ export function AllocationMatrixByCenter() {
             letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <div>Center</div>
-            <div style={{ textAlign: "right" }}>Center $</div>
+            <div style={{ textAlign: "right" }}>Eligible $</div>
             <div>Pools</div>
             {cols.map((d) => (
               <div key={d.code} style={{
@@ -250,7 +252,7 @@ function CenterCellTrace({
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);
   const total = contribs.reduce((a, c) => a + c.value, 0);
-  const centerTotal = pools.reduce((a, p) => a + p.amount, 0);
+  const centerTotal = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
 
   return (
     <div style={{ background: "var(--paper)", border: "1px solid var(--accent)" }}>
@@ -292,7 +294,7 @@ function CenterCellTrace({
             <div>{center}</div>
             <div style={{ color: "var(--ink-3)" }}>Pools</div>
             <div className="num">{pools.length}</div>
-            <div style={{ color: "var(--ink-3)" }}>Total amount</div>
+            <div style={{ color: "var(--ink-3)" }}>Eligible amount</div>
             <div className="num" style={{ fontWeight: 600 }}>{fmt.dollars(centerTotal)}</div>
             <div style={{ color: "var(--ink-3)" }}>To {dept.code}</div>
             <div className="num" style={{ fontWeight: 600, color: "var(--accent)" }}>

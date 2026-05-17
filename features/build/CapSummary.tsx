@@ -17,6 +17,7 @@ export function CapSummary() {
   const { capAllocation, capPools, capCenterOrder, allocationBases, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + capAllocation[d].allocated, 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
+  const eligibleTotal = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
 
   const model = useMemo(
     () => computeStepDown(capPools, capCenterOrder, allocationBases),
@@ -139,7 +140,7 @@ export function CapSummary() {
         pools: capPools.length,
         top: (
           <span style={{ color: "var(--ink-3)" }}>
-            {poolTotal > 0 ? Math.round((totalAllocated / poolTotal) * 100) : 0}% of {fmt.dollarsK(poolTotal)} pool
+            {fmt.dollarsK(eligibleTotal)} eligible of {fmt.dollarsK(poolTotal)} raw
           </span>
         ),
       }}

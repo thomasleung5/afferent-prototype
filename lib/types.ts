@@ -137,7 +137,15 @@ export interface CapPool {
   id: string;
   center: string;
   pool: string;
+  /** Raw pool amount before fee-eligibility filtering. This is the full
+   *  cost on the source department's books. */
   amount: number;
+  /** Fee-eligibility policy: the share of `amount` that is allowed to flow
+   *  into fee-supported allocations. Range 0-100. The step-down engine
+   *  distributes (amount × eligiblePercent / 100); the remainder is the
+   *  excluded amount (covered by the General Fund or otherwise out of fee
+   *  scope). Default 100 — fully fee-eligible. */
+  eligiblePercent: number;
   /** Foreign key into BuildState.allocationBases. Drives which catalog
    *  entry's source/methodology display under the pool's basis cell. */
   basisId: string;
@@ -145,6 +153,7 @@ export interface CapPool {
    *  selection so exports/legacy readers don't need catalog access. */
   basis: string;
   receiving: string;
+  /** Policy explanation surfaced as the Eligible % tooltip. Used in exports. */
   recoverability: string;
   review: "Reviewed" | "Review";
 }

@@ -153,7 +153,9 @@ export interface StepContribution {
 }
 
 export interface StepDownModel {
-  /** Pool × dept initial placement (pool sits on home indirect). */
+  /** Pool × dept initial placement (pool sits on home indirect).
+   *  Seeded with the ELIGIBLE amount (pool.amount × eligiblePercent/100),
+   *  not the raw amount. The excluded share is held off the matrix. */
   alloc1: Record<string, Record<MatrixDeptCode, number>>;
   /** Pool × dept after all step-down passes. */
   alloc2: Record<string, Record<MatrixDeptCode, number>>;
@@ -161,10 +163,24 @@ export interface StepDownModel {
   stepOrder: MatrixDept[];
   /** Per-cell trace: every (pool, dept) contribution from a step. */
   contributions: StepContribution[];
-  /** Final $ landing on each direct dept, summed across pools. */
+  /** Final $ landing on each direct dept, summed across pools. Reflects
+   *  the eligible-only flow — totals reconcile to Σ pool.eligibleAmount. */
   directTotals: Record<MatrixDeptCode, number>;
   /** Pool-level rollup. */
-  byPool: Record<string, { allocatedToDirect: number; residual: number; leakage: number }>;
+  byPool: Record<string, {
+    /** Raw pool amount before policy filtering. */
+    rawAmount: number;
+    /** Policy-filtered amount that enters the step-down (= rawAmount × eligiblePercent/100). */
+    eligibleAmount: number;
+    /** Pool $ that policy explicitly excludes (= rawAmount − eligibleAmount). */
+    excluded: number;
+    /** Eligible $ that landed on direct depts after step-down. */
+    allocatedToDirect: number;
+    /** Eligible $ stuck on indirect depts (sequencing artifact; normally 0). */
+    residual: number;
+    /** Eligible $ that fell out of the matrix (no basis denominator match). */
+    leakage: number;
+  }>;
 }
 
 /** Translate the user's center-name order (see BuildContext.capCenterOrder)
@@ -200,15 +216,18 @@ export function computeStepDown(
     Object.fromEntries(ALL_DEPTS.map((d) => [d.code, 0])) as Record<MatrixDeptCode, number>;
 
   // === INITIAL PLACEMENT ===
+  // Seed with eligible amount only. The excluded share (policy-filtered
+  // out by eligiblePercent < 100) never enters the matrix.
   const alloc1: Record<string, Record<MatrixDeptCode, number>> = {};
   pools.forEach((p) => {
     const row = zeroRow();
+    const eligible = p.amount * (p.eligiblePercent / 100);
     const { basis, directTo } = basisForPool(p, bases);
     if (basis === "DIRECT") {
-      if (directTo) row[directTo] = p.amount;
+      if (directTo) row[directTo] = eligible;
     } else {
       const home = CENTER_NAME_TO_CODE[p.center];
-      if (home) row[home] = p.amount;
+      if (home) row[home] = eligible;
     }
     alloc1[p.id] = row;
   });
@@ -264,14 +283,22 @@ export function computeStepDown(
     ]),
   ) as Record<MatrixDeptCode, number>;
 
-  const byPool: Record<string, { allocatedToDirect: number; residual: number; leakage: number }> = {};
+  const byPool: StepDownModel["byPool"] = {};
   pools.forEach((p) => {
+    const rawAmount = p.amount;
+    const eligibleAmount = rawAmount * (p.eligiblePercent / 100);
+    const excluded = rawAmount - eligibleAmount;
     const allocatedToDirect = directList.reduce((a, d) => a + (alloc2[p.id][d.code] || 0), 0);
     const residual = INDIRECT_DEPTS.reduce((a, d) => a + (alloc2[p.id][d.code] || 0), 0);
     byPool[p.id] = {
+      rawAmount,
+      eligibleAmount,
+      excluded,
       allocatedToDirect,
       residual,
-      leakage: p.amount - allocatedToDirect,
+      // Eligible $ that fell out of the matrix (no basis denominator match
+      // for any receiving dept). Excludes the policy-filtered share.
+      leakage: eligibleAmount - allocatedToDirect - residual,
     };
   });
 

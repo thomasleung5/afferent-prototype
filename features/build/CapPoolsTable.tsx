@@ -46,14 +46,17 @@ interface SectionProps {
   onCreateBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
 }
 
+const GRID = "minmax(220px, 1.6fr) 60px 120px 80px minmax(280px, 2fr)";
+
 function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
+  const eligibleTotal = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
   return (
     <div style={{
       background: "var(--paper)",
       border: "1px solid var(--rule)",
       overflow: "hidden",
     }}>
-      {/* Header strip — center name + eyebrow */}
+      {/* Header strip — center name */}
       <div style={{
         display: "flex", justifyContent: "space-between", alignItems: "baseline",
         padding: "13px 18px 12px",
@@ -70,7 +73,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
       {/* Column header */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+        gridTemplateColumns: GRID,
         gap: 14,
         padding: "8px 18px",
         background: "var(--paper-2)",
@@ -81,8 +84,8 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         <div>Pool</div>
         <div style={{ textAlign: "right" }}>%</div>
         <div style={{ textAlign: "right" }}>Amount</div>
+        <div style={{ textAlign: "right" }}>Eligible %</div>
         <div>Basis</div>
-        <div>Explanation</div>
       </div>
 
       {/* Rows */}
@@ -101,12 +104,12 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         );
       })}
 
-      {/* Subtotal footer */}
+      {/* Subtotal footer — two rows: Allocated (raw) + Eligible (after policy) */}
       <div style={{
         display: "grid",
-        gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+        gridTemplateColumns: GRID,
         gap: 14,
-        padding: "9px 18px",
+        padding: "7px 18px",
         borderTop: "2px solid var(--ink)",
         background: "var(--paper-2)",
         fontSize: 12, fontWeight: 600,
@@ -114,9 +117,29 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
         <div className="mono" style={{
           fontSize: 10, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Subtotal</div>
+        }}>Allocated</div>
         <div className="num" style={{ textAlign: "right" }}>100%</div>
         <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(total)}</div>
+        <div/>
+        <div/>
+      </div>
+      <div style={{
+        display: "grid",
+        gridTemplateColumns: GRID,
+        gap: 14,
+        padding: "7px 18px",
+        background: "var(--paper-2)",
+        fontSize: 12, fontWeight: 600,
+        color: "var(--ink-2)",
+      }}>
+        <div className="mono" style={{
+          fontSize: 10, letterSpacing: "0.1em",
+          color: "var(--ink-3)", textTransform: "uppercase",
+        }}>Eligible</div>
+        <div className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
+          {total > 0 ? `${Math.round((eligibleTotal / total) * 100)}%` : "—"}
+        </div>
+        <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(eligibleTotal)}</div>
         <div/>
         <div/>
       </div>
@@ -147,7 +170,7 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
   return (
     <div style={{
       display: "grid",
-      gridTemplateColumns: "minmax(220px, 1.6fr) 60px 120px minmax(220px, 1.6fr) minmax(220px, 1.6fr)",
+      gridTemplateColumns: GRID,
       gap: 14,
       padding: "10px 18px",
       alignItems: "baseline",
@@ -167,6 +190,17 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
         onChange={(v) => onUpdate({ amount: Number(v) || 0 })}
         align="right" prefix="$"
       />
+      <div title={eligibleTooltip(pool)} style={{ color: "var(--ink-2)" }}>
+        <CellInput
+          type="number" value={pool.eligiblePercent} step={5} min={0} max={100}
+          onChange={(v) => {
+            const n = Number(v);
+            const clamped = Number.isFinite(n) ? Math.max(0, Math.min(100, n)) : 0;
+            onUpdate({ eligiblePercent: clamped });
+          }}
+          align="right" suffix="%"
+        />
+      </div>
       <AllocationBasisCombobox
         bases={bases}
         selectedId={pool.basisId}
@@ -174,10 +208,19 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
         onSelect={(basisId, basisName) => onUpdate({ basisId, basis: basisName })}
         onCreate={onCreateBasis}
       />
-      <CellInput
-        value={pool.recoverability}
-        onChange={(v) => onUpdate({ recoverability: String(v) })}
-      />
     </div>
   );
+}
+
+/** Tooltip text for the Eligible % cell. Prefers the pool's own policy
+ *  description (recoverability text), falls back to a generic explanation
+ *  derived from the percent value. */
+function eligibleTooltip(p: CapPool): string {
+  const policy = p.recoverability?.trim();
+  const generic =
+    p.eligiblePercent >= 100 ? "Fully fee-eligible overhead"
+    : p.eligiblePercent <= 0 ? "Excluded from fee-supported allocations"
+    : `Partially eligible — ${p.eligiblePercent}% flows into fee allocations`;
+  if (policy && policy.toLowerCase() !== "tbd") return `${generic} · ${policy}`;
+  return generic;
 }

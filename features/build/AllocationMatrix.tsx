@@ -46,7 +46,7 @@ export function AllocationMatrix() {
   const colTotal = (deptCode: MatrixDeptCode): number =>
     capPools.reduce((a, p) => a + (allocSrc[p.id]?.[deptCode] ?? 0), 0);
 
-  const totalCap = capPools.reduce((a, p) => a + p.amount, 0);
+  const totalEligible = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
   const grandTotal = capPools.reduce((a, p) => a + rowTotal(p.id), 0);
 
   return (
@@ -67,7 +67,7 @@ export function AllocationMatrix() {
             letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <div>Center · Pool</div>
-            <div style={{ textAlign: "right" }}>Pool $</div>
+            <div style={{ textAlign: "right" }}>Eligible $</div>
             <div>Basis</div>
             {cols.map((d) => (
               <div key={d.code} style={{
@@ -101,8 +101,14 @@ export function AllocationMatrix() {
                   <div style={{ fontWeight: 500 }}>{p.center}</div>
                   <div style={{ fontSize: 10, color: "var(--ink-4)", marginTop: 1 }}>{p.pool}</div>
                 </div>
-                <div className="num" style={{ textAlign: "right", fontSize: 12 }}>
-                  {fmt.dollarsK(p.amount)}
+                <div
+                  className="num"
+                  style={{ textAlign: "right", fontSize: 12 }}
+                  title={p.eligiblePercent < 100
+                    ? `${fmt.dollars(p.amount)} raw × ${p.eligiblePercent}% eligible`
+                    : undefined}
+                >
+                  {fmt.dollarsK(p.amount * (p.eligiblePercent / 100))}
                 </div>
                 <div className="mono" style={{
                   fontSize: 10.5, color: "var(--ink-3)",
@@ -157,7 +163,7 @@ export function AllocationMatrix() {
               textTransform: "uppercase",
             }}>Column total</div>
             <div className="num" style={{ textAlign: "right", fontSize: 12.5, fontWeight: 600 }}>
-              {fmt.dollarsK(totalCap)}
+              {fmt.dollarsK(totalEligible)}
             </div>
             <div/>
             {cols.map((d) => {
@@ -335,8 +341,22 @@ function CellTrace({
             <div className="mono">{pool.id}</div>
             <div style={{ color: "var(--ink-3)" }}>Center</div>
             <div>{pool.center}</div>
-            <div style={{ color: "var(--ink-3)" }}>Total amount</div>
-            <div className="num" style={{ fontWeight: 600 }}>{fmt.dollars(pool.amount)}</div>
+            <div style={{ color: "var(--ink-3)" }}>Raw amount</div>
+            <div className="num">{fmt.dollars(pool.amount)}</div>
+            <div style={{ color: "var(--ink-3)" }}>Eligible %</div>
+            <div className="num">{pool.eligiblePercent}%</div>
+            <div style={{ color: "var(--ink-3)" }}>Eligible amount</div>
+            <div className="num" style={{ fontWeight: 600 }}>
+              {fmt.dollars(pool.amount * (pool.eligiblePercent / 100))}
+            </div>
+            {pool.eligiblePercent < 100 && (
+              <>
+                <div style={{ color: "var(--ink-3)" }}>Excluded</div>
+                <div className="num" style={{ color: "var(--ink-3)" }}>
+                  {fmt.dollars(pool.amount * (1 - pool.eligiblePercent / 100))}
+                </div>
+              </>
+            )}
             <div style={{ color: "var(--ink-3)" }}>Basis</div>
             <div className="mono">{basis}</div>
             {isDirectCharge ? (
@@ -375,9 +395,14 @@ function CellTrace({
             <div style={{
               fontSize: 12.5, fontFamily: "var(--ff-mono)",
               padding: "10px 12px", background: "var(--paper-2)",
-              border: "1px solid var(--rule)",
+              border: "1px solid var(--rule)", lineHeight: 1.7,
             }}>
-              direct charge → {fmt.dollars(pool.amount)}
+              {pool.eligiblePercent < 100 && (
+                <div style={{ color: "var(--ink-3)" }}>
+                  {fmt.dollarsK(pool.amount)} × {pool.eligiblePercent}% eligible
+                </div>
+              )}
+              <div>direct charge → {fmt.dollars(pool.amount * (pool.eligiblePercent / 100))}</div>
             </div>
           ) : (
             <div style={{
@@ -385,7 +410,12 @@ function CellTrace({
               padding: "10px 12px", background: "var(--paper-2)",
               border: "1px solid var(--rule)", lineHeight: 1.7,
             }}>
-              <div>Initial = {fmt.dollarsK(pool.amount)} on {pool.center}</div>
+              {pool.eligiblePercent < 100 && (
+                <div style={{ color: "var(--ink-3)" }}>
+                  {fmt.dollarsK(pool.amount)} × {pool.eligiblePercent}% eligible = {fmt.dollarsK(pool.amount * (pool.eligiblePercent / 100))} allocatable
+                </div>
+              )}
+              <div>Initial = {fmt.dollarsK(pool.amount * (pool.eligiblePercent / 100))} on {pool.center}</div>
               {view === "initial" && dept.kind === "indirect" ? (
                 <div style={{ color: "var(--accent)", fontWeight: 600 }}>
                   Initial = {fmt.dollars(initialValue)}
