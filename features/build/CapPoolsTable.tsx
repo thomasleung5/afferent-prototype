@@ -197,7 +197,7 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
         />
       </div>
       <CellInput
-        type="number" value={Math.round(pool.amount)} step={1000} min={0}
+        type="currency" value={Math.round(pool.amount)} min={0}
         onChange={(v) => onUpdate({ amount: Number(v) || 0 })}
         align="right" prefix="$"
       />

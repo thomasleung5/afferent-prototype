@@ -156,7 +156,7 @@ export function OperatingTable() {
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <CellInput
-            type="number" value={r.amount} step={100} min={0}
+            type="currency" value={r.amount} min={0}
             onChange={(v) => updateOperating(r.id, { amount: Number(v) || 0 })}
             align="right" prefix="$"
           />

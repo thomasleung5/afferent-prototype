@@ -278,10 +278,10 @@ export function FeeScheduleTable() {
                     color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                   }}>Current fee</div>
                   <CellInput
-                    type="number"
+                    type="currency"
                     value={svc.fee}
                     onChange={(v) => updateService(r.id, { fee: Number(v) || 0 })}
-                    prefix="$" step={5} min={0}
+                    prefix="$" min={0}
                   />
                 </div>
                 <div>

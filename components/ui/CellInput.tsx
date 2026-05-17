@@ -4,7 +4,13 @@ import { useEffect, useState, type CSSProperties } from "react";
 interface Props {
   value: number | string | null;
   onChange: (v: number | string) => void;
-  type?: "text" | "number";
+  /** "text": pass-through string editing.
+   *  "number": native number input (spinners, no comma formatting).
+   *  "currency": text input with comma formatting on blur, raw digits
+   *  while focused. Parses "$1,234,567.89" → 1234567.89, clamps to
+   *  min/max, then reformats. Cursor stays put while typing — no
+   *  reformatting during keystrokes. */
+  type?: "text" | "number" | "currency";
   prefix?: string;
   suffix?: string;
   align?: "left" | "right" | "center";
@@ -14,6 +20,21 @@ interface Props {
   min?: number;
   max?: number;
   placeholder?: string;
+}
+
+/** Format a number as US currency without decimal places. Matches
+ *  fmt.dollars() rounding behavior so display is consistent. */
+function formatCurrency(n: number): string {
+  return Math.round(n).toLocaleString("en-US");
+}
+
+/** Strip non-numeric characters so pasted "$1,234.56" or "1 234,56"
+ *  parses cleanly. Keeps the leading minus sign and a single decimal. */
+function parseCurrency(raw: string): number {
+  const cleaned = raw.replace(/[^\d.\-]/g, "");
+  if (cleaned === "" || cleaned === "-" || cleaned === "." || cleaned === "-.") return 0;
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : 0;
 }
 
 /** Inline-flat-until-focus table cell editor. Hover lifts the row chrome;
@@ -28,13 +49,31 @@ export function CellInput({
   step, min, max,
   placeholder,
 }: Props) {
-  const initial = value == null ? "" : String(value);
-  const [draft, setDraft] = useState(initial);
+  const initialDraft = (() => {
+    if (value == null || value === "") return "";
+    if (type === "currency") {
+      const n = Number(value);
+      return Number.isFinite(n) ? formatCurrency(n) : "";
+    }
+    return String(value);
+  })();
+  const [draft, setDraft] = useState(initialDraft);
   const [focused, setFocused] = useState(false);
 
+  // Sync from external value when not actively editing.
   useEffect(() => {
-    if (!focused) setDraft(value == null ? "" : String(value));
-  }, [value, focused]);
+    if (focused) return;
+    if (value == null || value === "") {
+      setDraft("");
+      return;
+    }
+    if (type === "currency") {
+      const n = Number(value);
+      setDraft(Number.isFinite(n) ? formatCurrency(n) : "");
+    } else {
+      setDraft(String(value));
+    }
+  }, [value, focused, type]);
 
   const wrapStyle: CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 2,
@@ -45,6 +84,8 @@ export function CellInput({
     transition: "background 100ms, border-color 100ms",
   };
 
+  const inputHtmlType = type === "number" ? "number" : "text";
+
   return (
     <span
       style={wrapStyle}
@@ -53,14 +94,25 @@ export function CellInput({
     >
       {prefix && <span style={{ color: "var(--ink-3)", fontSize: 11, fontFamily: "var(--ff-mono)" }}>{prefix}</span>}
       <input
-        type={type === "number" ? "number" : "text"}
+        type={inputHtmlType}
+        inputMode={type === "currency" ? "decimal" : undefined}
         value={draft}
         step={step}
         min={min}
         max={max}
         placeholder={placeholder}
         onChange={(e) => setDraft(e.target.value)}
-        onFocus={() => setFocused(true)}
+        onFocus={(e) => {
+          setFocused(true);
+          // Show raw digits while editing — easier to manipulate than the
+          // formatted version, and avoids cursor-position complexity.
+          if (type === "currency" && value != null && value !== "") {
+            const n = Number(value);
+            if (Number.isFinite(n)) setDraft(String(Math.round(n)));
+          }
+          // Select all so a fresh number replaces the existing value cleanly.
+          if (type === "number" || type === "currency") e.target.select();
+        }}
         onBlur={() => {
           setFocused(false);
           if (type === "number") {
@@ -74,6 +126,12 @@ export function CellInput({
             } else {
               setDraft(value == null ? "" : String(value));
             }
+          } else if (type === "currency") {
+            let next = parseCurrency(draft);
+            if (min != null) next = Math.max(min, next);
+            if (max != null) next = Math.min(max, next);
+            onChange(next);
+            setDraft(formatCurrency(next));
           } else {
             onChange(draft);
           }
@@ -81,7 +139,12 @@ export function CellInput({
         onKeyDown={(e) => {
           if (e.key === "Enter") (e.target as HTMLInputElement).blur();
           if (e.key === "Escape") {
-            setDraft(value == null ? "" : String(value));
+            if (type === "currency" && value != null && value !== "") {
+              const n = Number(value);
+              setDraft(Number.isFinite(n) ? formatCurrency(n) : "");
+            } else {
+              setDraft(value == null ? "" : String(value));
+            }
             (e.target as HTMLInputElement).blur();
           }
         }}

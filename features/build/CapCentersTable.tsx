@@ -85,7 +85,7 @@ export function CapCentersTable() {
       sortable: true,
       render: (r) => (
         <CellInput
-          type="number" value={Math.round(r.totalCost)} step={1000} min={0}
+          type="currency" value={Math.round(r.totalCost)} min={0}
           onChange={(v) => updateCenterTotal(r.name, Number(v) || 0)}
           align="right" prefix="$"
         />

@@ -114,7 +114,7 @@ export function PositionsTable() {
       sortable: true,
       render: (r) => (
         <CellInput
-          type="number" value={r.salary} step={1000} min={0}
+          type="currency" value={r.salary} min={0}
           onChange={(v) => updatePosition(r.id, { salary: Number(v) || 0 })}
           align="right" prefix="$"
         />
@@ -128,7 +128,7 @@ export function PositionsTable() {
       sortable: true,
       render: (r) => (
         <CellInput
-          type="number" value={r.benefits} step={1000} min={0}
+          type="currency" value={r.benefits} min={0}
           onChange={(v) => updatePosition(r.id, { benefits: Number(v) || 0 })}
           align="right" prefix="$"
         />
