@@ -1,4 +1,5 @@
 import type { Service } from "@/lib/types";
+import type { SourceLineage } from "@/lib/parse/types";
 
 interface ServiceRow {
   name: string;
@@ -42,9 +43,9 @@ export function servicesToExtractionResult(
   const existingByName = new Map(existing.map((s) => [s.name.toLowerCase(), s]));
   const now = new Date().toISOString();
 
-  const mapped: { entity: Service; lineage: object }[] = [];
-  const lowConfidence: { entity: Service; lineage: object }[] = [];
-  const duplicates: { entity: Service; lineage: object }[] = [];
+  const mapped: { entity: Service; lineage: SourceLineage }[] = [];
+  const lowConfidence: { entity: Service; lineage: SourceLineage }[] = [];
+  const duplicates: { entity: Service; lineage: SourceLineage }[] = [];
 
   rows.forEach((row, i) => {
     const dept = normDept(row.dept);

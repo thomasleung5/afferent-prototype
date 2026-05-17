@@ -1,4 +1,5 @@
 import type { Position } from "@/lib/types";
+import type { SourceLineage } from "@/lib/parse/types";
 
 interface PositionRow {
   title: string;
@@ -34,8 +35,8 @@ export function salaryToExtractionResult(
 ) {
   const now = new Date().toISOString();
 
-  const mapped: { entity: Position; lineage: object }[] = [];
-  const lowConfidence: { entity: Position; lineage: object }[] = [];
+  const mapped: { entity: Position; lineage: SourceLineage }[] = [];
+  const lowConfidence: { entity: Position; lineage: SourceLineage }[] = [];
 
   rows.forEach((row, i) => {
     const dept = normDept(row.dept);

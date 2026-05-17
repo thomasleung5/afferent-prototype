@@ -805,9 +805,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           operating: [],
           capPools: [],
           capAllocation: {
-            PLAN: { allocated: 0 },
-            BLDG: { allocated: 0 },
-            ENG:  { allocated: 0 },
+            PLAN: { dept: "PLAN", allocated: 0 },
+            BLDG: { dept: "BLDG", allocated: 0 },
+            ENG:  { dept: "ENG",  allocated: 0 },
           },
           workload: [],
           services: [],
