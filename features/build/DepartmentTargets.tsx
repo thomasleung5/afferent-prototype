@@ -5,13 +5,6 @@ import { DEPTS } from "@/lib/data/departments";
 import type { PolicyTarget } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-function intent(target: number): string {
-  if (target >= 100) return "Full cost recovery";
-  if (target >=  80) return "Near-full recovery";
-  if (target >=  60) return "Partial recovery";
-  return "Subsidized service";
-}
-
 function Bar({ pct }: { pct: number }) {
   return (
     <div style={{
@@ -67,7 +60,6 @@ export function DepartmentTargets() {
               align="right"
             />
           </div>
-          <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{intent(r.target)}</span>
         </div>
       ),
     },
