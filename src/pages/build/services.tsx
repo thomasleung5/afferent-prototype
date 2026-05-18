@@ -61,12 +61,9 @@ export default function ServicesPage() {
         title="Services"
         subtitle="Hours per instance, role mix."
         actions={
-          <>
-            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
-          </>
+          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+            <Icon name="arrow-up-to-line" size={13}/> Import
+          </Btn>
         }
       />
 

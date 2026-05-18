@@ -132,14 +132,11 @@ export default function CapPage() {
         title="Cost Allocation"
         subtitle="Citywide indirect, allocated to direct departments."
         actions={
-          <>
-            {showImport && (
-              <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-                <Icon name="arrow-up-to-line" size={13}/> Import
-              </Btn>
-            )}
-            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
-          </>
+          showImport ? (
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+          ) : null
         }
       />
 

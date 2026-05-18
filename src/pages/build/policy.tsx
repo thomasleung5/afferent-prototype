@@ -1,6 +1,6 @@
 ﻿
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow, SectionLabel } from "@/components/ui";
+import { NodeEyebrow, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { DepartmentTargets } from "@/features/build/DepartmentTargets";
@@ -17,7 +17,6 @@ export default function RecoveryPolicyPage() {
         eyebrow={<NodeEyebrow node="policy"/>}
         title="Recovery Policy"
         subtitle="Define subsidy strategy and target cost recovery across departments and fee categories."
-        actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>}
       />
 
       <StatusRow items={[

@@ -93,12 +93,9 @@ export default function WorkloadPage() {
         title="Workload"
         subtitle="Annual volume per service."
         actions={
-          <>
-            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
-          </>
+          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+            <Icon name="arrow-up-to-line" size={13}/> Import
+          </Btn>
         }
       />
 
