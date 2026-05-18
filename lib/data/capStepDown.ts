@@ -144,29 +144,27 @@ export const DRIVERS: DriverMatrix = (() => {
 
 /** Derive a department × basis driver matrix from imported pool receivers.
  *
- *  Each receiver carries `units` — the raw allocation-factor count for that
- *  receiver, lifted from the document's "Allocation Units" column. Receivers
- *  have per-row identity (their glCode); deptCode is a coarse ~16-value
- *  CLASSIFICATION that maps each receiver onto a MatrixDeptCode slot in
- *  this driver matrix.
+ *  Units are a PER-DEPARTMENT attribute, not per-pool: a department's
+ *  budgeted FTE / EXPEND / PRA count is the same number no matter how many
+ *  pools list it. Documents repeat the same receiver row in every pool's
+ *  allocation schedule, so the same (deptCode, driverKey, glCode) tuple
+ *  shows up N times. We dedup by glCode within each cell so each unique
+ *  receiver contributes its units exactly once; distinct receivers sharing
+ *  a deptCode (e.g. several Public Works divisions) still aggregate by
+ *  sum into the dept-level denominator the step-down routes through:
+ *  out[PW][FTE] = Σ FTE over every distinct PW-coded receiver.
  *
- *  Multiple distinct receivers (different glCodes) routinely share a
- *  deptCode — e.g. a Public Works document with separate "Streets",
- *  "Fleet", "Engineering Support", and "Admin" budget units all classified
- *  as "PW". Their published unit counts AGGREGATE into the dept-level
- *  denominator the step-down uses: out[PW][FTE] = Σ FTE over every
- *  PW-coded receiver. (Earlier first-seen-wins logic collapsed every shared
- *  deptCode onto one receiver — the actual identity-as-classification bug.)
- *
- *  Two-pool reconciliation: when more than one pool publishes a receivers
- *  array for the same basis, all of their receiver contributions are
- *  combined into the same (dept, basis) cell. The document is responsible
- *  for staying internally consistent — for any (deptCode, basis) the engine
- *  cares about, the SUM across all listings is what feeds the step-down.
+ *  Earlier "+= units for every receiver row" logic multiplied each cell by
+ *  the pool count for any receiver listed in multiple pools — that's the
+ *  4000× EXPEND inflation we just hit.
  *
  *  Pools with basis "DIRECT" are skipped — DIRECT is a routing rule, not a
  *  denominator. Receivers missing `units` are skipped — no count, no driver.
- *  Receivers with deptCode "OTHER" are skipped — they fall outside the matrix. */
+ *  Receivers with deptCode "OTHER" are skipped — they fall outside the matrix.
+ *
+ *  Conflict detection: if two listings of the same (deptCode, glCode,
+ *  driverKey) carry different units, console-warn (silent averaging /
+ *  summing is not acceptable for audit data). First-seen wins. */
 export function deriveDriversFromReceivers(
   pools: CapPool[],
   bases: AllocationBasis[],
@@ -174,6 +172,12 @@ export function deriveDriversFromReceivers(
   const out = Object.fromEntries(
     ALL_DEPTS.map((d) => [d.code, {}]),
   ) as DriverMatrix;
+
+  // Per-(deptCode, driverKey) set of receiver identities already counted.
+  // The set value is the units we recorded for each glCode in that cell,
+  // used to detect inconsistent repeated listings.
+  const seen = new Map<string, Map<string, number>>();
+
   for (const p of pools) {
     if (!p.receivers || p.receivers.length === 0) continue;
     const { basis: driverKey } = basisForPool(p, bases);
@@ -183,6 +187,24 @@ export function deriveDriversFromReceivers(
       if (typeof r.units !== "number" || !Number.isFinite(r.units) || r.units <= 0) continue;
       const cell = out[r.deptCode];
       if (!cell) continue;
+      const cellKey = `${r.deptCode}|${driverKey}`;
+      const receiverId = r.glCode ?? `noglcode:${r.dept.toLowerCase()}`;
+      let seenInCell = seen.get(cellKey);
+      if (!seenInCell) {
+        seenInCell = new Map();
+        seen.set(cellKey, seenInCell);
+      }
+      const previousUnits = seenInCell.get(receiverId);
+      if (previousUnits != null) {
+        if (Math.abs(previousUnits - r.units) > 0.001) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[deriveDriversFromReceivers] inconsistent units for ${receiverId} in ${cellKey}: ${previousUnits} vs ${r.units}; keeping first-seen`,
+          );
+        }
+        continue; // already counted this receiver in this cell
+      }
+      seenInCell.set(receiverId, r.units);
       cell[driverKey] = (cell[driverKey] ?? 0) + r.units;
     }
   }

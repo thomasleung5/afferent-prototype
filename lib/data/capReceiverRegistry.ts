@@ -129,11 +129,21 @@ export function buildReceiverRegistry(
         };
         byKey.set(key, entry);
       }
-      // Aggregate units into the (this glCode, driverKey) cell. Multiple
-      // receivers sharing a glCode is an upstream parser bug — we union
-      // anyway so the UI shows something useful.
+      // Units are a per-receiver attribute: the same receiver shows up in
+      // every pool's allocation schedule with the SAME units value. Take
+      // first-seen; warn on inconsistency. Summing across pools would
+      // multiply the receiver's true unit count by the pool count — the
+      // bug that produced 4× EXPEND inflation upstream.
       if (typeof r.units === "number" && Number.isFinite(r.units) && r.units > 0) {
-        entry.values[driverKey] = (entry.values[driverKey] ?? 0) + r.units;
+        const existing = entry.values[driverKey];
+        if (existing == null) {
+          entry.values[driverKey] = r.units;
+        } else if (Math.abs(existing - r.units) > 0.001) {
+          // eslint-disable-next-line no-console
+          console.warn(
+            `[buildReceiverRegistry] inconsistent units for ${glCode}/${driverKey}: ${existing} vs ${r.units}; keeping first-seen`,
+          );
+        }
       }
       entry.sources.push({
         poolId: p.id,

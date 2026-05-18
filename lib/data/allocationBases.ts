@@ -33,6 +33,9 @@ export interface BasisRow {
 }
 
 /* Indirect cost centers — listed in the CAP step-down sequence. */
+/* EXPEND / EXPEND_X / VEHICLE values are stored as RAW DOLLARS (not $K) so
+ * the seed and AI-imported receivers share one unit convention; the
+ * Allocation Bases formatter no longer needs to scale. */
 const INDIRECT: BasisRow[] = [
   {
     code: "BLDG_USE", name: "Building Use", group: "indirect",
@@ -44,20 +47,20 @@ const INDIRECT: BasisRow[] = [
   },
   {
     code: "COUNCIL", name: "City Council", group: "indirect",
-    values: { FTE: 0, EXPEND: 412, EXPEND_X: 412, AGENDA: 0, COMMITS: 0 },
+    values: { FTE: 0, EXPEND: 412000, EXPEND_X: 412000, AGENDA: 0, COMMITS: 0 },
   },
   {
     code: "CMGR", name: "City Manager", group: "indirect",
     values: {
-      FTE: 3.0, EXPEND: 1100, EXPEND_X: 1100,
+      FTE: 3.0, EXPEND: 1100000, EXPEND_X: 1100000,
       PAYROLL: 86, ACCT: 410, AGENDA: 38, PRA: 14, CONTRACT: 22,
-      SQFT: 980, VEHICLE: 4, COMMITS: 0,
+      SQFT: 980, VEHICLE: 4000, COMMITS: 0,
     },
   },
   {
     code: "CLERK", name: "City Clerk", group: "indirect",
     values: {
-      FTE: 1.5, EXPEND: 312, EXPEND_X: 312,
+      FTE: 1.5, EXPEND: 312000, EXPEND_X: 312000,
       PAYROLL: 42, ACCT: 196, AGENDA: 0, PRA: 0, CONTRACT: 18,
       SQFT: 420, VEHICLE: 0, COMMITS: 0,
     },
@@ -65,18 +68,18 @@ const INDIRECT: BasisRow[] = [
   {
     code: "FAS", name: "Finance & Admin Services", group: "indirect",
     values: {
-      FTE: 4.0, EXPEND: 1218, EXPEND_X: 1218,
+      FTE: 4.0, EXPEND: 1218000, EXPEND_X: 1218000,
       PAYROLL: 0, ACCT: 0, AGENDA: 12, PRA: 6, CONTRACT: 0,
-      SQFT: 1180, VEHICLE: 3, COMMITS: 0,
+      SQFT: 1180, VEHICLE: 3000, COMMITS: 0,
     },
   },
   {
     code: "ATTY", name: "City Attorney", group: "indirect",
-    values: { EXPEND: 180, EXPEND_X: 180, AGENDA: 22, CONTRACT: 28, PRA: 4 },
+    values: { EXPEND: 180000, EXPEND_X: 180000, AGENDA: 22, CONTRACT: 28, PRA: 4 },
   },
   {
     code: "INS", name: "Insurance", group: "indirect",
-    values: { EXPEND: 400, EXPEND_X: 400 },
+    values: { EXPEND: 400000, EXPEND_X: 400000 },
   },
   {
     code: "CMTE", name: "Committees", group: "indirect",
@@ -90,57 +93,57 @@ const DIRECT: BasisRow[] = [
   {
     code: "PLAN", name: "Planning", group: "direct",
     values: {
-      FTE: 4.5, EXPEND: 1280, EXPEND_X: 0,
+      FTE: 4.5, EXPEND: 1280000, EXPEND_X: 0,
       PAYROLL: 124, ACCT: 612, AGENDA: 84, PRA: 92, CONTRACT: 36,
-      SQFT: 1480, VEHICLE: 8, COMMITS: 2,
+      SQFT: 1480, VEHICLE: 8000, COMMITS: 2,
     },
   },
   {
     code: "BLDG", name: "Building", group: "direct",
     values: {
-      FTE: 6.0, EXPEND: 1605, EXPEND_X: 0,
+      FTE: 6.0, EXPEND: 1605000, EXPEND_X: 0,
       PAYROLL: 168, ACCT: 818, AGENDA: 24, PRA: 38, CONTRACT: 24,
-      SQFT: 1860, VEHICLE: 18, COMMITS: 1,
+      SQFT: 1860, VEHICLE: 18000, COMMITS: 1,
     },
   },
   {
     code: "ENG", name: "Engineering", group: "direct",
     values: {
-      FTE: 2.5, EXPEND: 720, EXPEND_X: 0,
+      FTE: 2.5, EXPEND: 720000, EXPEND_X: 0,
       PAYROLL: 68, ACCT: 354, AGENDA: 16, PRA: 22, CONTRACT: 14,
-      SQFT: 780, VEHICLE: 12, COMMITS: 1,
+      SQFT: 780, VEHICLE: 12000, COMMITS: 1,
     },
   },
   {
     code: "PW", name: "Public Works", group: "direct",
     values: {
-      FTE: 4.2, EXPEND: 890, EXPEND_X: 890,
+      FTE: 4.2, EXPEND: 890000, EXPEND_X: 890000,
       PAYROLL: 105, ACCT: 155, AGENDA: 9, PRA: 6, CONTRACT: 44,
-      SQFT: 920, VEHICLE: 124, COMMITS: 1,
+      SQFT: 920, VEHICLE: 124000, COMMITS: 1,
     },
   },
   {
     code: "PARKS", name: "Parks & Recreation", group: "direct",
     values: {
-      FTE: 1.5, EXPEND: 340, EXPEND_X: 340,
+      FTE: 1.5, EXPEND: 340000, EXPEND_X: 340000,
       PAYROLL: 38, ACCT: 72, AGENDA: 8, PRA: 5, CONTRACT: 21,
-      SQFT: 240, VEHICLE: 18, COMMITS: 2,
+      SQFT: 240, VEHICLE: 18000, COMMITS: 2,
     },
   },
   {
     code: "PD", name: "Police Services", group: "direct",
     values: {
-      FTE: 0.5, EXPEND: 720, EXPEND_X: 720,
+      FTE: 0.5, EXPEND: 720000, EXPEND_X: 720000,
       PAYROLL: 15, ACCT: 45, AGENDA: 5, PRA: 3, CONTRACT: 8,
-      SQFT: 180, VEHICLE: 6, COMMITS: 0,
+      SQFT: 180, VEHICLE: 6000, COMMITS: 0,
     },
   },
   {
     code: "FIRE", name: "Fire Prevention", group: "direct",
     values: {
-      FTE: 0.2, EXPEND: 234, EXPEND_X: 234,
+      FTE: 0.2, EXPEND: 234000, EXPEND_X: 234000,
       PAYROLL: 8, ACCT: 18, AGENDA: 2, PRA: 1, CONTRACT: 6,
-      SQFT: 140, VEHICLE: 3, COMMITS: 1,
+      SQFT: 140, VEHICLE: 3000, COMMITS: 1,
     },
   },
 ];

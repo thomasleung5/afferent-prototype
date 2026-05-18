@@ -181,7 +181,10 @@ function ReceiversForReviewBanner({ missing }: { missing: MissingReceiverEntry[]
 
 function formatCell(value: number | undefined, fmtKind: string): string {
   if (value == null || value === 0) return "—";
-  if (fmtKind === "k")        return fmt.dollarsK(value * 1000);
+  // "k"-fmt drivers (EXPEND / EXPEND_X / VEHICLE) are now stored as raw
+  // dollars throughout — seed and AI-imported alike — so the formatter
+  // doesn't scale. fmt.dollarsK auto-collapses to $K / $M as appropriate.
+  if (fmtKind === "k")        return fmt.dollarsK(value);
   if (fmtKind === "decimal")  return value.toFixed(2);
   return fmt.int(value);
 }
