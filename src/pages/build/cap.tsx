@@ -1,4 +1,4 @@
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { CapKpiRail, StepDownSequence } from "@/features/build/CapKpiRail";
@@ -52,11 +52,10 @@ export default function CapPage() {
   const { mergeCapBundle } = useBuildState();
   const [step, setStep] = useState<CapStep>("centers");
   const [importerOpen, setImporterOpen] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pasteStatus, setPasteStatus] = useState<{ ok: boolean; message: string } | null>(null);
+  // Bases the model returned with driverKey "OTHER" or otherwise un-bindable.
+  // Surfaced inline so users see what didn't bind; populated as a side effect
+  // inside the drawer hooks.
   const [unmappedBases, setUnmappedBases] = useState<UnmappedRow[]>([]);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
   const showImport = SHOW_IMPORT.includes(step);
 
   function buildStatusMessage(applied: ReturnType<typeof mergeCapBundle>): string {
@@ -72,13 +71,8 @@ export default function CapPage() {
     return `${counts} imported (${tail}).`;
   }
 
-  async function uploadPdfToClaude(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setPdfStatus(null);
+  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     setUnmappedBases([]);
-    setPdfLoading(true);
     try {
       const result = await aiParseCapPdf(file);
       if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
@@ -89,24 +83,17 @@ export default function CapPage() {
       };
       const applied = mergeCapBundle(bundle, file.name);
       setUnmappedBases(applied.unmappedBases);
-      setPdfStatus({ ok: true, message: buildStatusMessage(applied) });
+      return { ok: true, message: buildStatusMessage(applied) };
     } catch (err) {
-      setPdfStatus({ ok: false, message: err instanceof Error ? err.message : "PDF parsing failed." });
-    } finally {
-      setPdfLoading(false);
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "PDF parsing failed.",
+      };
     }
   }
 
-  async function pasteFromClipboard() {
-    setPasteStatus(null);
+  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
     setUnmappedBases([]);
-    let text: string;
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {
-      setPasteStatus({ ok: false, message: "Clipboard access denied — try Ctrl+C then paste again." });
-      return;
-    }
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
@@ -129,9 +116,12 @@ export default function CapPage() {
       };
       const applied = mergeCapBundle(bundle, "clipboard");
       setUnmappedBases(applied.unmappedBases);
-      setPasteStatus({ ok: true, message: buildStatusMessage(applied) });
+      return { ok: true, message: buildStatusMessage(applied) };
     } catch (err) {
-      setPasteStatus({ ok: false, message: err instanceof Error ? err.message : "Failed to parse JSON." });
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Failed to parse JSON.",
+      };
     }
   }
 
@@ -153,65 +143,9 @@ export default function CapPage() {
         }
       />
 
-      <input
-        ref={pdfInputRef}
-        type="file"
-        accept=".pdf"
-        style={{ display: "none" }}
-        onChange={uploadPdfToClaude}
-      />
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-      }}>
-        <Btn kind="ghost" onClick={() => pdfInputRef.current?.click()} disabled={pdfLoading}>
-          <Icon name="sparkles" size={13}/> {pdfLoading ? "Sending to Claude…" : "Upload PDF via Claude"}
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          {pdfLoading
-            ? "Claude is reading the PDF — check the terminal for progress"
-            : "Send a Cost Allocation Plan PDF — Claude detects and extracts cost centers, allocation bases, and cost pools in one pass"}
-        </span>
-        {pdfStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pdfStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pdfStatus.message}
-          </span>
-        )}
-      </div>
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-        borderTop: "none",
-      }}>
-        <Btn kind="ghost" onClick={pasteFromClipboard}>
-          Paste JSON from clipboard
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          Paste the <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{"{ centers?, bases?, pools? }"}</code> output from an LLM
-        </span>
-        {pasteStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pasteStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pasteStatus.message}
-          </span>
-        )}
-      </div>
-
       {unmappedBases.length > 0 && (
         <div style={{
           background: "var(--paper)", border: "1px solid var(--rule)",
-          borderTop: "none",
         }}>
           <div style={{
             padding: "10px 16px",
@@ -300,6 +234,10 @@ export default function CapPage() {
         formats="xlsx, csv"
         forceType="cost_allocation_plan"
         schema="Center, pool, basis, dollar amount, recoverability."
+        aiPdfHelper="Send a Cost Allocation Plan PDF — Claude detects and extracts cost centers, allocation bases, and cost pools in one pass"
+        onAiPdfImport={uploadPdfToClaude}
+        pasteExample="{ centers?, bases?, pools? }"
+        onPasteJson={pasteJson}
       />
     </Page>
   );
