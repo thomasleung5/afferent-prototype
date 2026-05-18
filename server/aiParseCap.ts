@@ -14,8 +14,8 @@ Return ONLY this JSON, no prose:
 
 {
   "centers": [
-    { "name": "City Manager", "totalCost": 1100000, "confidence": "high" },
-    { "name": "Finance & Administrative Services", "totalCost": 1218000, "confidence": "high" }
+    { "name": "City Manager", "glCode": "011-1200", "totalCost": 1100000, "confidence": "high" },
+    { "name": "Finance & Administrative Services", "glCode": "011-1400", "totalCost": 1218000, "confidence": "high" }
   ],
   "bases": [
     { "name": "Budgeted FTE", "source": "HRIS budget worksheet", "methodologyNote": "Authorized full-time-equivalent positions across the budget year.", "driverKey": "FTE", "confidence": "high" },
@@ -28,8 +28,8 @@ Return ONLY this JSON, no prose:
       "allocationPercent": 38.62, "amount": 424820, "eligiblePercent": 100,
       "basis": "Budgeted FTE",
       "receivers": [
-        { "dept": "Planning Admin", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "confidence": "high" },
-        { "dept": "Building Admin", "deptCode": "BLDG", "units": 2.81, "percent": 18.08, "amount": 22066, "confidence": "high" }
+        { "dept": "Planning Admin", "glCode": "011-3100", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "confidence": "high" },
+        { "dept": "Building Admin", "glCode": "011-3200", "deptCode": "BLDG", "units": 2.81, "percent": 18.08, "amount": 22066, "confidence": "high" }
       ],
       "recoverability": "Fully recoverable", "confidence": "high"
     }
@@ -43,6 +43,7 @@ SECTION 1 — Cost centers
 Extract every named INDIRECT cost center with its total dollar cost — the "100%" denominator each pool's allocationPercent is measured against.
 
 - name: the human-readable center name, exactly as written. Common indirect centers include City Manager, City Clerk, Finance & Administrative Services (or Finance), Building Use, Equipment Use, City Attorney, Insurance, Committees, City Council — but accept any name the document uses for an indirect cost center.
+- glCode: the center's account / GL code exactly as printed in the document — e.g. "011-1200", "061-4300", "BLDG", "EQUIP". This is the center's UNIQUE IDENTIFIER within the document; two centers never share a glCode. Capture it verbatim, including fund/division segments. Omit this field ONLY when the document prints no code for the unit.
 - totalCost: the source-department's full budgeted cost for the year — a plain number, NO $ sign, NO commas, NO units. (e.g. "$1,100,000" → 1100000.)
 - SKIP pool-level subtotals, grand totals, fund totals, and direct departmental operating budgets (Planning, Building, Engineering, Public Works, Parks, Police, Fire). Those are NOT cost centers — they are receivers, not allocators.
 - SKIP rows whose totalCost is zero, missing, or non-numeric.
@@ -90,6 +91,7 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
 - basis: the allocation basis name. MUST be either a name from Section 2 of the same document, or one of the canonical seed names ("Budgeted FTE", "Actual FTE", "Salaries", "Payroll transactions", "AP invoices", "Agenda item count", "Contract count", "Square footage", "Direct labor hours", "Permit volume", "Operating expenditures", "Accounting transactions", "Time study %", "Population", "Vehicle depreciation", "Operating expenditures (excl. development)", "PRA request count", "Number of committees", "Direct allocation"). If the document uses a wording that clearly matches one of these, use the canonical name.
 - receivers: the full list of budget units that receive a non-zero share of this pool, taken from the pool's allocation-detail schedule (the "X - Allocations" pages). Each receiver is an object:
   * dept: the receiving budget unit name exactly as written.
+  * glCode: the budget unit's account / GL code exactly as printed in the document — e.g. "011-1200", "061-4300", "BLDG", "EQUIP". This is the receiver's UNIQUE IDENTIFIER within the document; two receivers never share a glCode. Capture it verbatim, including fund/division segments. Omit this field ONLY when the document prints no code for the unit.
   * deptCode: the receiver's MatrixDeptCode — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" if the receiver is a fund/program with no matching code (CIP funds, grant funds, "All Other"). Set the receiver's confidence to "low" whenever deptCode is "OTHER".
   * units: the raw allocation-factor units for this receiver (the "Allocation Units" column), plain number. Omit if no unit count shown.
   * percent: the receiver's share of the pool, 0-100, plain number, no % sign (the "Allocated Percent" column).
@@ -114,6 +116,10 @@ General rules
 
 interface CenterRow {
   name: string;
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
   totalCost: number;
   confidence: "high" | "low";
 }
@@ -129,9 +135,15 @@ interface BasisRow {
 
 interface ReceiverRow {
   dept: string;
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
   /** MatrixDeptCode (BLDG_USE / EQUIP / COUNCIL / CMGR / CLERK / FAS / ATTY /
    *  INS / CMTE / PLAN / BLDG / ENG / PW / PARKS / PD / FIRE), or "OTHER"
-   *  when the receiver is a fund/program with no matching code. */
+   *  when the receiver is a fund/program with no matching code.
+   *  Classification, NOT identity — multiple receivers can share a deptCode
+   *  (e.g. several Public Works divisions). Use glCode for per-row identity. */
   deptCode: string;
   units?: number;
   percent: number;

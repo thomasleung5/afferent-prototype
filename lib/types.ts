@@ -138,10 +138,16 @@ export type BasisKey =
 export interface PoolReceiver {
   /** Receiving budget-unit name exactly as written in the document. */
   dept: string;
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
   /** MatrixDeptCode for the receiver, or "OTHER" when the document points
    *  at a fund/program with no matching code (CIP funds, grant funds,
    *  "All Other"). Kept as MatrixDeptCode | "OTHER" rather than a narrower
-   *  union so step-down receivers and unmapped fund rows can coexist. */
+   *  union so step-down receivers and unmapped fund rows can coexist.
+   *  Classification, NOT identity — multiple receivers can share a deptCode
+   *  (e.g. several Public Works divisions). Use glCode for per-row identity. */
   deptCode: MatrixDeptCode | "OTHER";
   /** Raw allocation-factor units for this receiver (the "Allocation Units"
    *  column on the schedule). Omitted when the document doesn't print one. */

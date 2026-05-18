@@ -146,15 +146,27 @@ export const DRIVERS: DriverMatrix = (() => {
  *
  *  Each receiver carries `units` — the raw allocation-factor count for that
  *  receiver, lifted from the document's "Allocation Units" column. Receivers
- *  across pools that share a basis MUST agree on that count (the underlying
- *  driver is a property of the dept, not the pool), so this function
- *  populates `out[deptCode][driverKey]` with the first non-zero `units`
- *  value seen for each (dept, driverKey) pair. Subsequent values are
- *  ignored — internal inconsistency in the source document is a parse-time
- *  concern, not something the step-down engine should silently average.
+ *  have per-row identity (their glCode); deptCode is a coarse ~16-value
+ *  CLASSIFICATION that maps each receiver onto a MatrixDeptCode slot in
+ *  this driver matrix.
+ *
+ *  Multiple distinct receivers (different glCodes) routinely share a
+ *  deptCode — e.g. a Public Works document with separate "Streets",
+ *  "Fleet", "Engineering Support", and "Admin" budget units all classified
+ *  as "PW". Their published unit counts AGGREGATE into the dept-level
+ *  denominator the step-down uses: out[PW][FTE] = Σ FTE over every
+ *  PW-coded receiver. (Earlier first-seen-wins logic collapsed every shared
+ *  deptCode onto one receiver — the actual identity-as-classification bug.)
+ *
+ *  Two-pool reconciliation: when more than one pool publishes a receivers
+ *  array for the same basis, all of their receiver contributions are
+ *  combined into the same (dept, basis) cell. The document is responsible
+ *  for staying internally consistent — for any (deptCode, basis) the engine
+ *  cares about, the SUM across all listings is what feeds the step-down.
  *
  *  Pools with basis "DIRECT" are skipped — DIRECT is a routing rule, not a
- *  denominator. Receivers missing `units` are skipped — no count, no driver. */
+ *  denominator. Receivers missing `units` are skipped — no count, no driver.
+ *  Receivers with deptCode "OTHER" are skipped — they fall outside the matrix. */
 export function deriveDriversFromReceivers(
   pools: CapPool[],
   bases: AllocationBasis[],
@@ -167,11 +179,11 @@ export function deriveDriversFromReceivers(
     const { basis: driverKey } = basisForPool(p, bases);
     if (driverKey === "DIRECT") continue;
     for (const r of p.receivers) {
-      if (r.deptCode === "OTHER") continue; // OTHER receivers fall outside the matrix
+      if (r.deptCode === "OTHER") continue;
       if (typeof r.units !== "number" || !Number.isFinite(r.units) || r.units <= 0) continue;
       const cell = out[r.deptCode];
       if (!cell) continue;
-      if (cell[driverKey] == null) cell[driverKey] = r.units;
+      cell[driverKey] = (cell[driverKey] ?? 0) + r.units;
     }
   }
   return out;

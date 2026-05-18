@@ -10,6 +10,10 @@ import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 
 interface CenterRow {
   name: string;
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
   totalCost: number;
   confidence: "high" | "low";
 }
@@ -27,7 +31,12 @@ interface BasisRow {
  *  server's ReceiverRow in server/aiParseCap.ts. */
 interface ReceiverRow {
   dept: string;
-  /** MatrixDeptCode or "OTHER"; coerced via normReceiverDeptCode. */
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
+  /** MatrixDeptCode or "OTHER"; coerced via normReceiverDeptCode.
+   *  Classification, NOT identity — use glCode for per-row identity. */
   deptCode: string;
   units?: number;
   percent: number;
@@ -80,6 +89,10 @@ export async function aiParseCapPdf(file: File): Promise<AiParseCapResult> {
 
 export interface CapCenterEntity {
   name: string;
+  /** Document's own account code. Unique within a single document; use as
+   *  the receiver/center identity key. Stable within one city + fiscal
+   *  year — NOT a cross-city join key. */
+  glCode?: string;
   totalCost: number;
 }
 
@@ -96,15 +109,16 @@ export function capCentersToExtractionResult(
     const totalCost = Number(row.totalCost);
     if (!name || !Number.isFinite(totalCost) || totalCost <= 0) return;
 
+    const glCode = row.glCode?.trim() || undefined;
     const lineage: SourceLineage = {
       file: fileName,
       sheet: "AI parsed",
       row: i + 1,
-      rawCells: { name: row.name, totalCost: row.totalCost },
+      rawCells: { name: row.name, glCode: row.glCode ?? null, totalCost: row.totalCost },
       confidence: row.confidence === "high" ? "high" : "review",
       importedAt: now,
     };
-    const entity: CapCenterEntity = { name, totalCost };
+    const entity: CapCenterEntity = { name, totalCost, ...(glCode ? { glCode } : {}) };
     const extracted = { entity, lineage };
     if (row.confidence === "low") lowConfidence.push(extracted);
     else mapped.push(extracted);
@@ -365,8 +379,10 @@ function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
       : 0;
     const unitsRaw = Number(r.units);
     const units = Number.isFinite(unitsRaw) ? unitsRaw : undefined;
+    const glCode = r.glCode?.trim() || undefined;
     out.push({
       dept,
+      ...(glCode ? { glCode } : {}),
       deptCode: code,
       percent,
       amount,
