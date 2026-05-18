@@ -23,5 +23,5 @@
     "**/*.tsx",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "_legacy", "dist"]
+  "exclude": ["node_modules", "dist"]
 }
