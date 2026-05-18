@@ -1,6 +1,8 @@
-﻿
+
+import { DataTable, type Column } from "@/components/table";
 import { CellInput, DeptChip } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
+import type { PolicyTarget } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
 function intent(target: number): string {
@@ -29,61 +31,66 @@ function Bar({ pct }: { pct: number }) {
 export function DepartmentTargets() {
   const { policyTargets, updatePolicyTarget } = useBuildState();
 
-  return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-    }}>
-      <div style={{
-        display: "grid",
-        gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
-        columnGap: 28,
-        padding: "9px 16px",
-        borderBottom: "1px solid var(--rule)",
-        background: "var(--paper-2)",
-        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>
-        <div>Department</div>
-        <div>Target Recovery</div>
-        <div>Notes</div>
-      </div>
-      {policyTargets.map((t, i) => (
-        <div key={t.id} style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(200px, 1.4fr) 240px minmax(200px, 2fr)",
-          columnGap: 28,
-          padding: "12px 16px",
-          borderBottom: i < policyTargets.length - 1 ? "1px solid var(--rule)" : "none",
-          alignItems: "center",
-        }}>
-          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <DeptChip code={t.dept}/>
-            <span style={{ fontSize: 13.5, color: "var(--ink)", fontWeight: 500 }}>
-              {DEPTS[t.dept].name.replace(" Administration", "")}
-            </span>
+  const cols: Column<PolicyTarget>[] = [
+    {
+      key: "dept",
+      label: "Department",
+      width: "minmax(200px, 1.4fr)",
+      sortable: true,
+      sortKey: (r) => DEPTS[r.dept].name,
+      render: (r) => (
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <DeptChip code={r.dept}/>
+          <span style={{ fontWeight: 500 }}>
+            {DEPTS[r.dept].name.replace(" Administration", "")}
+          </span>
+        </span>
+      ),
+    },
+    {
+      key: "target",
+      label: "Target Recovery",
+      width: "240px",
+      sortable: true,
+      sortKey: (r) => r.target,
+      render: (r) => (
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+          <Bar pct={r.target}/>
+          <div style={{ width: 70 }}>
+            <CellInput
+              type="number"
+              value={r.target}
+              onChange={(v) => updatePolicyTarget(r.id, { target: Number(v) || 0 })}
+              suffix="%"
+              min={0}
+              max={100}
+              align="right"
+            />
           </div>
-          <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-            <Bar pct={t.target}/>
-            <div style={{ width: 70 }}>
-              <CellInput
-                type="number"
-                value={t.target}
-                onChange={(v) => updatePolicyTarget(t.id, { target: Number(v) || 0 })}
-                suffix="%"
-                min={0}
-                max={100}
-                align="right"
-              />
-            </div>
-            <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{intent(t.target)}</span>
-          </div>
-          <CellInput
-            value={t.note}
-            onChange={(v) => updatePolicyTarget(t.id, { note: String(v) })}
-            placeholder="Optional policy note"
-          />
+          <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{intent(r.target)}</span>
         </div>
-      ))}
-    </div>
+      ),
+    },
+    {
+      key: "note",
+      label: "Notes",
+      width: "minmax(200px, 2fr)",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          value={r.note}
+          onChange={(v) => updatePolicyTarget(r.id, { note: String(v) })}
+          placeholder="Optional policy note"
+        />
+      ),
+    },
+  ];
+
+  return (
+    <DataTable
+      cols={cols}
+      rows={policyTargets}
+      defaultSort={{ key: "dept", dir: "asc" }}
+    />
   );
 }
