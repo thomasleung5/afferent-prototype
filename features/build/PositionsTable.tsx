@@ -32,6 +32,8 @@ export function PositionsTable() {
     flag: !!p.flag,
     warning: p.flag,
     hourly: p.hours > 0 ? (p.salary + p.benefits) / p.hours : 0,
+    source: p.source,
+    sourceFile: p.sourceFile,
   })), [positions]);
 
   const flaggedCount = all.filter((r) => r.flag).length;
@@ -163,10 +165,11 @@ export function PositionsTable() {
     {
       key: "source",
       label: "Source",
-      width: "100px",
+      width: "140px",
       align: "right",
       sortable: true,
-      render: () => <SourcePill>Imported</SourcePill>,
+      sortKey: (r: Row) => r.sourceFile ?? r.source,
+      render: (r) => <SourcePill source={r.source} sourceFile={r.sourceFile}/>,
     },
   ];
 

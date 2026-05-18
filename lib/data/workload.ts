@@ -3,8 +3,8 @@ import { SERVICES } from "./services";
 
 /* Workload (annual volume per service) layered on top of the canonical service
  * catalog. `prior` is the prior-study volume; `current` is what's in the
- * permit-system import for FY 26-27. Source mix mirrors the legacy
- * WorkloadModelScreen seed (imported / carry-forward / manual / missing). */
+ * permit-system import for FY 26-27. All seed rows carry source: "seed"
+ * (the status / flag mix below simulates the legacy review-state variety). */
 
 function vary(volume: number, i: number): number {
   return Math.max(1, Math.round(volume * (0.85 + (i % 5) * 0.06)));
@@ -20,9 +20,8 @@ export const WORKLOAD: WorkloadRow[] = SERVICES.map((s, i): WorkloadRow => {
       prior,
       current: prior,
       unit: unitFor(s.id, s.dept),
-      source: "carry-forward",
+      source: "seed",
       status: "Reused",
-      sourceFile: "FY 24/25 study",
       flag: "carry-forward",
     };
   }
@@ -32,7 +31,7 @@ export const WORKLOAD: WorkloadRow[] = SERVICES.map((s, i): WorkloadRow => {
       prior,
       current: null,
       unit: unitFor(s.id, s.dept),
-      source: "missing",
+      source: "seed",
       status: "Missing",
       flag: "missing-current-volume",
     };
@@ -43,7 +42,7 @@ export const WORKLOAD: WorkloadRow[] = SERVICES.map((s, i): WorkloadRow => {
       prior,
       current: s.volume,
       unit: unitFor(s.id, s.dept),
-      source: "manual",
+      source: "seed",
       status: "Manual",
     };
   }
@@ -52,9 +51,8 @@ export const WORKLOAD: WorkloadRow[] = SERVICES.map((s, i): WorkloadRow => {
     prior,
     current: s.volume,
     unit: unitFor(s.id, s.dept),
-    source: "imported",
+    source: "seed",
     status: i % 4 === 0 ? "Validated" : "Imported",
-    sourceFile: "Permit system",
   };
 });
 

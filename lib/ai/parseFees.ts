@@ -67,6 +67,8 @@ export function feesToExtractionResult(
           hours: 0,
           volume: 0,
           cost: 0,
+          source: "imported",
+          sourceFile: fileName,
         };
 
     const extracted = { entity, lineage };

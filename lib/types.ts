@@ -19,6 +19,11 @@ export interface Department {
 
 export type DepartmentMap = Record<DeptCode, Department>;
 
+/** Provenance tag for a row's origin. Set once at row creation (seed,
+ *  import, or manual add); never mutated by subsequent edits. The display
+ *  layer pairs this with an optional `sourceFile` to render a Source pill. */
+export type SourceTag = "seed" | "imported" | "manual" | "carry-forward" | "missing";
+
 export interface Service {
   id: string;
   name: string;
@@ -35,6 +40,10 @@ export interface Service {
   peer: number;
   /** Recovery target % (e.g. 100 = full cost recovery) */
   target: number;
+  /** Row provenance — set at creation, not mutated by edits. */
+  source: SourceTag;
+  /** Filename when source === "imported". */
+  sourceFile?: string;
 }
 
 export interface EnrichedService extends Service {
@@ -85,6 +94,10 @@ export interface Position {
   /** Productive hours per FTE per year (e.g. 1720). */
   hours: number;
   flag?: PositionFlag;
+  /** Row provenance — set at creation, not mutated by edits. */
+  source: SourceTag;
+  /** Filename when source === "imported". */
+  sourceFile?: string;
 }
 
 export type OpDept = DeptCode | "SHARED:CDS";
@@ -107,7 +120,13 @@ export interface OperatingLine {
   category: OpCategory;
   line: string;
   amount: number;
-  source: string;
+  /** Row provenance — set at creation, not mutated by edits. Was previously
+   *  a free-form string holding AI-extracted GL/fund composition
+   *  ("General Fund · 53120"); that data was never displayed and the field
+   *  is now the standard SourceTag enum. */
+  source: SourceTag;
+  /** Filename when source === "imported". */
+  sourceFile?: string;
   include: boolean;
   excludeReason?: string;
 }
@@ -234,7 +253,9 @@ export interface WorkloadRow {
   prior: number | null;
   current: number | null;
   unit: string;
-  source: "imported" | "carry-forward" | "manual" | "missing";
+  /** Row provenance — set at creation, not mutated by edits. Uses the
+   *  shared SourceTag enum; "seed" was added in the source standardization. */
+  source: SourceTag;
   status: "Validated" | "Imported" | "Reused" | "Manual" | "Missing";
   sourceFile?: string;
   flag?: "missing-current-volume" | "carry-forward";

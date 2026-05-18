@@ -79,6 +79,8 @@ export function servicesToExtractionResult(
           peer: 0,
           target: row.target ?? 100,
           cost: 0,
+          source: "imported",
+          sourceFile: fileName,
         };
 
     const extracted = { entity, lineage };

@@ -17,24 +17,11 @@ interface Row {
   current: number | null;
   status: WorkloadRow["status"];
   source: WorkloadRow["source"];
+  sourceFile?: string;
   flag: boolean;
   warning?: WorkloadRow["flag"];
   changePct: number | null;
 }
-
-const SOURCE_TONE: Record<WorkloadRow["source"], "fact" | "policy" | "default"> = {
-  imported: "fact",
-  "carry-forward": "policy",
-  manual: "policy",
-  missing: "default",
-};
-
-const SOURCE_LABEL: Record<WorkloadRow["source"], string> = {
-  imported: "Imported",
-  "carry-forward": "Carry-forward",
-  manual: "Manual",
-  missing: "Missing",
-};
 
 export function WorkloadTable() {
   const { services, workload, updateWorkload } = useBuildState();
@@ -56,6 +43,7 @@ export function WorkloadTable() {
       current: w.current,
       status: w.status,
       source: w.source,
+      sourceFile: w.sourceFile,
       flag: !!w.flag,
       warning: w.flag,
       changePct,
@@ -176,14 +164,11 @@ export function WorkloadTable() {
     {
       key: "status",
       label: "Source",
-      width: "130px",
+      width: "150px",
       align: "right",
       sortable: true,
-      render: (r) => (
-        <SourcePill tone={SOURCE_TONE[r.source]}>
-          {SOURCE_LABEL[r.source]}
-        </SourcePill>
-      ),
+      sortKey: (r: Row) => r.sourceFile ?? r.source,
+      render: (r) => <SourcePill source={r.source} sourceFile={r.sourceFile}/>,
     },
   ];
 

@@ -4,7 +4,7 @@ import {
   DataTable,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect, SectionLabel } from "@/components/ui";
+import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -50,7 +50,9 @@ export function OperatingTable() {
     if (includeFilter === "INC" && !r.include) return false;
     if (includeFilter === "EXC" && r.include) return false;
     return true;
-  }).map((r) => ({ ...r, flag: r.include && !r.source })), [operating, deptFilter, categoryFilter, includeFilter]);
+    // The legacy `flag: r.include && !r.source` flagged missing GL strings,
+    // which is meaningless now that source is the SourceTag enum. Drop it.
+  }).map((r) => ({ ...r, flag: false })), [operating, deptFilter, categoryFilter, includeFilter]);
 
   const deptOptions = [
     { value: "ALL",        label: "All",         count: operating.length },
@@ -165,6 +167,19 @@ export function OperatingTable() {
             onChange={(v) => updateOperating(r.id, { amount: Number(v) || 0 })}
             align="right" prefix="$"
           />
+        </div>
+      ),
+    },
+    {
+      key: "source",
+      label: "Source",
+      width: "150px",
+      align: "right",
+      sortable: true,
+      sortKey: (r: Row) => r.sourceFile ?? r.source,
+      render: (r) => (
+        <div style={{ opacity: r.include ? 1 : 0.45 }}>
+          <SourcePill source={r.source} sourceFile={r.sourceFile}/>
         </div>
       ),
     },

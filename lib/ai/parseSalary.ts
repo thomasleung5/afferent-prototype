@@ -59,6 +59,8 @@ export function salaryToExtractionResult(
       salary: row.salary ?? 0,
       benefits: row.benefits ?? 0,
       hours: row.hours ?? 1720,
+      source: "imported",
+      sourceFile: fileName,
     };
 
     const extracted = { entity, lineage };

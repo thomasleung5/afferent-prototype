@@ -7,7 +7,6 @@ interface OperatingRow {
   category: string;
   line: string;
   amount: number;
-  source?: string;
   include?: boolean;
   excludeReason?: string;
   confidence: "high" | "low";
@@ -66,7 +65,8 @@ export function operatingToExtractionResult(
       category: normCategory(row.category),
       line: row.line,
       amount: row.amount ?? 0,
-      source: row.source?.trim() || fileName,
+      source: "imported",
+      sourceFile: fileName,
       include: row.include !== false,
       ...(row.include === false && row.excludeReason
         ? { excludeReason: row.excludeReason }

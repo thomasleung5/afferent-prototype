@@ -1,6 +1,7 @@
 ﻿
 import { DataTable, type Column } from "@/components/table";
-import { CellInput, SectionLabel } from "@/components/ui";
+import { CellInput, SectionLabel, SourcePill } from "@/components/ui";
+import type { SourceTag } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
@@ -11,6 +12,8 @@ interface Row {
   name: string;
   totalCost: number;
   poolCount: number;
+  source: SourceTag;
+  sourceFile?: string;
 }
 
 /** Cost centers summary derived from CapPools, grouped by center name.
@@ -18,7 +21,7 @@ interface Row {
  *  port of the original Claude Design CAP Step-1 view. */
 export function CapCentersTable() {
   const {
-    capPools, capCenterOrder, capCenterTotals,
+    capPools, capCenterOrder, capCenterTotals, capCenterSources,
     addCapCenter, renameCapCenter, updateCenterTotal,
   } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
@@ -27,6 +30,7 @@ export function CapCentersTable() {
     // this center, so the column has something useful even though our data
     // model doesn't track Fund-Program at the center level.
     const samplePool = capPools.find((p) => p.center === c.name);
+    const provenance = capCenterSources[c.name];
     return {
       id: `center-${i}`,
       idx: i + 1,
@@ -37,6 +41,8 @@ export function CapCentersTable() {
       // been persisted yet.
       totalCost: capCenterTotals[c.name] ?? c.total,
       poolCount: c.pools,
+      source: provenance?.source ?? "seed",
+      sourceFile: provenance?.sourceFile,
     };
   });
 
@@ -98,6 +104,15 @@ export function CapCentersTable() {
       align: "right",
       sortable: true,
       render: (r) => <span className="num">{r.poolCount}</span>,
+    },
+    {
+      key: "source",
+      label: "Source",
+      width: "150px",
+      align: "right",
+      sortable: true,
+      sortKey: (r: Row) => r.sourceFile ?? r.source,
+      render: (r) => <SourcePill source={r.source} sourceFile={r.sourceFile}/>,
     },
   ];
 

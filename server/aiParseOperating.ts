@@ -13,9 +13,9 @@ Extract every non-labor expenditure line item you find in those sections and ret
 
 {
   "items": [
-    { "code": "53120", "dept": "PLAN", "category": "Professional services", "line": "Consulting Services", "amount": 620000, "source": "General Fund · 53120", "include": true, "confidence": "high" },
-    { "code": "54330", "dept": "BLDG", "category": "Software & subscriptions", "line": "Software Subscriptions", "amount": 84000, "source": "General Fund · 54330", "include": true, "confidence": "high" },
-    { "code": "55210", "dept": "ENG", "category": "Vehicles & equipment", "line": "Field Equipment", "amount": 42000, "source": "General Fund · 55210", "include": true, "confidence": "low" }
+    { "code": "53120", "dept": "PLAN", "category": "Professional services", "line": "Consulting Services", "amount": 620000, "include": true, "confidence": "high" },
+    { "code": "54330", "dept": "BLDG", "category": "Software & subscriptions", "line": "Software Subscriptions", "amount": 84000, "include": true, "confidence": "high" },
+    { "code": "55210", "dept": "ENG", "category": "Vehicles & equipment", "line": "Field Equipment", "amount": 42000, "include": true, "confidence": "low" }
   ]
 }
 
@@ -37,7 +37,6 @@ Rules:
 - amount must be a plain JavaScript number — STRIP any "$" sign, commas, and whitespace ("$620,000" → 620000). Drop any text-formatted ranges, percentages, or footnote markers.
 - code is the GL account number / object code if present (e.g. "53120"); omit the field if the document has no account numbers
 - line is the human-readable description of the expenditure (e.g. "Consulting Services", "Software Subscriptions")
-- source combines the fund and account number when both are present (e.g. "General Fund · 53120"); if only one is available, use that; if neither, omit the field
 - include defaults to true. Set to false ONLY when the document explicitly excludes the line from operating cost (one-time capital outlay flagged as non-recurring, reimbursed-by-applicant pass-throughs, interfund transfers, debt service). When you set include=false, add a short excludeReason like "one-time capital", "reimbursed pass-through", or "transfer".
 - confidence: "high" if dept, category, line, and amount are all clear from the document; "low" if any are ambiguous, estimated, or inferred from context
 - Skip totals, subtotals, grand totals, "Department Total" rows, fund totals, and summary rows
@@ -51,7 +50,6 @@ interface OperatingRow {
   category: string;
   line: string;
   amount: number;
-  source?: string;
   include?: boolean;
   excludeReason?: string;
   confidence: "high" | "low";

@@ -10,7 +10,7 @@ import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import type {
   AllocationBasis, CapAllocation, CapPool, DeptCode, OperatingLine, PolicyException,
-  PolicyTarget, Position, Service, WorkloadRow,
+  PolicyTarget, Position, Service, SourceTag, WorkloadRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -59,6 +59,9 @@ interface BuildState {
   /** Center name → glCode (from imported CenterRow.glCode). Drives the
    *  glCode-first center routing in computeStepDown's center resolver. */
   capCenterGlCodes: Record<string, string>;
+  /** Center name → provenance (parallel map to capCenterTotals; kept
+   *  separate so we don't restructure capCenterTotals into an object map). */
+  capCenterSources: Record<string, { source: SourceTag; sourceFile?: string }>;
   /** Scoping prefix on every receiver / center identity key. Populated by
    *  mergeCapBundle from the imported file name; sentinel default when no
    *  CAP has been imported. */
@@ -176,6 +179,9 @@ const initialState = (): BuildState => {
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterGlCodes: {},
+    capCenterSources: Object.fromEntries(
+      Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
+    ),
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
     workload: WORKLOAD.map((w) => ({ ...w })),
@@ -339,6 +345,8 @@ function applyAccepted(
           fee: Number(entity.fee ?? 0) || 0,
           peer: Number(entity.peer ?? 0) || 0,
           target: Number(entity.target ?? 100) || 100,
+          source: "imported",
+          sourceFile: batch.sourceFile,
         };
         services = [...services, created];
         lineage[id] = lineageEntry;
@@ -353,6 +361,8 @@ function applyAccepted(
         salary: Number(entity.salary ?? 0) || 0,
         benefits: Number(entity.benefits ?? 0) || 0,
         hours: Number(entity.hours ?? 1720) || 1720,
+        source: "imported",
+        sourceFile: batch.sourceFile,
       };
       positions = [...positions, created];
       lineage[id] = lineageEntry;
@@ -365,7 +375,8 @@ function applyAccepted(
         dept: coerceOpDept(entity.dept),
         category: coerceOpCategory(entity.category),
         amount: Number(entity.amount ?? 0) || 0,
-        source: `Import · ${batch.sourceFile}`,
+        source: "imported",
+        sourceFile: batch.sourceFile,
         include: entity.include === false || entity.includeInCostOfService === "no" ? false : true,
       };
       operating = [...operating, created];
@@ -476,7 +487,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           services: [
             ...s.services,
             { id: `svc-${Date.now()}`, name: "New service", dept: "PLAN",
-              volume: 0, hours: 0, cost: 0, fee: 0, peer: 0, target: 100 },
+              volume: 0, hours: 0, cost: 0, fee: 0, peer: 0, target: 100,
+              source: "manual" },
           ],
         })),
 
@@ -485,7 +497,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           positions: [
             ...s.positions,
             { id: `pos-${Date.now()}`, title: "New position", dept: "PLAN",
-              fte: 1, salary: 0, benefits: 0, hours: 1720 },
+              fte: 1, salary: 0, benefits: 0, hours: 1720,
+              source: "manual" },
           ],
         })),
 
@@ -521,6 +534,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterTotals: name in s.capCenterTotals
               ? s.capCenterTotals
               : { ...s.capCenterTotals, [name]: 0 },
+            capCenterSources: name in s.capCenterSources
+              ? s.capCenterSources
+              : { ...s.capCenterSources, [name]: { source: "manual" } },
             capCenterOrder: s.capCenterOrder.includes(name)
               ? s.capCenterOrder
               : [...s.capCenterOrder, name],
@@ -759,10 +775,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           const nextTotals = { ...s.capCenterTotals };
           const nextOrder = [...s.capCenterOrder];
           const nextCenterGlCodes = { ...s.capCenterGlCodes };
+          const nextCenterSources = { ...s.capCenterSources };
           for (const { entity } of centersIn) {
             nextTotals[entity.name] = entity.totalCost;
             if (!nextOrder.includes(entity.name)) nextOrder.push(entity.name);
             if (entity.glCode) nextCenterGlCodes[entity.name] = entity.glCode;
+            nextCenterSources[entity.name] = { source: "imported", sourceFile: fileName };
           }
 
           // ── 2. Bases ───────────────────────────────────────────────────
@@ -843,6 +861,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capPools: mergedPools,
             capCenterTotals: nextTotals,
             capCenterGlCodes: nextCenterGlCodes,
+            capCenterSources: nextCenterSources,
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
             studyContext: mergedContext,
@@ -952,6 +971,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capPools: pools,
           capCenterTotals: { ...CAP_CENTER_TOTALS },
           capCenterGlCodes: {},
+          capCenterSources: Object.fromEntries(
+            Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
+          ),
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
@@ -966,6 +988,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capPools: [],
           capCenterTotals: {},
           capCenterGlCodes: {},
+          capCenterSources: {},
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capAllocation: {
@@ -994,6 +1017,35 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         // Backfill for state persisted before glCode / studyContext existed.
         if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
+
+        // Backfill for state persisted before the SourceTag standardization:
+        //   - capCenterSources didn't exist: synthesize "seed" for every
+        //     existing center name so the new Source column renders something.
+        //   - Service / Position / OperatingLine were missing `source`, or in
+        //     the OperatingLine case carried a free-form GL string. Coerce
+        //     anything outside the SourceTag union to "seed".
+        if (!state.capCenterSources) {
+          state.capCenterSources = Object.fromEntries(
+            Object.keys(state.capCenterTotals ?? {}).map((name) => [
+              name, { source: "seed" as SourceTag },
+            ]),
+          );
+        }
+        const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual", "carry-forward", "missing"];
+        const coerce = (v: unknown): SourceTag =>
+          typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
+        if (Array.isArray(state.services)) {
+          state.services = state.services.map((s) => ({ ...s, source: coerce(s.source) }));
+        }
+        if (Array.isArray(state.positions)) {
+          state.positions = state.positions.map((p) => ({ ...p, source: coerce(p.source) }));
+        }
+        if (Array.isArray(state.operating)) {
+          state.operating = state.operating.map((o) => ({ ...o, source: coerce(o.source) }));
+        }
+        if (Array.isArray(state.workload)) {
+          state.workload = state.workload.map((w) => ({ ...w, source: coerce(w.source) }));
+        }
         // Backfill for state persisted before allocationBases existed.
         // Without this, basisForPool(pool, undefined) crashes the matrix.
         if (!state.allocationBases || state.allocationBases.length === 0) {

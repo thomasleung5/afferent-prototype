@@ -6,7 +6,7 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect, DeptChip,
-  DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock,
+  DrilldownShell, DrilldownColumn, SectionLabel, SourcePill, TraceBlock,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -178,6 +178,15 @@ export function ServicesTable() {
         );
       },
     },
+    {
+      key: "source",
+      label: "Source",
+      width: "150px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => r.sourceFile ?? r.source,
+      render: (r) => <SourcePill source={r.source} sourceFile={r.sourceFile}/>,
+    },
   ];
 
   return (
@@ -256,7 +265,7 @@ export function ServicesTable() {
               </div>
             </DrilldownColumn>
 
-            <DrilldownColumn marker="②" title="Source">
+            <DrilldownColumn marker="②" title="Basis">
               <TraceBlock label="Basis">
                 Time-study averaged across recent permits in this dept
               </TraceBlock>
