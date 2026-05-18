@@ -78,11 +78,7 @@ export default function DirectLaborPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Direct Labor"
-        helper="Drag a salary roster or personnel budget. Each position imports as a candidate — accept after review."
-        accept=".xlsx,.csv,.pdf"
-        formats="xlsx, csv, pdf budget exports"
-        forceType="salary_roster"
-        schema="Position title, dept, FTE, salary, benefits, productive hours."
+        helper="Import positions via Claude (PDF) or by pasting LLM JSON output."
         aiPdfHelper="Send a salary roster or personnel budget PDF — Claude extracts title, dept, FTE, salary, and benefits"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ positions: [...] }"

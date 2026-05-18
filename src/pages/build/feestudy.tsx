@@ -9,7 +9,7 @@ import { useBuildState } from "@/lib/store";
 import { aiParseFeesPdf, feesToExtractionResult } from "@/lib/ai/parseFees";
 
 export default function FeeSchedulePage() {
-  const { derived, currentBatch, services, mergeFeeSchedule } = useBuildState();
+  const { derived, services, mergeFeeSchedule } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
   const comparisons = derived.comparisons;
 
@@ -23,9 +23,6 @@ export default function FeeSchedulePage() {
   // Target Revenue: sum of full-precision recommended × volume. NEVER use
   // c.recommended (rounded for display) — rounding drift breaks reconciliation.
   const targetRevenue = comparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
-  const reviewing = currentBatch
-    ? currentBatch.mappings.filter((m) => m.status === "needs_review" || m.status === "unresolved").length
-    : 0;
 
   async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     try {
@@ -92,9 +89,6 @@ export default function FeeSchedulePage() {
         { label: "Current revenue",     value: `${fmt.dollarsK(revenueNow)}/yr` },
         { label: "Target revenue",      value: `${fmt.dollarsK(targetRevenue)}/yr` },
         { label: "Net adoption impact", value: `${netAdoptionImpact >= 0 ? "+" : ""}${fmt.dollarsK(netAdoptionImpact)}/yr`, tone: netAdoptionImpact >= 0 ? "pos" : "neg" },
-        ...(reviewing > 0
-          ? [{ label: "For review", value: `${reviewing}`, tone: "warn" as const }]
-          : []),
       ]}/>
 
       <FeeScheduleTable/>
@@ -103,10 +97,7 @@ export default function FeeSchedulePage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Fee Schedule"
-        helper="Drag a fee schedule, prior fee study, or peer-city benchmark. The pipeline extracts fees, deposits, hourly rates, and notes — then proposes mappings into the catalog."
-        accept=".xlsx,.csv,.pdf"
-        formats="xlsx, csv, prior fee study pdf"
-        schema="Service name, fee, deposit, hourly rate, notes."
+        helper="Import fees via Claude (PDF) or by pasting LLM JSON output."
         aiPdfHelper="Sends PDF directly to Claude — skips fuzzy matching, returns structured fees"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ fees: [...] }"

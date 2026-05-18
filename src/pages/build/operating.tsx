@@ -81,11 +81,7 @@ export default function OperatingPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Operating"
-        helper="Drag the budget book or a department detail sheet. Account-line and department-total rows both import — review before applying."
-        accept=".xlsx,.csv,.pdf"
-        formats="xlsx, csv, budget book pdf"
-        forceType="operating_budget"
-        schema="Dept, account, amount, category, include/exclude."
+        helper="Import operating lines via Claude (PDF) or by pasting LLM JSON output."
         aiPdfHelper="Send a budget book or expenditure detail PDF — Claude extracts non-labor line items for PLAN, BLDG, ENG, and SHARED:CDS"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ operating: [...] }"

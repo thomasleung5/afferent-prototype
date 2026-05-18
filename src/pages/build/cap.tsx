@@ -229,11 +229,7 @@ export default function CapPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Cost Allocation"
-        helper="Drag a Cost Allocation Plan inventory. Pools, bases, percentages, and dollar allocations all import — review before applying."
-        accept=".xlsx,.csv"
-        formats="xlsx, csv"
-        forceType="cost_allocation_plan"
-        schema="Center, pool, basis, dollar amount, recoverability."
+        helper="Import the CAP bundle (centers + bases + pools) via Claude (PDF) or by pasting LLM JSON output."
         aiPdfHelper="Send a Cost Allocation Plan PDF — Claude detects and extracts cost centers, allocation bases, and cost pools in one pass"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ centers?, bases?, pools? }"

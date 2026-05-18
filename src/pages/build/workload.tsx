@@ -178,11 +178,7 @@ export default function WorkloadPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Workload Data"
-        helper="Drag a permit-system export. Tyler EnerGov, Accela, OpenGov, or any CSV with service + volume columns — service names get fuzzy-matched to the catalog."
-        accept=".xlsx,.csv"
-        formats="xlsx, csv permit-system exports"
-        forceType="workload_export"
-        schema="Service name, annual volume, optional unit and notes."
+        helper="Import workload counts via Claude (PDF) or by pasting LLM JSON output. Service names fuzzy-match to the catalog."
         aiPdfHelper="Send an annual report, permit-volume table, or workload appendix — Claude extracts service-level volume counts and matches them to the existing catalog"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ items: [...] }"

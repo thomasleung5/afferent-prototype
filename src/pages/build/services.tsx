@@ -85,11 +85,7 @@ export default function ServicesPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Services"
-        helper="Drag a prior fee study or service inventory. Services that don't match the catalog import as candidates — accept after review."
-        accept=".xlsx,.csv,.pdf"
-        formats="xlsx, csv, fee study pdf"
-        forceType="prior_fee_study"
-        schema="Service name, dept, hours per instance, volume, current fee."
+        helper="Import services via Claude (PDF) or by pasting LLM JSON output."
         aiPdfHelper="Send a prior fee study or cost-of-service PDF — Claude extracts service names, hours, volume, and fees"
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ services: [...] }"
