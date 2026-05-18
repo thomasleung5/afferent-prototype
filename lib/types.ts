@@ -53,12 +53,6 @@ export interface EnrichedService extends Service {
   gap: number;
 }
 
-export interface AuditEntry {
-  date: string;
-  text: string;
-  src: string;
-}
-
 /* ---------- Build Model inputs ---------- */
 
 export type PositionFlag = "title-changed" | "missing-hours";
