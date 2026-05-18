@@ -1,17 +1,45 @@
 import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
-import { DEPT_ROLLUPS } from "@/lib/data/citywide";
 import { RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";
+import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
+interface Rollup {
+  totalCost: number;
+  currentRev: number;
+  recovery: number;
+}
+
 export function DeptRecoveryChart() {
+  const { derived } = useBuildState();
+
+  // Per-dept rollup over the live cost-vs-revenue comparisons. Recovery is
+  // currentRevenue / totalCost — mirrors the headline tile's denominator.
+  const rollup = ORDER.reduce<Record<DeptCode, Rollup>>(
+    (acc, code) => {
+      acc[code] = { totalCost: 0, currentRev: 0, recovery: 0 };
+      return acc;
+    },
+    {} as Record<DeptCode, Rollup>,
+  );
+  for (const c of derived.comparisons) {
+    const row = rollup[c.dept];
+    if (!row) continue;
+    row.totalCost += c.annualCost;
+    row.currentRev += c.annualRevenue;
+  }
+  for (const code of ORDER) {
+    const r = rollup[code];
+    r.recovery = r.totalCost > 0 ? (r.currentRev / r.totalCost) * 100 : 0;
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       {ORDER.map((code) => {
         const dept = DEPTS[code];
-        const r = DEPT_ROLLUPS[code];
+        const r = rollup[code];
         return (
           <div key={code} style={{
             display: "grid", gridTemplateColumns: "150px 1fr 110px",

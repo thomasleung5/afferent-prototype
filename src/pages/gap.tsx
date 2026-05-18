@@ -1,28 +1,44 @@
 import { Page } from "@/components/layout";
 import { Btn, Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITYWIDE, DEPT_ROLLUPS } from "@/lib/data/citywide";
-import { SERVICES } from "@/lib/data/services";
+import { useBuildState } from "@/lib/store";
 import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
 import { DriverBreakdown } from "@/features/revenue-gap/DriverBreakdown";
 import { DeptRecoveryChart } from "@/features/revenue-gap/DeptRecoveryChart";
 import { TopFixesTable } from "@/features/revenue-gap/TopFixesTable";
 
 export default function RevenueGapPage() {
-  const annualGap = Math.max(0, CITYWIDE.eligibleCost - CITYWIDE.currentRevenue);
-  const fullGap = Math.max(0, CITYWIDE.fullCostRevenue - CITYWIDE.currentRevenue);
-  const recoveryPct = CITYWIDE.recovery;
-  const missingVolume = SERVICES.filter((s) => !s.volume).length;
-  const missingHours = SERVICES.filter((s) => !s.hours).length;
+  const { derived, services } = useBuildState();
+  const { impact, fbhr, costs } = derived;
+
+  // Primary revenue gap: target (policy-intended) − current revenue. Clamped
+  // for the headline tone — a negative gap means current revenue already
+  // exceeds policy intent, so there's nothing to close.
+  const annualGap = Math.max(0, impact.recoverableGap);
+  const totalCost = impact.totalCost;
+  const recoveryPct = totalCost > 0 ? (impact.currentRevenue / totalCost) * 100 : 0;
+
+  const missingVolume = services.filter((s) => !s.volume).length;
+  const missingHours  = services.filter((s) => !s.hours).length;
   const dataCompleteness = Math.round(
-    (1 - (missingVolume + missingHours) / Math.max(1, SERVICES.length * 2)) * 100,
+    (1 - (missingVolume + missingHours) / Math.max(1, services.length * 2)) * 100,
   );
 
-  // Driver totals derived from the rollups (rough split mirrors the original calc-engine).
-  const totalCost = Object.values(DEPT_ROLLUPS).reduce((a, r) => a + r.totalCost, 0);
-  const direct    = totalCost * 0.33;
-  const operating = totalCost * 0.25;
-  const cap       = totalCost * 0.42;
+  // Driver split — decompose each service's annual cost into its three FBHR
+  // components (direct labor / operating / CAP) using the per-dept rate
+  // parts. Sums to impact.totalCost.
+  const drivers = costs.reduce(
+    (acc, c) => {
+      const r = fbhr[c.dept];
+      if (!r) return acc;
+      const hrs = c.hours * c.volume;
+      acc.direct    += hrs * r.directRate;
+      acc.operating += hrs * r.operatingRate;
+      acc.cap       += hrs * r.capRate;
+      return acc;
+    },
+    { direct: 0, operating: 0, cap: 0 },
+  );
 
   return (
     <Page>
@@ -41,11 +57,11 @@ export default function RevenueGapPage() {
               label: "Recovery rate",
               value: `${recoveryPct.toFixed(0)}%`,
               tone: recoveryPct < 60 ? "neg" : recoveryPct < 80 ? "warn" : "pos",
-              sub: `${fmt.dollarsK(CITYWIDE.currentRevenue)} of ${fmt.dollarsK(totalCost)}`,
+              sub: `${fmt.dollarsK(impact.currentRevenue)} of ${fmt.dollarsK(totalCost)}`,
             },
             {
               label: "Uplift at policy",
-              value: `${fmt.dollarsK(fullGap)}/yr`,
+              value: `${fmt.dollarsK(annualGap)}/yr`,
               tone: "pos",
               sub: "if Council adopts targets",
             },
@@ -73,7 +89,7 @@ export default function RevenueGapPage() {
           background: "var(--paper)", border: "1px solid var(--rule)", padding: 22,
         }}>
           <SectionLabel>Where the gap comes from</SectionLabel>
-          <DriverBreakdown direct={direct} operating={operating} cap={cap}/>
+          <DriverBreakdown direct={drivers.direct} operating={drivers.operating} cap={drivers.cap}/>
         </div>
         <div style={{
           background: "var(--paper)", border: "1px solid var(--rule)", padding: 22,
