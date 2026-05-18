@@ -53,27 +53,6 @@ export interface EnrichedService extends Service {
   gap: number;
 }
 
-export interface DeptRollup {
-  totalCost: number;
-  eligibleCost: number;
-  currentRev: number;
-  fullRev: number;
-  /** Recovery % */
-  recovery: number;
-}
-
-export type DeptRollupMap = Record<DeptCode, DeptRollup>;
-
-export interface Citywide {
-  eligibleCost: number;
-  currentRevenue: number;
-  fullCostRevenue: number;
-  /** Annual under-recovery in dollars */
-  gap: number;
-  /** Recovery % */
-  recovery: number;
-}
-
 export interface AuditEntry {
   date: string;
   text: string;

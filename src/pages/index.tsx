@@ -2,14 +2,22 @@ import { Link } from "@tanstack/react-router";
 import { Page } from "@/components/layout";
 import { Btn, Icon } from "@/components/ui";
 import { CITY } from "@/lib/data/city";
-import { CITYWIDE } from "@/lib/data/citywide";
 import { fmt } from "@/lib/format";
+import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
 import { AuditTrail } from "@/features/home/AuditTrail";
 
 export default function HomePage() {
-  const gap = CITYWIDE.gap;
-  const recovery = CITYWIDE.recovery;
+  const { services, positions, capPools, derived } = useBuildState();
+  const { impact, comparisons } = derived;
+
+  // Headline numbers — same derivation the Revenue Gap page uses, so the
+  // home tile reconciles exactly with the detail screen.
+  const gap = Math.max(0, impact.recoverableGap);
+  const recovery = impact.totalCost > 0
+    ? (impact.currentRevenue / impact.totalCost) * 100
+    : 0;
+  const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
 
   return (
     <Page>
@@ -69,9 +77,9 @@ export default function HomePage() {
           cta="Configure model"
           href="/build"
           checklist={[
-            { l: "Services", v: "32 mapped" },
-            { l: "Labor",    v: "73 positions" },
-            { l: "Overhead", v: "14 pools" },
+            { l: "Services", v: `${services.length} mapped` },
+            { l: "Labor",    v: `${positions.length} positions` },
+            { l: "Overhead", v: `${capPools.length} pools` },
           ]}
         />
         <EntryCard
@@ -85,8 +93,8 @@ export default function HomePage() {
           accent
           stats={[
             { l: "Revenue drift",      v: "+$412K" },
-            { l: "Recovery health",    v: "57%" },
-            { l: "Fees below target",  v: "25" },
+            { l: "Recovery health",    v: `${recovery.toFixed(0)}%` },
+            { l: "Fees below target",  v: `${feesBelowTarget}` },
           ]}
           support="3 departments below policy · 7 stale assumptions"
         />
