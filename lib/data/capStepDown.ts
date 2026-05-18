@@ -61,7 +61,7 @@ export const DIRECT_DEPTS: MatrixDept[] = [
 export const ALL_DEPTS: MatrixDept[] = [...INDIRECT_DEPTS, ...DIRECT_DEPTS];
 
 /** Center-name → indirect-dept code (matches CAP_POOLS.center text). */
-const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
+export const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
   "Building Use":                      "BLDG_USE",
   "Equipment Use":                     "EQUIP",
   "City Council":                      "COUNCIL",
@@ -274,6 +274,14 @@ export function indirectOrder(centerNames: string[]): MatrixDept[] {
   return out;
 }
 
+/** Resolves a center NAME (the string carried on pool.center) to a
+ *  MatrixDeptCode. Defaults to the LAH-specific CENTER_NAME_TO_CODE map;
+ *  the store layer wraps this to try glCode-first when imported centers
+ *  carry account codes. */
+export type CenterCodeResolver = (centerName: string) => MatrixDeptCode | undefined;
+
+const defaultCenterResolver: CenterCodeResolver = (n) => CENTER_NAME_TO_CODE[n];
+
 export function computeStepDown(
   pools: CapPool[],
   centerOrder: string[],
@@ -282,6 +290,10 @@ export function computeStepDown(
    *  from ALLOCATION_BASIS_ROWS; the store layer overlays receiver-derived
    *  values on top for imported pools. */
   drivers: DriverMatrix = DRIVERS,
+  /** Optional center-name → MatrixDeptCode resolver. Defaults to the LAH
+   *  name map; the store wraps this to prefer the center's glCode (which
+   *  is robust across non-LAH documents whose center names won't match). */
+  resolveCenterCode: CenterCodeResolver = defaultCenterResolver,
 ): StepDownModel {
   const stepOrder = indirectOrder(centerOrder);
   const directList = DIRECT_DEPTS;
@@ -301,7 +313,7 @@ export function computeStepDown(
     if (basis === "DIRECT") {
       if (directTo) row[directTo] = eligible;
     } else {
-      const home = CENTER_NAME_TO_CODE[p.center];
+      const home = resolveCenterCode(p.center);
       if (home) row[home] = eligible;
     }
     alloc1[p.id] = row;

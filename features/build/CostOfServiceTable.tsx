@@ -19,11 +19,8 @@ interface Row extends ServiceCost {
 }
 
 export function CostOfServiceTable() {
-  const { services, derived, capPools, capCenterOrder, allocationBases } = useBuildState();
-  const stepModel = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
-    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
-  );
+  const { services, derived, capPools } = useBuildState();
+  const stepModel = derived.capStepDown;
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
 

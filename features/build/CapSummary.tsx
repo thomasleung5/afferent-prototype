@@ -14,18 +14,14 @@ const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Bui
  *  Allocated $ is read-only here — it's an output of the step-down engine over
  *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
-  const { capPools, capCenterOrder, allocationBases, derived } = useBuildState();
+  const { capPools, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
   const eligibleTotal = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
 
-  // Local model is still needed for the per-pool drilldown breakdown
-  // (model.alloc2[poolId][deptCode]); the per-dept totals come from
-  // derived.capAllocated, which is sourced from the same step-down model.
-  const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
-    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
-  );
+  // Pre-computed in useBuildState. Used here for the per-pool drilldown
+  // breakdown (model.alloc2[poolId][deptCode]).
+  const model = derived.capStepDown;
 
   const rows: DeptSummaryRow[] = ORDER.map((d) => {
     const allocated = derived.capAllocated[d];

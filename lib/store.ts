@@ -19,8 +19,16 @@ import {
 } from "@/lib/calc";
 import {
   computeStepDown, deriveDriversFromReceivers, mergeDriverMatrices,
-  DRIVERS, type DriverMatrix,
+  DRIVERS, CENTER_NAME_TO_CODE, type DriverMatrix,
+  type CenterCodeResolver, type StepDownModel,
 } from "@/lib/data/capStepDown";
+import {
+  buildReceiverRegistry, receiverGlCodeToMatrixCode,
+  type ReceiverEntry, type MissingReceiverEntry,
+} from "@/lib/data/capReceiverRegistry";
+import {
+  DEFAULT_STUDY_CONTEXT, extractStudyContext, type StudyContext,
+} from "@/lib/data/studyContext";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 import type { ImportBatch, ImportDecision, MappingCandidate, MappingStatus } from "@/lib/import/types";
 
@@ -48,6 +56,13 @@ interface BuildState {
    *  pool's allocationPercent. Editing a center total rescales all member
    *  pool amounts proportionally. */
   capCenterTotals: Record<string, number>;
+  /** Center name → glCode (from imported CenterRow.glCode). Drives the
+   *  glCode-first center routing in computeStepDown's center resolver. */
+  capCenterGlCodes: Record<string, string>;
+  /** Scoping prefix on every receiver / center identity key. Populated by
+   *  mergeCapBundle from the imported file name; sentinel default when no
+   *  CAP has been imported. */
+  studyContext: StudyContext;
   /** Study-scoped catalog of named allocation bases. Seeded with canonical
    *  entries; users can extend at runtime via AllocationBasisCombobox. */
   allocationBases: AllocationBasis[];
@@ -102,7 +117,7 @@ interface BuildActions {
    *  the per-section counts off `mapped`. */
   mergeCapBundle: (
     r: {
-      centers: ExtractionResult<{ name: string; totalCost: number }>;
+      centers: ExtractionResult<{ name: string; glCode?: string; totalCost: number }>;
       bases: ExtractionResult<AllocationBasis>;
       pools: ExtractionResult<CapPool>;
     },
@@ -160,6 +175,8 @@ const initialState = (): BuildState => {
     },
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
+    capCenterGlCodes: {},
+    studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
     workload: WORKLOAD.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
@@ -716,14 +733,36 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           warnings: [],
         };
 
+        // Best-effort study context extraction from the file name. Each
+        // axis is treated independently: a filename that yields a real
+        // fiscal year but no city keeps the existing cityId — so clipboard
+        // pastes ("clipboard") and partial filenames don't clobber a
+        // previously-imported context.
+        const extracted = extractStudyContext(fileName);
+        const extractedCity = extracted.cityId !== DEFAULT_STUDY_CONTEXT.cityId
+          ? extracted.cityId : null;
+        const extractedYear = extracted.fiscalYear !== DEFAULT_STUDY_CONTEXT.fiscalYear
+          ? extracted.fiscalYear : null;
+
         set((s) => {
+          // ── 0. Study context ───────────────────────────────────────────
+          const mergedContext: StudyContext = {
+            cityId: extractedCity ?? s.studyContext.cityId,
+            fiscalYear: extractedYear ?? s.studyContext.fiscalYear,
+          };
+
           // ── 1. Centers ─────────────────────────────────────────────────
           // Upsert totals by name; append unseen names to the step-down order.
+          // Capture each center's glCode (when the import provides one) so
+          // the step-down center resolver can route via glCode instead of
+          // the LAH-only name map.
           const nextTotals = { ...s.capCenterTotals };
           const nextOrder = [...s.capCenterOrder];
+          const nextCenterGlCodes = { ...s.capCenterGlCodes };
           for (const { entity } of centersIn) {
             nextTotals[entity.name] = entity.totalCost;
             if (!nextOrder.includes(entity.name)) nextOrder.push(entity.name);
+            if (entity.glCode) nextCenterGlCodes[entity.name] = entity.glCode;
           }
 
           // ── 2. Bases ───────────────────────────────────────────────────
@@ -803,8 +842,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return {
             capPools: mergedPools,
             capCenterTotals: nextTotals,
+            capCenterGlCodes: nextCenterGlCodes,
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
+            studyContext: mergedContext,
             lineage: { ...s.lineage, ...centerLineage, ...basisLineage, ...poolLineage },
             // Append bundle-level unmapped rows to the existing CAP review
             // queue so the user has a single place to find anything the
@@ -910,6 +951,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           },
           capPools: pools,
           capCenterTotals: { ...CAP_CENTER_TOTALS },
+          capCenterGlCodes: {},
+          studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
         });
@@ -922,6 +965,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           operating: [],
           capPools: [],
           capCenterTotals: {},
+          capCenterGlCodes: {},
+          studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capAllocation: {
             PLAN: { dept: "PLAN", allocated: 0 },
@@ -946,6 +991,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
         }
+        // Backfill for state persisted before glCode / studyContext existed.
+        if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
+        if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
         // Backfill for state persisted before allocationBases existed.
         // Without this, basisForPool(pool, undefined) crashes the matrix.
         if (!state.allocationBases || state.allocationBases.length === 0) {
@@ -998,9 +1046,21 @@ export interface BuildDerived {
   capAllocated: Record<DeptCode, number>;
   /** Effective department × basis driver matrix: the seed DRIVERS table
    *  with imported per-pool receiver-units overlaid wherever a pool has
-   *  receivers. Source of truth for both the step-down distribution and
-   *  the Allocation Bases display. */
+   *  receivers. Source of truth for the step-down distribution. */
   capDrivers: DriverMatrix;
+  /** Distinct receivers across imported pools, keyed by glCode. Each row
+   *  preserves per-receiver identity (multiple receivers sharing a deptCode
+   *  classification appear as separate rows). Source of truth for the
+   *  Allocation Bases / Pool Allocations / Allocation Matrix views when
+   *  receivers have been imported. */
+  capReceivers: ReceiverEntry[];
+  /** Receivers the document published without a glCode — routed here for
+   *  human review rather than collapsed onto a sibling row. */
+  capReceiversForReview: MissingReceiverEntry[];
+  /** Pre-computed step-down model. Exposed here so views don't each
+   *  re-call computeStepDown — and so the glCode-first center resolver
+   *  is applied uniformly (not just in the derived FBHR rollup). */
+  capStepDown: StepDownModel;
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */
@@ -1029,8 +1089,27 @@ export function useBuildState() {
     // to CAP imports without losing the seed scaffolding.
     const derivedDrivers = deriveDriversFromReceivers(state.capPools, state.allocationBases);
     const capDrivers = mergeDriverMatrices(DRIVERS, derivedDrivers);
+
+    // Per-receiver registry. Keyed by glCode (namespaced by cityId +
+    // fiscalYear + role), with receivers missing glCode routed to a
+    // separate review queue rather than collapsed onto a sibling row.
+    const { entries: capReceivers, missing: capReceiversForReview } =
+      buildReceiverRegistry(state.capPools, state.allocationBases, state.studyContext);
+
+    // Center resolver: try the imported center's glCode first (via the
+    // receiver registry's glCode→MatrixDeptCode map), fall back to the
+    // legacy LAH name map. Lets non-LAH CAPs route their indirect centers
+    // correctly even when their center names don't match the seed.
+    const glToMatrix = receiverGlCodeToMatrixCode(capReceivers);
+    const centerResolver: CenterCodeResolver = (centerName) => {
+      const gl = state.capCenterGlCodes[centerName];
+      if (gl && glToMatrix[gl]) return glToMatrix[gl];
+      return CENTER_NAME_TO_CODE[centerName];
+    };
+
     const stepDown = computeStepDown(
-      state.capPools, state.capCenterOrder, state.allocationBases, capDrivers,
+      state.capPools, state.capCenterOrder, state.allocationBases,
+      capDrivers, centerResolver,
     );
     const capAllocated: Record<DeptCode, number> = {
       PLAN: stepDown.directTotals.PLAN ?? 0,
@@ -1049,10 +1128,15 @@ export function useBuildState() {
       costs, state.services, state.policyTargets, state.policyExceptions,
     );
     const impact = policyImpact(comparisons);
-    return { labor, operatingByDept, fbhr, costs, comparisons, impact, capAllocated, capDrivers };
+    return {
+      labor, operatingByDept, fbhr, costs, comparisons, impact,
+      capAllocated, capDrivers, capReceivers, capReceiversForReview,
+      capStepDown: stepDown,
+    };
   }, [
     state.positions, state.operating,
     state.capPools, state.capCenterOrder, state.allocationBases,
+    state.capCenterGlCodes, state.studyContext,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 

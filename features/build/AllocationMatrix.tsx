@@ -24,19 +24,30 @@ interface OpenCell {
 
 /** Step 4 of the CAP flow. Pool × dept step-down matrix.
  *
- *  Initial placement → indirect depts are closed in sequence → final
- *  allocation. Every cell is traceable: click to see the formula, the
- *  driver inputs, and the step-by-step contributions that produced the value.
+ *  Two render modes:
+ *    - Receiver mode (when imports have published per-pool receivers):
+ *      columns are one-per-glCode receivers (~30); cells read the
+ *      receiver's `amount` directly from the document.
+ *    - Dept mode (no receivers imported): columns are MatrixDeptCodes;
+ *      cells come from the step-down engine's recomputed distribution.
  */
 export function AllocationMatrix() {
-  const { capPools, capCenterOrder, allocationBases, derived } = useBuildState();
+  const { derived } = useBuildState();
+  if (derived.capReceivers.length > 0) {
+    return <PoolByReceiverMatrix/>;
+  }
+  return <PoolByDeptMatrix/>;
+}
+
+function PoolByDeptMatrix() {
+  const { capPools, allocationBases, derived } = useBuildState();
   const [view, setView] = useState<View>("final");
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
-  const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
-    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
-  );
+  // Pre-computed in useBuildState — every view reads the same model so the
+  // glCode-first center resolver and the driver-matrix overlay are applied
+  // uniformly.
+  const model = derived.capStepDown;
 
   // Initial view shows every dept (pools sit on home indirect); Final shows
   // only the direct receivers — by then indirects are all zero.
@@ -80,10 +91,13 @@ export function AllocationMatrix() {
             <div style={{ textAlign: "right" }}>Eligible $</div>
             <div>Basis</div>
             {cols.map((d) => (
-              <div key={d.code} style={{
+              <div key={d.code} title={d.code} style={{
                 textAlign: "right",
                 color: d.kind === "direct" ? "var(--ink-2)" : "var(--ink-4)",
-              }}>{d.code}</div>
+                fontFamily: "var(--ff-ui)", fontSize: 11, fontWeight: 500,
+                letterSpacing: 0, textTransform: "none",
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>{d.name}</div>
             ))}
             <div style={{ textAlign: "right" }}>Row total</div>
           </div>
@@ -206,6 +220,282 @@ export function AllocationMatrix() {
         <TraceHint/>
       )}
     </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Receiver-mode matrix — columns keyed on glCode rather than MatrixDeptCode.
+// Used when capReceivers has been populated by a parseCap import. Cells
+// show what the source document actually published, not a recomputed
+// step-down distribution.
+// ---------------------------------------------------------------------------
+
+interface ReceiverOpenCell {
+  poolId: string;
+  receiverKey: string;
+}
+
+function PoolByReceiverMatrix() {
+  const { capPools, allocationBases, derived } = useBuildState();
+  const [openCell, setOpenCell] = useState<ReceiverOpenCell | null>(null);
+
+  // Distinct receiver columns, keyed on glCode (registry-namespaced). Only
+  // those with non-zero participation in any pool — keeps the matrix shape
+  // close to "what the document publishes" without ballooning to all
+  // 30-50 receivers when only a handful actually receive cost.
+  const receiverCols = useMemo(() => {
+    const seen = new Set<string>();
+    const cols: { key: string; glCode: string; dept: string; deptCode: string }[] = [];
+    for (const p of capPools) {
+      if (!p.receivers) continue;
+      for (const r of p.receivers) {
+        if (!r.glCode) continue;
+        // Find the matching registry entry for the namespaced key.
+        const entry = derived.capReceivers.find((e) => e.glCode === r.glCode);
+        if (!entry) continue;
+        if (seen.has(entry.key)) continue;
+        seen.add(entry.key);
+        cols.push({
+          key: entry.key, glCode: entry.glCode!,
+          dept: entry.dept, deptCode: entry.deptCode,
+        });
+      }
+    }
+    return cols.sort((a, b) => a.dept.localeCompare(b.dept));
+  }, [capPools, derived.capReceivers]);
+
+  // Pool-row × receiver-col cell value: the receiver's published amount.
+  // Pools without an entry for this glCode show "—".
+  const cell = (poolId: string, glCode: string): number => {
+    const p = capPools.find((x) => x.id === poolId);
+    if (!p?.receivers) return 0;
+    return p.receivers
+      .filter((r) => r.glCode === glCode)
+      .reduce((a, r) => a + (r.amount ?? 0), 0);
+  };
+
+  const rowTotal = (poolId: string): number => {
+    const p = capPools.find((x) => x.id === poolId);
+    if (!p?.receivers) return 0;
+    return p.receivers.reduce((a, r) => a + (r.amount ?? 0), 0);
+  };
+
+  const colTotalFor = (glCode: string): number =>
+    capPools.reduce((a, p) => a + cell(p.id, glCode), 0);
+
+  const totalEligible = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+  const grandTotal = capPools.reduce((a, p) => a + rowTotal(p.id), 0);
+
+  // Wider than the dept matrix: ~30 cols. The container scrolls horizontally.
+  const grid =
+    `minmax(220px, 2.2fr) 96px 96px ${receiverCols.map(() => "minmax(96px, 1fr)").join(" ")} 100px`;
+  const minWidth = 1100 + receiverCols.length * 96;
+
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <div>
+        <SectionLabel right={`${capPools.length} pools · ${receiverCols.length} receivers (by glCode)`}>
+          Pool allocations
+        </SectionLabel>
+        <div style={{
+          background: "var(--paper)", border: "1px solid var(--rule)",
+          overflowX: "auto",
+        }}>
+        <div style={{ minWidth }}>
+          {/* Header */}
+          <div style={{
+            display: "grid", gridTemplateColumns: grid, gap: 8,
+            padding: "10px 14px",
+            background: "var(--paper-2)",
+            borderBottom: "1px solid var(--rule-strong)",
+            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+            letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
+          }}>
+            <div>Center · Pool</div>
+            <div style={{ textAlign: "right" }}>Eligible $</div>
+            <div>Basis</div>
+            {receiverCols.map((c) => (
+              <div key={c.key} title={`${c.dept} · ${c.glCode}`} style={{
+                textAlign: "right", color: "var(--ink-2)",
+                fontFamily: "var(--ff-ui)", fontSize: 11, lineHeight: 1.3,
+                textTransform: "none", letterSpacing: 0, fontWeight: 500,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }}>
+                <div style={{
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{c.dept}</div>
+                <div className="mono" style={{
+                  fontSize: 9.5, color: "var(--ink-4)", letterSpacing: "0.04em",
+                  textTransform: "uppercase", marginTop: 2,
+                }}>{c.glCode}</div>
+              </div>
+            ))}
+            <div style={{ textAlign: "right" }}>Row total</div>
+          </div>
+
+          {/* Rows */}
+          {capPools.map((p, i) => {
+            const rt = rowTotal(p.id);
+            const isLast = i === capPools.length - 1;
+            const { basis } = basisForPool(p, allocationBases);
+            return (
+              <div key={p.id} style={{
+                display: "grid", gridTemplateColumns: grid, gap: 8,
+                padding: "7px 14px",
+                borderBottom: isLast ? "none" : "1px solid var(--rule)",
+                alignItems: "center",
+                fontFamily: "var(--ff-mono)",
+                fontVariantNumeric: "tabular-nums",
+              }}>
+                <div style={{ fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
+                  <div style={{ fontWeight: 500 }}>{p.center}</div>
+                  <div style={{ fontSize: 10, color: "var(--ink-4)", marginTop: 1 }}>{p.pool}</div>
+                </div>
+                <div
+                  className="num"
+                  style={{ textAlign: "right", fontSize: 12 }}
+                  title={p.eligiblePercent < 100
+                    ? `${fmt.dollars(p.amount)} raw × ${p.eligiblePercent}% eligible`
+                    : undefined}
+                >
+                  {fmt.dollarsK(p.amount * (p.eligiblePercent / 100))}
+                </div>
+                <div className="mono" style={{
+                  fontSize: 10.5, color: "var(--ink-3)",
+                  letterSpacing: "0.04em",
+                }}>{basis}</div>
+                {receiverCols.map((c) => {
+                  const v = cell(p.id, c.glCode);
+                  const zero = v < 0.5;
+                  const isOpen = openCell?.poolId === p.id && openCell?.receiverKey === c.key;
+                  return (
+                    <button
+                      key={c.key}
+                      onClick={() => !zero && setOpenCell(isOpen ? null : { poolId: p.id, receiverKey: c.key })}
+                      title={zero ? "—" : `${c.dept} (${c.glCode}) · ${fmt.dollars(v)}`}
+                      style={{
+                        textAlign: "right", padding: "3px 4px",
+                        fontSize: 11.5,
+                        fontFamily: "var(--ff-mono)",
+                        fontVariantNumeric: "tabular-nums",
+                        color: zero ? "var(--ink-4)" : "var(--ink)",
+                        fontWeight: isOpen ? 600 : 400,
+                        background: isOpen ? "var(--accent-tint)" : "transparent",
+                        border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
+                        cursor: zero ? "default" : "pointer",
+                      }}
+                    >
+                      {zero ? "—" : fmt.dollarsK(v)}
+                    </button>
+                  );
+                })}
+                <div className="num" style={{
+                  textAlign: "right", fontSize: 12,
+                }}>{fmt.dollarsK(rt)}</div>
+              </div>
+            );
+          })}
+
+          {/* Column totals */}
+          <div style={{
+            display: "grid", gridTemplateColumns: grid, gap: 8,
+            padding: "11px 14px",
+            background: "var(--paper-2)",
+            borderTop: "2px solid var(--ink)",
+            alignItems: "center",
+            fontFamily: "var(--ff-mono)",
+            fontVariantNumeric: "tabular-nums",
+          }}>
+            <div className="mono" style={{
+              fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
+              textTransform: "uppercase",
+            }}>Column total</div>
+            <div className="num" style={{ textAlign: "right", fontSize: 12.5 }}>
+              {fmt.dollarsK(totalEligible)}
+            </div>
+            <div/>
+            {receiverCols.map((c) => {
+              const t = colTotalFor(c.glCode);
+              const zero = t < 0.5;
+              return (
+                <div key={c.key} className="num" style={{
+                  textAlign: "right", fontSize: 12,
+                  color: zero ? "var(--ink-4)" : "var(--ink)",
+                }}>{zero ? "—" : fmt.dollarsK(t)}</div>
+              );
+            })}
+            <div className="num" style={{
+              textAlign: "right", fontSize: 13,
+            }}>{fmt.dollarsK(grandTotal)}</div>
+          </div>
+        </div>
+        </div>
+      </div>
+
+      {openCell ? (
+        <ReceiverCellTrace
+          poolId={openCell.poolId}
+          receiverKey={openCell.receiverKey}
+          onClose={() => setOpenCell(null)}
+        />
+      ) : (
+        <TraceHint/>
+      )}
+    </div>
+  );
+}
+
+function ReceiverCellTrace({
+  poolId, receiverKey, onClose,
+}: {
+  poolId: string;
+  receiverKey: string;
+  onClose: () => void;
+}) {
+  const { capPools, derived } = useBuildState();
+  const pool = capPools.find((p) => p.id === poolId);
+  const entry = derived.capReceivers.find((e) => e.key === receiverKey);
+  if (!pool || !entry) return null;
+  const poolReceivers = (pool.receivers ?? []).filter((r) => r.glCode === entry.glCode);
+  const cellTotal = poolReceivers.reduce((a, r) => a + r.amount, 0);
+  const poolEligible = pool.amount * (pool.eligiblePercent / 100);
+  const share = poolEligible > 0 ? (cellTotal / poolEligible) * 100 : 0;
+
+  return (
+    <TracePanel
+      eyebrow="Pool → receiver"
+      from={`${pool.center} · ${pool.pool}`}
+      to={`${entry.dept} (${entry.glCode})`}
+      onClose={onClose}
+    >
+      <TraceSection>
+        <SummaryStrip cols={4}>
+          <TraceStat label="Pool" value={pool.pool} sub={pool.center}/>
+          <TraceStat label="Receiver" value={entry.dept} sub={entry.glCode}/>
+          <TraceStat
+            label="Share of pool"
+            value={`${share.toFixed(1)}%`}
+            sub={`of ${fmt.dollars(poolEligible)} eligible`}
+          />
+          <TraceStat
+            label="Allocation"
+            value={fmt.dollars(cellTotal)}
+            emphasis
+            sub="As published in the source document"
+          />
+        </SummaryStrip>
+      </TraceSection>
+
+      <CollapsibleMetadata title="Receiver detail">
+        <MetadataRow label="Receiver name">{entry.dept}</MetadataRow>
+        <MetadataRow label="glCode">{entry.glCode ?? "—"}</MetadataRow>
+        <MetadataRow label="Identity key">{entry.key}</MetadataRow>
+        <MetadataRow label="Pool amount (raw)">{fmt.dollars(pool.amount)}</MetadataRow>
+        <MetadataRow label="Pool eligible %">{pool.eligiblePercent}%</MetadataRow>
+        <MetadataRow label="Pool eligible $">{fmt.dollars(poolEligible)}</MetadataRow>
+        <MetadataRow label="Receivers in this pool with this glCode">{poolReceivers.length.toString()}</MetadataRow>
+      </CollapsibleMetadata>
+    </TracePanel>
   );
 }
 
@@ -523,7 +813,7 @@ function CellTrace({
         )}
         {!isDirectCharge && (
           <>
-            <MetadataRow label={`${dept.code} driver value`}>{deptDriver.toLocaleString()} {basisMeta?.unit ?? ""}</MetadataRow>
+            <MetadataRow label={`${dept.name} driver value`}>{deptDriver.toLocaleString()} {basisMeta?.unit ?? ""}</MetadataRow>
             <MetadataRow label="Total driver">{driverTotal.toLocaleString()} {basisMeta?.unit ?? ""}</MetadataRow>
           </>
         )}

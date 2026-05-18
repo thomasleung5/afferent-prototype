@@ -29,11 +29,8 @@ interface Row {
 }
 
 export function RateDerivation() {
-  const { derived, capPools, capCenterOrder, allocationBases } = useBuildState();
-  const stepModel = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
-    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
-  );
+  const { derived, capPools } = useBuildState();
+  const stepModel = derived.capStepDown;
   const [openId, setOpenId] = useState<string | undefined>();
 
   const rows: Row[] = ORDER.map((d) => {

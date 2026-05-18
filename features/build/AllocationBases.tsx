@@ -7,6 +7,7 @@ import {
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
 import { ALL_DEPTS, INDIRECT_DEPTS, type DriverMatrix } from "@/lib/data/capStepDown";
+import type { ReceiverEntry, MissingReceiverEntry } from "@/lib/data/capReceiverRegistry";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
@@ -18,17 +19,34 @@ interface OpenCell {
   rowCode: string;
 }
 
+/** A renderable row in the Allocation Bases matrix. Extends BasisRow with
+ *  per-row identity attributes used when the rows come from the receiver
+ *  registry (per glCode) rather than the seed DRIVERS matrix (per
+ *  MatrixDeptCode). */
+interface EffectiveRow extends BasisRow {
+  /** When present, this row is a per-receiver row keyed on glCode; the
+   *  glCode renders as the small mono caption after the dept name. */
+  glCode?: string;
+  /** Classification code displayed as a secondary mono caption. Distinct
+   *  from `code` (which is the row's identity key — glCode in receiver
+   *  mode, MatrixDeptCode in seed mode). */
+  classification?: string;
+}
+
 /** Set of basis keys ALLOCATION_BASES treats as denominator columns. Used
  *  to filter the BasisKey union (which also includes "DIRECT") when
  *  projecting the effective DriverMatrix into BasisRow form. */
 const BASIS_COLUMN_KEYS: ReadonlySet<string> =
   new Set(ALLOCATION_BASES.map((b) => b.key));
 
-/** Project the effective DriverMatrix into the BasisRow shape the table
- *  expects. Each ALL_DEPTS entry becomes a row; values are the matching
- *  driver cells, filtered to the basis-column keys (DIRECT is a routing
- *  rule, not a denominator). */
-function buildEffectiveBasisRows(drivers: DriverMatrix): BasisRow[] {
+const INDIRECT_CODES = new Set<string>([
+  "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE",
+]);
+
+/** SEED PATH — Project the effective DriverMatrix into the BasisRow shape
+ *  the table expects. Each ALL_DEPTS entry becomes a row; used when no
+ *  receivers have been imported. */
+function buildEffectiveBasisRows(drivers: DriverMatrix): EffectiveRow[] {
   const indirectSet = new Set<string>(INDIRECT_DEPTS.map((d) => d.code));
   return ALL_DEPTS.map((d) => {
     const values: Partial<Record<AllocationBasisKey, number>> = {};
@@ -45,23 +63,54 @@ function buildEffectiveBasisRows(drivers: DriverMatrix): BasisRow[] {
   });
 }
 
+/** RECEIVER PATH — One row per glCode-distinct receiver imported across all
+ *  pools. Multiple receivers sharing a deptCode classification (e.g. all
+ *  three Planning budget units) render as separate rows. */
+function buildRowsFromReceivers(entries: ReceiverEntry[]): EffectiveRow[] {
+  return entries.map((e) => {
+    const values: Partial<Record<AllocationBasisKey, number>> = {};
+    for (const [k, v] of Object.entries(e.values)) {
+      if (!BASIS_COLUMN_KEYS.has(k)) continue;
+      if (typeof v === "number" && v !== 0) values[k as AllocationBasisKey] = v;
+    }
+    return {
+      // Identity key: the namespaced glCode (or noglcode-fallback handled
+      // upstream by the registry). NOT deptCode — multiple receivers share
+      // one deptCode and would collide.
+      code: e.key,
+      name: e.dept,
+      group: INDIRECT_CODES.has(e.deptCode) ? "indirect" : "direct",
+      values,
+      glCode: e.glCode,
+      classification: e.deptCode,
+    };
+  });
+}
+
 /** Step 3 of the CAP flow. The department × basis denominator matrix — the
  *  table the city's CAP workbook is actually built around.
  *
- *  Rows are derived from `derived.capDrivers`, which is the seed DRIVERS
- *  matrix with imported pool.receivers' units overlaid wherever the import
- *  provides them. So the same view doubles as "this is the CAP's denominator
- *  catalog" for seeded sessions and "this is what the imported CAP says the
- *  drivers are" after a parseCap upload. */
+ *  Two render modes:
+ *    - Receiver mode (when imports have published per-receiver data):
+ *      one row per glCode-distinct receiver. Multiple receivers sharing a
+ *      deptCode classification (e.g. three Planning budget units) appear
+ *      as separate rows.
+ *    - Seed mode (no receivers imported): one row per MatrixDeptCode from
+ *      the seed DRIVERS matrix, matching the legacy LAH layout. */
 export function AllocationBases() {
   const { derived } = useBuildState();
   const rows = useMemo(
-    () => buildEffectiveBasisRows(derived.capDrivers),
-    [derived.capDrivers],
+    () => derived.capReceivers.length > 0
+      ? buildRowsFromReceivers(derived.capReceivers)
+      : buildEffectiveBasisRows(derived.capDrivers),
+    [derived.capReceivers, derived.capDrivers],
   );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      {derived.capReceiversForReview.length > 0 && (
+        <ReceiversForReviewBanner missing={derived.capReceiversForReview}/>
+      )}
       <Matrix rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>
       {openCell ? (
         <CellTrace
@@ -72,6 +121,55 @@ export function AllocationBases() {
         />
       ) : (
         <TraceHint/>
+      )}
+    </div>
+  );
+}
+
+function ReceiversForReviewBanner({ missing }: { missing: MissingReceiverEntry[] }) {
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--rule)",
+    }}>
+      <div style={{
+        padding: "10px 16px",
+        background: "var(--paper-2)",
+        borderBottom: "1px solid var(--rule)",
+        display: "flex", alignItems: "baseline", gap: 10,
+      }}>
+        <span className="mono" style={{
+          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          color: "var(--ink-3)", textTransform: "uppercase",
+        }}>Receivers for review</span>
+        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+          {missing.length} receiver{missing.length === 1 ? "" : "s"} imported without a glCode.
+          Assign one (or accept exclusion from the matrix) so they aren't collapsed onto a sibling row.
+        </span>
+      </div>
+      {missing.slice(0, 8).map((m, i) => (
+        <div key={m.key} style={{
+          display: "grid",
+          gridTemplateColumns: "minmax(220px, 2fr) 100px 1fr",
+          gap: 12, alignItems: "baseline",
+          padding: "8px 16px",
+          fontSize: 12,
+          borderBottom: i < Math.min(missing.length, 8) - 1 ? "1px solid var(--rule)" : "none",
+        }}>
+          <span style={{ color: "var(--ink)" }}>{m.dept}</span>
+          <span className="num" style={{
+            textAlign: "right", color: "var(--ink-2)",
+            fontVariantNumeric: "tabular-nums",
+          }}>{fmt.dollars(m.amount)}</span>
+          <span style={{ fontSize: 11, color: "var(--ink-4)" }}>
+            from {m.poolId} · basis {m.basis}
+          </span>
+        </div>
+      ))}
+      {missing.length > 8 && (
+        <div style={{
+          padding: "8px 16px",
+          fontSize: 11.5, color: "var(--ink-3)",
+        }}>+ {missing.length - 8} more</div>
       )}
     </div>
   );
@@ -88,14 +186,14 @@ function formatCell(value: number | undefined, fmtKind: string): string {
   return fmt.int(value);
 }
 
-function colTotal(key: AllocationBasisKey, rows: BasisRow[]): number {
+function colTotal(key: AllocationBasisKey, rows: EffectiveRow[]): number {
   return rows.reduce((a, r) => a + (r.values[key] ?? 0), 0);
 }
 
 function Matrix({
   rows, openCell, setOpenCell,
 }: {
-  rows: BasisRow[];
+  rows: EffectiveRow[];
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
 }) {
@@ -211,10 +309,14 @@ function GroupLabel({ children }: { cols: number; children: string }) {
 function MatrixRow({
   idx, row, grid, openCell, setOpenCell,
 }: {
-  idx: number; row: BasisRow; grid: string;
+  idx: number; row: EffectiveRow; grid: string;
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
 }) {
+  // Caption: per-receiver rows show the document's glCode identity;
+  // seed rows show nothing (the dept name fully identifies the row in
+  // that mode, and the user explicitly asked deptCode not be displayed).
+  const caption = row.glCode ?? "";
   return (
     <div style={{
       display: "grid", gridTemplateColumns: grid, gap: 10,
@@ -231,7 +333,7 @@ function MatrixRow({
       <div style={{ fontFamily: "var(--ff-ui)", fontSize: 13, color: "var(--ink)" }}>
         <span style={{ fontWeight: 500 }}>{row.name}</span>{" "}
         <span className="mono" style={{ fontSize: 10, color: "var(--ink-4)" }}>
-          {row.code}
+          {caption}
         </span>
       </div>
       {ALLOCATION_BASES.map((b) => {
@@ -286,7 +388,7 @@ function TraceHint() {
 function CellTrace({
   rows, basisKey, rowCode, onClose,
 }: {
-  rows: BasisRow[];
+  rows: EffectiveRow[];
   basisKey: AllocationBasisKey;
   rowCode: string;
   onClose: () => void;
@@ -360,7 +462,7 @@ function CellTrace({
         <MetadataRow label="Long name">{basis.longName}</MetadataRow>
         <MetadataRow label="Unit">{basis.unitLong} ({basis.unit})</MetadataRow>
         <MetadataRow label="Source">{basis.note}</MetadataRow>
-        <MetadataRow label="Department code">{row.code}</MetadataRow>
+        {row.glCode && <MetadataRow label="glCode">{row.glCode}</MetadataRow>}
         <MetadataRow label="Department group">{row.group === "indirect" ? "Indirect cost center" : "Direct department"}</MetadataRow>
       </CollapsibleMetadata>
     </TracePanel>
