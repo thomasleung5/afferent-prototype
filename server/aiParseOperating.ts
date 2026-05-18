@@ -12,7 +12,7 @@ IMPORTANT — if the document is a comprehensive fee study, annual report, or mu
 Extract every non-labor expenditure line item you find in those sections and return ONLY this JSON, no prose:
 
 {
-  "items": [
+  "operating": [
     { "code": "53120", "dept": "PLAN", "category": "Professional services", "line": "Consulting Services", "amount": 620000, "include": true, "confidence": "high" },
     { "code": "54330", "dept": "BLDG", "category": "Software & subscriptions", "line": "Software Subscriptions", "amount": 84000, "include": true, "confidence": "high" },
     { "code": "55210", "dept": "ENG", "category": "Vehicles & equipment", "line": "Field Equipment", "amount": 42000, "include": true, "confidence": "low" }
@@ -57,7 +57,7 @@ interface OperatingRow {
 
 interface ParseOperatingResponse {
   ok: boolean;
-  items?: OperatingRow[];
+  operating?: OperatingRow[];
   message?: string;
 }
 
@@ -120,25 +120,25 @@ export async function handleAiParseOperating(req: Request): Promise<Response> {
       return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
     }
 
-    let items: OperatingRow[];
+    let operating: OperatingRow[];
     try {
-      const parsed = JSON.parse(jsonMatch[0]) as { items?: OperatingRow[] };
-      if (!Array.isArray(parsed.items)) throw new Error("no items array");
-      items = parsed.items;
+      const parsed = JSON.parse(jsonMatch[0]) as { operating?: OperatingRow[] };
+      if (!Array.isArray(parsed.operating)) throw new Error("no operating array");
+      operating = parsed.operating;
     } catch {
       const partialMatches = jsonMatch[0].matchAll(/\{[^{}]*"line"\s*:[^{}]*\}/g);
-      items = [];
+      operating = [];
       for (const m of partialMatches) {
-        try { items.push(JSON.parse(m[0]) as OperatingRow); } catch { /* skip malformed */ }
+        try { operating.push(JSON.parse(m[0]) as OperatingRow); } catch { /* skip malformed */ }
       }
-      if (items.length === 0) {
+      if (operating.length === 0) {
         return json({ ok: false, message: "Response was truncated and no complete operating rows could be recovered. Try a shorter document." }, { status: 502 });
       }
-      console.warn(`[ai-parse-operating] Response truncated — recovered ${items.length} partial rows`);
+      console.warn(`[ai-parse-operating] Response truncated — recovered ${operating.length} partial rows`);
     }
 
-    console.log(`[ai-parse-operating] Parsed ${items.length} operating rows from ${fileName}`);
-    return json({ ok: true, items });
+    console.log(`[ai-parse-operating] Parsed ${operating.length} operating rows from ${fileName}`);
+    return json({ ok: true, operating });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Unknown model error.";
     console.error(`[ai-parse-operating] Error: ${message}`);

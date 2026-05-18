@@ -14,7 +14,7 @@ interface OperatingRow {
 
 export interface AiParseOperatingResult {
   ok: boolean;
-  items: OperatingRow[];
+  operating: OperatingRow[];
   message?: string;
 }
 
@@ -24,7 +24,7 @@ export async function aiParseOperatingPdf(file: File): Promise<AiParseOperatingR
   const res = await fetch("/api/ai/parse-operating", { method: "POST", body: form });
   if (!res.ok && res.status !== 502) {
     const text = await res.text().catch(() => "");
-    return { ok: false, items: [], message: text || `HTTP ${res.status}` };
+    return { ok: false, operating: [], message: text || `HTTP ${res.status}` };
   }
   const body = await res.json() as AiParseOperatingResult;
   return body;
