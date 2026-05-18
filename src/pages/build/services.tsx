@@ -7,6 +7,27 @@ import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
 import { aiParseServicesPdf, servicesToExtractionResult } from "@/lib/ai/parseServices";
 
+const SERVICES_SCHEMA = `{
+  services: [
+    { name, dept, hours, volume, fee, target, confidence }
+  ]
+}`;
+
+/** Compose the post-import summary. The parser drops rows with a dept
+ *  outside PLAN/BLDG/ENG silently, so we derive a "skipped" count from
+ *  the gap between the model's row count and what survived merge. */
+function formatImportSummary(
+  total: number, mapped: number, lowConfidence: number, duplicates: number,
+): string {
+  const imported = mapped + lowConfidence + duplicates;
+  const skipped = Math.max(0, total - imported);
+  const parts: string[] = [`${mapped} accepted`];
+  if (duplicates > 0)    parts.push(`${duplicates} updated`);
+  parts.push(`${lowConfidence} for review`);
+  if (skipped > 0)       parts.push(`${skipped} skipped`);
+  return `${imported} service${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
+}
+
 export default function ServicesPage() {
   const { services, mergeServices } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
@@ -15,18 +36,19 @@ export default function ServicesPage() {
     try {
       const catalog = services.map((s) => ({ name: s.name, dept: s.dept }));
       const result = await aiParseServicesPdf(file, catalog);
-      if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
+      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
       const extraction = servicesToExtractionResult(result.services, services, file.name);
       const applied = mergeServices(extraction, file.name);
-      const total = applied.mapped + applied.duplicates + applied.lowConfidence;
       return {
         ok: true,
-        message: `${total} service${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} new, ${applied.duplicates} updated).`,
+        message: formatImportSummary(
+          extraction.stats.total, applied.mapped, applied.lowConfidence, applied.duplicates,
+        ),
       };
     } catch (err) {
       return {
         ok: false,
-        message: err instanceof Error ? err.message : "PDF parsing failed.",
+        message: err instanceof Error ? err.message : "PDF import failed.",
       };
     }
   }
@@ -41,10 +63,11 @@ export default function ServicesPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const extraction = servicesToExtractionResult(parsed.services as any, services, "clipboard");
       const applied = mergeServices(extraction, "clipboard");
-      const total = applied.mapped + applied.duplicates + applied.lowConfidence;
       return {
         ok: true,
-        message: `${total} service${total === 1 ? "" : "s"} imported (${applied.mapped} new, ${applied.duplicates} updated).`,
+        message: formatImportSummary(
+          extraction.stats.total, applied.mapped, applied.lowConfidence, applied.duplicates,
+        ),
       };
     } catch (err) {
       return {
@@ -73,10 +96,12 @@ export default function ServicesPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Services"
-        helper="Import services via Claude (PDF) or by pasting LLM JSON output."
-        aiPdfHelper="Send a prior fee study or cost-of-service PDF — Claude extracts service names, hours, volume, and fees"
+        helper="Upload a source PDF, or paste structured JSON as a fallback."
+        aiPdfHelper="Send a prior fee study or cost-of-service PDF. We'll extract service names, hours, volume, and fees."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ services: [...] }"
+        pasteHelper="Paste structured output shaped like { services: [...] }."
+        pasteSchema={SERVICES_SCHEMA}
         onPasteJson={pasteJson}
       />
     </Page>

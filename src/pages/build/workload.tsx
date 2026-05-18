@@ -32,6 +32,12 @@ function unmappedDetails(u: UnmappedRow): {
   };
 }
 
+const WORKLOAD_SCHEMA = `{
+  items: [
+    { name, dept, prior, current, unit, confidence }
+  ]
+}`;
+
 export default function WorkloadPage() {
   const { mergeWorkload, services, workload } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
@@ -43,9 +49,13 @@ export default function WorkloadPage() {
   function applyExtraction(rows: Parameters<typeof workloadToExtractionResult>[0], fileName: string) {
     const extraction = workloadToExtractionResult(rows, services, fileName, workload);
     const applied = mergeWorkload(extraction, fileName);
-    const matched = applied.mapped + applied.duplicates;
+    const imported = applied.mapped + applied.lowConfidence + applied.duplicates;
+    const parts: string[] = [`${applied.mapped} accepted`];
+    if (applied.duplicates > 0)    parts.push(`${applied.duplicates} updated`);
+    parts.push(`${applied.lowConfidence} for review`);
+    if (applied.unmapped > 0)      parts.push(`${applied.unmapped} unmatched`);
     return {
-      summary: `${matched} matched, ${applied.lowConfidence} for review, ${extraction.unmapped.length} unmatched.`,
+      summary: `${imported} row${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`,
       unmapped: extraction.unmapped,
     };
   }
@@ -54,14 +64,14 @@ export default function WorkloadPage() {
     setUnmapped([]);
     try {
       const result = await aiParseWorkloadPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
+      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
       const { summary, unmapped: u } = applyExtraction(result.items, file.name);
       setUnmapped(u);
       return { ok: true, message: summary };
     } catch (err) {
       return {
         ok: false,
-        message: err instanceof Error ? err.message : "PDF parsing failed.",
+        message: err instanceof Error ? err.message : "PDF import failed.",
       };
     }
   }
@@ -175,10 +185,12 @@ export default function WorkloadPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Workload Data"
-        helper="Import workload counts via Claude (PDF) or by pasting LLM JSON output. Service names fuzzy-match to the catalog."
-        aiPdfHelper="Send an annual report, permit-volume table, or workload appendix — Claude extracts service-level volume counts and matches them to the existing catalog"
+        helper="Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog."
+        aiPdfHelper="Send an annual report, permit-volume table, or workload appendix. We'll extract service-level volume counts and match them to the existing catalog."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ items: [...] }"
+        pasteHelper="Paste structured output shaped like { items: [...] }."
+        pasteSchema={WORKLOAD_SCHEMA}
         onPasteJson={pasteJson}
       />
     </Page>

@@ -8,6 +8,25 @@ import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
 import { aiParseSalaryPdf, salaryToExtractionResult } from "@/lib/ai/parseSalary";
 
+const POSITIONS_SCHEMA = `{
+  positions: [
+    { title, dept, fte, salary, benefits, hours, confidence }
+  ]
+}`;
+
+/** Compose the post-import summary. The parser drops rows with a dept
+ *  outside PLAN/BLDG/ENG silently, so we derive a "skipped" count from
+ *  the gap between the model's row count and what survived merge. */
+function formatImportSummary(
+  total: number, mapped: number, lowConfidence: number,
+): string {
+  const imported = mapped + lowConfidence;
+  const skipped = Math.max(0, total - imported);
+  const parts: string[] = [`${mapped} accepted`, `${lowConfidence} for review`];
+  if (skipped > 0) parts.push(`${skipped} skipped`);
+  return `${imported} position${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
+}
+
 export default function DirectLaborPage() {
   const { mergePositions } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
@@ -15,18 +34,17 @@ export default function DirectLaborPage() {
   async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     try {
       const result = await aiParseSalaryPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
+      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
       const extraction = salaryToExtractionResult(result.positions, file.name);
       const applied = mergePositions(extraction, file.name);
-      const total = applied.mapped + applied.lowConfidence;
       return {
         ok: true,
-        message: `${total} position${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} accepted, ${applied.lowConfidence} for review).`,
+        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
       };
     } catch (err) {
       return {
         ok: false,
-        message: err instanceof Error ? err.message : "PDF parsing failed.",
+        message: err instanceof Error ? err.message : "PDF import failed.",
       };
     }
   }
@@ -41,10 +59,9 @@ export default function DirectLaborPage() {
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const extraction = salaryToExtractionResult(parsed.positions as any, "clipboard");
       const applied = mergePositions(extraction, "clipboard");
-      const total = applied.mapped + applied.lowConfidence;
       return {
         ok: true,
-        message: `${total} position${total === 1 ? "" : "s"} imported (${applied.mapped} accepted, ${applied.lowConfidence} for review).`,
+        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
       };
     } catch (err) {
       return {
@@ -75,10 +92,12 @@ export default function DirectLaborPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Direct Labor"
-        helper="Import positions via Claude (PDF) or by pasting LLM JSON output."
-        aiPdfHelper="Send a salary roster or personnel budget PDF — Claude extracts title, dept, FTE, salary, and benefits"
+        helper="Upload a source PDF, or paste structured JSON as a fallback."
+        aiPdfHelper="Send a personnel budget or salary and benefits report PDF. We'll extract position, department, FTE, salary, benefits, and hours."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ positions: [...] }"
+        pasteHelper="Paste structured output shaped like { positions: [...] }."
+        pasteSchema={POSITIONS_SCHEMA}
         onPasteJson={pasteJson}
       />
     </Page>

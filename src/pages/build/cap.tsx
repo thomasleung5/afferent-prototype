@@ -48,6 +48,13 @@ function bundleCountsMessage(counts: { centers: number; bases: number; pools: nu
   return parts.length ? parts.join(", ") : "nothing";
 }
 
+const CAP_SCHEMA = `{
+  centers: [{ name, glCode, totalCost, confidence }],
+  bases:   [{ name, source, methodologyNote, driverKey, directTo, confidence }],
+  pools:   [{ center, pool, allocationPercent, amount, eligiblePercent,
+              basis, receivers, recoverability, confidence }]
+}`;
+
 export default function CapPage() {
   const { mergeCapBundle } = useBuildState();
   const [step, setStep] = useState<CapStep>("centers");
@@ -64,18 +71,17 @@ export default function CapPage() {
       bases: applied.basesImported,
       pools: applied.poolsImported,
     });
-    const review = applied.unmappedBases.length;
-    const tail = review > 0
-      ? `${applied.mapped} accepted, ${applied.lowConfidence} for review, ${review} bas${review === 1 ? "is" : "es"} need attention`
-      : `${applied.mapped} accepted, ${applied.lowConfidence} for review`;
-    return `${counts} imported (${tail}).`;
+    const unmatched = applied.unmappedBases.length;
+    const parts: string[] = [`${applied.mapped} accepted`, `${applied.lowConfidence} for review`];
+    if (unmatched > 0) parts.push(`${unmatched} unmatched bas${unmatched === 1 ? "is" : "es"}`);
+    return `${counts} imported (${parts.join(", ")}).`;
   }
 
   async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     setUnmappedBases([]);
     try {
       const result = await aiParseCapPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
+      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
       const bundle = {
         centers: capCentersToExtractionResult(result.centers, file.name),
         bases:   capBasesToExtractionResult(result.bases, file.name),
@@ -87,7 +93,7 @@ export default function CapPage() {
     } catch (err) {
       return {
         ok: false,
-        message: err instanceof Error ? err.message : "PDF parsing failed.",
+        message: err instanceof Error ? err.message : "PDF import failed.",
       };
     }
   }
@@ -226,10 +232,12 @@ export default function CapPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Cost Allocation"
-        helper="Import the CAP bundle (centers + bases + pools) via Claude (PDF) or by pasting LLM JSON output."
-        aiPdfHelper="Send a Cost Allocation Plan PDF — Claude detects and extracts cost centers, allocation bases, and cost pools in one pass"
+        helper="Upload a source PDF, or paste structured JSON as a fallback. Imports the full bundle: cost centers, allocation bases, and cost pools."
+        aiPdfHelper="Send a Cost Allocation Plan PDF. We'll extract cost centers, allocation bases, and cost pools."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ centers?, bases?, pools? }"
+        pasteHelper="Paste structured output shaped like { centers?, bases?, pools? }."
+        pasteSchema={CAP_SCHEMA}
         onPasteJson={pasteJson}
       />
     </Page>
