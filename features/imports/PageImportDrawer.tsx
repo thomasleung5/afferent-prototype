@@ -7,24 +7,32 @@ interface Props {
   title: string;
   helper?: ReactNode;
 
-  // ── AI PDF action ──────────────────────────────────────────────────────
-  /** Label for the AI PDF button. Defaults to "Upload PDF via Claude". */
+  // ── PDF upload action ──────────────────────────────────────────────────
+  /** Label for the PDF upload button. Defaults to "Upload PDF". */
   aiPdfLabel?: string;
-  /** Short helper text shown next to the AI status. */
+  /** Short helper text shown next to the upload status. */
   aiPdfHelper?: ReactNode;
-  /** Accept attr for the AI PDF file input. Defaults to ".pdf". */
+  /** Accept attr for the PDF file input. Defaults to ".pdf". */
   aiPdfAccept?: string;
-  /** When provided, the AI button is rendered. Handler returns the message
-   *  to show inline; ok=false renders the message in warn color. */
+  /** Visual emphasis for the PDF action — primary by default; secondary
+   *  swaps to the lighter ghost styling used by the paste panel. */
+  aiPdfPrimary?: boolean;
+  /** When provided, the upload button is rendered. Handler returns the
+   *  message to show inline; ok=false renders the message in warn color. */
   onAiPdfImport?: (file: File) => Promise<{ ok: boolean; message: string }>;
 
   // ── Paste-JSON action ──────────────────────────────────────────────────
-  /** Label for the paste button. Defaults to "Paste JSON from clipboard". */
+  /** Label for the paste button. Defaults to "Paste JSON". */
   pasteLabel?: string;
   /** Short helper text shown next to the paste status. */
   pasteHelper?: ReactNode;
-  /** Example shape rendered inline in the helper (e.g. "{ items: [...] }"). */
+  /** Inline example shape (e.g. "{ items: [...] }") rendered next to the
+   *  paste button when no explicit pasteHelper is provided. */
   pasteExample?: string;
+  /** Multi-line schema preview rendered as a code block under the paste
+   *  button. Use for richer field-level shape examples; complements
+   *  pasteExample, which stays inline. */
+  pasteSchema?: ReactNode;
   /** When provided, the paste button is rendered + wired to
    *  navigator.clipboard.readText() → handler. */
   onPasteJson?: (text: string) => Promise<{ ok: boolean; message: string }>;
@@ -35,13 +43,15 @@ type Status = { ok: boolean; message: string } | null;
 export function PageImportDrawer({
   open, onClose,
   title, helper,
-  aiPdfLabel = "Upload PDF via Claude",
+  aiPdfLabel = "Upload PDF",
   aiPdfHelper,
   aiPdfAccept = ".pdf",
+  aiPdfPrimary = true,
   onAiPdfImport,
-  pasteLabel = "Paste JSON from clipboard",
+  pasteLabel = "Paste JSON",
   pasteHelper,
   pasteExample,
+  pasteSchema,
   onPasteJson,
 }: Props) {
   // Per-action state: loading flags + last status message. Independent so
@@ -104,16 +114,17 @@ export function PageImportDrawer({
       subtitle={helper}
       width={640}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
         {onAiPdfImport && (
           <ActionPanel
+            tone={aiPdfPrimary ? "primary" : "secondary"}
             label={aiPdfLabel}
             icon="sparkles"
-            buttonText={aiLoading ? "Sending to Claude…" : aiPdfLabel}
+            buttonText={aiLoading ? "Uploading…" : aiPdfLabel}
             buttonDisabled={aiLoading}
             onClick={() => aiPdfInputRef.current?.click()}
             helper={aiPdfHelper}
-            loadingText="Claude is reading the PDF — check the terminal for progress"
+            loadingText="Extracting from PDF — this can take 30–60s"
             loading={aiLoading}
             status={aiStatus}
           >
@@ -127,17 +138,21 @@ export function PageImportDrawer({
           </ActionPanel>
         )}
 
+        {onAiPdfImport && onPasteJson && <OrDivider/>}
+
         {onPasteJson && (
           <ActionPanel
+            tone="secondary"
             label={pasteLabel}
             buttonText={pasteLoading ? "Reading clipboard…" : pasteLabel}
             buttonDisabled={pasteLoading}
             onClick={runPaste}
             helper={
               pasteHelper ?? (pasteExample
-                ? (<>Paste the <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{pasteExample}</code> output from an LLM</>)
+                ? (<>Paste structured output shaped like <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{pasteExample}</code>.</>)
                 : undefined)
             }
+            schema={pasteSchema}
             loadingText="Parsing clipboard JSON…"
             loading={pasteLoading}
             status={pasteStatus}
@@ -169,42 +184,64 @@ export function PageImportDrawer({
   );
 }
 
+function OrDivider() {
+  return (
+    <div style={{
+      display: "flex", alignItems: "center", gap: 10,
+      color: "var(--ink-3)",
+    }}>
+      <span style={{ flex: 1, height: 1, background: "var(--rule)" }}/>
+      <span className="mono" style={{
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+        textTransform: "uppercase",
+      }}>or</span>
+      <span style={{ flex: 1, height: 1, background: "var(--rule)" }}/>
+    </div>
+  );
+}
+
 /** Per-action panel: the action button on the left, helper text + the
  *  current loading/result status on the right. Self-contained so each
  *  enabled handler gets its own visual block in the drawer body. */
 function ActionPanel({
+  tone = "secondary",
   label,
   icon,
   buttonText,
   buttonDisabled,
   onClick,
   helper,
+  schema,
   loadingText,
   loading,
   status,
   children,
 }: {
+  tone?: "primary" | "secondary";
   label: string;
   icon?: "sparkles";
   buttonText: ReactNode;
   buttonDisabled?: boolean;
   onClick: () => void;
   helper?: ReactNode;
+  schema?: ReactNode;
   loadingText: string;
   loading: boolean;
   status: Status;
   children?: ReactNode;
 }) {
+  const isPrimary = tone === "primary";
   return (
     <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
+      background: isPrimary ? "var(--paper)" : "var(--paper-2)",
+      border: `1px solid ${isPrimary ? "var(--rule-strong)" : "var(--rule)"}`,
       padding: "14px 16px",
       display: "flex", flexDirection: "column", gap: 8,
     }}>
       <div style={{
         display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap",
       }}>
-        <Btn kind="ghost" onClick={onClick} disabled={buttonDisabled}>
+        <Btn kind={isPrimary ? "primary" : "ghost"} onClick={onClick} disabled={buttonDisabled}>
           {icon === "sparkles" && <Icon name="sparkles" size={13}/>} {buttonText}
         </Btn>
         {helper && (
@@ -213,6 +250,18 @@ function ActionPanel({
           </span>
         )}
       </div>
+      {schema && (
+        <pre style={{
+          margin: 0,
+          padding: "8px 10px",
+          background: "var(--paper)",
+          border: "1px solid var(--rule)",
+          fontFamily: "var(--ff-mono)",
+          fontSize: 11, lineHeight: 1.55,
+          color: "var(--ink-2)",
+          whiteSpace: "pre-wrap", wordBreak: "break-word",
+        }}>{schema}</pre>
+      )}
       {(loading || status) && (
         <div style={{
           display: "flex", alignItems: "baseline", gap: 10,
