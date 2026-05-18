@@ -1,5 +1,5 @@
 import type {
-  AllocationBasis, BasisKey, CapPool, MatrixDeptCode,
+  AllocationBasis, BasisKey, CapPool, MatrixDeptCode, PoolReceiver,
 } from "@/lib/types";
 import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
@@ -23,6 +23,18 @@ interface BasisRow {
   confidence: "high" | "low";
 }
 
+/** Wire shape for one receiver row inside PoolRow.receivers. Mirrors the
+ *  server's ReceiverRow in server/aiParseCap.ts. */
+interface ReceiverRow {
+  dept: string;
+  /** MatrixDeptCode or "OTHER"; coerced via normReceiverDeptCode. */
+  deptCode: string;
+  units?: number;
+  percent: number;
+  amount: number;
+  confidence: "high" | "low";
+}
+
 interface PoolRow {
   center: string;
   pool: string;
@@ -30,6 +42,7 @@ interface PoolRow {
   amount: number;
   eligiblePercent?: number;
   basis: string;
+  receivers?: ReceiverRow[];
   receiving?: string;
   recoverability?: string;
   confidence: "high" | "low";
@@ -244,6 +257,8 @@ export function capPoolsToExtractionResult(
       ? Math.max(0, Math.min(100, eligibleRaw))
       : 100;
 
+    const receivers = normReceivers(row.receivers);
+
     const lineage: SourceLineage = {
       file: fileName,
       sheet: "AI parsed",
@@ -252,6 +267,7 @@ export function capPoolsToExtractionResult(
         center: row.center, pool: row.pool,
         allocationPercent: row.allocationPercent, amount: row.amount,
         basis: row.basis,
+        receiverCount: receivers.length,
       },
       confidence: row.confidence === "high" ? "high" : "review",
       importedAt: now,
@@ -267,6 +283,7 @@ export function capPoolsToExtractionResult(
       basisId: basisMatch?.id ?? "",
       basis: basisMatch?.name ?? basisName,
       receiving: row.receiving?.trim() || "Multiple departments",
+      ...(receivers.length > 0 ? { receivers } : {}),
       recoverability: row.recoverability?.trim() || "TBD",
       review: row.confidence === "high" ? "Reviewed" : "Review",
     };
@@ -315,6 +332,48 @@ export function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
+}
+
+/** Coerce a receiver row's deptCode. Receivers may legitimately point at a
+ *  fund/program with no MatrixDeptCode (CIP funds, grant funds, "All Other"),
+ *  which the SYSTEM prompt encodes as the literal "OTHER" — so unlike
+ *  normMatrixDept this returns "OTHER" instead of null in that case. */
+function normReceiverDeptCode(v: string | undefined): MatrixDeptCode | "OTHER" | null {
+  if (!v) return null;
+  const s = v.trim().toUpperCase().replace(/\s+/g, "_");
+  if (s === "OTHER") return "OTHER";
+  return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
+}
+
+/** Convert wire-format receivers to PoolReceiver entities. Drops receivers
+ *  whose dept name or deptCode can't be resolved, or whose amount is zero
+ *  (the SYSTEM prompt was told to skip these but we re-enforce client-side
+ *  so a noisy response can't corrupt downstream sums). */
+function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
+  if (!Array.isArray(rows)) return [];
+  const out: PoolReceiver[] = [];
+  for (const r of rows) {
+    const dept = r.dept?.trim();
+    if (!dept) continue;
+    const code = normReceiverDeptCode(r.deptCode);
+    if (!code) continue;
+    const amount = Number(r.amount);
+    if (!Number.isFinite(amount) || amount <= 0) continue;
+    const percentRaw = Number(r.percent);
+    const percent = Number.isFinite(percentRaw)
+      ? Math.max(0, Math.min(100, percentRaw))
+      : 0;
+    const unitsRaw = Number(r.units);
+    const units = Number.isFinite(unitsRaw) ? unitsRaw : undefined;
+    out.push({
+      dept,
+      deptCode: code,
+      percent,
+      amount,
+      ...(units != null ? { units } : {}),
+    });
+  }
+  return out;
 }
 
 /** Resolve a free-text basis name to a catalog entry. Tries:

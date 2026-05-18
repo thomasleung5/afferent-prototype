@@ -132,6 +132,27 @@ export type BasisKey =
   | "FTE" | "EXPEND" | "EXPEND_X" | "PAYROLL" | "ACCT" | "AGENDA"
   | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
 
+/** One row of a cost pool's per-receiver allocation matrix as published in
+ *  the source document's "X - Allocations" schedule. Receivers' `amount`
+ *  values sum (within rounding) to the parent pool's `amount`. */
+export interface PoolReceiver {
+  /** Receiving budget-unit name exactly as written in the document. */
+  dept: string;
+  /** MatrixDeptCode for the receiver, or "OTHER" when the document points
+   *  at a fund/program with no matching code (CIP funds, grant funds,
+   *  "All Other"). Kept as MatrixDeptCode | "OTHER" rather than a narrower
+   *  union so step-down receivers and unmapped fund rows can coexist. */
+  deptCode: MatrixDeptCode | "OTHER";
+  /** Raw allocation-factor units for this receiver (the "Allocation Units"
+   *  column on the schedule). Omitted when the document doesn't print one. */
+  units?: number;
+  /** Receiver's share of the pool, 0–100. */
+  percent: number;
+  /** Dollar amount allocated to this receiver — derived as
+   *  pool.amount × percent / 100 and rounded to whole dollars. */
+  amount: number;
+}
+
 /** Indirect overhead allocated to direct departments by the CAP. */
 export interface CapPool {
   id: string;
@@ -159,6 +180,13 @@ export interface CapPool {
    *  selection so exports/legacy readers don't need catalog access. */
   basis: string;
   receiving: string;
+  /** Optional per-receiver allocation breakdown imported from the source
+   *  document. Populated by capPoolsToExtractionResult when the model
+   *  returns a structured receivers array; absent for legacy / hand-built
+   *  pools that only carry the free-text `receiving` label. The step-down
+   *  engine does not yet consume this field — it remains the imported
+   *  reference for reconciliation and future use. */
+  receivers?: PoolReceiver[];
   /** Policy explanation surfaced as the Eligible % tooltip. Used in exports. */
   recoverability: string;
   review: "Reviewed" | "Review";
