@@ -6,7 +6,7 @@ import { useBuildState, useBuildStore } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 
 export default function BuildOverviewPage() {
-  const { resetAll, clearAll } = useBuildState();
+  const { resetAll } = useBuildState();
   const { downloadExcel, openPdf } = useExport();
 
   async function loadTestSeed() {
@@ -24,14 +24,9 @@ export default function BuildOverviewPage() {
         actions={
           <>
             {import.meta.env.DEV && (
-              <>
-                <Btn kind="ghost" onClick={loadTestSeed} title="Load test-seed.json into the store">
-                  Load test data
-                </Btn>
-                <Btn kind="ghost" onClick={clearAll} title="Clear all data to simulate a fresh import state">
-                  Clear seed
-                </Btn>
-              </>
+              <Btn kind="ghost" onClick={loadTestSeed} title="Load test-seed.json into the store">
+                Load test data
+              </Btn>
             )}
             <Btn kind="ghost" onClick={resetAll} title="Discard edits and re-seed">
               Reset edits

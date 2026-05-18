@@ -8,9 +8,8 @@ import { useBuildState } from "@/lib/store";
 import { aiParseServicesPdf, servicesToExtractionResult } from "@/lib/ai/parseServices";
 
 export default function ServicesPage() {
-  const { positions, services, seedUpstream, clearAll, mergeServices } = useBuildState();
+  const { services, mergeServices } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
-  const missingUpstream = positions.length === 0;
 
   async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     try {
@@ -63,18 +62,10 @@ export default function ServicesPage() {
         subtitle="Hours per instance, role mix."
         actions={
           <>
-            {missingUpstream && (
-              <Btn kind="ghost" onClick={seedUpstream} title="Load sample staffing, operating, and CAP data so unit costs are non-zero">
-                <Icon name="database" size={13}/> Use sample staffing &amp; costs
-              </Btn>
-            )}
             <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
               <Icon name="arrow-up-to-line" size={13}/> Import
             </Btn>
             <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
-            <Btn kind="ghost" onClick={clearAll} title="Clear all data">
-              <Icon name="rotate-ccw" size={13}/> Clear
-            </Btn>
           </>
         }
       />
