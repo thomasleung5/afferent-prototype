@@ -1,15 +1,17 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { FeeScheduleTable } from "@/features/build/FeeScheduleTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
+import { useExport } from "@/features/build/useExport";
 import { aiParseFeesPdf, feesToExtractionResult } from "@/lib/ai/parseFees";
 
 export default function FeeSchedulePage() {
   const { derived, services, mergeFeeSchedule } = useBuildState();
+  const { downloadExcel, openPdf } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
   const comparisons = derived.comparisons;
 
@@ -77,7 +79,7 @@ export default function FeeSchedulePage() {
             <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
               <Icon name="arrow-up-to-line" size={13}/> Import
             </Btn>
-            <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
+            <ExportMenu onDownloadExcel={downloadExcel} onOpenPdf={openPdf}/>
           </>
         }
       />
