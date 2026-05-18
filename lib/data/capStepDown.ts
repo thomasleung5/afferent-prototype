@@ -118,17 +118,20 @@ export function basisForPool(
 // Drivers (department × basis denominators)
 // ---------------------------------------------------------------------------
 
-/** Driver values per department × basis — derived from the Allocation
- *  Bases matrix (lib/data/allocationBases.ts) so that the Allocation
- *  Bases tab and the step-down engine share one source of truth.
+export type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
+
+/** Seed driver values per department × basis — derived from the Allocation
+ *  Bases matrix (lib/data/allocationBases.ts) so the Allocation Bases tab
+ *  and the step-down engine share one source of truth when no pools have
+ *  imported receivers.
  *
  *  Indirect rows are receivers too — a pool sitting on Finance can be
  *  stepped down to City Attorney if Attorney comes later in the sequence.
  *  Departments not present in ALLOCATION_BASIS_ROWS get an empty row. */
-export const DRIVERS: Record<MatrixDeptCode, Partial<Record<BasisKey, number>>> = (() => {
+export const DRIVERS: DriverMatrix = (() => {
   const out = Object.fromEntries(
     ALL_DEPTS.map((d) => [d.code, {}]),
-  ) as Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
+  ) as DriverMatrix;
   for (const row of ALLOCATION_BASIS_ROWS) {
     const code = row.code as MatrixDeptCode;
     if (!(code in out)) continue;
@@ -138,6 +141,62 @@ export const DRIVERS: Record<MatrixDeptCode, Partial<Record<BasisKey, number>>> 
   }
   return out;
 })();
+
+/** Derive a department × basis driver matrix from imported pool receivers.
+ *
+ *  Each receiver carries `units` — the raw allocation-factor count for that
+ *  receiver, lifted from the document's "Allocation Units" column. Receivers
+ *  across pools that share a basis MUST agree on that count (the underlying
+ *  driver is a property of the dept, not the pool), so this function
+ *  populates `out[deptCode][driverKey]` with the first non-zero `units`
+ *  value seen for each (dept, driverKey) pair. Subsequent values are
+ *  ignored — internal inconsistency in the source document is a parse-time
+ *  concern, not something the step-down engine should silently average.
+ *
+ *  Pools with basis "DIRECT" are skipped — DIRECT is a routing rule, not a
+ *  denominator. Receivers missing `units` are skipped — no count, no driver. */
+export function deriveDriversFromReceivers(
+  pools: CapPool[],
+  bases: AllocationBasis[],
+): DriverMatrix {
+  const out = Object.fromEntries(
+    ALL_DEPTS.map((d) => [d.code, {}]),
+  ) as DriverMatrix;
+  for (const p of pools) {
+    if (!p.receivers || p.receivers.length === 0) continue;
+    const { basis: driverKey } = basisForPool(p, bases);
+    if (driverKey === "DIRECT") continue;
+    for (const r of p.receivers) {
+      if (r.deptCode === "OTHER") continue; // OTHER receivers fall outside the matrix
+      if (typeof r.units !== "number" || !Number.isFinite(r.units) || r.units <= 0) continue;
+      const cell = out[r.deptCode];
+      if (!cell) continue;
+      if (cell[driverKey] == null) cell[driverKey] = r.units;
+    }
+  }
+  return out;
+}
+
+/** Overlay `b` on top of `a` — for any (dept, basis) cell `b` provides, the
+ *  value wins. Used to merge derived (imported) drivers onto the seed so
+ *  every cell the user has data for reflects the import while uncovered
+ *  cells keep the seed reference values. */
+export function mergeDriverMatrices(a: DriverMatrix, b: DriverMatrix): DriverMatrix {
+  const out: DriverMatrix = {} as DriverMatrix;
+  for (const d of ALL_DEPTS) {
+    out[d.code] = { ...(a[d.code] ?? {}) };
+  }
+  for (const d of ALL_DEPTS) {
+    const overlay = b[d.code];
+    if (!overlay) continue;
+    for (const [k, v] of Object.entries(overlay)) {
+      if (typeof v === "number" && Number.isFinite(v)) {
+        out[d.code][k as BasisKey] = v;
+      }
+    }
+  }
+  return out;
+}
 
 // ---------------------------------------------------------------------------
 // Step-down compute
@@ -207,6 +266,10 @@ export function computeStepDown(
   pools: CapPool[],
   centerOrder: string[],
   bases: AllocationBasis[],
+  /** Optional driver matrix override. Defaults to the seed DRIVERS built
+   *  from ALLOCATION_BASIS_ROWS; the store layer overlays receiver-derived
+   *  values on top for imported pools. */
+  drivers: DriverMatrix = DRIVERS,
 ): StepDownModel {
   const stepOrder = indirectOrder(centerOrder);
   const directList = DIRECT_DEPTS;
@@ -251,12 +314,12 @@ export function computeStepDown(
       if (basis === "DIRECT") return;
 
       const totalDriver = receivers.reduce(
-        (a, r) => a + (DRIVERS[r.code]?.[basis] ?? 0), 0,
+        (a, r) => a + (drivers[r.code]?.[basis] ?? 0), 0,
       );
       if (totalDriver <= 0) return;
 
       receivers.forEach((r) => {
-        const drv = DRIVERS[r.code]?.[basis] ?? 0;
+        const drv = drivers[r.code]?.[basis] ?? 0;
         if (drv <= 0) return;
         const share = sitting * (drv / totalDriver);
         running[p.id][r.code] += share;

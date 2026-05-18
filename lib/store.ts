@@ -17,7 +17,10 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
-import { computeStepDown } from "@/lib/data/capStepDown";
+import {
+  computeStepDown, deriveDriversFromReceivers, mergeDriverMatrices,
+  DRIVERS, type DriverMatrix,
+} from "@/lib/data/capStepDown";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 import type { ImportBatch, ImportDecision, MappingCandidate, MappingStatus } from "@/lib/import/types";
 
@@ -993,6 +996,11 @@ export interface BuildDerived {
    *  rate ($/hr) reconciles to the pool inventory. The `state.capAllocation`
    *  field is deprecated and no longer read by the fee-study math. */
   capAllocated: Record<DeptCode, number>;
+  /** Effective department × basis driver matrix: the seed DRIVERS table
+   *  with imported per-pool receiver-units overlaid wherever a pool has
+   *  receivers. Source of truth for both the step-down distribution and
+   *  the Allocation Bases display. */
+  capDrivers: DriverMatrix;
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */
@@ -1011,10 +1019,19 @@ export function useBuildState() {
 
     // Per-dept allocated $ is now derived from the step-down engine over
     // the pool inventory — the source of truth. The legacy
-    // state.capAllocation field is no longer load-bearing for FBHR or any
-    // downstream cost calculation; it persists only for backwards
-    // compatibility with stored sessions.
-    const stepDown = computeStepDown(state.capPools, state.capCenterOrder, state.allocationBases);
+    // state.capAllocation field is no longer read by the fee-study math.
+    //
+    // Driver matrix: overlay imported pool.receivers' units on top of the
+    // seed DRIVERS, so the step-down distributes via the document's own
+    // numbers wherever they're available and falls back to seed for any
+    // (dept, basis) cell the receivers don't cover. This makes both the
+    // Pool Allocations matrix and the Allocation Bases display respond
+    // to CAP imports without losing the seed scaffolding.
+    const derivedDrivers = deriveDriversFromReceivers(state.capPools, state.allocationBases);
+    const capDrivers = mergeDriverMatrices(DRIVERS, derivedDrivers);
+    const stepDown = computeStepDown(
+      state.capPools, state.capCenterOrder, state.allocationBases, capDrivers,
+    );
     const capAllocated: Record<DeptCode, number> = {
       PLAN: stepDown.directTotals.PLAN ?? 0,
       BLDG: stepDown.directTotals.BLDG ?? 0,
@@ -1032,7 +1049,7 @@ export function useBuildState() {
       costs, state.services, state.policyTargets, state.policyExceptions,
     );
     const impact = policyImpact(comparisons);
-    return { labor, operatingByDept, fbhr, costs, comparisons, impact, capAllocated };
+    return { labor, operatingByDept, fbhr, costs, comparisons, impact, capAllocated, capDrivers };
   }, [
     state.positions, state.operating,
     state.capPools, state.capCenterOrder, state.allocationBases,

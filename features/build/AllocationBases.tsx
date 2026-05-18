@@ -1,11 +1,13 @@
 ﻿
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
-  ALLOCATION_BASES, ALLOCATION_BASIS_ROWS,
+  ALLOCATION_BASES,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
+import { ALL_DEPTS, INDIRECT_DEPTS, type DriverMatrix } from "@/lib/data/capStepDown";
+import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
   BigFormula, CollapsibleMetadata, MetadataRow,
@@ -16,15 +18,54 @@ interface OpenCell {
   rowCode: string;
 }
 
+/** Set of basis keys ALLOCATION_BASES treats as denominator columns. Used
+ *  to filter the BasisKey union (which also includes "DIRECT") when
+ *  projecting the effective DriverMatrix into BasisRow form. */
+const BASIS_COLUMN_KEYS: ReadonlySet<string> =
+  new Set(ALLOCATION_BASES.map((b) => b.key));
+
+/** Project the effective DriverMatrix into the BasisRow shape the table
+ *  expects. Each ALL_DEPTS entry becomes a row; values are the matching
+ *  driver cells, filtered to the basis-column keys (DIRECT is a routing
+ *  rule, not a denominator). */
+function buildEffectiveBasisRows(drivers: DriverMatrix): BasisRow[] {
+  const indirectSet = new Set<string>(INDIRECT_DEPTS.map((d) => d.code));
+  return ALL_DEPTS.map((d) => {
+    const values: Partial<Record<AllocationBasisKey, number>> = {};
+    for (const [k, v] of Object.entries(drivers[d.code] ?? {})) {
+      if (!BASIS_COLUMN_KEYS.has(k)) continue;
+      if (typeof v === "number" && v !== 0) values[k as AllocationBasisKey] = v;
+    }
+    return {
+      code: d.code,
+      name: d.name,
+      group: indirectSet.has(d.code) ? "indirect" : "direct",
+      values,
+    };
+  });
+}
+
 /** Step 3 of the CAP flow. The department × basis denominator matrix — the
- *  table the city's CAP workbook is actually built around. */
+ *  table the city's CAP workbook is actually built around.
+ *
+ *  Rows are derived from `derived.capDrivers`, which is the seed DRIVERS
+ *  matrix with imported pool.receivers' units overlaid wherever the import
+ *  provides them. So the same view doubles as "this is the CAP's denominator
+ *  catalog" for seeded sessions and "this is what the imported CAP says the
+ *  drivers are" after a parseCap upload. */
 export function AllocationBases() {
+  const { derived } = useBuildState();
+  const rows = useMemo(
+    () => buildEffectiveBasisRows(derived.capDrivers),
+    [derived.capDrivers],
+  );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Matrix openCell={openCell} setOpenCell={setOpenCell}/>
+      <Matrix rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>
       {openCell ? (
         <CellTrace
+          rows={rows}
           basisKey={openCell.basisKey}
           rowCode={openCell.rowCode}
           onClose={() => setOpenCell(null)}
@@ -52,20 +93,21 @@ function colTotal(key: AllocationBasisKey, rows: BasisRow[]): number {
 }
 
 function Matrix({
-  openCell, setOpenCell,
+  rows, openCell, setOpenCell,
 }: {
+  rows: BasisRow[];
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
 }) {
-  const indirect = ALLOCATION_BASIS_ROWS.filter((r) => r.group === "indirect");
-  const direct   = ALLOCATION_BASIS_ROWS.filter((r) => r.group === "direct");
+  const indirect = rows.filter((r) => r.group === "indirect");
+  const direct   = rows.filter((r) => r.group === "direct");
 
   const labelCol = "minmax(220px, 1.8fr)";
   const grid = `40px ${labelCol} ${ALLOCATION_BASES.map(() => "minmax(76px, 1fr)").join(" ")}`;
 
   return (
     <div>
-      <SectionLabel right={`${ALLOCATION_BASIS_ROWS.length} departments · ${ALLOCATION_BASES.length} bases`}>
+      <SectionLabel right={`${rows.length} departments · ${ALLOCATION_BASES.length} bases`}>
         Allocation Bases
       </SectionLabel>
       <div style={{
@@ -120,7 +162,7 @@ function Matrix({
               textTransform: "uppercase", color: "var(--ink-2)",
             }}>Total</div>
             {ALLOCATION_BASES.map((b) => {
-              const t = colTotal(b.key, ALLOCATION_BASIS_ROWS);
+              const t = colTotal(b.key, rows);
               return (
                 <div key={b.key} className="num" style={{
                   textAlign: "right", fontSize: 12,
@@ -242,18 +284,19 @@ function TraceHint() {
 }
 
 function CellTrace({
-  basisKey, rowCode, onClose,
+  rows, basisKey, rowCode, onClose,
 }: {
+  rows: BasisRow[];
   basisKey: AllocationBasisKey;
   rowCode: string;
   onClose: () => void;
 }) {
   const basis = ALLOCATION_BASES.find((b) => b.key === basisKey);
-  const row = ALLOCATION_BASIS_ROWS.find((r) => r.code === rowCode);
+  const row = rows.find((r) => r.code === rowCode);
   if (!basis || !row) return null;
 
   const raw = row.values[basisKey] ?? 0;
-  const total = colTotal(basisKey, ALLOCATION_BASIS_ROWS);
+  const total = colTotal(basisKey, rows);
   const share = total > 0 ? (raw / total) * 100 : 0;
 
   const valueWithUnit = `${formatCell(raw, basis.fmt)} ${basis.unit}`;

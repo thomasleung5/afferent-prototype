@@ -26,12 +26,12 @@ interface OpenCell {
  *  each contributing pool with its basis.
  */
 export function AllocationMatrixByCenter() {
-  const { capPools, capCenterOrder, allocationBases } = useBuildState();
+  const { capPools, capCenterOrder, allocationBases, derived } = useBuildState();
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases),
-    [capPools, capCenterOrder, allocationBases],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
+    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
   );
 
   // Final placement only — indirect depts have been closed via step-down.

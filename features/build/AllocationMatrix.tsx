@@ -4,7 +4,7 @@ import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import {
   ALL_DEPTS, DIRECT_DEPTS, INDIRECT_DEPTS,
-  basisForPool, computeStepDown, DRIVERS,
+  basisForPool, computeStepDown,
   type MatrixDept, type MatrixDeptCode,
 } from "@/lib/data/capStepDown";
 import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
@@ -29,13 +29,13 @@ interface OpenCell {
  *  driver inputs, and the step-by-step contributions that produced the value.
  */
 export function AllocationMatrix() {
-  const { capPools, capCenterOrder, allocationBases } = useBuildState();
+  const { capPools, capCenterOrder, allocationBases, derived } = useBuildState();
   const [view, setView] = useState<View>("final");
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases),
-    [capPools, capCenterOrder, allocationBases],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
+    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
   );
 
   // Initial view shows every dept (pools sit on home indirect); Final shows
@@ -293,7 +293,7 @@ function CellTrace({
   model: ReturnType<typeof computeStepDown>;
   onClose: () => void;
 }) {
-  const { capPools, allocationBases } = useBuildState();
+  const { capPools, allocationBases, derived } = useBuildState();
   const pool = capPools.find((p) => p.id === poolId);
   const dept = ALL_DEPTS.find((d) => d.code === deptCode);
   if (!pool || !dept) return null;
@@ -305,12 +305,13 @@ function CellTrace({
   const cellValue = view === "initial" ? initialValue : finalValue;
 
   // Driver values across all receiving depts for this pool's basis. These
-  // are the denominators every direct-dept share is built from.
+  // are the denominators every direct-dept share is built from — pulled
+  // from derived.capDrivers so receiver-imported values override the seed.
   const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
   const driverByDept = isDirectCharge
     ? {} as Record<MatrixDeptCode, number>
     : Object.fromEntries(
-        ALL_DEPTS.map((d) => [d.code, DRIVERS[d.code]?.[basis] ?? 0]),
+        ALL_DEPTS.map((d) => [d.code, derived.capDrivers[d.code]?.[basis] ?? 0]),
       ) as Record<MatrixDeptCode, number>;
   const driverTotal = isDirectCharge
     ? 0

@@ -23,8 +23,8 @@ export function CapSummary() {
   // (model.alloc2[poolId][deptCode]); the per-dept totals come from
   // derived.capAllocated, which is sourced from the same step-down model.
   const model = useMemo(
-    () => computeStepDown(capPools, capCenterOrder, allocationBases),
-    [capPools, capCenterOrder, allocationBases],
+    () => computeStepDown(capPools, capCenterOrder, allocationBases, derived.capDrivers),
+    [capPools, capCenterOrder, allocationBases, derived.capDrivers],
   );
 
   const rows: DeptSummaryRow[] = ORDER.map((d) => {
