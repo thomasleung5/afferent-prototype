@@ -86,6 +86,7 @@ export function OperatingTable() {
       key: "code",
       label: "Fund-Program",
       width: "110px",
+      sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <CellInput
@@ -99,6 +100,7 @@ export function OperatingTable() {
       key: "line",
       label: "Line item",
       width: "minmax(220px, 1.6fr)",
+      sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <div style={{
@@ -122,6 +124,7 @@ export function OperatingTable() {
       key: "dept",
       label: "Dept",
       width: "110px",
+      sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           {r.dept === "SHARED:CDS" ? <SharedChip/> : (
@@ -138,6 +141,7 @@ export function OperatingTable() {
       key: "category",
       label: "Category",
       width: "170px",
+      sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <CellSelect
@@ -153,6 +157,7 @@ export function OperatingTable() {
       label: "Amount",
       width: "110px",
       align: "right",
+      sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <CellInput
