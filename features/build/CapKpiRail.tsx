@@ -2,6 +2,7 @@
 import { KpiTile, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
+import type { CapStepDownMethod } from "@/lib/data/capStepDown";
 import { defaultCenterOrder, useBuildState } from "@/lib/store";
 
 /** Reduce pools → centers (name, total $, pool count). Stable ordering comes
@@ -73,12 +74,19 @@ export function CapKpiRail() {
  *  up/down reorder buttons. Order is persisted in `capCenterOrder` and used
  *  by the downstream step-down engine. */
 export function StepDownSequence() {
-  const { capPools, capCenterOrder, moveCenter } = useBuildState();
+  const { capPools, capCenterOrder, capStepDownMethod, setCapStepDownMethod, moveCenter } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
     <div>
-      <SectionLabel right={`${centers.length} indirect cost centers`}>
+      <SectionLabel
+        right={
+          <MethodToggle
+            value={capStepDownMethod}
+            onChange={setCapStepDownMethod}
+          />
+        }
+      >
         Step-down sequence
       </SectionLabel>
       <div style={{ background: "var(--paper)", border: "1px solid var(--rule)" }}>
@@ -120,6 +128,68 @@ export function StepDownSequence() {
         })}
       </div>
       </div>
+    </div>
+  );
+}
+
+function MethodToggle({
+  value,
+  onChange,
+}: {
+  value: CapStepDownMethod;
+  onChange: (method: CapStepDownMethod) => void;
+}) {
+  const options: { value: CapStepDownMethod; label: string; title: string }[] = [
+    {
+      value: "step-down",
+      label: "Step-down",
+      title: "Sequential elimination: each center allocates to later indirect centers and direct departments.",
+    },
+    {
+      value: "double-step-down",
+      label: "Double step-down",
+      title: "First allocate to other indirect and direct receivers, then re-allocate indirect receipts to direct departments.",
+    },
+  ];
+  return (
+    <div
+      role="radiogroup"
+      aria-label="CAP allocation method"
+      style={{
+        display: "inline-flex",
+        alignItems: "center",
+        border: "1px solid var(--rule)",
+        background: "var(--paper)",
+      }}
+    >
+      {options.map((option) => {
+        const selected = value === option.value;
+        return (
+          <button
+            key={option.value}
+            type="button"
+            role="radio"
+            aria-checked={selected}
+            title={option.title}
+            onClick={() => onChange(option.value)}
+            style={{
+              border: "none",
+              borderLeft: option.value === options[0].value ? "none" : "1px solid var(--rule)",
+              background: selected ? "var(--ink)" : "transparent",
+              color: selected ? "var(--paper)" : "var(--ink-3)",
+              cursor: "pointer",
+              padding: "4px 9px",
+              fontFamily: "var(--ff-ui)",
+              fontSize: 11,
+              fontWeight: 600,
+              lineHeight: 1.2,
+              whiteSpace: "nowrap",
+            }}
+          >
+            {option.label}
+          </button>
+        );
+      })}
     </div>
   );
 }

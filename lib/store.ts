@@ -20,7 +20,7 @@ import {
 import {
   computeStepDown, deriveDriversFromReceivers, mergeDriverMatrices,
   DRIVERS, CENTER_NAME_TO_CODE, type DriverMatrix,
-  type CenterCodeResolver, type StepDownModel,
+  type CenterCodeResolver, type StepDownModel, type CapStepDownMethod,
 } from "@/lib/data/capStepDown";
 import {
   buildReceiverRegistry, receiverGlCodeToMatrixCode,
@@ -75,6 +75,7 @@ interface BuildState {
   lineage: Record<string, SourceLineage>;
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
+  capStepDownMethod: CapStepDownMethod;
   imports: BuildImportLog[];
 }
 
@@ -130,6 +131,7 @@ interface BuildActions {
     unmappedBases: UnmappedRow[];
   };
   moveCenter: (name: string, direction: "up" | "down") => void;
+  setCapStepDownMethod: (method: CapStepDownMethod) => void;
   resetAll: () => void;
   clearAll: () => void;
   seedUpstream: () => void;
@@ -173,6 +175,7 @@ const initialState = (): BuildState => {
     lineage: {},
     pendingReview: { ...emptyPending },
     capCenterOrder: defaultCenterOrder(pools),
+    capStepDownMethod: "step-down",
     imports: [],
   };
 };
@@ -679,6 +682,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return { capCenterOrder: next };
         }),
 
+      setCapStepDownMethod: (method) =>
+        set({ capStepDownMethod: method }),
+
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -703,6 +709,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
+          capStepDownMethod: "step-down",
         });
       },
 
@@ -729,6 +736,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           lineage: {},
           pendingReview: { ...emptyPending },
           capCenterOrder: [],
+          capStepDownMethod: "step-down",
           imports: [],
         });
       },
@@ -740,6 +748,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
         }
+        if (!state.capStepDownMethod) state.capStepDownMethod = "step-down";
         // Backfill for state persisted before glCode / studyContext existed.
         if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
@@ -887,7 +896,7 @@ export function useBuildState() {
 
     const stepDown = computeStepDown(
       state.capPools, state.capCenterOrder, state.allocationBases,
-      capDrivers, centerResolver,
+      capDrivers, centerResolver, state.capStepDownMethod,
     );
     const capAllocated: Record<DeptCode, number> = {
       PLAN: stepDown.directTotals.PLAN ?? 0,
@@ -914,7 +923,7 @@ export function useBuildState() {
   }, [
     state.positions, state.operating,
     state.capPools, state.capCenterOrder, state.allocationBases,
-    state.capCenterGlCodes, state.studyContext,
+    state.capCenterGlCodes, state.studyContext, state.capStepDownMethod,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 

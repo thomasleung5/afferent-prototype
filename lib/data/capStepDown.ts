@@ -23,6 +23,8 @@ import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 // AllocationBasis (also in types.ts) can reference them without a cycle.
 export type { BasisKey, MatrixDeptCode };
 
+export type CapStepDownMethod = "step-down" | "double-step-down";
+
 // ---------------------------------------------------------------------------
 // Departments (matrix-only)
 // ---------------------------------------------------------------------------
@@ -274,6 +276,8 @@ export interface StepDownModel {
     /** Eligible $ that fell out of the matrix (no basis denominator match). */
     leakage: number;
   }>;
+  /** Allocation methodology used to build this model. */
+  method: CapStepDownMethod;
 }
 
 /** Translate the user's center-name order (see BuildContext.capCenterOrder)
@@ -316,6 +320,10 @@ export function computeStepDown(
    *  name map; the store wraps this to prefer the center's glCode (which
    *  is robust across non-LAH documents whose center names won't match). */
   resolveCenterCode: CenterCodeResolver = defaultCenterResolver,
+  /** Sequential step-down is the legacy default. Double step-down mirrors
+   *  CAP schedules that publish a first allocation to other indirect/direct
+   *  receivers, then a second allocation of indirect receipts to directs. */
+  method: CapStepDownMethod = "step-down",
 ): StepDownModel {
   const stepOrder = indirectOrder(centerOrder);
   const directList = DIRECT_DEPTS;
@@ -349,38 +357,70 @@ export function computeStepDown(
 
   const contributions: StepContribution[] = [];
 
-  stepOrder.forEach((I, i) => {
-    const remainingIndirects = stepOrder.slice(i + 1);
-    const receivers: MatrixDept[] = [...remainingIndirects, ...directList];
+  const pushSitting = (
+    p: CapPool,
+    from: MatrixDept,
+    receivers: MatrixDept[],
+    stepIndex: number,
+  ) => {
+    const sitting = running[p.id][from.code];
+    if (sitting <= 0) return;
+    const { basis } = basisForPool(p, bases);
+    if (basis === "DIRECT") return;
 
-    pools.forEach((p) => {
-      const sitting = running[p.id][I.code];
-      if (sitting <= 0) return;
-      const { basis } = basisForPool(p, bases);
-      if (basis === "DIRECT") return;
+    const totalDriver = receivers.reduce(
+      (a, r) => a + (drivers[r.code]?.[basis] ?? 0),
+      0,
+    );
+    if (totalDriver <= 0) return;
 
-      const totalDriver = receivers.reduce(
-        (a, r) => a + (drivers[r.code]?.[basis] ?? 0), 0,
-      );
-      if (totalDriver <= 0) return;
-
-      receivers.forEach((r) => {
-        const drv = drivers[r.code]?.[basis] ?? 0;
-        if (drv <= 0) return;
-        const share = sitting * (drv / totalDriver);
-        running[p.id][r.code] += share;
-        contributions.push({
-          poolId: p.id,
-          fromCode: I.code,
-          fromName: I.name,
-          stepIndex: i + 1,
-          amount: share,
-          toCode: r.code,
-        });
+    receivers.forEach((r) => {
+      const drv = drivers[r.code]?.[basis] ?? 0;
+      if (drv <= 0) return;
+      const share = sitting * (drv / totalDriver);
+      running[p.id][r.code] += share;
+      contributions.push({
+        poolId: p.id,
+        fromCode: from.code,
+        fromName: from.name,
+        stepIndex,
+        amount: share,
+        toCode: r.code,
       });
-      running[p.id][I.code] = 0;
     });
-  });
+    running[p.id][from.code] = 0;
+  };
+
+  if (method === "double-step-down") {
+    // First allocation: each pool's original eligible amount moves from its
+    // home center to every other indirect center plus direct departments.
+    pools.forEach((p) => {
+      const homeCode = resolveCenterCode(p.center);
+      const home = homeCode ? INDIRECT_DEPTS.find((d) => d.code === homeCode) : undefined;
+      if (!home) return;
+      const receivers: MatrixDept[] = [
+        ...INDIRECT_DEPTS.filter((d) => d.code !== home.code),
+        ...directList,
+      ];
+      pushSitting(p, home, receivers, 1);
+    });
+
+    // Second allocation: indirect receipts are closed to direct departments.
+    stepOrder.forEach((I, i) => {
+      pools.forEach((p) => {
+        pushSitting(p, I, directList, i + 2);
+      });
+    });
+  } else {
+    stepOrder.forEach((I, i) => {
+      const remainingIndirects = stepOrder.slice(i + 1);
+      const receivers: MatrixDept[] = [...remainingIndirects, ...directList];
+
+      pools.forEach((p) => {
+        pushSitting(p, I, receivers, i + 1);
+      });
+    });
+  }
 
   const alloc2 = running;
 
@@ -411,5 +451,5 @@ export function computeStepDown(
     };
   });
 
-  return { alloc1, alloc2, stepOrder, contributions, directTotals, byPool };
+  return { alloc1, alloc2, stepOrder, contributions, directTotals, byPool, method };
 }
