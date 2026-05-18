@@ -1,5 +1,5 @@
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { ServicesTable } from "@/features/build/ServicesTable";
@@ -10,18 +10,9 @@ import { aiParseServicesPdf, servicesToExtractionResult } from "@/lib/ai/parseSe
 export default function ServicesPage() {
   const { positions, services, seedUpstream, clearAll, mergeServices } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pasteStatus, setPasteStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
   const missingUpstream = positions.length === 0;
 
-  async function uploadPdfToClaude(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setPdfStatus(null);
-    setPdfLoading(true);
+  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     try {
       const catalog = services.map((s) => ({ name: s.name, dept: s.dept }));
       const result = await aiParseServicesPdf(file, catalog);
@@ -29,23 +20,19 @@ export default function ServicesPage() {
       const extraction = servicesToExtractionResult(result.services, services, file.name);
       const applied = mergeServices(extraction, file.name);
       const total = applied.mapped + applied.duplicates + applied.lowConfidence;
-      setPdfStatus({ ok: true, message: `${total} service${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} new, ${applied.duplicates} updated).` });
+      return {
+        ok: true,
+        message: `${total} service${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} new, ${applied.duplicates} updated).`,
+      };
     } catch (err) {
-      setPdfStatus({ ok: false, message: err instanceof Error ? err.message : "PDF parsing failed." });
-    } finally {
-      setPdfLoading(false);
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "PDF parsing failed.",
+      };
     }
   }
 
-  async function pasteFromClipboard() {
-    setPasteStatus(null);
-    let text: string;
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {
-      setPasteStatus({ ok: false, message: "Clipboard access denied — try Ctrl+C then paste again." });
-      return;
-    }
+  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
@@ -56,9 +43,15 @@ export default function ServicesPage() {
       const extraction = servicesToExtractionResult(parsed.services as any, services, "clipboard");
       const applied = mergeServices(extraction, "clipboard");
       const total = applied.mapped + applied.duplicates + applied.lowConfidence;
-      setPasteStatus({ ok: true, message: `${total} service${total === 1 ? "" : "s"} imported (${applied.mapped} new, ${applied.duplicates} updated).` });
+      return {
+        ok: true,
+        message: `${total} service${total === 1 ? "" : "s"} imported (${applied.mapped} new, ${applied.duplicates} updated).`,
+      };
     } catch (err) {
-      setPasteStatus({ ok: false, message: err instanceof Error ? err.message : "Failed to parse JSON." });
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Failed to parse JSON.",
+      };
     }
   }
 
@@ -86,61 +79,6 @@ export default function ServicesPage() {
         }
       />
 
-      <input
-        ref={pdfInputRef}
-        type="file"
-        accept=".pdf"
-        style={{ display: "none" }}
-        onChange={uploadPdfToClaude}
-      />
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-      }}>
-        <Btn kind="ghost" onClick={() => pdfInputRef.current?.click()} disabled={pdfLoading}>
-          <Icon name="sparkles" size={13}/> {pdfLoading ? "Sending to Claude…" : "Upload PDF via Claude"}
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          {pdfLoading
-            ? "Claude is reading the PDF — check the terminal for progress"
-            : "Send a prior fee study or cost-of-service PDF — Claude extracts service names, hours, volume, and fees"}
-        </span>
-        {pdfStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pdfStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pdfStatus.message}
-          </span>
-        )}
-      </div>
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-        borderTop: "none",
-      }}>
-        <Btn kind="ghost" onClick={pasteFromClipboard}>
-          Paste JSON from clipboard
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          Paste the <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{"{ services: [...] }"}</code> output from an LLM
-        </span>
-        {pasteStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pasteStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pasteStatus.message}
-          </span>
-        )}
-      </div>
-
       <ServicesTable/>
 
       <PageImportDrawer
@@ -152,6 +90,10 @@ export default function ServicesPage() {
         formats="xlsx, csv, fee study pdf"
         forceType="prior_fee_study"
         schema="Service name, dept, hours per instance, volume, current fee."
+        aiPdfHelper="Send a prior fee study or cost-of-service PDF — Claude extracts service names, hours, volume, and fees"
+        onAiPdfImport={uploadPdfToClaude}
+        pasteExample="{ services: [...] }"
+        onPasteJson={pasteJson}
       />
     </Page>
   );
