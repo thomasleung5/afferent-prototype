@@ -165,6 +165,7 @@ export function PositionsTable() {
       label: "Source",
       width: "100px",
       align: "right",
+      sortable: true,
       render: () => <SourcePill>Imported</SourcePill>,
     },
   ];
