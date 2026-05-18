@@ -1,5 +1,5 @@
 
-import { useRef, useState } from "react";
+import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { LaborSummary } from "@/features/build/LaborSummary";
@@ -11,40 +11,27 @@ import { aiParseSalaryPdf, salaryToExtractionResult } from "@/lib/ai/parseSalary
 export default function DirectLaborPage() {
   const { mergePositions } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
-  const [pdfStatus, setPdfStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const [pdfLoading, setPdfLoading] = useState(false);
-  const [pasteStatus, setPasteStatus] = useState<{ ok: boolean; message: string } | null>(null);
-  const pdfInputRef = useRef<HTMLInputElement>(null);
 
-  async function uploadPdfToClaude(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    e.target.value = "";
-    setPdfStatus(null);
-    setPdfLoading(true);
+  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
     try {
       const result = await aiParseSalaryPdf(file);
       if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
       const extraction = salaryToExtractionResult(result.positions, file.name);
       const applied = mergePositions(extraction, file.name);
       const total = applied.mapped + applied.lowConfidence;
-      setPdfStatus({ ok: true, message: `${total} position${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} accepted, ${applied.lowConfidence} for review).` });
+      return {
+        ok: true,
+        message: `${total} position${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} accepted, ${applied.lowConfidence} for review).`,
+      };
     } catch (err) {
-      setPdfStatus({ ok: false, message: err instanceof Error ? err.message : "PDF parsing failed." });
-    } finally {
-      setPdfLoading(false);
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "PDF parsing failed.",
+      };
     }
   }
 
-  async function pasteFromClipboard() {
-    setPasteStatus(null);
-    let text: string;
-    try {
-      text = await navigator.clipboard.readText();
-    } catch {
-      setPasteStatus({ ok: false, message: "Clipboard access denied — try Ctrl+C then paste again." });
-      return;
-    }
+  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
     try {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
@@ -55,9 +42,15 @@ export default function DirectLaborPage() {
       const extraction = salaryToExtractionResult(parsed.positions as any, "clipboard");
       const applied = mergePositions(extraction, "clipboard");
       const total = applied.mapped + applied.lowConfidence;
-      setPasteStatus({ ok: true, message: `${total} position${total === 1 ? "" : "s"} imported (${applied.mapped} accepted, ${applied.lowConfidence} for review).` });
+      return {
+        ok: true,
+        message: `${total} position${total === 1 ? "" : "s"} imported (${applied.mapped} accepted, ${applied.lowConfidence} for review).`,
+      };
     } catch (err) {
-      setPasteStatus({ ok: false, message: err instanceof Error ? err.message : "Failed to parse JSON." });
+      return {
+        ok: false,
+        message: err instanceof Error ? err.message : "Failed to parse JSON.",
+      };
     }
   }
 
@@ -77,61 +70,6 @@ export default function DirectLaborPage() {
         }
       />
 
-      <input
-        ref={pdfInputRef}
-        type="file"
-        accept=".pdf"
-        style={{ display: "none" }}
-        onChange={uploadPdfToClaude}
-      />
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-      }}>
-        <Btn kind="ghost" onClick={() => pdfInputRef.current?.click()} disabled={pdfLoading}>
-          <Icon name="sparkles" size={13}/> {pdfLoading ? "Sending to Claude…" : "Upload PDF via Claude"}
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          {pdfLoading
-            ? "Claude is reading the PDF — check the terminal for progress"
-            : "Send a salary roster or personnel budget PDF — Claude extracts title, dept, FTE, salary, and benefits"}
-        </span>
-        {pdfStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pdfStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pdfStatus.message}
-          </span>
-        )}
-      </div>
-
-      <div style={{
-        display: "flex", alignItems: "center", gap: 12,
-        padding: "14px 16px",
-        background: "var(--paper)", border: "1px solid var(--rule)",
-        borderTop: "none",
-      }}>
-        <Btn kind="ghost" onClick={pasteFromClipboard}>
-          Paste JSON from clipboard
-        </Btn>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          Paste the <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{"{ positions: [...] }"}</code> output from an LLM
-        </span>
-        {pasteStatus && (
-          <span style={{
-            marginLeft: "auto", fontSize: 12,
-            color: pasteStatus.ok ? "var(--pos)" : "var(--warn)",
-            fontWeight: 500,
-          }}>
-            {pasteStatus.message}
-          </span>
-        )}
-      </div>
-
       <LaborSummary/>
 
       <PositionsTable/>
@@ -145,6 +83,10 @@ export default function DirectLaborPage() {
         formats="xlsx, csv, pdf budget exports"
         forceType="salary_roster"
         schema="Position title, dept, FTE, salary, benefits, productive hours."
+        aiPdfHelper="Send a salary roster or personnel budget PDF — Claude extracts title, dept, FTE, salary, and benefits"
+        onAiPdfImport={uploadPdfToClaude}
+        pasteExample="{ positions: [...] }"
+        onPasteJson={pasteJson}
       />
     </Page>
   );
