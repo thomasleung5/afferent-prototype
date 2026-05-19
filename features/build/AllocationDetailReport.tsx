@@ -491,7 +491,10 @@ function PoolHeader({
   );
 }
 
-const COL_GRID = "minmax(220px, 1.6fr) 80px 90px 100px 100px 100px 100px 100px";
+// First / Second / Total columns share the 120px width used by the
+// Costs to be Allocated table above so the two schedules line up
+// visually when stacked.
+const COL_GRID = "minmax(220px, 1.6fr) 80px 90px 100px 100px 120px 120px 120px";
 
 function ColumnHeaders() {
   return (
