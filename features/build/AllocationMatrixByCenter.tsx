@@ -47,8 +47,32 @@ export function AllocationMatrixByCenter() {
   }, [model.nodes]);
   const allocSrc = model.alloc2;
 
+  // Fixed pixel widths on the frozen columns (Center / Pools / Row total)
+  // are required so position: sticky knows where to pin each cell. fr-based
+  // widths can't be expressed as a sticky `left` offset.
+  const CENTER_W = 240;          // px — frozen left, column 1
+  const POOLS_W  = 96;           // px — frozen left, column 2
+  const ROW_TOTAL_W = 100;       // px — frozen right
+  const ROW_PAD  = 14;           // px — left/right padding inside each row
+  const COL_GAP  = 8;            // px — gap between grid tracks
   const grid =
-    `minmax(220px, 2.2fr) 96px 96px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} 100px`;
+    `${CENTER_W}px ${POOLS_W}px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} ${ROW_TOTAL_W}px`;
+
+  // Sticky offsets are set to each cell's NATURAL left/right position so the
+  // cell pins in place without sliding when horizontal scroll starts.
+  // Col 1 natural left = ROW_PAD. Col 2 natural left = ROW_PAD + CENTER_W +
+  // COL_GAP. Row-total natural right = ROW_PAD.
+  // Body rows use --paper, header + footer use --paper-2; z-index sits above
+  // non-sticky cells so they don't bleed through when scrolled.
+  const STICKY_L1 = ROW_PAD;
+  const STICKY_L2 = ROW_PAD + CENTER_W + COL_GAP;
+  const STICKY_R  = ROW_PAD;
+  const stickyLeft1Body = { position: "sticky" as const, left: STICKY_L1, zIndex: 2, background: "var(--paper)" };
+  const stickyLeft2Body = { position: "sticky" as const, left: STICKY_L2, zIndex: 2, background: "var(--paper)" };
+  const stickyRightBody = { position: "sticky" as const, right: STICKY_R, zIndex: 2, background: "var(--paper)" };
+  const stickyLeft1Band = { position: "sticky" as const, left: STICKY_L1, zIndex: 3, background: "var(--paper-2)" };
+  const stickyLeft2Band = { position: "sticky" as const, left: STICKY_L2, zIndex: 3, background: "var(--paper-2)" };
+  const stickyRightBand = { position: "sticky" as const, right: STICKY_R, zIndex: 3, background: "var(--paper-2)" };
 
   const poolsByCenter = useMemo(() => {
     const m = new Map<string, typeof capPools>();
@@ -59,11 +83,6 @@ export function AllocationMatrixByCenter() {
     }
     return m;
   }, [capPools]);
-
-  const centerAmount = (center: string): number =>
-    (poolsByCenter.get(center) ?? []).reduce(
-      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
-    );
 
   const centerCell = (center: string, nodeKey: NodeKey): number =>
     (poolsByCenter.get(center) ?? []).reduce(
@@ -77,7 +96,6 @@ export function AllocationMatrixByCenter() {
   const colTotal = (nodeKey: NodeKey): number =>
     capPools.reduce((a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0), 0);
 
-  const totalCap = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
   const grandTotal = capCenterOrder.reduce((a, c) => a + centerRowTotal(c), 0);
 
   return (
@@ -93,16 +111,15 @@ export function AllocationMatrixByCenter() {
         <div style={{ minWidth: 960 }}>
           {/* Header */}
           <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 8,
-            padding: "10px 14px",
+            display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
+            padding: `10px ${ROW_PAD}px`,
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule-strong)",
             fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
             letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
-            <div>Center</div>
-            <div style={{ textAlign: "right" }}>Allocable $</div>
-            <div>Pools</div>
+            <div style={stickyLeft1Band}>Center</div>
+            <div style={stickyLeft2Band}>Pools</div>
             {cols.map((n) => (
               <div key={n.key} title={n.glCode} style={{
                 textAlign: "right", color: "var(--ink-2)",
@@ -119,7 +136,7 @@ export function AllocationMatrixByCenter() {
                 }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
               </div>
             ))}
-            <div style={{ textAlign: "right" }}>Row total</div>
+            <div style={{ ...stickyRightBand, textAlign: "right" }}>Row total</div>
           </div>
 
           {/* Rows — one per cost center (aggregates pools within the center) */}
@@ -127,18 +144,17 @@ export function AllocationMatrixByCenter() {
             const pools = poolsByCenter.get(center) ?? [];
             if (pools.length === 0) return null;
             const rt = centerRowTotal(center);
-            const amt = centerAmount(center);
             const isLast = i === capCenterOrder.length - 1;
             return (
               <div key={center} style={{
-                display: "grid", gridTemplateColumns: grid, gap: 8,
-                padding: "7px 14px",
+                display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
+                padding: `7px ${ROW_PAD}px`,
                 borderBottom: isLast ? "none" : "1px solid var(--rule)",
                 alignItems: "center",
                 fontFamily: "var(--ff-mono)",
                 fontVariantNumeric: "tabular-nums",
               }}>
-                <div style={{ fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
+                <div style={{ ...stickyLeft1Body, fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
                   <div style={{ fontWeight: 500 }}>
                     {glCodeByCenter.get(center) && (
                       <span className="mono" style={{
@@ -149,10 +165,8 @@ export function AllocationMatrixByCenter() {
                     {center}
                   </div>
                 </div>
-                <div className="num" style={{ textAlign: "right", fontSize: 12 }}>
-                  {fmt.dollarsK(amt)}
-                </div>
                 <div className="mono" style={{
+                  ...stickyLeft2Body,
                   fontSize: 10.5, color: "var(--ink-3)",
                   letterSpacing: "0.04em",
                 }}>{pools.length} pool{pools.length === 1 ? "" : "s"}</div>
@@ -182,6 +196,7 @@ export function AllocationMatrixByCenter() {
                   );
                 })}
                 <div className="num" style={{
+                  ...stickyRightBody,
                   textAlign: "right", fontSize: 12,
                 }}>{fmt.dollarsK(rt)}</div>
               </div>
@@ -190,8 +205,8 @@ export function AllocationMatrixByCenter() {
 
           {/* Column totals */}
           <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 8,
-            padding: "11px 14px",
+            display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
+            padding: `11px ${ROW_PAD}px`,
             background: "var(--paper-2)",
             borderTop: "2px solid var(--ink)",
             alignItems: "center",
@@ -199,13 +214,11 @@ export function AllocationMatrixByCenter() {
             fontVariantNumeric: "tabular-nums",
           }}>
             <div className="mono" style={{
+              ...stickyLeft1Band,
               fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase",
             }}>Column total</div>
-            <div className="num" style={{ textAlign: "right", fontSize: 12.5 }}>
-              {fmt.dollarsK(totalCap)}
-            </div>
-            <div/>
+            <div style={stickyLeft2Band}/>
             {cols.map((n) => {
               const t = colTotal(n.key);
               const zero = t < 0.5;
@@ -217,6 +230,7 @@ export function AllocationMatrixByCenter() {
               );
             })}
             <div className="num" style={{
+              ...stickyRightBand,
               textAlign: "right", fontSize: 13,
             }}>{fmt.dollarsK(grandTotal)}</div>
           </div>
