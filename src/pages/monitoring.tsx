@@ -204,7 +204,10 @@ export default function RevenueMonitoringPage() {
       render: (r) => r.actionHref ? (
         <Link to={r.actionHref} style={{
           fontSize: 12, color: "var(--accent)",
-          textDecoration: "underline", textUnderlineOffset: 3,
+          display: "inline-block",
+          borderBottom: "1px solid var(--accent)",
+          paddingBottom: 1,
+          textDecoration: "none",
         }}>
           {r.action} →
         </Link>
@@ -385,7 +388,10 @@ export default function RevenueMonitoringPage() {
                   {a.nextHref ? (
                     <Link to={a.nextHref} style={{
                       fontSize: 12, color: "var(--accent)",
-                      textDecoration: "underline", textUnderlineOffset: 3,
+                      display: "inline-block",
+                      borderBottom: "1px solid var(--accent)",
+                      paddingBottom: 1,
+                      textDecoration: "none",
                     }}>
                       {a.nextStep} →
                     </Link>
