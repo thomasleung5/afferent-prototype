@@ -1,15 +1,26 @@
 /* glCode-native CAP step-down engine.
  *
- * Successor to the MatrixDeptCode-keyed engine in capStepDown.ts. The graph
- * is built directly out of glCodes: one indirect node per cost center
- * (identified by capCenterGlCodes[center], else a synth seed:center:* key)
- * plus one direct node per imported PLAN/BLDG/ENG-classified receiver glCode
- * (or a synth seed:dept:* node when no imports cover a fee dept).
+ * STRICT glCode routing: every allocation flow routes through a node.key
+ * (which IS the node's glCode). deptCode survives ONLY as classification
+ * metadata — it never determines a routing destination:
+ *   - feeDept tags direct nodes for FBHR roll-up (sum by classification).
+ *   - classification labels nodes for display / debug.
+ *   - DRIVERS values seed driver units onto synth nodes at INIT TIME — at
+ *     RUN time the engine reads `drivers[node.key]`, never by deptCode.
  *
- * DeptCode survives only as a classification helper to (a) decide direct vs
- * indirect role and (b) feed FBHR — it never appears inside the engine math.
- *
- * Behind useGlCodeEngine flag until matrix tabs + traces switch over. */
+ * Routing rules:
+ *   - Imported direct receiver → real glCode is the node.key.
+ *   - Imported indirect center → imported glCode (or synth seed:center:*
+ *     for centers that never had a glCode imported) is the node.key.
+ *   - Synth direct nodes for PLAN/BLDG/ENG are created so the seed CAP
+ *     state has somewhere to land before any import — they hold seeded
+ *     DRIVERS values used by the driver-unit fallback path for pools
+ *     without imported receivers. Their node.key is a stable synth glCode
+ *     (seed:dept:PLAN etc.).
+ *   - DIRECT-basis pools route ONLY via their imported receivers list
+ *     (each receiver has a glCode). No deptCode-derived fallback — if a
+ *     DIRECT pool has no valid receiver glCode, its eligible $ leaks and
+ *     the pool is surfaced in model.diagnostics for review tooling. */
 
 import type {
   AllocationBasis, BasisKey, CapPool, DeptCode, MatrixDeptCode, PoolReceiver,
@@ -22,7 +33,12 @@ import type { ReceiverEntry } from "./capReceiverRegistry";
 const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
 const seedCenterKey = (centerName: string) => `seed:center:${centerName}`;
-const seedDeptKey   = (deptCode: DeptCode | MatrixDeptCode) => `seed:dept:${deptCode}`;
+/** Stable synth glCode used for PLAN/BLDG/ENG direct nodes when no
+ *  imported receiver covers a fee dept. These nodes exist to hold seeded
+ *  DRIVERS values for the driver-unit fallback; they are NOT a routing
+ *  fallback in the deptCode sense — the engine routes via node.key
+ *  (the synth glCode). */
+const seedDeptKey = (deptCode: DeptCode) => `seed:dept:${deptCode}`;
 
 // ---------------------------------------------------------------------------
 // Types
@@ -36,10 +52,11 @@ export interface GlNode {
   glCode: string;
   name: string;
   role: "indirect" | "direct";
-  /** PLAN/BLDG/ENG when role = direct; used by FBHR roll-up. */
+  /** PLAN/BLDG/ENG when role = direct; classification metadata used by
+   *  FBHR roll-up (sum direct totals by feeDept). Never used for routing
+   *  decisions inside the engine. */
   feeDept?: DeptCode;
-  /** Underlying MatrixDeptCode classification; used only for display + the
-   *  seed-fallback resolution. The engine never branches on it. */
+  /** Underlying MatrixDeptCode classification — display/debug only. */
   classification?: MatrixDeptCode | "OTHER";
 }
 
@@ -48,11 +65,23 @@ export type GlDriverMatrix = Record<NodeKey, Partial<Record<BasisKey, number>>>;
 export interface GlEngineGraph {
   nodes: GlNode[];
   drivers: GlDriverMatrix;
-  /** centerName → indirect node key. */
+  /** centerName → indirect node key. The only resolver the engine needs
+   *  — DIRECT pools no longer have a deptCode-based resolver; they route
+   *  via their imported receivers list (each receiver has a glCode). */
   resolveCenterNode: (centerName: string) => NodeKey | undefined;
-  /** direct routing for DIRECT-basis pools. Returns the first direct node
-   *  for the requested fee dept, or undefined for non-fee depts. */
-  resolveDirectNode: (deptCode: MatrixDeptCode) => NodeKey | undefined;
+}
+
+/** Per-pool diagnostic surfaced when the engine can't route a pool's
+ *  eligible $ to any node — typically a DIRECT pool whose receivers
+ *  list is empty or all-zero-glCode. Review tooling can render these
+ *  for the user to fix. */
+export interface PoolDiagnostic {
+  poolId: string;
+  center: string;
+  pool: string;
+  kind: "no-receivers" | "no-valid-glcodes" | "zero-percent-receivers";
+  eligibleAmount: number;
+  message: string;
 }
 
 /** One per (processing pool, receiver). The processing pool's home center
@@ -118,6 +147,12 @@ export interface GlStepDownModel {
     leakage: number;
   }>;
   nodes: GlNode[];
+  /** Per-pool routing diagnostics. Populated when a DIRECT pool has no
+   *  imported receivers / no valid glCodes / all-zero percents, or when
+   *  a non-DIRECT pool falls back to the driver-unit path and finds
+   *  no driver units anywhere. Review tooling surfaces these so the
+   *  user can fix the underlying pool/receiver data. */
+  diagnostics: PoolDiagnostic[];
 }
 
 // ---------------------------------------------------------------------------
@@ -161,9 +196,9 @@ export function buildEngineGraph(args: {
   // 2. Every imported receiver glCode that isn't already an indirect center
   //    becomes a direct (terminal) node. Allocations stop here — sub-receivers
   //    are destinations, not pass-throughs. feeDept is set only when the
-  //    receiver's classification matches PLAN/BLDG/ENG (the one place
-  //    deptCode is consulted, for FBHR roll-up); every other classification
-  //    leaves feeDept undefined and the node is invisible to FBHR.
+  //    receiver's classification matches PLAN/BLDG/ENG so FBHR can sum by
+  //    fee dept; classification is metadata only and never determines a
+  //    routing destination.
   for (const r of capReceivers) {
     if (!r.glCode) continue;
     if (nodeByKey.has(r.glCode)) continue; // already an indirect center
@@ -176,33 +211,31 @@ export function buildEngineGraph(args: {
     });
   }
 
-  // 3. Fee-dept fallbacks — ensure each PLAN/BLDG/ENG has at least one
-  //    direct node so FBHR has somewhere to route to even when the import
-  //    didn't publish a receiver for that fee dept.
-  const directNodesByDept = new Map<DeptCode, NodeKey[]>();
+  // 3. Synthetic direct nodes for PLAN/BLDG/ENG when no imported receiver
+  //    covers a fee dept. These exist so the seed CAP state (and any
+  //    pool-without-receivers) has a stable, glCode-keyed receiver for the
+  //    driver-unit fallback path to route to. They are NOT a deptCode-
+  //    routing fallback for DIRECT pools — DIRECT pools route only via
+  //    their imported receivers list (see Phase 1 below).
   for (const dept of FEE_DEPTS) {
-    const covered = nodes
-      .filter((n) => n.role === "direct" && n.feeDept === dept)
-      .map((n) => n.key);
-    if (covered.length === 0) {
-      const key = seedDeptKey(dept);
-      addNode({
-        key, glCode: key, name: dept, role: "direct", feeDept: dept,
-        classification: dept,
-      });
-      directNodesByDept.set(dept, [key]);
-    } else {
-      directNodesByDept.set(dept, covered);
-    }
+    const covered = nodes.some((n) => n.role === "direct" && n.feeDept === dept);
+    if (covered) continue;
+    const key = seedDeptKey(dept);
+    addNode({
+      key, glCode: key, name: dept, role: "direct", feeDept: dept,
+      classification: dept,
+    });
   }
 
-  // 3. Driver matrix.
+  // 4. Driver matrix — values keyed by node.key (= glCode). DRIVERS values
+  //    seed onto synth nodes at INIT time; the engine reads drivers[node.key]
+  //    at run time, never by deptCode.
   const drivers: GlDriverMatrix = {};
   for (const n of nodes) drivers[n.key] = {};
 
-  // Seed indirect drivers: only when the indirect node is a seed node
-  // (= no imported glCode for that center). Otherwise the seed values would
-  // collide with imported per-receiver units and double-count.
+  // Seed indirect drivers onto synth seed:center:* nodes (centers with no
+  // imported glCode). Imported indirect glCodes get their units later from
+  // receiver-aggregation, so seeding them here would double-count.
   for (const indirectDept of INDIRECT_DEPTS) {
     const centerEntry = Object.entries(CENTER_NAME_TO_CODE)
       .find(([, code]) => code === indirectDept.code);
@@ -216,13 +249,13 @@ export function buildEngineGraph(args: {
     }
   }
 
-  // Seed direct drivers: only when there's a single seed:dept node (no
-  // imported direct receivers for that dept). Imported nodes get their
-  // units from the receiver-aggregation pass below.
+  // Seed direct drivers onto synth seed:dept:PLAN/BLDG/ENG nodes when
+  // present. Imported direct nodes get their units from the receiver-
+  // aggregation pass below, never from this seed path.
   for (const dept of FEE_DEPTS) {
-    const keys = directNodesByDept.get(dept) ?? [];
-    if (keys.length === 1 && keys[0].startsWith("seed:")) {
-      drivers[keys[0]] = { ...(DRIVERS[dept] ?? {}) };
+    const key = seedDeptKey(dept);
+    if (nodeByKey.has(key)) {
+      drivers[key] = { ...(DRIVERS[dept] ?? {}) };
     }
   }
 
@@ -251,14 +284,7 @@ export function buildEngineGraph(args: {
   const resolveCenterNode = (centerName: string): NodeKey | undefined =>
     indirectNodeByCenter.get(centerName);
 
-  const resolveDirectNode = (deptCode: MatrixDeptCode): NodeKey | undefined => {
-    if (deptCode === "PLAN" || deptCode === "BLDG" || deptCode === "ENG") {
-      return directNodesByDept.get(deptCode)?.[0];
-    }
-    return undefined;
-  };
-
-  return { nodes, drivers, resolveCenterNode, resolveDirectNode };
+  return { nodes, drivers, resolveCenterNode };
 }
 
 /** Look up the node for an imported receiver. glCode is the only signal —
@@ -311,8 +337,11 @@ function resolveReceiverNode(
  *
  *  alloc2[pool.id][receiver] = First + Second per pool per receiver.
  *  Matches the per-pool "Allocation Detail" page in the NBS PDF cell-for-
- *  cell. DIRECT-basis pools route their full eligible to their single
- *  fee-dept target in Phase 1 and skip Phase 2.
+ *  cell. DIRECT-basis pools route their full eligible via their imported
+ *  receivers list (each receiver's glCode is the routing target). If a
+ *  DIRECT pool has no valid receivers, its eligible $ leaks and the pool
+ *  is added to model.diagnostics — never silently rerouted by deptCode.
+ *  DIRECT pools skip Phase 2.
  */
 export function computeStepDownGl(args: {
   pools: CapPool[];
@@ -321,12 +350,31 @@ export function computeStepDownGl(args: {
   graph: GlEngineGraph;
 }): GlStepDownModel {
   const { pools, centerOrder, bases, graph } = args;
-  const { nodes, drivers, resolveCenterNode, resolveDirectNode } = graph;
+  const { nodes, drivers, resolveCenterNode } = graph;
+  const diagnostics: PoolDiagnostic[] = [];
 
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
   const directNodes   = nodes.filter((n) => n.role === "direct");
   const allNodeKeys   = new Set<NodeKey>(nodes.map((n) => n.key));
   const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
+
+  // Helper: does this pool have at least one receiver row that the engine
+  // can route to (valid glCode pointing at a node, non-zero percent)?
+  const hasValidReceivers = (p: CapPool): boolean =>
+    (p.receivers ?? []).some(
+      (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
+    );
+
+  // Helper: append a routing diagnostic for a pool that couldn't reach a
+  // node. The eligible$ becomes leakage.
+  const noteDiagnostic = (
+    p: CapPool, kind: PoolDiagnostic["kind"], eligibleAmount: number, message: string,
+  ) => {
+    diagnostics.push({
+      poolId: p.id, center: p.center, pool: p.pool,
+      kind, eligibleAmount, message,
+    });
+  };
 
   // Step order — drives the engine. Both Phase 1 and Phase 2 iterate
   // stepOrder in sequence so each center's First Pool can include its
@@ -345,17 +393,20 @@ export function computeStepDownGl(args: {
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
-  // alloc1 — pre-step-down placement. Diagnostic only.
+  // alloc1 — pre-step-down placement. Diagnostic only. DIRECT pools place
+  // their eligible $ onto their first imported receiver's glCode; if no
+  // valid receivers are imported, the placement is left empty (which is
+  // also where the leakage diagnostic gets emitted in Phase 1 below).
   const alloc1: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
     const row = zeroRow();
     const eligible = p.amount * (p.eligiblePercent / 100);
-    const { basis, directTo } = basisForPool(p, bases);
+    const { basis } = basisForPool(p, bases);
     if (basis === "DIRECT") {
-      if (directTo) {
-        const k = resolveDirectNode(directTo);
-        if (k) row[k] = eligible;
-      }
+      const first = (p.receivers ?? []).find(
+        (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
+      );
+      if (first?.glCode) row[first.glCode] = eligible;
     } else {
       const k = resolveCenterNode(p.center);
       if (k) row[k] = eligible;
@@ -485,26 +536,22 @@ export function computeStepDownGl(args: {
     for (const p of centerPools) {
       const eligible = p.amount * (p.eligiblePercent / 100);
       const poolWeight = weightOf(p);
-      const { basis, directTo } = basisForPool(p, bases);
+      const { basis } = basisForPool(p, bases);
       const firstPool = eligible + poolWeight * firstInc;
       if (firstPool <= 0) continue;
 
-      // DIRECT pools: prefer the imported receivers list when populated
-      // (e.g. a single "100% to 011-1000 Recreation Administration" row).
-      // Falls back to the basis catalog's directTo target only when no
-      // receivers are imported, and only then via the fee-dept resolver
-      // (which is limited to PLAN/BLDG/ENG). Without this preference, a
-      // DIRECT pool routed to a non-fee dept like PARKS / PD / FIRE would
-      // silently drop its dollars even though the schedule names a node.
+      // DIRECT pools route strictly via imported receiver glCodes. No
+      // deptCode-derived fallback — if a DIRECT pool has no valid
+      // receivers, the eligible $ leaks and a diagnostic is recorded
+      // for review tooling (per the strict glCode-routing rule).
       if (basis === "DIRECT") {
-        const hasReceivers = (p.receivers ?? []).some(
-          (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
-        );
-        if (hasReceivers) {
+        if (hasValidReceivers(p)) {
           distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
-        } else if (directTo) {
-          const k = resolveDirectNode(directTo);
-          if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + firstPool;
+        } else {
+          noteDiagnostic(
+            p, "no-valid-glcodes", firstPool,
+            `DIRECT pool has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(firstPool)} leaks; add a receiver row with a real glCode to route this pool.`,
+          );
         }
         continue;
       }
@@ -520,16 +567,15 @@ export function computeStepDownGl(args: {
     if (homeKey && stepOrderSet.has(homeKey)) continue;
     const eligible = p.amount * (p.eligiblePercent / 100);
     if (eligible <= 0) continue;
-    const { basis, directTo } = basisForPool(p, bases);
+    const { basis } = basisForPool(p, bases);
     if (basis === "DIRECT") {
-      const hasReceivers = (p.receivers ?? []).some(
-        (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
-      );
-      if (hasReceivers) {
+      if (hasValidReceivers(p)) {
         distributeAmount(p, eligible, firstAllocation[p.id], new Set());
-      } else if (directTo) {
-        const k = resolveDirectNode(directTo);
-        if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + eligible;
+      } else {
+        noteDiagnostic(
+          p, "no-valid-glcodes", eligible,
+          `DIRECT pool (orphaned home center) has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(eligible)} leaks.`,
+        );
       }
       continue;
     }
@@ -673,7 +719,14 @@ export function computeStepDownGl(args: {
     alloc1, alloc2, firstAllocation, secondAllocation,
     incomingRound1, incomingRound2,
     stepOrder, contributions, directTotals, byPool, nodes,
+    diagnostics,
   };
+}
+
+/** Format a dollar amount for diagnostic messages. Self-contained so the
+ *  engine module doesn't depend on the UI's fmt helper. */
+function fmtUSD(n: number): string {
+  return `$${Math.round(n).toLocaleString("en-US")}`;
 }
 
 /** FBHR roll-up (reading B): sum direct-node totals into each fee dept by

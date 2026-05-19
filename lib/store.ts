@@ -227,6 +227,10 @@ function toApplyResult<T>(
 
 const STORAGE_KEY = "afferent.build.v1";
 
+/** Dedupes the dev-mode CAP diagnostic console.warn so each (poolId, kind)
+ *  fires once per session, even though deriveAll runs on every state slice. */
+const loggedCapDiagnostics = new Set<string>();
+
 export const useBuildStore = create<BuildState & BuildActions>()(
   persist(
     (set, get) => ({
@@ -951,6 +955,22 @@ export function useBuildState() {
       bases: state.allocationBases,
       graph,
     });
+
+    // Dev-mode CAP routing diagnostics: warn once per (poolId, kind) when
+    // the strict-glCode engine drops a pool's eligible $ for lack of a
+    // valid receiver. Helps catch seed/import data that depended on the
+    // old deptCode-based DIRECT fallback that no longer exists.
+    if (typeof import.meta !== "undefined" && import.meta.env?.DEV
+        && stepDown.diagnostics.length > 0) {
+      for (const d of stepDown.diagnostics) {
+        const key = `${d.poolId}|${d.kind}`;
+        if (!loggedCapDiagnostics.has(key)) {
+          loggedCapDiagnostics.add(key);
+          // eslint-disable-next-line no-console
+          console.warn(`[CAP] ${d.center} · ${d.pool} (${d.kind}): ${d.message}`);
+        }
+      }
+    }
 
     const capAllocated = capAllocatedFromGl(stepDown);
     const derivedCapAllocation: Record<DeptCode, CapAllocation> = {

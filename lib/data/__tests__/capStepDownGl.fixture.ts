@@ -303,4 +303,154 @@ console.log(`  Fee-dept total: ${fmt(feeDeptTotal)} (expect ${fmt(expectPlan + e
 assert.ok(close(feeDeptTotal, expectPlan + expectBldg + expectEng),
   "Fee depts must NOT include OTHER receiver $");
 
+// ── DIRECT-routing strictness (post-resolveDirectNode refactor) ─────────
+//
+// The strict-glCode engine routes DIRECT pools only through their imported
+// receivers list. No deptCode fallback. Three scenarios:
+//   (a) DIRECT + valid receiver glCode → distributes via the schedule.
+//   (b) DIRECT + no receivers          → eligible $ leaks, diagnostics
+//                                        records the pool.
+//   (c) DIRECT + receivers all missing glCodes / zero-percent → same
+//                                        as (b): leakage + diagnostic.
+//
+// We run a second engine pass on a tiny synthetic CAP to verify each.
+
+console.log("\n== DIRECT-routing strictness ==");
+
+const directOnlyCenters: Record<string, number> = { "Test Direct Center": 50000 };
+const directOnlyGl: Record<string, string> = { "Test Direct Center": "SEED-TDC" };
+const directOnlyOrder: string[] = ["Test Direct Center"];
+const directOnlyReceivers = [
+  { key: "rcv:SEED-RECADMIN", glCode: "SEED-RECADMIN", dept: "Recreation Admin",
+    deptCode: "OTHER" as const, values: {}, sources: [] },
+];
+
+// Scenario (a) — DIRECT pool with a valid receiver glCode.
+const directOkPools: CapPool[] = [{
+  id: "test-direct-ok",
+  center: "Test Direct Center",
+  pool: "Routes to Recreation Admin",
+  allocationPercent: 100, amount: 50000, eligiblePercent: 100,
+  basisId: "bas-direct", basis: "Direct allocation",
+  receiving: "Recreation Administration",
+  recoverability: "Out of fee scope", review: "Reviewed",
+  receivers: [
+    { dept: "Recreation Admin", glCode: "SEED-RECADMIN",
+      deptCode: "OTHER", percent: 100, amount: 50000 },
+  ],
+}];
+const directOkBases: AllocationBasis[] = [
+  ...bases,
+  { id: "bas-direct", name: "Direct allocation", source: "Manual",
+    driverKey: "DIRECT", createdAt: NOW, validationStatus: "verified",
+    // directTo is METADATA only — engine must not route by it.
+    directTo: "PARKS" },
+];
+const directOkGraph = buildEngineGraph({
+  capPools: directOkPools, allocationBases: directOkBases,
+  capCenterTotals: directOnlyCenters, capCenterGlCodes: directOnlyGl,
+  capReceivers: directOnlyReceivers,
+});
+const directOkModel = computeStepDownGl({
+  pools: directOkPools, centerOrder: directOnlyOrder,
+  bases: directOkBases, graph: directOkGraph,
+});
+
+console.log("  (a) DIRECT + receiver glCode:");
+console.log(`      Recreation Admin First: ${fmt(directOkModel.firstAllocation["test-direct-ok"]?.["SEED-RECADMIN"] ?? 0)} (expect 50000)`);
+console.log(`      Diagnostics: ${directOkModel.diagnostics.length} (expect 0)`);
+assert.equal(
+  Math.round(directOkModel.firstAllocation["test-direct-ok"]?.["SEED-RECADMIN"] ?? 0),
+  50000,
+  "DIRECT pool with valid receiver glCode routes the full eligible $",
+);
+assert.equal(directOkModel.diagnostics.length, 0,
+  "DIRECT pool with valid receivers must not emit diagnostics");
+
+// PARKS must NOT receive anything despite directTo === "PARKS" — directTo
+// is now metadata, not routing.
+const parksNodeKey = directOkModel.nodes.find(
+  (n) => n.role === "direct" && n.feeDept === undefined && n.classification === "PARKS",
+)?.key;
+assert.equal(parksNodeKey, undefined,
+  "No PARKS node should be created — only seed:dept:PLAN/BLDG/ENG synth nodes exist");
+
+// Scenario (b) — DIRECT pool with no receivers.
+const directLeakPools: CapPool[] = [{
+  id: "test-direct-leak",
+  center: "Test Direct Center",
+  pool: "Empty receivers",
+  allocationPercent: 100, amount: 50000, eligiblePercent: 100,
+  basisId: "bas-direct", basis: "Direct allocation",
+  receiving: "Nowhere", recoverability: "TBD", review: "Review",
+  // NO receivers array on purpose.
+}];
+const directLeakGraph = buildEngineGraph({
+  capPools: directLeakPools, allocationBases: directOkBases,
+  capCenterTotals: directOnlyCenters, capCenterGlCodes: directOnlyGl,
+  capReceivers: directOnlyReceivers,
+});
+const directLeakModel = computeStepDownGl({
+  pools: directLeakPools, centerOrder: directOnlyOrder,
+  bases: directOkBases, graph: directLeakGraph,
+});
+
+console.log("  (b) DIRECT + no receivers:");
+const leakRow = directLeakModel.firstAllocation["test-direct-leak"] ?? {};
+const leakTotal = Object.values(leakRow).reduce((a, v) => a + v, 0);
+console.log(`      Σ firstAllocation = ${fmt(leakTotal)} (expect 0 — pure leakage)`);
+console.log(`      Diagnostics: ${directLeakModel.diagnostics.length} (expect 1)`);
+assert.equal(Math.round(leakTotal), 0,
+  "DIRECT pool with no receivers must produce $0 allocations (no deptCode fallback)");
+assert.equal(directLeakModel.diagnostics.length, 1,
+  "DIRECT pool with no receivers must emit exactly one diagnostic");
+assert.equal(directLeakModel.diagnostics[0].kind, "no-valid-glcodes");
+assert.equal(directLeakModel.diagnostics[0].poolId, "test-direct-leak");
+
+// Scenario (c) — DIRECT pool with receivers that all have missing glCodes
+// or zero percent.
+const directBadPools: CapPool[] = [{
+  id: "test-direct-bad",
+  center: "Test Direct Center",
+  pool: "Bad receivers",
+  allocationPercent: 100, amount: 50000, eligiblePercent: 100,
+  basisId: "bas-direct", basis: "Direct allocation",
+  receiving: "Multiple", recoverability: "TBD", review: "Review",
+  receivers: [
+    // Missing glCode — engine can't route to it.
+    { dept: "Mystery dept", glCode: undefined, deptCode: "OTHER",
+      percent: 60, amount: 30000 },
+    // glCode that doesn't match any node — engine can't route to it.
+    { dept: "Unknown",      glCode: "DOES-NOT-EXIST", deptCode: "OTHER",
+      percent: 40, amount: 20000 },
+  ],
+}];
+const directBadGraph = buildEngineGraph({
+  capPools: directBadPools, allocationBases: directOkBases,
+  capCenterTotals: directOnlyCenters, capCenterGlCodes: directOnlyGl,
+  capReceivers: directOnlyReceivers,
+});
+const directBadModel = computeStepDownGl({
+  pools: directBadPools, centerOrder: directOnlyOrder,
+  bases: directOkBases, graph: directBadGraph,
+});
+
+console.log("  (c) DIRECT + receivers all missing/unmatched glCodes:");
+const badRow = directBadModel.firstAllocation["test-direct-bad"] ?? {};
+const badTotal = Object.values(badRow).reduce((a, v) => a + v, 0);
+console.log(`      Σ firstAllocation = ${fmt(badTotal)} (expect 0 — leakage)`);
+console.log(`      Diagnostics: ${directBadModel.diagnostics.length} (expect 1)`);
+assert.equal(Math.round(badTotal), 0,
+  "DIRECT pool with no resolvable receiver glCodes must leak");
+assert.equal(directBadModel.diagnostics.length, 1,
+  "DIRECT pool with unresolvable receivers must emit one diagnostic");
+
+// FBHR roll-up still functions on the original LAH-shaped fixture.
+// PLAN/BLDG/ENG totals were asserted above (lines 296-298); diagnostics
+// for that model should be empty since CM Salaries is non-DIRECT and
+// Fringe Distribution has valid receivers.
+console.log(`\n  Main fixture diagnostics: ${model.diagnostics.length} (expect 0)`);
+assert.equal(model.diagnostics.length, 0,
+  "Main fixture must produce zero diagnostics (all pools route cleanly)");
+
 console.log("\nAll CAP step-down assertions passed.");
