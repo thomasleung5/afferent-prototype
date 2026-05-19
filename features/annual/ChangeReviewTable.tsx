@@ -4,7 +4,13 @@ import { DataTable, type Column, type FilterGroup } from "@/components/table";
 import { StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/components/ui";
 import { ConfReason } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
-import { ANNUAL_CHANGES, RECOVERY_DELTAS, type AnnualChange } from "@/lib/data/annual";
+import { fmt } from "@/lib/format";
+import { useBuildState } from "@/lib/store";
+import {
+  deriveAnnualChanges, deriveRecoveryDelta, deriveNetImpact,
+  sectionCodeFor, sectionLabelForDomain, sectionHrefForDomain,
+  type AnnualChange,
+} from "@/lib/data/annual";
 
 type DecisionStatus = "accepted" | "deferred" | "rejected" | undefined;
 type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
@@ -15,33 +21,11 @@ const SECTION_LABEL: Record<string, string> = {
   FEE: "Fee schedule", SVC: "Services", OPS: "Operating",
 };
 
-const SECTION_HREF: Record<string, string> = {
-  SAL: "/build/salary",
-  WKL: "/build/workload",
-  CAP: "/build/cap",
-  FEE: "/build/feestudy",
-  SVC: "/build/services",
-  OPS: "/build/operating",
-};
-
-function sectionFor(change: string): string {
-  const c = change.toLowerCase();
-  if (c.includes("salary") || c.includes("benefits") || c.includes("technician") || c.includes("title")) return "SAL";
-  if (c.includes("workload") || c.includes("permit volume") || c.includes("permit")) return "WKL";
-  if (c.includes("cap") || c.includes("attorney") || c.includes("overhead") || c.includes("insurance") || c.includes("finance")) return "CAP";
-  if (c.includes("fee") || c.includes("schedule") || c.includes("recovery")) return "FEE";
-  if (c.includes("hours") || c.includes("excluded") || c.includes("long-range")) return "SVC";
-  return "OPS";
-}
-
-function priorityFor(impact: string): "high" | "med" | "low" | "none" {
-  const m = impact.match(/[\d.]+\s*(k|m)?/i);
-  if (!m) return "none";
-  const n = parseFloat(m[0]) * (/m/i.test(m[1] ?? "") ? 1000 : /k/i.test(m[1] ?? "") ? 1 : 0.001);
-  if (n >= 100) return "high";
-  if (n >= 20)  return "med";
-  if (n > 0)    return "low";
-  return "none";
+function priorityForBadge(badge: string): "high" | "med" | "low" | "none" {
+  const b = badge.toLowerCase();
+  if (b.includes("needs review") || b.includes("low confidence") || b.includes("warning")) return "high";
+  if (b.includes("confirm")) return "med";
+  return "low";
 }
 
 function statusKindFor(badge: string): "bad" | "warn" | "review" | "ok" | "info" {
@@ -50,15 +34,8 @@ function statusKindFor(badge: string): "bad" | "warn" | "review" | "ok" | "info"
   if (b.includes("high impact") || b.includes("missing")) return "bad";
   if (b.includes("low confidence")) return "warn";
   if (b.includes("needs review")) return "review";
+  if (b.includes("warnings")) return "warn";
   return "info";
-}
-
-function parseImpact(s: string): number {
-  const m = s.match(/([+−-])?\s*\$?\s*([\d.]+)\s*(k|m)?/i);
-  if (!m) return 0;
-  const sign = m[1] === "−" || m[1] === "-" ? -1 : 1;
-  const mag  = /m/i.test(m[3] ?? "") ? 1000 : /k/i.test(m[3] ?? "") ? 1 : 0.001;
-  return sign * parseFloat(m[2]) * mag;
 }
 
 function DecisionControl({ status, onSet }: { status: DecisionStatus; onSet: (s: DecisionStatus) => void }) {
@@ -88,26 +65,49 @@ function DecisionControl({ status, onSet }: { status: DecisionStatus; onSet: (s:
 interface Row extends AnnualChange {
   section: string;
   priority: "high" | "med" | "low" | "none";
+  /** Original import domain — used to link back to the right build section. */
+  domain?: string;
 }
 
 export function ChangeReviewTable() {
+  const state = useBuildState();
   const [queue, setQueue]     = useState<QueueFilter>("ALL");
   const [section, setSection] = useState<SectionFilter>("ALL");
   const [openId, setOpenId]   = useState<string | undefined>(undefined);
   const [decisions, setDecisions] = useState<Record<string, DecisionStatus>>({});
   const setDecision = (id: string, st: DecisionStatus) => setDecisions((d) => ({ ...d, [id]: st }));
 
-  // Enriched + pre-sorted by the canonical priority × confidence rule.
-  // DataTable preserves input order until the user clicks a sortable
-  // header, so this becomes the default row order.
+  const input = useMemo(() => ({
+    imports: state.imports,
+    positions: state.positions,
+    operating: state.operating,
+    workload: state.workload,
+    services: state.services,
+    capPools: state.capPools,
+    comparisons: state.derived.comparisons,
+    impact: state.derived.impact,
+  }), [state]);
+
+  const changes = useMemo(() => deriveAnnualChanges(input), [input]);
+  const recovery = useMemo(() => deriveRecoveryDelta(input), [input]);
+  const netImpact = useMemo(() => deriveNetImpact(input), [input]);
+
+  // Enriched + pre-sorted by priority. The import log is already newest-
+  // first; we layer a stable priority sort on top so urgent items lead.
   const enriched: Row[] = useMemo(() => {
-    const pri  = { high: 3, med: 2, low: 1, none: 0 };
-    const conf: Record<string, number> = { low: 3, medium: 2, high: 1 };
-    const sc = (r: Row) => (pri[r.priority] ?? 0) * 10 + (conf[r.confidence.toLowerCase()] ?? 0);
-    return ANNUAL_CHANGES
-      .map((r): Row => ({ ...r, section: sectionFor(r.change), priority: priorityFor(r.impact) }))
-      .sort((a, b) => sc(b) - sc(a));
-  }, []);
+    const pri = { high: 3, med: 2, low: 1, none: 0 };
+    return changes
+      .map((c): Row => {
+        const domain = state.imports.find((e) => `change-${e.id}` === c.id)?.domain;
+        return {
+          ...c,
+          domain,
+          section: domain ? sectionCodeFor(domain) : "OPS",
+          priority: priorityForBadge(c.badge),
+        };
+      })
+      .sort((a, b) => (pri[b.priority] ?? 0) - (pri[a.priority] ?? 0));
+  }, [changes, state.imports]);
 
   const counts = useMemo(() => ({
     ALL:      enriched.length,
@@ -115,8 +115,6 @@ export function ChangeReviewTable() {
     ACCEPTED: enriched.filter((r) => decisions[r.id] === "accepted").length,
     DEFERRED: enriched.filter((r) => decisions[r.id] === "deferred").length,
   }), [enriched, decisions]);
-
-  const totals = counts;
 
   const filtered = useMemo(() => enriched.filter((r) => {
     if (section !== "ALL" && r.section !== section) return false;
@@ -184,38 +182,34 @@ export function ChangeReviewTable() {
     {
       key: "prior",
       label: "Prior",
-      width: "100px",
+      width: "130px",
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="mono num" style={{ color: "var(--ink-3)" }}>{r.prior}</span>
+        <span className="mono num" style={{ color: "var(--ink-3)", fontSize: 11 }}>{r.prior}</span>
       ),
     },
     {
       key: "current",
       label: "Current",
-      width: "100px",
+      width: "150px",
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="mono num">{r.current}</span>
+        <span className="mono num" style={{ fontSize: 11 }}>{r.current}</span>
       ),
     },
     {
       key: "impact",
       label: "Impact",
-      width: "140px",
+      width: "180px",
       align: "right",
       sortable: true,
-      sortKey: (r) => parseImpact(r.impact),
-      render: (r) => {
-        const color = r.impact.startsWith("+") ? "var(--neg)"
-          : (r.impact.startsWith("−") || r.impact.startsWith("-")) ? "var(--pos)"
-          : "var(--ink-2)";
-        return (
-          <span className="num" style={{ fontWeight: 600, color }}>{r.impact}</span>
-        );
-      },
+      render: (r) => (
+        <span className="num" style={{ fontWeight: 500, color: "var(--ink-2)", fontSize: 11.5 }}>
+          {r.impact}
+        </span>
+      ),
     },
     {
       key: "decision",
@@ -228,7 +222,6 @@ export function ChangeReviewTable() {
         return rank[decisions[r.id] ?? ""] ?? -1;
       },
       render: (r) => (
-        // Inner click must not toggle the row drilldown.
         <div onClick={(e) => e.stopPropagation()} style={{ display: "inline-flex" }}>
           <DecisionControl status={decisions[r.id]} onSet={(st) => setDecision(r.id, st)}/>
         </div>
@@ -236,19 +229,31 @@ export function ChangeReviewTable() {
     },
   ];
 
+  const netImpactLabel = netImpact === 0
+    ? "$0"
+    : `${netImpact > 0 ? "+" : "−"}${fmt.dollarsK(Math.abs(netImpact))}/yr`;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       <StatusRow items={[
-        { label: "Net impact",       value: "+$472K" },
+        {
+          label: "Net adoption impact",
+          value: netImpactLabel,
+          tone: netImpact > 0 ? "pos" : netImpact < 0 ? "neg" : undefined,
+        },
         { label: "Changes",          value: `${enriched.length}` },
-        { label: "Pending",          value: `${totals.PENDING}`,  tone: totals.PENDING > 0 ? "warn" : undefined },
-        { label: "Accepted",         value: `${totals.ACCEPTED}` },
-        { label: "Deferred",         value: `${totals.DEFERRED}` },
-        { label: "Blended recovery", value: `${RECOVERY_DELTAS.priorBlended}% → ${RECOVERY_DELTAS.currentBlended}%` },
+        { label: "Pending",          value: `${counts.PENDING}`,  tone: counts.PENDING > 0 ? "warn" : undefined },
+        { label: "Accepted",         value: `${counts.ACCEPTED}` },
+        { label: "Deferred",         value: `${counts.DEFERRED}` },
+        {
+          label: "Blended recovery",
+          value: `${recovery.currentBlended}% / ${recovery.policyTarget}% target`,
+          tone: recovery.gapPts <= 0 ? "pos" : recovery.gapPts <= 10 ? "warn" : "neg",
+        },
       ]}/>
 
       <div>
-        <SectionLabel right={`${enriched.length} changes`}>
+        <SectionLabel right={`${enriched.length} change${enriched.length === 1 ? "" : "s"}`}>
           Change decision queue
         </SectionLabel>
         <DataTable
@@ -258,7 +263,11 @@ export function ChangeReviewTable() {
           openId={openId}
           drilldownIndicator
           onRowClick={(r) => setOpenId((cur) => cur === r.id ? undefined : r.id)}
-          emptyState="No changes match current filters."
+          emptyState={
+            enriched.length === 0
+              ? "No imports yet — refresh sources to populate the change log."
+              : "No changes match current filters."
+          }
           getRowStyle={(r) => {
             const dec = decisions[r.id];
             if (dec === "accepted") return { bg: "oklch(98% 0.015 155)" };
@@ -266,59 +275,53 @@ export function ChangeReviewTable() {
             if (dec === "rejected") return { bg: "var(--paper-2)" };
             return null;
           }}
-          renderDrilldown={(r) => {
-            const impactColor = r.impact.startsWith("+") ? "var(--neg)"
-              : (r.impact.startsWith("−") || r.impact.startsWith("-")) ? "var(--pos)"
-              : "var(--ink-2)";
-            return (
-              <DrilldownShell>
-                <DrilldownColumn marker="①" title="Change detail">
-                  <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                    <div style={{ fontWeight: 500 }}>{r.change}</div>
-                    <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>Affects: {r.affected}</div>
-                    <div style={{
-                      marginTop: 10, padding: "8px 10px",
-                      background: "var(--paper)", border: "1px solid var(--rule)",
-                      fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.7,
-                    }}>
-                      <div style={{ color: "var(--ink-3)" }}>prior:   <span style={{ color: "var(--ink)" }}>{r.prior}</span></div>
-                      <div style={{ color: "var(--ink-3)" }}>current: <span style={{ color: "var(--ink)" }}>{r.current}</span></div>
-                      <div style={{ borderTop: "1px solid var(--rule)", marginTop: 4, paddingTop: 4, color: impactColor, fontWeight: 600 }}>
-                        impact:  {r.impact}
-                      </div>
+          renderDrilldown={(r) => (
+            <DrilldownShell>
+              <DrilldownColumn marker="①" title="Change detail">
+                <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+                  <div style={{ fontWeight: 500 }}>{r.change}</div>
+                  <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>Affects: {r.affected}</div>
+                  <div style={{
+                    marginTop: 10, padding: "8px 10px",
+                    background: "var(--paper)", border: "1px solid var(--rule)",
+                    fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.7,
+                  }}>
+                    <div style={{ color: "var(--ink-3)" }}>prior:   <span style={{ color: "var(--ink)" }}>{r.prior}</span></div>
+                    <div style={{ color: "var(--ink-3)" }}>current: <span style={{ color: "var(--ink)" }}>{r.current}</span></div>
+                    <div style={{ borderTop: "1px solid var(--rule)", marginTop: 4, paddingTop: 4, color: "var(--ink-2)", fontWeight: 600 }}>
+                      impact:  {r.impact}
                     </div>
                   </div>
-                </DrilldownColumn>
+                </div>
+              </DrilldownColumn>
 
-                <DrilldownColumn marker="②" title="Recommended action">
-                  <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                    <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink-2)" }}>{r.action}</div>
-                    <StatusPill kind={statusKindFor(r.badge)}>{r.badge}</StatusPill>
-                    <Link to={SECTION_HREF[r.section]} style={{ fontSize: 11.5, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                      Open {SECTION_LABEL[r.section]} section →
+              <DrilldownColumn marker="②" title="Recommended action">
+                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+                  <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink-2)" }}>{r.action}</div>
+                  <StatusPill kind={statusKindFor(r.badge)}>{r.badge}</StatusPill>
+                  {r.domain && (
+                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                    <Link to={sectionHrefForDomain(r.domain as any) as any} style={{ fontSize: 11.5, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                      Open {sectionLabelForDomain(r.domain as Parameters<typeof sectionLabelForDomain>[0])} section →
                     </Link>
-                  </div>
-                </DrilldownColumn>
+                  )}
+                </div>
+              </DrilldownColumn>
 
-                <DrilldownColumn marker="③" title="Confidence & source">
-                  <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                    <ConfReason ok={r.confidence.toLowerCase() === "high"} text={`Source confidence: ${r.confidence}`}/>
-                    <ConfReason
-                      ok={!/legal|low confidence/i.test(r.badge)}
-                      text={/legal/i.test(r.badge) ? "Legal review required before adoption" : /low confidence/i.test(r.badge) ? "Low confidence — verify mapping" : "No outstanding review flags"}
-                    />
-                    <ConfReason
-                      ok={!r.impact.toLowerCase().startsWith("recovery drift")}
-                      text={r.impact.toLowerCase().startsWith("recovery drift") ? "Drift accumulates if fees held flat" : "Direct cost impact recomputed"}
-                    />
-                  </div>
-                  <div style={{ marginTop: 10, fontSize: 10.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-                    Trace this row back to its section to see the underlying inputs and downstream services.
-                  </div>
-                </DrilldownColumn>
-              </DrilldownShell>
-            );
-          }}
+              <DrilldownColumn marker="③" title="Confidence & source">
+                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
+                  <ConfReason ok={r.confidence === "High"} text={`Source confidence: ${r.confidence}`}/>
+                  <ConfReason
+                    ok={!/legal|low confidence/i.test(r.badge)}
+                    text={/legal/i.test(r.badge) ? "Legal review required before adoption" : /low confidence/i.test(r.badge) ? "Low confidence — verify mapping" : "No outstanding review flags"}
+                  />
+                </div>
+                <div style={{ marginTop: 10, fontSize: 10.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
+                  Trace this row back to its section to see the underlying inputs and downstream services.
+                </div>
+              </DrilldownColumn>
+            </DrilldownShell>
+          )}
         />
       </div>
     </div>

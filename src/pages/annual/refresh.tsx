@@ -2,8 +2,22 @@ import { Page, PageHeader } from "@/components/layout";
 import { SectionEyebrow } from "@/components/ui";
 import { RefreshImportGrid } from "@/features/annual/RefreshImportGrid";
 import { StatusRow } from "@/features/_shared/StatusRow";
+import { useBuildState } from "@/lib/store";
+import { deriveRefreshSummary } from "@/lib/data/annual";
 
 export default function AnnualRefreshPage() {
+  const state = useBuildState();
+  const summary = deriveRefreshSummary({
+    imports: state.imports,
+    positions: state.positions,
+    operating: state.operating,
+    workload: state.workload,
+    services: state.services,
+    capPools: state.capPools,
+    comparisons: state.derived.comparisons,
+    impact: state.derived.impact,
+  });
+
   return (
     <Page>
       <PageHeader
@@ -12,12 +26,32 @@ export default function AnnualRefreshPage() {
         subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
       />
       <StatusRow items={[
-        { label: "Rows imported", value: "2,464" },
-        { label: "Inputs",        value: "6" },
-        { label: "Auto-mapped",   value: "97%",  tone: "pos" },
-        { label: "Need review",   value: "58",   tone: "warn" },
-        { label: "Confidence",    value: "Medium-High" },
-        { label: "Last refresh",  value: "Apr 24, 2026" },
+        {
+          label: "Rows imported",
+          value: summary.hasImports ? summary.totalRows.toLocaleString() : "—",
+        },
+        {
+          label: "Inputs refreshed",
+          value: `${summary.inputsRefreshed} / ${summary.totalInputs}`,
+        },
+        {
+          label: "Auto-mapped",
+          value: summary.hasImports ? `${summary.autoPct}%` : "—",
+          tone: summary.hasImports && summary.autoPct >= 90 ? "pos" : undefined,
+        },
+        {
+          label: "Need review",
+          value: summary.hasImports ? String(summary.totalReview) : "—",
+          tone: summary.totalReview > 0 ? "warn" : undefined,
+        },
+        {
+          label: "Confidence",
+          value: summary.hasImports ? summary.confidence : "Seed",
+        },
+        {
+          label: "Last refresh",
+          value: summary.lastRefresh,
+        },
       ]}/>
       <RefreshImportGrid/>
     </Page>

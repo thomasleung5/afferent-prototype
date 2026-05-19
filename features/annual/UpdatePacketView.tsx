@@ -1,4 +1,8 @@
 import { Btn, Icon } from "@/components/ui";
+import { fmt } from "@/lib/format";
+import { CITY } from "@/lib/data/city";
+import { useBuildState } from "@/lib/store";
+import { derivePacketSummary } from "@/lib/data/annual";
 
 const PACKET_SECTIONS = [
   "Executive summary",
@@ -15,6 +19,18 @@ const PACKET_SECTIONS = [
 ];
 
 export function UpdatePacketView() {
+  const state = useBuildState();
+  const summary = derivePacketSummary({
+    imports: state.imports,
+    positions: state.positions,
+    operating: state.operating,
+    workload: state.workload,
+    services: state.services,
+    capPools: state.capPools,
+    comparisons: state.derived.comparisons,
+    impact: state.derived.impact,
+  });
+
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "flex-start" }}>
       <div style={{ background: "var(--paper)", border: "1px solid var(--rule)", padding: 22 }}>
@@ -46,28 +62,52 @@ export function UpdatePacketView() {
           Preview · Annual Fee Update
         </div>
         <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--ink)" }}>
-          FY 2026-27 Annual Cost Recovery Update
+          {CITY.fiscal} Annual Cost Recovery Update
         </div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6, marginBottom: 18 }}>
-          Town of Los Altos Hills · Finance Department
+          {CITY.name} · {CITY.preparedBy.split(" · ")[0]}
         </div>
         <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.7 }}>
-          The FY 2026-27 update reuses the locked FY 2025-26 baseline model. Annual inputs were refreshed
-          for budget, salary, FTE, CAP allocations, workload, and the current fee schedule. Across seven
-          section reviews, 29 items were resolved and confirmed. Blended development services cost recovery
-          declined from 72% to 64%, primarily driven by an 8.5% increase in Planning salary and benefits
-          and a 6% decline in Building permit volume.
-          <br/><br/>
-          Staff recommends Council adopt the recommended fees in Appendix A. Fees are calculated at the
-          maximum cost-based amount; Council may adopt a lower fee for policy reasons. Costs associated
-          with broad public benefit or policy work have been excluded where appropriate.
+          {buildNarrative(summary)}
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, fontFamily: "var(--ff-ui)" }}>
-          <Btn kind="ghost">Fee schedule</Btn>
-          <Btn kind="ghost">Public Q&A</Btn>
+          <Btn kind="ghost" href="/build/feestudy">Fee schedule</Btn>
+          <Btn kind="ghost" href="/gap">Public Q&amp;A</Btn>
           <Btn kind="ghost">Methodology</Btn>
         </div>
       </div>
     </div>
   );
+}
+
+function buildNarrative(s: ReturnType<typeof derivePacketSummary>): string {
+  const intro = s.totalImports > 0
+    ? `The ${CITY.fiscal} update reuses the locked baseline model and incorporates `
+      + `${s.totalImports} data import${s.totalImports === 1 ? "" : "s"} across `
+      + `${s.domainsRefreshed} of 6 model section${s.domainsRefreshed === 1 ? "" : "s"} `
+      + `(last refresh ${s.lastRefresh}). `
+    : `The ${CITY.fiscal} update reuses the locked baseline model. No source files have `
+      + `been refreshed since the last build — the figures below reflect the seed baseline. `;
+
+  const recovery = `Blended development services cost recovery stands at `
+    + `${s.currentRecovery}% against a weighted policy target of ${s.policyTarget}%, `
+    + `leaving a closeable recovery gap of ${fmt.dollarsK(s.recoverableGap)}/yr. `
+    + `${s.feesBelowTarget} of ${s.totalFees} fee${s.totalFees === 1 ? "" : "s"} are below target. `;
+
+  const drivers = [
+    s.topCostDriver
+      ? `The largest cost driver is ${s.topCostDriver.name} at ${fmt.dollarsK(s.topCostDriver.cost)}/yr.`
+      : "",
+    s.topFeeOpportunity
+      ? `The largest single fee opportunity is ${s.topFeeOpportunity.name} `
+        + `(${fmt.dollarsK(s.topFeeOpportunity.uplift)}/yr in annual uplift if adopted at target).`
+      : "",
+  ].filter(Boolean).join(" ");
+
+  const close = " Staff recommends Council adopt the recommended fees in Appendix A. "
+    + "Fees are calculated at the maximum cost-based amount; Council may adopt a lower fee "
+    + "for policy reasons. Costs associated with broad public benefit or policy work have been "
+    + "excluded where appropriate.";
+
+  return intro + recovery + drivers + close;
 }
