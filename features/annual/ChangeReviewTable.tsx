@@ -173,9 +173,12 @@ export function ChangeReviewTable() {
       sortKey: (r) => SECTION_LABEL[r.section] ?? "",
       render: (r) => (
         <span className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.06em",
-          padding: "3px 7px", border: "1px solid var(--rule)",
-          background: "var(--paper)", color: "var(--ink-2)",
+          display: "inline-block",
+          fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em",
+          color: "var(--ink-2)",
+          padding: "2px 6px",
+          background: "var(--paper-2)",
+          border: "1px solid var(--rule)",
         }}>{SECTION_LABEL[r.section]}</span>
       ),
     },
