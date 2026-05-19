@@ -7,7 +7,7 @@ export const CAP_STEPS: { id: CapStep; label: string; hint: string }[] = [
   { id: "centers",        label: "Indirect Cost Centers", hint: "Indirect departments ordered for step-down." },
   { id: "pools",          label: "Cost Pools",            hint: "Functional overhead pools and recovery policy." },
   { id: "drivers",        label: "Allocation Bases",      hint: "Allocation drivers by department." },
-  { id: "detail",         label: "Allocation Detail",     hint: "Per-pool NBS-style schedule: First, Second, Total per receiver." },
+  { id: "detail",         label: "Allocation Detail",     hint: "Per-pool schedule." },
   { id: "matrixByCenter", label: "Allocation Matrix",     hint: "Rolled-up per-pool allocations from the Allocation Detail." },
 ];
 
