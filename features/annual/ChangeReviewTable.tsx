@@ -157,11 +157,11 @@ export function ChangeReviewTable() {
       width: "minmax(260px, 2fr)",
       sortable: true,
       render: (r) => (
-        <div>
-          <div style={{ fontWeight: 500 }}>{r.change}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>
+        <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+          <span style={{ color: "var(--ink)" }}>{r.change}</span>
+          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.05em" }}>
             {r.id} · {r.affected}
-          </div>
+          </span>
         </div>
       ),
     },
@@ -189,7 +189,7 @@ export function ChangeReviewTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="mono num" style={{ color: "var(--ink-3)", fontSize: 11 }}>{r.prior}</span>
+        <span className="num" style={{ color: "var(--ink-3)" }}>{r.prior}</span>
       ),
     },
     {
@@ -199,7 +199,7 @@ export function ChangeReviewTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="mono num" style={{ fontSize: 11 }}>{r.current}</span>
+        <span className="num">{r.current}</span>
       ),
     },
     {
@@ -209,9 +209,7 @@ export function ChangeReviewTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ fontWeight: 500, color: "var(--ink-2)", fontSize: 11.5 }}>
-          {r.impact}
-        </span>
+        <span className="num" style={{ color: "var(--ink-2)" }}>{r.impact}</span>
       ),
     },
     {
