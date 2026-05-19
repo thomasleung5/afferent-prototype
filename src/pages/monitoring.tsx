@@ -4,12 +4,7 @@ import { DataTable, type Column } from "@/components/table";
 import { StatusRow, type StatusItem } from "@/features/_shared/StatusRow";
 import { fmt } from "@/lib/format";
 import {
-  MONITORING_SUMMARY,
-  DEPT_HEALTH,
-  DRIFT_DRIVERS,
-  RECOVERY_ALERTS,
-  STAFF_ACTIONS,
-  RECOVERY_TREND,
+  deriveMonitoringData,
   type DeptHealth,
   type DriftDriver,
   type RecoveryAlert,
@@ -18,6 +13,7 @@ import {
   type AlertSeverity,
 } from "@/lib/data/monitoring";
 import { DEPTS } from "@/lib/data/departments";
+import { useBuildState } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
 import { useMemo, useState } from "react";
 
@@ -44,14 +40,28 @@ type AlertFilter = "ALL" | AlertSeverity;
 
 export default function RevenueMonitoringPage() {
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("ALL");
+  const { derived, policyTargets, imports } = useBuildState();
+  const monitoring = useMemo(
+    () => deriveMonitoringData({
+      comparisons: derived.comparisons,
+      impact: derived.impact,
+      policyTargets,
+      imports,
+    }),
+    [derived.comparisons, derived.impact, policyTargets, imports],
+  );
+  const { summary, deptHealth, driftDrivers, recoveryAlerts, staffActions } = monitoring;
 
+  const recoveryTone = summary.citywideRecovery >= summary.policyTarget ? "pos"
+    : summary.citywideRecovery >= summary.policyTarget * 0.85 ? "warn"
+    : "neg";
   const summaryItems: StatusItem[] = [
-    { label: "Citywide recovery", value: `${MONITORING_SUMMARY.citywideRecovery}%`, tone: "neg" },
-    { label: "Policy target",     value: `${MONITORING_SUMMARY.policyTarget}%` },
-    { label: "Revenue drift",     value: `${fmt.dollarsK(MONITORING_SUMMARY.revenueDrift)}/yr`, tone: "neg" },
-    { label: "Subsidy exposure",  value: `${fmt.dollarsK(MONITORING_SUMMARY.subsidyExposure)}/yr`, tone: "warn" },
-    { label: "Fees below target", value: `${MONITORING_SUMMARY.feesBelowTarget}` },
-    { label: "Last model update", value: MONITORING_SUMMARY.lastModelUpdate },
+    { label: "Citywide recovery", value: `${summary.citywideRecovery}%`, tone: recoveryTone },
+    { label: "Policy target",     value: `${summary.policyTarget}%` },
+    { label: "Revenue drift",     value: `${fmt.dollarsK(summary.revenueDrift)}/yr`, tone: summary.revenueDrift < 0 ? "neg" : "pos" },
+    { label: "Subsidy exposure",  value: `${fmt.dollarsK(summary.subsidyExposure)}/yr`, tone: "warn" },
+    { label: "Fees below target", value: `${summary.feesBelowTarget}` },
+    { label: "Last model update", value: summary.lastModelUpdate },
   ];
 
   const deptCols: Column<DeptHealth & { id: string }>[] = [
@@ -205,18 +215,18 @@ export default function RevenueMonitoringPage() {
   ];
 
   const alertCounts = useMemo(() => ({
-    ALL:   RECOVERY_ALERTS.length,
-    high:  RECOVERY_ALERTS.filter((a) => a.severity === "high").length,
-    stale: RECOVERY_ALERTS.filter((a) => a.severity === "stale").length,
-    below: RECOVERY_ALERTS.filter((a) => a.severity === "below").length,
-    ready: RECOVERY_ALERTS.filter((a) => a.severity === "ready").length,
-  }), []);
+    ALL:   recoveryAlerts.length,
+    high:  recoveryAlerts.filter((a) => a.severity === "high").length,
+    stale: recoveryAlerts.filter((a) => a.severity === "stale").length,
+    below: recoveryAlerts.filter((a) => a.severity === "below").length,
+    ready: recoveryAlerts.filter((a) => a.severity === "ready").length,
+  }), [recoveryAlerts]);
 
   const filteredAlerts = useMemo(
     () => alertFilter === "ALL"
-      ? RECOVERY_ALERTS
-      : RECOVERY_ALERTS.filter((a) => a.severity === alertFilter),
-    [alertFilter],
+      ? recoveryAlerts
+      : recoveryAlerts.filter((a) => a.severity === alertFilter),
+    [recoveryAlerts, alertFilter],
   );
 
   const alertCols: Column<RecoveryAlert>[] = [
@@ -293,31 +303,31 @@ export default function RevenueMonitoringPage() {
 
       {/* 2. Revenue health by department */}
       <div>
-        <SectionLabel right={`${DEPT_HEALTH.length} departments`}>
+        <SectionLabel right={`${deptHealth.length} departments`}>
           Revenue health by department
         </SectionLabel>
         <DataTable
           cols={deptCols}
-          rows={DEPT_HEALTH.map((d) => ({ ...d, id: d.dept }))}
+          rows={deptHealth.map((d) => ({ ...d, id: d.dept }))}
           defaultSort={{ key: "drift", dir: "asc" }}
         />
       </div>
 
       {/* 3. Drift drivers */}
       <div>
-        <SectionLabel right="Since FY 2025–26 adoption">
-          What changed since adoption
+        <SectionLabel right="Where the citywide gap concentrates">
+          Recovery drivers
         </SectionLabel>
         <DataTable
           cols={driverCols}
-          rows={DRIFT_DRIVERS}
+          rows={driftDrivers}
           defaultSort={{ key: "annualImpact", dir: "desc" }}
         />
       </div>
 
       {/* 4. Recovery alerts */}
       <div>
-        <SectionLabel right={`${filteredAlerts.length} of ${RECOVERY_ALERTS.length} alerts`}>
+        <SectionLabel right={`${filteredAlerts.length} of ${recoveryAlerts.length} alerts`}>
           Recovery alerts
         </SectionLabel>
         <DataTable
@@ -341,95 +351,53 @@ export default function RevenueMonitoringPage() {
       </div>
 
       {/* 5. Recommended staff actions */}
-      <div>
-        <SectionLabel right={`${STAFF_ACTIONS.length} actions ranked by impact`}>
-          Recommended staff actions
-        </SectionLabel>
-        <div style={{
-          background: "var(--paper)", border: "1px solid var(--rule)",
-        }}>
-          {STAFF_ACTIONS.map((a, i) => (
-            <div key={a.id} style={{
-              display: "grid",
-              gridTemplateColumns: "minmax(220px, 1.3fr) minmax(220px, 1.8fr) 140px minmax(180px, 1.2fr)",
-              columnGap: 28,
-              padding: "14px 16px",
-              alignItems: "center",
-              borderBottom: i < STAFF_ACTIONS.length - 1 ? "1px solid var(--rule)" : "none",
-            }}>
-              <div>
-                <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{a.title}</div>
-                <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
-              </div>
-              <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
-                {a.rationale}
-              </div>
-              <div className="num" style={{
-                fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
-                color: "var(--pos)", textAlign: "right",
-              }}>
-                +{fmt.dollarsK(a.fiscalImpact)}/yr
-              </div>
-              <div>
-                {a.nextHref ? (
-                  <Link to={a.nextHref} style={{
-                    fontSize: 12, color: "var(--accent)",
-                    textDecoration: "underline", textUnderlineOffset: 3,
-                  }}>
-                    {a.nextStep} →
-                  </Link>
-                ) : (
-                  <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{a.nextStep}</span>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* 6. Recovery trend (subtle, table-like) */}
-      <div>
-        <SectionLabel right="Last four quarters">
-          Citywide recovery trend
-        </SectionLabel>
-        <div style={{
-          background: "var(--paper)", border: "1px solid var(--rule)",
-          padding: "14px 16px",
-        }}>
+      {staffActions.length > 0 && (
+        <div>
+          <SectionLabel right={`${staffActions.length} action${staffActions.length === 1 ? "" : "s"} ranked by impact`}>
+            Recommended staff actions
+          </SectionLabel>
           <div style={{
-            display: "grid",
-            gridTemplateColumns: `repeat(${RECOVERY_TREND.length}, 1fr)`,
-            gap: 0,
+            background: "var(--paper)", border: "1px solid var(--rule)",
           }}>
-            {RECOVERY_TREND.map((p, i) => {
-              const prev = i > 0 ? RECOVERY_TREND[i - 1].recovery : null;
-              const delta = prev != null ? p.recovery - prev : 0;
-              return (
-                <div key={p.q} style={{
-                  padding: "8px 14px",
-                  borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
-                  display: "flex", flexDirection: "column", gap: 4,
+            {staffActions.map((a, i) => (
+              <div key={a.id} style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(220px, 1.3fr) minmax(220px, 1.8fr) 140px minmax(180px, 1.2fr)",
+                columnGap: 28,
+                padding: "14px 16px",
+                alignItems: "center",
+                borderBottom: i < staffActions.length - 1 ? "1px solid var(--rule)" : "none",
+              }}>
+                <div>
+                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{a.title}</div>
+                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
+                </div>
+                <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                  {a.rationale}
+                </div>
+                <div className="num" style={{
+                  fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+                  color: "var(--pos)", textAlign: "right",
                 }}>
-                  <div className="mono" style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-                    color: "var(--ink-3)", textTransform: "uppercase",
-                  }}>{p.q}</div>
-                  <div className="num display" style={{
-                    fontSize: 22, fontWeight: 600, lineHeight: 1.1, letterSpacing: "-0.01em",
-                  }}>{p.recovery}%</div>
-                  {prev != null && (
-                    <div className="num" style={{
-                      fontSize: 11, color: delta < 0 ? "var(--neg)" : delta > 0 ? "var(--pos)" : "var(--ink-3)",
+                  +{fmt.dollarsK(a.fiscalImpact)}/yr
+                </div>
+                <div>
+                  {a.nextHref ? (
+                    <Link to={a.nextHref} style={{
+                      fontSize: 12, color: "var(--accent)",
+                      textDecoration: "underline", textUnderlineOffset: 3,
                     }}>
-                      {delta > 0 ? "+" : ""}{delta} pts
-                    </div>
+                      {a.nextStep} →
+                    </Link>
+                  ) : (
+                    <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{a.nextStep}</span>
                   )}
                 </div>
-              );
-            })}
+              </div>
+            ))}
           </div>
         </div>
-      </div>
+      )}
     </Page>
   );
 }

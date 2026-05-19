@@ -3,18 +3,36 @@ import { useMemo, useState } from "react";
 import { DataTable, deriveDeptFilter, applyFilter, type Column, type FilterGroup } from "@/components/table";
 import { DeptChip, RecoveryMeter, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { topFixes, type TopFix } from "@/lib/calc";
-import { SERVICES } from "@/lib/data/services";
+import { useBuildState } from "@/lib/store";
+import type { FeeComparison } from "@/lib/calc";
 
 interface Props {
   limit?: number;
 }
 
-/** Top fees by largest cost-recovery shortfall. Exercise of the shared DataTable. */
+interface TopFix extends FeeComparison {
+  recovery: number;
+  gap: number;
+}
+
+/** Top fees by largest cost-recovery shortfall. Pulls from the live
+ *  comparisons in BuildState — reflects seed data + imports + edits. */
 export function TopFixesTable({ limit = 12 }: Props) {
+  const { derived } = useBuildState();
   const [dept, setDept] = useState("ALL");
 
-  const allRows = useMemo(() => topFixes(SERVICES, limit), [limit]);
+  const allRows: TopFix[] = useMemo(() => {
+    return derived.comparisons
+      .map((c) => ({
+        ...c,
+        recovery: c.recoveryPct,
+        gap: (c.unitCost - c.fee) * c.volume,
+      }))
+      .filter((r) => r.annualUplift > 0)
+      .sort((a, b) => b.annualUplift - a.annualUplift)
+      .slice(0, limit);
+  }, [derived.comparisons, limit]);
+
   const rows = useMemo(() => applyFilter(allRows, "dept", dept), [allRows, dept]);
 
   const filters: FilterGroup[] = [{
@@ -96,7 +114,7 @@ export function TopFixesTable({ limit = 12 }: Props) {
 
   return (
     <div>
-      <SectionLabel right={`${allRows.length} services`}>
+      <SectionLabel right={`${allRows.length} service${allRows.length === 1 ? "" : "s"}`}>
         Fees with the largest cost-recovery shortfall
       </SectionLabel>
       <DataTable

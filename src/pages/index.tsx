@@ -6,9 +6,12 @@ import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
 import { AuditTrail } from "@/features/home/AuditTrail";
+import type { DeptCode } from "@/lib/types";
+
+const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
 export default function HomePage() {
-  const { services, positions, capPools, derived } = useBuildState();
+  const { services, positions, capPools, policyTargets, imports, derived } = useBuildState();
   const { impact, comparisons } = derived;
 
   // Headline numbers — same derivation the Revenue Gap page uses, so the
@@ -18,6 +21,54 @@ export default function HomePage() {
     ? (impact.currentRevenue / impact.totalCost) * 100
     : 0;
   const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
+
+  // Revenue drift = closeable gap as a negative (under-collecting) signal.
+  // Same magnitude as the gap; sign indicates direction for display.
+  const revenueDrift = -gap;
+
+  // Departments under their policy target — used for the monitoring card's
+  // "X departments below policy" support line.
+  const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
+    const rows = comparisons.filter((c) => c.dept === d);
+    if (rows.length === 0) return count;
+    const cost = rows.reduce((a, c) => a + c.annualCost, 0);
+    const rev = rows.reduce((a, c) => a + c.annualRevenue, 0);
+    const current = cost > 0 ? (rev / cost) * 100 : 0;
+    const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;
+    return current < target ? count + 1 : count;
+  }, 0);
+
+  // Services missing required inputs — surfaces as the secondary count
+  // alongside dept policy status. (Same definition as the Revenue Gap
+  // "data complete" tile.)
+  const staleAssumptions = services.filter((s) => !s.volume || !s.hours).length;
+
+  // Cost-of-service model completeness: pct of (volume, hours) cells
+  // populated across every service. Mirrors the Revenue Gap data-complete
+  // calculation so both screens reconcile.
+  const expectedCells = Math.max(1, services.length * 2);
+  const missingCells = services.reduce(
+    (a, s) => a + (s.volume ? 0 : 1) + (s.hours ? 0 : 1), 0,
+  );
+  const modelProgress = Math.round((1 - missingCells / expectedCells) * 100);
+  // Operating-layer progress: citywide recovery against the weighted
+  // policy target. 100% means we're collecting exactly what policy intends.
+  const opsProgress = impact.overallPct > 0
+    ? Math.min(100, Math.round((recovery / impact.overallPct) * 100))
+    : 0;
+
+  // Annual update strip — derived counts:
+  //  - Changes to review = recent import log entries (each merge ≈ a change set)
+  //  - Structure reused  = pct of comparisons inherited from existing services
+  //                        (vs. brand-new fees). For now we use 1 − (new imports
+  //                        flagged for review) / total fees as the proxy.
+  //  - Fees impacted     = count of fees with a non-zero adoption delta
+  const changesToReview = imports.length;
+  const feesImpacted = comparisons.filter((c) => Math.abs(c.annualUplift) > 0.5).length;
+  const totalReviewItems = imports.reduce((a, e) => a + (e.result?.lowConfidence ?? 0), 0);
+  const reuseRate = comparisons.length > 0
+    ? Math.max(0, Math.min(100, Math.round((1 - totalReviewItems / Math.max(1, comparisons.length)) * 100)))
+    : 100;
 
   return (
     <Page>
@@ -72,7 +123,7 @@ export default function HomePage() {
           eyebrow="Cost-of-service model"
           title="Cost-of-service model"
           desc="Services, labor, overhead allocations, and recovery structure."
-          progress={74}
+          progress={modelProgress}
           progressLabel="Baseline model"
           cta="Configure model"
           href="/build"
@@ -86,17 +137,26 @@ export default function HomePage() {
           eyebrow="Operating layer"
           title="Revenue monitoring"
           desc="Track recovery drift, subsidy exposure, and fee actions after adoption."
-          progress={57}
-          progressLabel="Recovery health declining since adoption"
+          progress={opsProgress}
+          progressLabel={
+            opsProgress >= 100 ? "Recovery at policy target"
+            : opsProgress >= 80 ? "Recovery near target"
+            : "Recovery below target"
+          }
           cta="Open monitoring"
           href="/monitoring"
           accent
           stats={[
-            { l: "Revenue drift",      v: "+$412K" },
+            { l: "Revenue drift",      v: `${revenueDrift < 0 ? "−" : "+"}${fmt.dollarsK(Math.abs(revenueDrift))}` },
             { l: "Recovery health",    v: `${recovery.toFixed(0)}%` },
             { l: "Fees below target",  v: `${feesBelowTarget}` },
           ]}
-          support="3 departments below policy · 7 stale assumptions"
+          support={
+            `${deptsBelowPolicy} department${deptsBelowPolicy === 1 ? "" : "s"} below policy`
+            + (staleAssumptions > 0
+              ? ` · ${staleAssumptions} stale assumption${staleAssumptions === 1 ? "" : "s"}`
+              : "")
+          }
         />
       </div>
 
@@ -132,9 +192,9 @@ export default function HomePage() {
           display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 16,
         }}>
           {[
-            { l: "Changes to review", v: "12" },
-            { l: "Structure reused",  v: "91%" },
-            { l: "Fees impacted",     v: "25" },
+            { l: "Changes to review", v: `${changesToReview}` },
+            { l: "Structure reused",  v: `${reuseRate}%` },
+            { l: "Fees impacted",     v: `${feesImpacted}` },
           ].map((s) => (
             <div key={s.l}>
               <div className="mono" style={{

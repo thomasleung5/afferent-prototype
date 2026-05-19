@@ -1,10 +1,27 @@
-// Revenue Monitoring seed data — operational layer after fee adoption.
-// Static for now; deterministic so the page renders the same every refresh.
+// Revenue Monitoring — derived view of operational health.
+//
+// Numbers come from the live BuildDerived state (which itself derives from
+// seed data + any user imports + manual edits). Nothing in this file is
+// hardcoded: change services / fees / pools / policy upstream and the
+// monitoring page updates the same turn.
 
-import type { DeptCode } from "../types";
+import type { DeptCode, PolicyTarget } from "../types";
+import type { FeeComparison, PolicyImpact } from "../calc";
+import type { BuildImportLog } from "../store";
+import { DEPTS } from "./departments";
 
 export type Trend = "up" | "down" | "flat";
 export type RecoveryStatus = "below" | "watch" | "on-track";
+export type AlertSeverity = "high" | "stale" | "below" | "ready";
+
+export interface MonitoringSummary {
+  citywideRecovery: number;
+  policyTarget: number;
+  revenueDrift: number;
+  subsidyExposure: number;
+  feesBelowTarget: number;
+  lastModelUpdate: string;
+}
 
 export interface DeptHealth {
   dept: DeptCode;
@@ -26,8 +43,6 @@ export interface DriftDriver {
   actionHref?: string;
 }
 
-export type AlertSeverity = "high" | "stale" | "below" | "ready";
-
 export interface RecoveryAlert {
   id: string;
   alert: string;
@@ -47,160 +62,234 @@ export interface StaffAction {
   nextHref?: string;
 }
 
-export interface QuarterPoint {
-  q: string;
-  recovery: number;
+export interface MonitoringData {
+  summary: MonitoringSummary;
+  deptHealth: DeptHealth[];
+  driftDrivers: DriftDriver[];
+  recoveryAlerts: RecoveryAlert[];
+  staffActions: StaffAction[];
 }
 
-export const MONITORING_SUMMARY = {
-  citywideRecovery: 57,
-  policyTarget: 85,
-  revenueDrift: -412_000,
-  subsidyExposure: 333_000,
-  feesBelowTarget: 25,
-  lastModelUpdate: "Apr 18",
-};
+interface MonitoringInput {
+  comparisons: FeeComparison[];
+  impact: PolicyImpact;
+  policyTargets: PolicyTarget[];
+  imports: BuildImportLog[];
+}
 
-export const DEPT_HEALTH: DeptHealth[] = [
-  { dept: "PLAN", target: 70,  current: 58, drift: -12, subsidy: 212_000, trend: "down", status: "below" },
-  { dept: "BLDG", target: 100, current: 94, drift:  -6, subsidy:  58_000, trend: "down", status: "watch" },
-  { dept: "ENG",  target: 85,  current: 73, drift: -12, subsidy:  63_000, trend: "down", status: "below" },
-];
+const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
-export const DRIFT_DRIVERS: DriftDriver[] = [
-  {
-    id: "DR-01",
-    driver: "Salary and benefit growth",
-    area: "Planning / Building",
-    annualImpact: 148_000,
-    evidence: "Labor rates increased 8.6% since study",
-    action: "Refresh direct labor",
-    actionHref: "/build/salary",
-  },
-  {
-    id: "DR-02",
-    driver: "Lower permit volume",
-    area: "Building",
-    annualImpact: 97_000,
-    evidence: "SFR permits down 18% vs prior workload",
-    action: "Review workload assumptions",
-    actionHref: "/build/workload",
-  },
-  {
-    id: "DR-03",
-    driver: "Engineering contract costs",
-    area: "Engineering",
-    annualImpact: 81_000,
-    evidence: "On-call review contract increased",
-    action: "Update operating costs",
-    actionHref: "/build/operating",
-  },
-  {
-    id: "DR-04",
-    driver: "Overhead allocation update",
-    area: "Planning",
-    annualImpact: 54_000,
-    evidence: "Council / legislative support allocation increased",
-    action: "Re-run cost allocation",
-    actionHref: "/build/cap",
-  },
-  {
-    id: "DR-05",
-    driver: "Fee adoption lag",
-    area: "All departments",
-    annualImpact: 32_000,
-    evidence: "14 approved fees not yet adopted",
-    action: "Move to fee schedule",
-    actionHref: "/build/feestudy",
-  },
-];
+export function deriveMonitoringData(input: MonitoringInput): MonitoringData {
+  const summary = deriveSummary(input);
+  const deptHealth = deriveDeptHealth(input);
+  const recoveryAlerts = deriveRecoveryAlerts(input);
+  const driftDrivers = deriveDriftDrivers(input, deptHealth);
+  const staffActions = deriveStaffActions(input, deptHealth, recoveryAlerts);
+  return { summary, deptHealth, driftDrivers, recoveryAlerts, staffActions };
+}
 
-export const RECOVERY_ALERTS: RecoveryAlert[] = [
-  {
-    id: "AL-01",
-    alert: "Site Development Hearing Review below target",
-    dept: "PLAN",
-    impact: 95_000,
-    trigger: "Recovery 32 pts below policy",
-    action: "Recalculate and prepare adoption package",
-    severity: "high",
-  },
-  {
-    id: "AL-02",
-    alert: "Engineering Review of Building Permits at $0 current fee",
-    dept: "ENG",
-    impact: 116_000,
-    trigger: "Cost exists but fee not adopted",
-    action: "Add to fee schedule",
-    severity: "high",
-  },
-  {
-    id: "AL-03",
-    alert: "Building Permit – Major Remodel volume changed",
-    dept: "BLDG",
-    impact: 41_000,
-    trigger: "Volume +10% since prior study",
-    action: "Refresh workload",
-    severity: "stale",
-  },
-  {
-    id: "AL-04",
-    alert: "Encroachment Permit under-recovers",
-    dept: "ENG",
-    impact: 35_000,
-    trigger: "Current recovery 52% vs 85% target",
+function deriveSummary({ comparisons, impact, imports }: MonitoringInput): MonitoringSummary {
+  const citywideRecovery = impact.totalCost > 0
+    ? (impact.currentRevenue / impact.totalCost) * 100
+    : 0;
+  const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
+  // Revenue drift = the closeable gap, expressed as a negative number
+  // (under-collecting). Matches the sign convention the page legend used.
+  const revenueDrift = -Math.round(Math.max(0, impact.recoverableGap));
+  const lastModelUpdate = formatLastImport(imports);
+  return {
+    citywideRecovery: Math.round(citywideRecovery),
+    policyTarget: Math.round(impact.overallPct),
+    revenueDrift,
+    subsidyExposure: Math.round(impact.subsidy),
+    feesBelowTarget,
+    lastModelUpdate,
+  };
+}
+
+function deriveDeptHealth({ comparisons, policyTargets }: MonitoringInput): DeptHealth[] {
+  return FEE_DEPTS.map((dept) => {
+    const deptRows = comparisons.filter((c) => c.dept === dept);
+    const totalCost = deptRows.reduce((a, c) => a + c.annualCost, 0);
+    const currentRev = deptRows.reduce((a, c) => a + c.annualRevenue, 0);
+    const intendedRev = deptRows.reduce((a, c) => a + c.annualCost * (c.target / 100), 0);
+    const current = totalCost > 0 ? Math.round((currentRev / totalCost) * 100) : 0;
+    const policyTarget = policyTargets.find((t) => t.dept === dept)?.target
+      ?? (totalCost > 0 ? Math.round((intendedRev / totalCost) * 100) : 100);
+    const drift = current - policyTarget;
+    const subsidy = Math.max(0, intendedRev - currentRev);
+    return {
+      dept,
+      target: policyTarget,
+      current,
+      drift,
+      subsidy: Math.round(subsidy),
+      trend: trendFromDrift(drift),
+      status: statusFromDrift(drift),
+    };
+  });
+}
+
+function deriveRecoveryAlerts({ comparisons }: MonitoringInput): RecoveryAlert[] {
+  // Rank fees by absolute closeable impact (uplift if adopted at target).
+  // Surface the top 5 — that's the actionable Recovery Alerts queue.
+  return comparisons
+    .filter((c) => c.annualUplift > 500) // ignore noise below $500/yr
+    .sort((a, b) => b.annualUplift - a.annualUplift)
+    .slice(0, 5)
+    .map((c, i) => {
+      const severity = severityFor(c);
+      const { trigger, action } = describeAlert(c);
+      return {
+        id: `AL-${String(i + 1).padStart(2, "0")}`,
+        alert: alertHeadline(c),
+        dept: c.dept,
+        impact: Math.round(c.annualUplift),
+        trigger,
+        action,
+        severity,
+      };
+    });
+}
+
+function deriveDriftDrivers(
+  { comparisons }: MonitoringInput,
+  deptHealth: DeptHealth[],
+): DriftDriver[] {
+  // Drivers = where the citywide gap concentrates. Without time-series we
+  // can't truly attribute drift, so we surface the largest per-department
+  // contributions to the recoverable gap.
+  const drivers: DriftDriver[] = [];
+  for (const dh of deptHealth) {
+    if (dh.subsidy < 1000) continue;
+    const deptName = DEPTS[dh.dept].name.replace(" Administration", "");
+    const deptRows = comparisons.filter((c) => c.dept === dh.dept);
+    const belowCount = deptRows.filter((c) => c.recoveryPct < c.target).length;
+    drivers.push({
+      id: `DR-${dh.dept}`,
+      driver: `${deptName} cost recovery shortfall`,
+      area: deptName,
+      annualImpact: dh.subsidy,
+      evidence: `${belowCount} fee${belowCount === 1 ? "" : "s"} below target · `
+        + `recovery ${dh.current}% vs ${dh.target}% policy`,
+      action: "Review fee schedule",
+      actionHref: "/build/feestudy",
+    });
+  }
+  // Plus a single "unadopted fees" row capturing services with $0 fee but
+  // a calculated cost — that's typically a category-wide adoption lag.
+  const unadopted = comparisons.filter((c) => c.fee === 0 && c.unitCost > 0);
+  if (unadopted.length > 0) {
+    const impact = unadopted.reduce((a, c) => a + c.annualCost, 0);
+    drivers.push({
+      id: "DR-UNADOPTED",
+      driver: "Fee adoption lag",
+      area: "All departments",
+      annualImpact: Math.round(impact),
+      evidence: `${unadopted.length} service${unadopted.length === 1 ? "" : "s"} carry calculated cost but no adopted fee`,
+      action: "Move to fee schedule",
+      actionHref: "/build/feestudy",
+    });
+  }
+  return drivers
+    .sort((a, b) => b.annualImpact - a.annualImpact)
+    .slice(0, 5);
+}
+
+function deriveStaffActions(
+  { comparisons, impact }: MonitoringInput,
+  deptHealth: DeptHealth[],
+  recoveryAlerts: RecoveryAlert[],
+): StaffAction[] {
+  const actions: StaffAction[] = [];
+  const highAlertCount = recoveryAlerts.filter((a) => a.severity === "high").length;
+  const totalUplift = comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
+  if (highAlertCount > 0 && totalUplift > 0) {
+    actions.push({
+      id: "SA-FEES",
+      title: "Prepare mid-year fee adjustment",
+      rationale: `${highAlertCount} high-priority fee${highAlertCount === 1 ? "" : "s"} below policy target`,
+      fiscalImpact: Math.round(totalUplift),
+      nextStep: "Export council-ready schedule",
+      nextHref: "/build/feestudy",
+    });
+  }
+  const worstDept = [...deptHealth].sort((a, b) => a.drift - b.drift)[0];
+  if (worstDept && worstDept.subsidy > 1000) {
+    const deptName = DEPTS[worstDept.dept].name.replace(" Administration", "");
+    actions.push({
+      id: `SA-${worstDept.dept}`,
+      title: `Re-run cost allocation`,
+      rationale: `${deptName} recovery is ${Math.abs(worstDept.drift)} pts below target`,
+      fiscalImpact: worstDept.subsidy,
+      nextStep: "Open Cost Allocation",
+      nextHref: "/build/cap",
+    });
+  }
+  if (impact.recoverableGap > 0) {
+    actions.push({
+      id: "SA-ANNUAL",
+      title: "Queue annual update",
+      rationale: `${recoveryAlerts.length} alerts open · `
+        + `${Math.round(Math.max(0, impact.recoverableGap)).toLocaleString()} closeable gap`,
+      fiscalImpact: Math.round(Math.max(0, impact.recoverableGap)),
+      nextStep: "Start Annual Update",
+      nextHref: "/annual",
+    });
+  }
+  return actions
+    .sort((a, b) => b.fiscalImpact - a.fiscalImpact);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+function trendFromDrift(drift: number): Trend {
+  if (drift <= -3) return "down";
+  if (drift >=  3) return "up";
+  return "flat";
+}
+
+function statusFromDrift(drift: number): RecoveryStatus {
+  if (drift <= -8) return "below";
+  if (drift <= -2) return "watch";
+  return "on-track";
+}
+
+function severityFor(c: FeeComparison): AlertSeverity {
+  if (c.fee === 0 && c.unitCost > 0) return "high";
+  const driftPts = c.target - c.recoveryPct;
+  if (c.annualUplift >= 50_000) return "high";
+  if (driftPts >= 20) return "below";
+  if (driftPts >= 10) return "stale";
+  return "ready";
+}
+
+function alertHeadline(c: FeeComparison): string {
+  if (c.fee === 0 && c.unitCost > 0) return `${c.name} at $0 current fee`;
+  if (c.recoveryPct < c.target * 0.6) return `${c.name} severely under-recovers`;
+  return `${c.name} below target`;
+}
+
+function describeAlert(c: FeeComparison): { trigger: string; action: string } {
+  if (c.fee === 0 && c.unitCost > 0) {
+    return {
+      trigger: "Cost exists but fee not adopted",
+      action: "Add to fee schedule",
+    };
+  }
+  const driftPts = Math.round(c.target - c.recoveryPct);
+  return {
+    trigger: `Recovery ${Math.round(c.recoveryPct)}% vs ${c.target}% target (${driftPts} pts gap)`,
     action: "Adjust recommended fee",
-    severity: "below",
-  },
-  {
-    id: "AL-05",
-    alert: "Additional Plan Review fee below peers",
-    dept: "BLDG",
-    impact: 22_000,
-    trigger: "31% below peer median",
-    action: "Review benchmark support",
-    severity: "ready",
-  },
-];
+  };
+}
 
-export const STAFF_ACTIONS: StaffAction[] = [
-  {
-    id: "SA-01",
-    title: "Prepare mid-year fee adjustment",
-    rationale: "9 high-priority fees are below policy target",
-    fiscalImpact: 287_000,
-    nextStep: "Export council-ready schedule",
-    nextHref: "/build/feestudy",
-  },
-  {
-    id: "SA-02",
-    title: "Refresh labor rates",
-    rationale: "Salary and benefit growth is the largest drift driver",
-    fiscalImpact: 148_000,
-    nextStep: "Import updated salary roster",
-    nextHref: "/build/salary",
-  },
-  {
-    id: "SA-03",
-    title: "Re-run cost allocation",
-    rationale: "Overhead allocations changed materially for Planning",
-    fiscalImpact: 54_000,
-    nextStep: "Open Cost Allocation",
-    nextHref: "/build/cap",
-  },
-  {
-    id: "SA-04",
-    title: "Queue FY 2026–27 annual update",
-    rationale: "25 fees below target and 7 stale workload assumptions",
-    fiscalImpact: 412_000,
-    nextStep: "Start Annual Update",
-    nextHref: "/annual",
-  },
-];
-
-export const RECOVERY_TREND: QuarterPoint[] = [
-  { q: "Q1", recovery: 64 },
-  { q: "Q2", recovery: 61 },
-  { q: "Q3", recovery: 59 },
-  { q: "Q4", recovery: 57 },
-];
+function formatLastImport(imports: BuildImportLog[]): string {
+  if (imports.length === 0) return "Seed data";
+  const latest = imports.reduce((a, b) => (b.id > a.id ? b : a));
+  const d = new Date(latest.at);
+  if (Number.isNaN(d.getTime())) return "Seed data";
+  return d.toLocaleString(undefined, { month: "short", day: "numeric" });
+}
