@@ -1,5 +1,5 @@
 ﻿
-import { KpiTile, SectionLabel } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { CapPool } from "@/lib/types";
 import { defaultCenterOrder, useBuildState } from "@/lib/store";
@@ -36,37 +36,6 @@ export function deriveCenters(pools: CapPool[], order: string[]): CenterRow[] {
     out.push({ name, total: m.total, pools: m.pools });
   }
   return out;
-}
-
-export function CapKpiRail() {
-  const { capPools, capCenterOrder } = useBuildState();
-  const centers = deriveCenters(capPools, capCenterOrder);
-  const total = centers.reduce((a, c) => a + c.total, 0);
-
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 12 }}>
-      <KpiTile
-        label="Total CAP scope"
-        value={fmt.dollarsK(total)}
-        sub={`${centers.length} cost centers`}
-      />
-      <KpiTile
-        label="Indirect departments"
-        value={centers.length}
-        sub="Allocate FROM these"
-      />
-      <KpiTile
-        label="Direct departments"
-        value={3}
-        sub="Allocate TO these"
-      />
-      <KpiTile
-        label="Cost pools"
-        value={capPools.length}
-        sub="Distinct allocation rules"
-      />
-    </div>
-  );
 }
 
 /** Step-down sequence — ordered cost centers, each with its $ total and
