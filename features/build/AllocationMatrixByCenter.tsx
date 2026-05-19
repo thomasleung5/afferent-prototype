@@ -47,81 +47,58 @@ export function AllocationMatrixByCenter() {
   }, [model.nodes]);
   const allocSrc = model.alloc2;
 
-  // Fixed pixel widths on the frozen columns (Center / Row total) are
-  // required so position: sticky knows where to pin each cell. fr-based
-  // widths can't be expressed as a sticky `left` offset.
-  const CENTER_W = 260;          // px — frozen left
-  const ROW_TOTAL_W = 100;       // px — frozen right
-  // Row padding lives INSIDE the sticky cells (paddingLeft on Center,
-  // paddingRight on Row total) so the sticky cells can pin at the
-  // scroll container's very left/right edges (left: 0 / right: 0).
-  // Non-sticky cells get their breathing room from the COL_GAP between
-  // grid tracks. With ROW_PAD = 0, no transparent strip is visible to
-  // the left of the sticky Center column during horizontal scroll.
-  const ROW_PAD  = 0;            // px — no padding on the row container
-  const CELL_PAD = 14;           // px — internal padding inside sticky cells
-  const COL_GAP  = 8;            // px — gap between grid tracks
-  const grid =
-    `${CENTER_W}px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} ${ROW_TOTAL_W}px`;
+  // Real <table> + <colgroup> own the column widths; sticky behavior is
+  // applied to actual <th>/<td> cells. One table inside one horizontal
+  // scroll container — no overlay tables, no cloned columns, no transforms.
+  const CENTER_W = 260;       // px — sticky left
+  const COL_W = 96;           // px — every non-frozen matrix column
+  const ROW_TOTAL_W = 110;    // px — sticky right
+  const tableWidth = CENTER_W + cols.length * COL_W + ROW_TOTAL_W;
 
-  // Sticky cells pin at the scroll container's left/right edges.
-  const STICKY_L1 = 0;
-  const STICKY_R  = 0;
-
-  // Layering rules:
-  //   - z-index 2: sticky body cells (above non-sticky body cells at z 0).
-  //   - z-index 3: sticky header / footer cells in the non-corner positions
-  //     (none in this matrix, but reserved for consistency).
-  //   - z-index 4: sticky corner cells = sticky AND in a header/footer band.
-  //     They sit highest so they occlude both sticky body cells (during
-  //     vertical scroll, if added later) and non-sticky band cells.
-  //
-  // overflow / whiteSpace clipping is critical: without it, a long Center
-  // name (or any cell content) overflows the 240px grid track and the
-  // overflow text floats over scrolling cells, producing the "garbled,
-  // layered text" effect during horizontal scroll. textOverflow: ellipsis
-  // truncates cleanly at the cell edge.
-  //
-  // The 1px box-shadow on the right edge of the sticky-left columns and
-  // the left edge of the sticky-right column gives a subtle visual
-  // separator so the frozen area reads as a distinct band.
-  const stickyClip = {
+  // Sticky cells must clip with ellipsis so long Center names never bleed
+  // past the column edge into scrolling cells underneath.
+  const cellPad = "9px 12px";
+  const stickyEllipsis = {
     overflow: "hidden" as const,
     whiteSpace: "nowrap" as const,
     textOverflow: "ellipsis" as const,
-  };
-  const leftEdgeShadow  = { boxShadow: "1px 0 0 var(--rule)" };
-  const rightEdgeShadow = { boxShadow: "-1px 0 0 var(--rule)" };
-
-  // Explicit minWidth + maxWidth on sticky cells is belt-and-suspenders:
-  // the grid track is already fixed at CENTER_W / ROW_TOTAL_W, but pinning
-  // the cell's box width prevents any flexbox / content-driven sizing from
-  // expanding the cell past the column edge during scroll.
-  const stickyLeftSize  = { minWidth: CENTER_W, maxWidth: CENTER_W, paddingLeft: CELL_PAD, paddingRight: COL_GAP };
-  const stickyRightSize = { minWidth: ROW_TOTAL_W, maxWidth: ROW_TOTAL_W, paddingRight: CELL_PAD, paddingLeft: COL_GAP };
-  const stickyLeftBody = {
-    ...stickyClip, ...leftEdgeShadow, ...stickyLeftSize,
-    position: "sticky" as const, left: STICKY_L1, zIndex: 2,
-    background: "var(--paper)",
     boxSizing: "border-box" as const,
+  };
+
+  // z-index layering:
+  //   2 — sticky body cells (above scrolling body cells beneath them)
+  //   4 — sticky header/footer corner cells (above everything)
+  const stickyLeftBody = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: 0, zIndex: 2,
+    background: "var(--paper)",
+    padding: cellPad,
+    boxShadow: "1px 0 0 var(--rule)",
+    textAlign: "left" as const,
   };
   const stickyRightBody = {
-    ...stickyClip, ...rightEdgeShadow, ...stickyRightSize,
-    position: "sticky" as const, right: STICKY_R, zIndex: 2,
+    ...stickyEllipsis,
+    position: "sticky" as const, right: 0, zIndex: 2,
     background: "var(--paper)",
-    boxSizing: "border-box" as const,
+    padding: cellPad,
+    boxShadow: "-1px 0 0 var(--rule)",
+    textAlign: "right" as const,
   };
   const stickyLeftBand = {
-    ...stickyClip, ...leftEdgeShadow, ...stickyLeftSize,
-    position: "sticky" as const, left: STICKY_L1, zIndex: 4,
+    ...stickyEllipsis,
+    position: "sticky" as const, left: 0, zIndex: 4,
     background: "var(--paper-2)",
-    boxSizing: "border-box" as const,
+    padding: cellPad,
+    boxShadow: "1px 0 0 var(--rule)",
+    textAlign: "left" as const,
   };
   const stickyRightBand = {
-    ...stickyClip, ...rightEdgeShadow, ...stickyRightSize,
-    position: "sticky" as const, right: STICKY_R, zIndex: 4,
+    ...stickyEllipsis,
+    position: "sticky" as const, right: 0, zIndex: 4,
     background: "var(--paper-2)",
-    boxSizing: "border-box" as const,
+    padding: cellPad,
+    boxShadow: "-1px 0 0 var(--rule)",
+    textAlign: "right" as const,
   };
 
   const poolsByCenter = useMemo(() => {
@@ -157,132 +134,154 @@ export function AllocationMatrixByCenter() {
         <div style={{
           background: "var(--paper)", border: "1px solid var(--rule)",
           overflowX: "auto",
+          position: "relative",
         }}>
-        <div style={{ minWidth: 960 }}>
-          {/* Header */}
-          <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
-            padding: `10px ${ROW_PAD}px`,
-            background: "var(--paper-2)",
-            borderBottom: "1px solid var(--rule-strong)",
-            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
-            letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
-          }}>
-            <div style={stickyLeftBand}>Center</div>
-            {cols.map((n) => (
-              <div key={n.key} title={n.glCode} style={{
-                textAlign: "right", color: "var(--ink-2)",
-                fontFamily: "var(--ff-ui)", fontSize: 11, fontWeight: 500,
-                letterSpacing: 0, textTransform: "none", lineHeight: 1.3,
-                overflow: "hidden",
-              }}>
-                <div style={{
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }}>{n.name}</div>
-                <div className="mono" style={{
-                  fontSize: 9.5, color: "var(--ink-4)", letterSpacing: "0.04em",
-                  textTransform: "uppercase", marginTop: 2,
-                }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
-              </div>
-            ))}
-            <div style={{ ...stickyRightBand, textAlign: "right" }}>Row total</div>
-          </div>
-
-          {/* Rows — one per cost center (aggregates pools within the center) */}
-          {capCenterOrder.map((center, i) => {
-            const pools = poolsByCenter.get(center) ?? [];
-            if (pools.length === 0) return null;
-            const rt = centerRowTotal(center);
-            const isLast = i === capCenterOrder.length - 1;
-            return (
-              <div key={center} style={{
-                display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
-                padding: `7px ${ROW_PAD}px`,
-                borderBottom: isLast ? "none" : "1px solid var(--rule)",
-                alignItems: "center",
-                fontFamily: "var(--ff-mono)",
-                fontVariantNumeric: "tabular-nums",
-              }}>
-                <div style={{ ...stickyLeftBody, fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
-                  <div style={{
-                    fontWeight: 500,
-                    overflow: "hidden",
-                    whiteSpace: "nowrap",
-                    textOverflow: "ellipsis",
-                  }}>
-                    {glCodeByCenter.get(center) && (
-                      <span className="mono" style={{
-                        fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
-                        letterSpacing: "0.02em", fontWeight: 400,
-                      }}>{glCodeByCenter.get(center)}</span>
-                    )}
-                    {center}
-                  </div>
-                </div>
-                {cols.map((n) => {
-                  const v = centerCell(center, n.key);
-                  const zero = v < 0.5;
-                  const isOpen = openCell?.center === center && openCell?.nodeKey === n.key;
-                  return (
-                    <button
-                      key={n.key}
-                      onClick={() => !zero && setOpenCell(isOpen ? null : { center, nodeKey: n.key })}
-                      title={zero ? "—" : `${fmt.dollars(v)} — click for trace`}
-                      style={{
-                        textAlign: "right", padding: "3px 4px",
-                        fontSize: 11.5,
-                        fontFamily: "var(--ff-mono)",
-                        fontVariantNumeric: "tabular-nums",
-                        color: zero ? "var(--ink-4)" : "var(--ink)",
-                        fontWeight: isOpen ? 600 : 400,
-                        background: isOpen ? "var(--accent-tint)" : "transparent",
-                        border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
-                        cursor: zero ? "default" : "pointer",
-                      }}
-                    >
-                      {zero ? "—" : fmt.dollarsK(v)}
-                    </button>
-                  );
-                })}
-                <div className="num" style={{
-                  ...stickyRightBody,
-                  textAlign: "right", fontSize: 12,
-                }}>{fmt.dollarsK(rt)}</div>
-              </div>
-            );
-          })}
-
-          {/* Column totals */}
-          <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: COL_GAP,
-            padding: `11px ${ROW_PAD}px`,
-            background: "var(--paper-2)",
-            borderTop: "2px solid var(--ink)",
-            alignItems: "center",
-            fontFamily: "var(--ff-mono)",
+          <table style={{
+            borderCollapse: "separate",
+            borderSpacing: 0,
+            tableLayout: "fixed",
+            width: tableWidth,
             fontVariantNumeric: "tabular-nums",
           }}>
-            <div className="mono" style={{
-              ...stickyLeftBand,
-              fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
-              textTransform: "uppercase",
-            }}>Column total</div>
-            {cols.map((n) => {
-              const t = colTotal(n.key);
-              const zero = t < 0.5;
-              return (
-                <div key={n.key} className="num" style={{
-                  textAlign: "right", fontSize: 12,
-                  color: zero ? "var(--ink-4)" : "var(--ink)",
-                }}>{zero ? "—" : fmt.dollarsK(t)}</div>
-              );
-            })}
-            <div className="num" style={{
-              ...stickyRightBand,
-              textAlign: "right", fontSize: 13,
-            }}>{fmt.dollarsK(grandTotal)}</div>
-          </div>
-        </div>
+            <colgroup>
+              <col style={{ width: CENTER_W }}/>
+              {cols.map((n) => <col key={n.key} style={{ width: COL_W }}/>)}
+              <col style={{ width: ROW_TOTAL_W }}/>
+            </colgroup>
+            <thead>
+              <tr>
+                <th style={{
+                  ...stickyLeftBand,
+                  borderBottom: "1px solid var(--rule-strong)",
+                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
+                }}>Center</th>
+                {cols.map((n) => (
+                  <th key={n.key} title={n.glCode} style={{
+                    padding: cellPad,
+                    background: "var(--paper-2)",
+                    borderBottom: "1px solid var(--rule-strong)",
+                    textAlign: "right",
+                    verticalAlign: "bottom",
+                    color: "var(--ink-2)",
+                    fontFamily: "var(--ff-ui)", fontSize: 11, fontWeight: 500,
+                    letterSpacing: 0, textTransform: "none", lineHeight: 1.3,
+                    overflow: "hidden",
+                  }}>
+                    <div style={{
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>{n.name}</div>
+                    <div className="mono" style={{
+                      fontSize: 9.5, color: "var(--ink-4)", letterSpacing: "0.04em",
+                      textTransform: "uppercase", marginTop: 2,
+                    }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
+                  </th>
+                ))}
+                <th style={{
+                  ...stickyRightBand,
+                  borderBottom: "1px solid var(--rule-strong)",
+                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
+                }}>Row total</th>
+              </tr>
+            </thead>
+            <tbody>
+              {capCenterOrder.map((center, i) => {
+                const pools = poolsByCenter.get(center) ?? [];
+                if (pools.length === 0) return null;
+                const rt = centerRowTotal(center);
+                const isLast = i === capCenterOrder.length - 1;
+                const rowBorder = isLast ? "none" : "1px solid var(--rule)";
+                return (
+                  <tr key={center}>
+                    <td style={{
+                      ...stickyLeftBody,
+                      borderBottom: rowBorder,
+                      fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3,
+                      fontWeight: 500, color: "var(--ink)",
+                    }}>
+                      {glCodeByCenter.get(center) && (
+                        <span className="mono" style={{
+                          fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+                          letterSpacing: "0.02em", fontWeight: 400,
+                        }}>{glCodeByCenter.get(center)}</span>
+                      )}
+                      {center}
+                    </td>
+                    {cols.map((n) => {
+                      const v = centerCell(center, n.key);
+                      const zero = v < 0.5;
+                      const isOpen = openCell?.center === center && openCell?.nodeKey === n.key;
+                      return (
+                        <td key={n.key} style={{
+                          padding: 0,
+                          borderBottom: rowBorder,
+                          background: isOpen ? "var(--accent-tint)" : "transparent",
+                          textAlign: "right",
+                        }}>
+                          <button
+                            type="button"
+                            onClick={() => !zero && setOpenCell(isOpen ? null : { center, nodeKey: n.key })}
+                            title={zero ? "—" : `${fmt.dollars(v)} — click for trace`}
+                            style={{
+                              display: "block", width: "100%",
+                              textAlign: "right", padding: "7px 10px",
+                              fontSize: 11.5,
+                              fontFamily: "var(--ff-mono)",
+                              fontVariantNumeric: "tabular-nums",
+                              color: zero ? "var(--ink-4)" : "var(--ink)",
+                              fontWeight: isOpen ? 600 : 400,
+                              background: "transparent",
+                              border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
+                              cursor: zero ? "default" : "pointer",
+                            }}
+                          >
+                            {zero ? "—" : fmt.dollarsK(v)}
+                          </button>
+                        </td>
+                      );
+                    })}
+                    <td className="num" style={{
+                      ...stickyRightBody,
+                      borderBottom: rowBorder,
+                      fontFamily: "var(--ff-mono)",
+                      fontSize: 12, color: "var(--ink)",
+                    }}>{fmt.dollarsK(rt)}</td>
+                  </tr>
+                );
+              })}
+            </tbody>
+            <tfoot>
+              <tr>
+                <td className="mono" style={{
+                  ...stickyLeftBand,
+                  borderTop: "2px solid var(--ink)",
+                  fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
+                  textTransform: "uppercase", color: "var(--ink-3)",
+                }}>Column total</td>
+                {cols.map((n) => {
+                  const t = colTotal(n.key);
+                  const zero = t < 0.5;
+                  return (
+                    <td key={n.key} className="num" style={{
+                      padding: cellPad,
+                      background: "var(--paper-2)",
+                      borderTop: "2px solid var(--ink)",
+                      textAlign: "right", fontSize: 12,
+                      fontFamily: "var(--ff-mono)",
+                      color: zero ? "var(--ink-4)" : "var(--ink)",
+                    }}>{zero ? "—" : fmt.dollarsK(t)}</td>
+                  );
+                })}
+                <td className="num" style={{
+                  ...stickyRightBand,
+                  borderTop: "2px solid var(--ink)",
+                  fontFamily: "var(--ff-mono)",
+                  fontSize: 13, color: "var(--ink)", fontWeight: 600,
+                }}>{fmt.dollarsK(grandTotal)}</td>
+              </tr>
+            </tfoot>
+          </table>
         </div>
       </div>
 
