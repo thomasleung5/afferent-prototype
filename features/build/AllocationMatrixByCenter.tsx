@@ -62,17 +62,65 @@ export function AllocationMatrixByCenter() {
   // cell pins in place without sliding when horizontal scroll starts.
   // Col 1 natural left = ROW_PAD. Col 2 natural left = ROW_PAD + CENTER_W +
   // COL_GAP. Row-total natural right = ROW_PAD.
-  // Body rows use --paper, header + footer use --paper-2; z-index sits above
-  // non-sticky cells so they don't bleed through when scrolled.
   const STICKY_L1 = ROW_PAD;
   const STICKY_L2 = ROW_PAD + CENTER_W + COL_GAP;
   const STICKY_R  = ROW_PAD;
-  const stickyLeft1Body = { position: "sticky" as const, left: STICKY_L1, zIndex: 2, background: "var(--paper)" };
-  const stickyLeft2Body = { position: "sticky" as const, left: STICKY_L2, zIndex: 2, background: "var(--paper)" };
-  const stickyRightBody = { position: "sticky" as const, right: STICKY_R, zIndex: 2, background: "var(--paper)" };
-  const stickyLeft1Band = { position: "sticky" as const, left: STICKY_L1, zIndex: 3, background: "var(--paper-2)" };
-  const stickyLeft2Band = { position: "sticky" as const, left: STICKY_L2, zIndex: 3, background: "var(--paper-2)" };
-  const stickyRightBand = { position: "sticky" as const, right: STICKY_R, zIndex: 3, background: "var(--paper-2)" };
+
+  // Layering rules:
+  //   - z-index 2: sticky body cells (above non-sticky body cells at z 0).
+  //   - z-index 3: sticky header / footer cells in the non-corner positions
+  //     (none in this matrix, but reserved for consistency).
+  //   - z-index 4: sticky corner cells = sticky AND in a header/footer band.
+  //     They sit highest so they occlude both sticky body cells (during
+  //     vertical scroll, if added later) and non-sticky band cells.
+  //
+  // overflow / whiteSpace clipping is critical: without it, a long Center
+  // name (or any cell content) overflows the 240px grid track and the
+  // overflow text floats over scrolling cells, producing the "garbled,
+  // layered text" effect during horizontal scroll. textOverflow: ellipsis
+  // truncates cleanly at the cell edge.
+  //
+  // The 1px box-shadow on the right edge of the sticky-left columns and
+  // the left edge of the sticky-right column gives a subtle visual
+  // separator so the frozen area reads as a distinct band.
+  const stickyClip = {
+    overflow: "hidden" as const,
+    whiteSpace: "nowrap" as const,
+    textOverflow: "ellipsis" as const,
+  };
+  const leftEdgeShadow  = { boxShadow: "1px 0 0 var(--rule)" };
+  const rightEdgeShadow = { boxShadow: "-1px 0 0 var(--rule)" };
+
+  const stickyLeft1Body = {
+    ...stickyClip, ...leftEdgeShadow,
+    position: "sticky" as const, left: STICKY_L1, zIndex: 2,
+    background: "var(--paper)",
+  };
+  const stickyLeft2Body = {
+    ...stickyClip, ...leftEdgeShadow,
+    position: "sticky" as const, left: STICKY_L2, zIndex: 2,
+    background: "var(--paper)",
+  };
+  const stickyRightBody = {
+    ...stickyClip, ...rightEdgeShadow,
+    position: "sticky" as const, right: STICKY_R, zIndex: 2,
+    background: "var(--paper)",
+  };
+  const stickyLeft1Band = {
+    ...stickyClip, ...leftEdgeShadow,
+    position: "sticky" as const, left: STICKY_L1, zIndex: 4,
+    background: "var(--paper-2)",
+  };
+  const stickyLeft2Band = {
+    ...stickyClip, ...leftEdgeShadow,
+    position: "sticky" as const, left: STICKY_L2, zIndex: 4,
+    background: "var(--paper-2)",
+  };
+  const stickyRightBand = {
+    ...stickyClip, ...rightEdgeShadow,
+    position: "sticky" as const, right: STICKY_R, zIndex: 4,
+    background: "var(--paper-2)",
+  };
 
   const poolsByCenter = useMemo(() => {
     const m = new Map<string, typeof capPools>();
@@ -155,7 +203,12 @@ export function AllocationMatrixByCenter() {
                 fontVariantNumeric: "tabular-nums",
               }}>
                 <div style={{ ...stickyLeft1Body, fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
-                  <div style={{ fontWeight: 500 }}>
+                  <div style={{
+                    fontWeight: 500,
+                    overflow: "hidden",
+                    whiteSpace: "nowrap",
+                    textOverflow: "ellipsis",
+                  }}>
                     {glCodeByCenter.get(center) && (
                       <span className="mono" style={{
                         fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
