@@ -249,9 +249,14 @@ function CenterCellTrace({
   const contribs = pools
     .map((p) => {
       const value = allocSrc[p.id]?.[nodeKey] ?? 0;
+      const first  = model.firstAllocation[p.id]?.[nodeKey] ?? 0;
+      const second = model.secondAllocation[p.id]?.[nodeKey] ?? 0;
       const { basis } = basisForPool(p, allocationBases);
       const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
-      return { pool: p, value, basis, basisLongName: basisMeta?.longName ?? basis };
+      return {
+        pool: p, value, first, second,
+        basis, basisLongName: basisMeta?.longName ?? basis,
+      };
     })
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);
@@ -354,10 +359,18 @@ function CenterCellTrace({
                       transition: "width 240ms ease-out",
                     }}/>
                   </div>
-                  <div className="num" style={{
+                  <div style={{
                     textAlign: "right", fontVariantNumeric: "tabular-nums",
-                    fontSize: 12.5, fontWeight: 500,
-                  }}>{fmt.dollars(c.value)}</div>
+                  }}>
+                    <div className="num" style={{
+                      fontSize: 12.5, fontWeight: 500,
+                    }}>{fmt.dollars(c.value)}</div>
+                    {c.second > 0.5 && (
+                      <div className="mono" style={{
+                        fontSize: 10, color: "var(--ink-4)", marginTop: 2,
+                      }}>{fmt.dollars(c.first)} 1st + {fmt.dollars(c.second)} 2nd</div>
+                    )}
+                  </div>
                 </div>
               );
             })}

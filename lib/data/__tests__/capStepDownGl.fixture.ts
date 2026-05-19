@@ -1,4 +1,5 @@
-/* Deterministic fixture covering the sequential step-down engine.
+/* Deterministic fixture covering the sequential step-down engine with
+ * NBS-style processing-pool attribution.
  *
  * Run with: npm run test:cap
  *
@@ -11,15 +12,19 @@
  *     receivers (PLAN, BLDG, ENG) define how any incoming $ is
  *     redistributed when Fringe closes.
  *
- * Verifies:
+ * Verifies (under processing-pool attribution):
  *   1. The zero-cost internal-service unit survives as an indirect node.
- *   2. When Fringe closes, its accumulated incoming $ (from City Manager's
- *      earlier close) routes via Fringe's own pool schedule — NOT via the
- *      source pool's basis.
- *   3. Conservation: Σ pool eligible ≈ Σ direct totals.
- *   4. FBHR roll-up sums only direct nodes whose feeDept is set.
- *   5. Closed centers cannot receive: City Manager (closed before Fringe)
- *      ends Fringe's close with $0 sitting on it.
+ *   2. CM Salaries' First Allocation row matches its own schedule (incl.
+ *      $35K to Fringe and $0 to PLAN/BLDG/ENG beyond its direct share).
+ *      CM Salaries' Second Allocation is $0 (CM has no incoming).
+ *   3. Fringe Distribution pool's Second Allocation captures CM's $35K
+ *      redistributed via Fringe's 50/30/20 PLAN/BLDG/ENG schedule.
+ *      Fringe Distribution's First Allocation is $0 (zero own eligible).
+ *   4. Direct-side conservation: Σ over pools of alloc2[*][direct] equals
+ *      the system's distributed total.
+ *   5. FBHR roll-up sums only direct nodes whose feeDept is set.
+ *   6. Closed centers cannot receive: City Manager (closed before Fringe)
+ *      ends Fringe's close with no inflow.
  */
 
 import assert from "node:assert/strict";
@@ -142,51 +147,87 @@ assert.ok(fb, "Fringe Benefits Allocation must be a node");
 assert.equal(fb!.role, "indirect", "Fringe Benefits Allocation must be indirect");
 assert.equal(fb!.name, "Fringe Benefits Allocation");
 
-// 2. When Fringe Benefits closes, it redistributes via its own schedule.
-// City Manager closes first → sends 35% × $100K = $35,000 to Fringe.
-// Fringe closes second → 50/30/20 to PLAN/BLDG/ENG of its sitting $35K:
-//   PLAN gets +$17,500 (50%)
-//   BLDG gets +$10,500 (30%)
-//   ENG  gets +$7,000  (20%)
+// 2. CM Salaries' own row reflects its published schedule. Sequential
+// step-down with processing-pool attribution: when CM closes, CM Salaries
+// distributes its own $100K via its schedule. The result lives entirely
+// in CM Salaries' First Allocation row.
+const cmFirst  = model.firstAllocation["cm-salaries"] ?? {};
+const cmSecond = model.secondAllocation["cm-salaries"] ?? {};
+const cmFinal  = model.alloc2["cm-salaries"] ?? {};
+
+console.log("\n== CM Salaries pool row ==");
+console.log(`  First → Fringe (061-1470): ${fmt(cmFirst["061-1470"] ?? 0)} (expect 35000)`);
+console.log(`  First → PLAN  (011-3100):  ${fmt(cmFirst["011-3100"] ?? 0)} (expect 30000)`);
+console.log(`  First → BLDG  (011-3200):  ${fmt(cmFirst["011-3200"] ?? 0)} (expect 20000)`);
+console.log(`  First → ENG   (011-3300):  ${fmt(cmFirst["011-3300"] ?? 0)} (expect 10000)`);
+console.log(`  First → OTHER (401-0000):  ${fmt(cmFirst["401-0000"] ?? 0)} (expect  5000)`);
+console.log(`  Second total: ${fmt(Object.values(cmSecond).reduce((a, v) => a + v, 0))} (expect 0)`);
+
+assert.equal(Math.round(cmFirst["061-1470"] ?? 0), 35000, "CM Salaries First → Fringe");
+assert.equal(Math.round(cmFirst["011-3100"] ?? 0), 30000, "CM Salaries First → PLAN");
+assert.equal(Math.round(cmFirst["011-3200"] ?? 0), 20000, "CM Salaries First → BLDG");
+assert.equal(Math.round(cmFirst["011-3300"] ?? 0), 10000, "CM Salaries First → ENG");
+assert.equal(Math.round(cmFirst["401-0000"] ?? 0),  5000, "CM Salaries First → OTHER");
+assert.equal(
+  Math.round(Object.values(cmSecond).reduce((a, v) => a + v, 0)), 0,
+  "CM Salaries has no Second Allocation (CM closes first; no incoming)",
+);
+
+// 3. Fringe Distribution pool's row carries the $35K redistribution to
+// PLAN/BLDG/ENG as Second Allocation (its own eligible is $0).
+const fbFirst  = model.firstAllocation["fb-redistribution"] ?? {};
+const fbSecond = model.secondAllocation["fb-redistribution"] ?? {};
+
+console.log("\n== Fringe Distribution pool row ==");
+console.log(`  First total: ${fmt(Object.values(fbFirst).reduce((a, v) => a + v, 0))} (expect 0)`);
+console.log(`  Second → PLAN: ${fmt(fbSecond["011-3100"] ?? 0)} (expect 17500)`);
+console.log(`  Second → BLDG: ${fmt(fbSecond["011-3200"] ?? 0)} (expect 10500)`);
+console.log(`  Second → ENG:  ${fmt(fbSecond["011-3300"] ?? 0)} (expect  7000)`);
+
+assert.equal(
+  Math.round(Object.values(fbFirst).reduce((a, v) => a + v, 0)), 0,
+  "Fringe Distribution pool has no own eligible (First = 0)",
+);
+assert.equal(Math.round(fbSecond["011-3100"] ?? 0), 17500, "Fringe Distribution Second → PLAN");
+assert.equal(Math.round(fbSecond["011-3200"] ?? 0), 10500, "Fringe Distribution Second → BLDG");
+assert.equal(Math.round(fbSecond["011-3300"] ?? 0),  7000, "Fringe Distribution Second → ENG");
+
+// 4. Direct-side totals across pools.
 const plan = model.directTotals["011-3100"] ?? 0;
 const bldg = model.directTotals["011-3200"] ?? 0;
 const eng  = model.directTotals["011-3300"] ?? 0;
 const other = model.directTotals["401-0000"] ?? 0;
 
-console.log("\n== Direct totals ==");
-console.log(`  PLAN (011-3100): ${fmt(plan)} (expect 30000 + 17500 = 47500)`);
-console.log(`  BLDG (011-3200): ${fmt(bldg)} (expect 20000 + 10500 = 30500)`);
-console.log(`  ENG  (011-3300): ${fmt(eng)}  (expect 10000 + 7000  = 17000)`);
-console.log(`  OTHER (401-0000): ${fmt(other)} (expect 5000)`);
+console.log("\n== Direct totals (sum across pools) ==");
+console.log(`  PLAN: ${fmt(plan)} (expect 30000 + 17500 = 47500)`);
+console.log(`  BLDG: ${fmt(bldg)} (expect 20000 + 10500 = 30500)`);
+console.log(`  ENG:  ${fmt(eng)}  (expect 10000 + 7000  = 17000)`);
+console.log(`  OTHER: ${fmt(other)} (expect 5000)`);
 
-assert.equal(Math.round(plan),  47500, "PLAN total = CM direct + Fringe re-route");
-assert.equal(Math.round(bldg),  30500, "BLDG total = CM direct + Fringe re-route");
-assert.equal(Math.round(eng),   17000, "ENG total  = CM direct + Fringe re-route");
-assert.equal(Math.round(other),  5000, "OTHER total = CM direct only (Fringe doesn't route here)");
+assert.equal(Math.round(plan),  47500, "PLAN system total");
+assert.equal(Math.round(bldg),  30500, "BLDG system total");
+assert.equal(Math.round(eng),   17000, "ENG system total");
+assert.equal(Math.round(other),  5000, "OTHER system total");
 
-// 3. Conservation. The CM Salaries pool's eligible amount ($100K) must equal
-// the sum of its final placements across all nodes.
-const cmFinal = model.alloc2["cm-salaries"];
-let cmTotal = 0;
-for (const v of Object.values(cmFinal ?? {})) cmTotal += v;
-console.log(`\n== Conservation ==`);
-console.log(`  CM Salaries pool final-row sum: ${fmt(cmTotal)} (expect 100000)`);
-assert.ok(Math.abs(cmTotal - 100000) < 0.01, "Pool conservation must hold");
-
-// Residual on indirect nodes — both City Manager (closed first) and Fringe
-// (closed second) should have zero $ sitting on them after sequential
-// closure completes.
-const indirectResidual = (cmFinal?.["061-1470"] ?? 0)
-  + (cmFinal?.["011-1200"] ?? 0);
-console.log(`  CM Salaries indirect residual: ${fmt(indirectResidual)} (expect ~0)`);
-assert.ok(Math.abs(indirectResidual) < 0.01, "Indirect residual must be ~0 after closure");
-
-// 5. Closed centers cannot receive. City Manager closed before Fringe;
-// Fringe's own schedule never names CM as a receiver. Therefore after
-// Fringe closes, City Manager's sitting amount must remain 0.
+// CM Salaries' indirect routing to Fringe shows up in CM Salaries' row,
+// and Fringe Distribution's redistribution shows in Fringe's row. Pool
+// rows do NOT double-count because each $ is attributed once to the pool
+// whose schedule distributed it.
+console.log(`\n  CM Salaries → Fringe (cell): ${fmt(cmFinal["061-1470"] ?? 0)} (expect 35000)`);
 assert.equal(
-  Math.round(cmFinal?.["011-1200"] ?? 0), 0,
-  "Closed center (City Manager) must not receive $ from later step closures",
+  Math.round(cmFinal["061-1470"] ?? 0), 35000,
+  "CM Salaries row should show its $35K routed to the Fringe indirect node",
+);
+
+// 6. Closed centers cannot receive — Fringe's schedule doesn't include CM,
+// and even if it did, the receiver filter would exclude CM as already-closed.
+assert.equal(
+  Math.round(cmFinal["011-1200"] ?? 0), 0,
+  "CM Salaries does not route to its own home center (City Manager)",
+);
+assert.equal(
+  Math.round((model.alloc2["fb-redistribution"] ?? {})["011-1200"] ?? 0), 0,
+  "Fringe Distribution does not route to already-closed center (City Manager)",
 );
 
 // 4. FBHR roll-up sums only direct nodes with feeDept set.

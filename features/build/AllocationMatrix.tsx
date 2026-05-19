@@ -258,6 +258,32 @@ function Header({
   );
 }
 
+function FirstSecondRow({
+  label, sub, value,
+}: { label: string; sub: string; value: number }) {
+  const isZero = value < 0.5;
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1fr auto",
+      gap: 12, alignItems: "baseline",
+      padding: "8px 14px",
+      fontSize: 12,
+      borderBottom: "1px dashed var(--rule)",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{ color: "var(--ink-2)" }}>{label}</div>
+        <div style={{ fontSize: 11, color: "var(--ink-4)", marginTop: 2 }}>{sub}</div>
+      </div>
+      <span className="num mono" style={{
+        fontVariantNumeric: "tabular-nums",
+        color: isZero ? "var(--ink-4)" : "var(--ink)",
+        fontWeight: 500,
+      }}>{isZero ? "—" : fmt.dollars(value)}</span>
+    </div>
+  );
+}
+
 function GroupLabel({ children }: { children: ReactNode }) {
   return (
     <div style={{
@@ -309,9 +335,18 @@ function CellTrace({
   const finalValue   = model.alloc2[pool.id]?.[node.key] ?? 0;
   const cellValue = view === "initial" ? initialValue : finalValue;
 
-  // Driver values across every node for this pool's basis. Denominators are
-  // pulled from derived.capDrivers (per-node, per-basis units).
+  // First/Second/Total per the published CAP format. First = pool's own
+  // eligible distributed via this pool's schedule; Second = pool's share
+  // of incoming $ at its home center distributed via the same schedule.
+  const firstAllocVal  = model.firstAllocation[pool.id]?.[node.key] ?? 0;
+  const secondAllocVal = model.secondAllocation[pool.id]?.[node.key] ?? 0;
+
+  // Display the receiver's published percent when the pool has one; this
+  // is the schedule entry that produced the share. Driver-unit fallback
+  // recomputes denominators on the fly when there's no percent.
   const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
+  const publishedReceiver = (pool.receivers ?? []).find((r) => r.glCode === node.key);
+  const receiverPercent = publishedReceiver?.percent;
   const driverByNode = isDirectCharge
     ? {} as Record<NodeKey, number>
     : Object.fromEntries(
@@ -321,12 +356,9 @@ function CellTrace({
     ? 0
     : Object.values(driverByNode).reduce((a, v) => a + v, 0);
   const nodeDriver = driverByNode[node.key] ?? 0;
-  const nodeShare = driverTotal > 0 ? (nodeDriver / driverTotal) * 100 : 0;
+  const nodeShareFromDrivers = driverTotal > 0 ? (nodeDriver / driverTotal) * 100 : 0;
+  const nodeShare = receiverPercent != null ? receiverPercent : nodeShareFromDrivers;
   const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
-
-  const stepContribs = model.contributions
-    .filter((c) => c.poolId === pool.id && c.toKey === node.key && c.amount > 0.5)
-    .sort((a, b) => a.stepIndex - b.stepIndex);
 
   const directTargetName = directTo
     ? ALL_DEPTS.find((d) => d.code === directTo)?.name ?? directTo
@@ -403,8 +435,8 @@ function CellTrace({
       ];
 
   const summarySource = `${pool.center} · ${pool.pool}`;
-  const stepDownNote = view === "final" && stepContribs.length > 0
-    ? `Built from ${stepContribs.length} step-down contribution${stepContribs.length === 1 ? "" : "s"}`
+  const stepDownNote = view === "final" && secondAllocVal > 0.5
+    ? `${fmt.dollars(firstAllocVal)} First + ${fmt.dollars(secondAllocVal)} Second`
     : undefined;
 
   return (
@@ -454,7 +486,7 @@ function CellTrace({
 
       <TraceSection title="How this allocation was built">
         <FlowDiagram steps={flowSteps}/>
-        {view === "final" && stepContribs.length > 0 && (
+        {view === "final" && !isDirectCharge && (firstAllocVal + secondAllocVal > 0.5) && (
           <div style={{
             marginTop: 16,
             border: "1px solid var(--rule)",
@@ -465,43 +497,31 @@ function CellTrace({
               borderBottom: "1px solid var(--rule)",
               fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
               color: "var(--ink-3)", textTransform: "uppercase",
-            }}>Step-down contributions</div>
-            {stepContribs.map((c, i) => (
-              <div key={`${c.stepIndex}-${c.fromKey}`} style={{
-                display: "grid",
-                gridTemplateColumns: "44px 1fr auto",
-                gap: 12, alignItems: "baseline",
-                padding: "8px 14px",
-                fontSize: 12,
-                borderBottom: i < stepContribs.length - 1 ? "1px solid var(--rule)" : "none",
-              }}>
-                <span className="mono" style={{
-                  fontSize: 10, color: "var(--ink-4)", fontWeight: 600,
-                }}>step {c.stepIndex}</span>
-                <span style={{ color: "var(--ink-2)" }}>
-                  From <strong style={{ color: "var(--ink)" }}>{c.fromName}</strong>
-                </span>
-                <span className="num mono" style={{
-                  fontVariantNumeric: "tabular-nums",
-                  color: "var(--ink)", fontWeight: 500,
-                }}>{fmt.dollars(c.amount)}</span>
-              </div>
-            ))}
+            }}>Pool allocation detail</div>
+            <FirstSecondRow
+              label="First Allocation"
+              sub={`${pool.pool}'s own eligible × ${node.name} schedule %`}
+              value={firstAllocVal}
+            />
+            <FirstSecondRow
+              label="Second Allocation"
+              sub={`${pool.pool}'s share of ${pool.center}'s incoming × ${node.name} schedule %`}
+              value={secondAllocVal}
+            />
             <div style={{
               display: "grid",
-              gridTemplateColumns: "44px 1fr auto",
+              gridTemplateColumns: "1fr auto",
               gap: 12, alignItems: "baseline",
               padding: "10px 14px",
               borderTop: "2px solid var(--ink)",
-              fontSize: 12, fontWeight: 500,
+              fontSize: 12.5, fontWeight: 500,
               background: "var(--paper)",
             }}>
-              <span/>
-              <span>Final allocation to {node.name}</span>
+              <span>Total to {node.name}</span>
               <span className="num mono" style={{
                 fontVariantNumeric: "tabular-nums",
                 color: "var(--accent)",
-              }}>{fmt.dollars(finalValue)}</span>
+              }}>{fmt.dollars(firstAllocVal + secondAllocVal)}</span>
             </div>
           </div>
         )}

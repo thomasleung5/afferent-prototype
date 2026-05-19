@@ -55,28 +55,56 @@ export interface GlEngineGraph {
   resolveDirectNode: (deptCode: MatrixDeptCode) => NodeKey | undefined;
 }
 
+/** One per (processing pool, receiver). The processing pool's home center
+ *  is `fromKey`; the receiver is `toKey`. firstAmount is the pool's own
+ *  eligible × percent; secondAmount is the pool's share of incoming $ at
+ *  its home center × percent; amount = first + second. */
 export interface GlStepContribution {
   poolId: string;
   fromKey: NodeKey;
   fromName: string;
   stepIndex: number;
+  firstAmount: number;
+  secondAmount: number;
   amount: number;
   toKey: NodeKey;
 }
 
 export interface GlStepDownModel {
+  /** Pre-step-down placement — each pool's eligible $ sits on its home
+   *  center (or DIRECT target). Diagnostic only; the engine doesn't read
+   *  this after init. */
   alloc1: Record<string, Record<NodeKey, number>>;
+  /** Per-pool distribution after sequential closure. Each pool row shows
+   *  what THAT pool distributed to each receiver via its own schedule —
+   *  pool's own eligible + pool's share of any incoming $ at its home
+   *  center. Matches NBS per-pool "Allocation Detail" attribution.
+   *  Σ over pools of alloc2[*][node] = total $ landing on the node. */
   alloc2: Record<string, Record<NodeKey, number>>;
+  /** Per-pool First Allocation — pool's own eligible × receiver percent.
+   *  Matches the "First Allocation" column on a CAP PDF. */
+  firstAllocation: Record<string, Record<NodeKey, number>>;
+  /** Per-pool Second Allocation — pool's share of incoming $ at its home
+   *  center × receiver percent. Matches "Second Allocation". */
+  secondAllocation: Record<string, Record<NodeKey, number>>;
   /** Indirect-node keys in step order. */
   stepOrder: NodeKey[];
   contributions: GlStepContribution[];
+  /** Σ over pools of alloc2[*][direct]. The total $ each direct node
+   *  received across every pool's distribution. */
   directTotals: Record<NodeKey, number>;
   byPool: Record<string, {
     rawAmount: number;
     eligibleAmount: number;
     excluded: number;
+    /** $ this pool distributed to direct (terminal) nodes. */
     allocatedToDirect: number;
-    residual: number;
+    /** $ this pool distributed to indirect nodes — not residual; the
+     *  receiving indirect's own pools redistribute these via their own
+     *  schedules and that flow shows up in their pool rows. */
+    routedToIndirect: number;
+    /** Eligible $ that did not reach any allowed receiver (the pool's
+     *  schedule had no valid downstream target). */
     leakage: number;
   }>;
   nodes: GlNode[];
@@ -238,21 +266,34 @@ function resolveReceiverNode(
 // Step-down compute
 // ---------------------------------------------------------------------------
 
-/** Single-pass sequential step-down over the glCode graph.
+/** Single-pass sequential step-down over the glCode graph, with
+ *  processing-pool attribution (matches the NBS CAP PDF format).
  *
- *  Each indirect node closes once, in `centerOrder`. When I closes:
- *    - Its total $ (own pools' eligible + everything accumulated from
- *      already-closed centers) is distributed via I's own pool schedule.
- *    - Incoming $ is split proportionally to I's pools' eligible weights
- *      (even-split when all are zero — the internal-service / allocable-
- *      budget-unit case), then each pool slice routes via that pool's
- *      receivers (percents) — or by driver units when receivers are absent.
- *    - Receivers are filtered to downstream-or-direct. Closed centers
- *      cannot receive; flow is one-directional through centerOrder.
+ *  Each indirect center I closes once in `centerOrder`. When I closes:
+ *    - X = incoming[I], the $ accumulated at I from earlier centers.
+ *    - For each of I's own pools `op`:
+ *        opEligible  = op.amount × op.eligiblePercent / 100
+ *        opWeight    = opEligible / totalOwnEligible  (or 1/N if all zero)
+ *        firstAmount  = opEligible             // pool's own
+ *        secondAmount = X × opWeight           // pool's share of incoming
+ *        Distribute (firstAmount + secondAmount) via op's receiver schedule,
+ *        filtered to downstream-or-direct and renormalized to 100%.
+ *        Each receiver share goes into:
+ *           - firstAllocation[op.id][receiver] (the first slice)
+ *           - secondAllocation[op.id][receiver] (the second slice)
+ *           - alloc2[op.id][receiver] (the combined cell value)
+ *        If the receiver is an indirect downstream center, also accumulate
+ *        in incoming[receiver] so the receiver's own pools can redistribute
+ *        when their turn comes.
+ *    - I is closed (incoming[I] := 0). Predecessors cannot receive from I.
  *
- *  Conservation: Σ pool eligible ≈ Σ alloc2[pool][directNode] (FP rounding
- *  aside; leakage when a pool's basis denominator is zero across allowed
- *  targets). */
+ *  Per-pool conservation:
+ *    Σ over receivers of alloc2[op.id][r] = opEligible + opWeight × incoming
+ *
+ *  System conservation:
+ *    Σ over pools of allocatedToDirect ≈ Σ pool eligibles (modulo leakage
+ *    when a pool's schedule has no allowed receivers).
+ */
 export function computeStepDownGl(args: {
   pools: CapPool[];
   centerOrder: string[];
@@ -281,7 +322,9 @@ export function computeStepDownGl(args: {
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
-  // === INITIAL PLACEMENT ===
+  // === INITIAL PLACEMENT (alloc1) ===
+  // Each pool's eligible $ sits on its home center (or DIRECT target).
+  // Diagnostic only — engine uses incoming[] for the actual flow.
   const alloc1: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
     const row = zeroRow();
@@ -299,14 +342,35 @@ export function computeStepDownGl(args: {
     alloc1[p.id] = row;
   }
 
-  // === STEP-DOWN ===
-  const running: Record<string, Record<NodeKey, number>> = {};
-  for (const p of pools) running[p.id] = { ...alloc1[p.id] };
+  // === PER-POOL ATTRIBUTION ===
+  // What THIS pool distributed to each receiver. First = own × percent;
+  // Second = incoming portion × percent; Total in alloc2 = first + second.
+  const firstAllocation: Record<string, Record<NodeKey, number>> = {};
+  const secondAllocation: Record<string, Record<NodeKey, number>> = {};
+  for (const p of pools) {
+    firstAllocation[p.id] = zeroRow();
+    secondAllocation[p.id] = zeroRow();
+  }
+
+  // DIRECT-basis pools route their full eligible amount straight to the
+  // single target — that's First Allocation with no schedule.
+  for (const p of pools) {
+    const eligible = p.amount * (p.eligiblePercent / 100);
+    const { basis, directTo } = basisForPool(p, bases);
+    if (basis === "DIRECT" && directTo) {
+      const k = resolveDirectNode(directTo);
+      if (k) firstAllocation[p.id][k] += eligible;
+    }
+  }
+
+  // incoming[centerKey] — $ accumulated at an indirect center waiting for
+  // it to close and redistribute via its own pool schedules.
+  const incoming: Record<NodeKey, number> = {};
+  for (const n of indirectNodes) incoming[n.key] = 0;
 
   const contributions: GlStepContribution[] = [];
 
-  // Pre-bucket each center's own pools so the closure loop can find them
-  // in O(1) per center instead of re-scanning `pools` every iteration.
+  // Pre-bucket each center's own pools.
   const ownPoolsByCenter = new Map<NodeKey, CapPool[]>();
   for (const p of pools) {
     const homeKey = resolveCenterNode(p.center);
@@ -317,74 +381,67 @@ export function computeStepDownGl(args: {
   }
 
   // ------------------------------------------------------------------------
-  // distributeViaReceivers — published-percent routing. Filters to receivers
-  // whose glCode is allowed (downstream-or-direct) and renormalizes the
-  // surviving percents so partial closure doesn't leak $. Returns true when
-  // at least one allowed receiver got a positive share, so callers can fall
-  // back to driver-unit distribution when no percent path exists.
-  const distributeViaReceivers = (
-    sourcePoolId: string, fromKey: NodeKey, fromName: string, amount: number,
-    receivers: PoolReceiver[], allowedKeys: Set<NodeKey>, stepIndex: number,
-  ): boolean => {
-    if (amount <= 0) return false;
-    const valid = receivers.filter(
+  // distributeAmount — apply pool op's schedule to `amount`, writing into
+  // `allocMap` (firstAllocation or secondAllocation). Filters receivers to
+  // downstream-or-direct, renormalizes percents, and updates incoming[]
+  // for indirect receivers. Returns the share distributed per receiver,
+  // keyed by glCode, so contributions can aggregate first/second together.
+  const distributeAmount = (
+    op: CapPool, amount: number, allocMap: Record<NodeKey, number>,
+    allowedKeys: Set<NodeKey>, allowedNodes: GlNode[],
+  ): Record<NodeKey, number> => {
+    const distributed: Record<NodeKey, number> = {};
+    if (amount <= 0) return distributed;
+
+    // Try the published receiver schedule first.
+    const receivers = op.receivers ?? [];
+    const validReceivers = receivers.filter(
       (r) => r.glCode && allowedKeys.has(r.glCode) && (r.percent ?? 0) > 0,
     );
-    const totalPct = valid.reduce((a, r) => a + (r.percent ?? 0), 0);
-    if (totalPct <= 0) return false;
-    for (const r of valid) {
-      const targetKey = r.glCode!;
-      const share = amount * ((r.percent ?? 0) / totalPct);
-      running[sourcePoolId][targetKey] = (running[sourcePoolId][targetKey] ?? 0) + share;
-      contributions.push({
-        poolId: sourcePoolId, fromKey, fromName, stepIndex, amount: share, toKey: targetKey,
-      });
-    }
-    return true;
-  };
+    const totalPct = validReceivers.reduce((a, r) => a + (r.percent ?? 0), 0);
 
-  // ------------------------------------------------------------------------
-  // distributeViaDrivers — driver-unit fallback for pools without imported
-  // receivers (seed pools, or pools whose receivers are all already-closed
-  // upstream centers). Splits the amount across allowed nodes by the pool's
-  // basis driver units.
-  const distributeViaDrivers = (
-    sourcePoolId: string, fromKey: NodeKey, fromName: string, amount: number,
-    pool: CapPool, allowedNodes: GlNode[], stepIndex: number,
-  ): boolean => {
-    if (amount <= 0) return false;
-    const { basis } = basisForPool(pool, bases);
-    if (basis === "DIRECT") return false;
+    if (totalPct > 0) {
+      for (const r of validReceivers) {
+        const targetKey = r.glCode!;
+        const share = amount * ((r.percent ?? 0) / totalPct);
+        allocMap[targetKey] = (allocMap[targetKey] ?? 0) + share;
+        distributed[targetKey] = (distributed[targetKey] ?? 0) + share;
+        const targetNode = nodeByKey.get(targetKey);
+        if (targetNode?.role === "indirect") {
+          incoming[targetKey] = (incoming[targetKey] ?? 0) + share;
+        }
+      }
+      return distributed;
+    }
+
+    // Fall back to driver units (seed pools without imported receivers).
+    const { basis } = basisForPool(op, bases);
+    if (basis === "DIRECT") return distributed;
     const totalDriver = allowedNodes.reduce(
       (a, n) => a + (drivers[n.key]?.[basis] ?? 0), 0,
     );
-    if (totalDriver <= 0) return false;
+    if (totalDriver <= 0) return distributed;
     for (const n of allowedNodes) {
       const drv = drivers[n.key]?.[basis] ?? 0;
       if (drv <= 0) continue;
       const share = amount * (drv / totalDriver);
-      running[sourcePoolId][n.key] = (running[sourcePoolId][n.key] ?? 0) + share;
-      contributions.push({
-        poolId: sourcePoolId, fromKey, fromName, stepIndex, amount: share, toKey: n.key,
-      });
+      allocMap[n.key] = (allocMap[n.key] ?? 0) + share;
+      distributed[n.key] = (distributed[n.key] ?? 0) + share;
+      if (n.role === "indirect") {
+        incoming[n.key] = (incoming[n.key] ?? 0) + share;
+      }
     }
-    return true;
+    return distributed;
   };
 
   // ------------------------------------------------------------------------
   // SEQUENTIAL CLOSURE — process each indirect center once in centerOrder.
-  // When I closes, its accumulated $ (own pools' eligible + everything
-  // received from already-closed centers) flows downstream via I's own
-  // pools' published schedules. Once closed, I cannot receive more $.
   for (let i = 0; i < stepOrder.length; i++) {
     const I = stepOrder[i];
     const nodeI = nodeByKey.get(I);
     if (!nodeI) continue;
     const stepIndex = i + 1;
 
-    // Allowed targets for I's closure: every indirect node still ahead of
-    // I in the step order + all direct nodes. I and its predecessors are
-    // closed and cannot receive.
     const downstreamIndirects = stepOrder.slice(i + 1)
       .map((k) => nodeByKey.get(k))
       .filter((n): n is GlNode => !!n);
@@ -392,52 +449,65 @@ export function computeStepDownGl(args: {
     const allowedKeys = new Set<NodeKey>(allowedNodes.map((n) => n.key));
 
     const ownPools = ownPoolsByCenter.get(I) ?? [];
+    if (ownPools.length === 0) {
+      // No schedule — anything accumulated here cannot be redistributed.
+      // Close and lose the residual as leakage.
+      incoming[I] = 0;
+      continue;
+    }
+
     const totalOwnEligible = ownPools.reduce(
       (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
     );
+    const X = incoming[I];
 
-    // For each source pool with $ sitting on I, distribute via I's own
-    // pool schedule. Per-source-pool tracking preserves lineage so the
-    // trace panel can attribute every direct-side $ back to its origin
-    // pool, even after multi-hop routing.
-    for (const sp of pools) {
-      const sitting = running[sp.id][I] ?? 0;
-      if (sitting <= 0) continue;
+    for (const op of ownPools) {
+      const opEligible = op.amount * (op.eligiblePercent / 100);
+      const opWeight = totalOwnEligible > 0
+        ? opEligible / totalOwnEligible
+        : 1 / ownPools.length;
+      const firstAmount  = opEligible;       // pool's own
+      const secondAmount = X * opWeight;     // pool's share of incoming
 
-      if (ownPools.length === 0) {
-        // No own pool — fall back to the source pool's basis driver units
-        // across allowed downstream targets. Source pool's basis is the
-        // only signal available when the closing center has no schedule.
-        distributeViaDrivers(sp.id, I, nodeI.name, sitting, sp, allowedNodes, stepIndex);
-      } else {
-        // Split sitting across I's own pools by eligible weight (even-split
-        // when all are zero — internal-service / allocable-budget-unit
-        // pattern: the center owns redistribution pools with no own $).
-        for (const op of ownPools) {
-          const opEligible = op.amount * (op.eligiblePercent / 100);
-          const weight = totalOwnEligible > 0
-            ? opEligible / totalOwnEligible
-            : 1 / ownPools.length;
-          const portion = sitting * weight;
-          if (portion <= 0) continue;
+      // Distribute each slice independently so first/second remain
+      // separately attributable. Both write into alloc2 indirectly via
+      // their respective maps; the alloc2 sum is computed below.
+      const firstDist = distributeAmount(
+        op, firstAmount, firstAllocation[op.id], allowedKeys, allowedNodes,
+      );
+      const secondDist = distributeAmount(
+        op, secondAmount, secondAllocation[op.id], allowedKeys, allowedNodes,
+      );
 
-          // Prefer the own-pool's published receivers; fall back to that
-          // own-pool's basis driver units when no allowed receiver exists.
-          const usedReceivers = distributeViaReceivers(
-            sp.id, I, nodeI.name, portion, op.receivers ?? [],
-            allowedKeys, stepIndex,
-          );
-          if (!usedReceivers) {
-            distributeViaDrivers(sp.id, I, nodeI.name, portion, op, allowedNodes, stepIndex);
-          }
-        }
+      // Emit one combined contribution per receiver for the trace UI.
+      const seenReceivers = new Set<NodeKey>([
+        ...Object.keys(firstDist),
+        ...Object.keys(secondDist),
+      ]);
+      for (const targetKey of seenReceivers) {
+        const f = firstDist[targetKey] ?? 0;
+        const s = secondDist[targetKey] ?? 0;
+        contributions.push({
+          poolId: op.id, fromKey: I, fromName: nodeI.name, stepIndex,
+          firstAmount: f, secondAmount: s, amount: f + s, toKey: targetKey,
+        });
       }
-
-      running[sp.id][I] = 0;
     }
+
+    incoming[I] = 0;
   }
 
-  const alloc2 = running;
+  // === alloc2 = First + Second per pool per receiver ===
+  const alloc2: Record<string, Record<NodeKey, number>> = {};
+  for (const p of pools) {
+    const row = zeroRow();
+    const f = firstAllocation[p.id] ?? {};
+    const s = secondAllocation[p.id] ?? {};
+    for (const n of nodes) {
+      row[n.key] = (f[n.key] ?? 0) + (s[n.key] ?? 0);
+    }
+    alloc2[p.id] = row;
+  }
 
   // === ROLLUPS ===
   const directTotals: Record<NodeKey, number> = {};
@@ -455,17 +525,26 @@ export function computeStepDownGl(args: {
     const allocatedToDirect = directNodes.reduce(
       (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
     );
-    const residual = indirectNodes.reduce(
+    const routedToIndirect = indirectNodes.reduce(
       (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
     );
+    // Leakage = pool's eligible that didn't reach any receiver via First
+    // Allocation. (Pool may have gotten a second allocation portion too,
+    // but that's tracked through the receiving center's flow and isn't a
+    // separate "leakage" attributable to this pool.)
+    const firstAllocSum = nodes.reduce(
+      (a, n) => a + (firstAllocation[p.id]?.[n.key] ?? 0), 0,
+    );
+    const leakage = Math.max(0, eligibleAmount - firstAllocSum);
     byPool[p.id] = {
-      rawAmount, eligibleAmount, excluded, allocatedToDirect, residual,
-      leakage: eligibleAmount - allocatedToDirect - residual,
+      rawAmount, eligibleAmount, excluded,
+      allocatedToDirect, routedToIndirect, leakage,
     };
   }
 
   return {
-    alloc1, alloc2, stepOrder, contributions, directTotals, byPool, nodes,
+    alloc1, alloc2, firstAllocation, secondAllocation,
+    stepOrder, contributions, directTotals, byPool, nodes,
   };
 }
 
