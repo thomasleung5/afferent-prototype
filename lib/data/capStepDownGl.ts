@@ -463,28 +463,36 @@ export function computeStepDownGl(args: {
     incomingRound1[centerKey] = firstInc;
 
     const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
-    const totalCenterEligible = centerPools.reduce(
-      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
+
+    // Pool weight at this center = pool.allocationPercent ÷ Σ allocationPercent.
+    // This is the published split (e.g. Town Center Operations' 64.40 / 25 /
+    // 10.60), and it works for zero-eligible internal-service centers where
+    // an eligible-derived ratio would be 0/0. For ordinary pools the
+    // allocationPercent column already equals each pool's share of total
+    // center eligible, so the two formulas agree. Fall back to an even
+    // split only when no allocationPercent is published anywhere.
+    const totalAllocPct = centerPools.reduce(
+      (a, p) => a + (p.allocationPercent ?? 0), 0,
     );
+    const weightOf = (p: CapPool): number =>
+      totalAllocPct > 0
+        ? (p.allocationPercent ?? 0) / totalAllocPct
+        : 1 / Math.max(1, centerPools.length);
 
     for (const p of centerPools) {
       const eligible = p.amount * (p.eligiblePercent / 100);
+      const poolWeight = weightOf(p);
       const { basis, directTo } = basisForPool(p, bases);
       if (basis === "DIRECT") {
         // Direct-billed pools route own + share-of-incoming to the single
         // fee-dept target — no schedule, no exclusions, no Phase 2.
-        const firstPool = eligible + (totalCenterEligible > 0
-          ? (eligible / totalCenterEligible) * firstInc
-          : firstInc / centerPools.length);
+        const firstPool = eligible + poolWeight * firstInc;
         if (firstPool > 0 && directTo) {
           const k = resolveDirectNode(directTo);
           if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + firstPool;
         }
         continue;
       }
-      const poolWeight = totalCenterEligible > 0
-        ? eligible / totalCenterEligible
-        : 1 / Math.max(1, centerPools.length);
       const firstPool = eligible + poolWeight * firstInc;
       if (firstPool <= 0) continue;
       distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
@@ -533,9 +541,15 @@ export function computeStepDownGl(args: {
     if (secondInc <= 0) continue;
 
     const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
-    const totalCenterEligible = centerPools.reduce(
-      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
+
+    // Same weight rule as Phase 1: published allocationPercent split.
+    const totalAllocPct = centerPools.reduce(
+      (a, p) => a + (p.allocationPercent ?? 0), 0,
     );
+    const weightOf = (p: CapPool): number =>
+      totalAllocPct > 0
+        ? (p.allocationPercent ?? 0) / totalAllocPct
+        : 1 / Math.max(1, centerPools.length);
 
     // Phase 2 schedule excludes self (center) AND every upstream center.
     const excludeKeys = new Set<NodeKey>([centerKey, ...upstreamKeys]);
@@ -543,10 +557,7 @@ export function computeStepDownGl(args: {
     for (const p of centerPools) {
       const { basis } = basisForPool(p, bases);
       if (basis === "DIRECT") continue;
-      const eligible = p.amount * (p.eligiblePercent / 100);
-      const poolWeight = totalCenterEligible > 0
-        ? eligible / totalCenterEligible
-        : 1 / Math.max(1, centerPools.length);
+      const poolWeight = weightOf(p);
       const secondPool = poolWeight * secondInc;
       if (secondPool <= 0) continue;
       distributeAmount(p, secondPool, secondAllocation[p.id], excludeKeys);

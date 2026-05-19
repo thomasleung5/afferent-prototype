@@ -373,7 +373,7 @@ function CostsRow({
 function PoolPicker({
   pools, selectedId, onSelect, glCodeByCenter,
 }: {
-  pools: { id: string; center: string; pool: string; amount: number; eligiblePercent: number }[];
+  pools: { id: string; center: string; pool: string; amount: number; eligiblePercent: number; allocationPercent: number }[];
   selectedId: string;
   onSelect: (id: string) => void;
   glCodeByCenter: Map<string, string>;
@@ -398,7 +398,7 @@ function PoolPicker({
               style={{
                 width: "100%",
                 display: "grid",
-                gridTemplateColumns: "80px minmax(180px, 1.5fr) minmax(220px, 2.4fr) 120px",
+                gridTemplateColumns: "80px minmax(180px, 1.5fr) minmax(220px, 2.4fr) 70px 120px",
                 gap: 12, alignItems: "baseline",
                 padding: "8px 14px",
                 background: selected ? "var(--accent-tint)" : "transparent",
@@ -411,6 +411,7 @@ function PoolPicker({
                 textAlign: "left",
                 fontWeight: selected ? 600 : 400,
               }}
+              title={`${p.allocationPercent.toFixed(2)}% of ${p.center}'s budget`}
             >
               <span className="mono" style={{
                 color: gl ? "var(--ink-2)" : "var(--ink-4)",
@@ -426,6 +427,10 @@ function PoolPicker({
               }}>{p.pool}</span>
               <span className="num mono" style={{
                 textAlign: "right", fontVariantNumeric: "tabular-nums",
+                color: p.allocationPercent > 0 ? "var(--ink-2)" : "var(--ink-4)",
+              }}>{p.allocationPercent > 0 ? `${p.allocationPercent.toFixed(2)}%` : "—"}</span>
+              <span className="num mono" style={{
+                textAlign: "right", fontVariantNumeric: "tabular-nums",
                 color: "var(--ink-2)",
               }}>{fmt.dollarsK(eligible)}</span>
             </button>
@@ -439,7 +444,7 @@ function PoolPicker({
 function PoolHeader({
   pool, centerGlCode, eligibleAmount, basis,
 }: {
-  pool: { center: string; pool: string };
+  pool: { center: string; pool: string; allocationPercent: number };
   centerGlCode: string | undefined;
   eligibleAmount: number;
   basis: string;
@@ -470,6 +475,11 @@ function PoolHeader({
         display: "flex", gap: 18, marginTop: 6,
         fontSize: 11.5, color: "var(--ink-3)",
       }}>
+        <span title={`This pool claims ${pool.allocationPercent.toFixed(2)}% of ${pool.center}'s total budget`}>
+          Pool share of center: <span className="num" style={{
+            color: "var(--ink-2)", fontWeight: 500,
+          }}>{pool.allocationPercent.toFixed(2)}%</span>
+        </span>
         <span>Allocable: <span className="num" style={{
           color: "var(--ink-2)", fontWeight: 500,
         }}>{fmt.dollars(eligibleAmount)}</span></span>
