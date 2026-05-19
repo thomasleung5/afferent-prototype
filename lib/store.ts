@@ -8,6 +8,7 @@ import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
+import { IMPORTS } from "@/lib/data/imports";
 import type {
   AllocationBasis, CapAllocation, CapPool, DeptCode, OperatingLine, PolicyException,
   PolicyTarget, Position, Service, SourceTag, WorkloadRow,
@@ -183,7 +184,7 @@ const initialState = (): BuildState => {
     lineage: {},
     pendingReview: { ...emptyPending },
     capCenterOrder: defaultCenterOrder(pools),
-    imports: [],
+    imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
   };
 };
 
@@ -794,6 +795,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         // Backfill for state persisted before capCenterDisallowed existed.
         // Default each center to $0 disallowed so existing math is unchanged.
         if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
+
+        // Backfill seed imports if the persisted store has an empty log.
+        // The Annual Update tab needs at least one import to render the
+        // Refresh cards / Change queue / Packet narrative; new users get
+        // these from initialState(), but earlier sessions stored [].
+        if (!state.imports || state.imports.length === 0) {
+          state.imports = IMPORTS.map((e) => ({
+            ...e, result: { ...e.result, warnings: [...e.result.warnings] },
+          }));
+        }
 
         // Backfill for state persisted before the SourceTag standardization:
         //   - capCenterSources didn't exist: synthesize "seed" for every
