@@ -50,17 +50,23 @@ export function AllocationMatrixByCenter() {
   // Fixed pixel widths on the frozen columns (Center / Row total) are
   // required so position: sticky knows where to pin each cell. fr-based
   // widths can't be expressed as a sticky `left` offset.
-  const CENTER_W = 240;          // px — frozen left
+  const CENTER_W = 260;          // px — frozen left
   const ROW_TOTAL_W = 100;       // px — frozen right
-  const ROW_PAD  = 14;           // px — left/right padding inside each row
+  // Row padding lives INSIDE the sticky cells (paddingLeft on Center,
+  // paddingRight on Row total) so the sticky cells can pin at the
+  // scroll container's very left/right edges (left: 0 / right: 0).
+  // Non-sticky cells get their breathing room from the COL_GAP between
+  // grid tracks. With ROW_PAD = 0, no transparent strip is visible to
+  // the left of the sticky Center column during horizontal scroll.
+  const ROW_PAD  = 0;            // px — no padding on the row container
+  const CELL_PAD = 14;           // px — internal padding inside sticky cells
   const COL_GAP  = 8;            // px — gap between grid tracks
   const grid =
     `${CENTER_W}px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} ${ROW_TOTAL_W}px`;
 
-  // Sticky offsets pin cells at their natural left/right position so they
-  // don't slide when horizontal scroll starts.
-  const STICKY_L1 = ROW_PAD;
-  const STICKY_R  = ROW_PAD;
+  // Sticky cells pin at the scroll container's left/right edges.
+  const STICKY_L1 = 0;
+  const STICKY_R  = 0;
 
   // Layering rules:
   //   - z-index 2: sticky body cells (above non-sticky body cells at z 0).
@@ -87,25 +93,35 @@ export function AllocationMatrixByCenter() {
   const leftEdgeShadow  = { boxShadow: "1px 0 0 var(--rule)" };
   const rightEdgeShadow = { boxShadow: "-1px 0 0 var(--rule)" };
 
+  // Explicit minWidth + maxWidth on sticky cells is belt-and-suspenders:
+  // the grid track is already fixed at CENTER_W / ROW_TOTAL_W, but pinning
+  // the cell's box width prevents any flexbox / content-driven sizing from
+  // expanding the cell past the column edge during scroll.
+  const stickyLeftSize  = { minWidth: CENTER_W, maxWidth: CENTER_W, paddingLeft: CELL_PAD, paddingRight: COL_GAP };
+  const stickyRightSize = { minWidth: ROW_TOTAL_W, maxWidth: ROW_TOTAL_W, paddingRight: CELL_PAD, paddingLeft: COL_GAP };
   const stickyLeftBody = {
-    ...stickyClip, ...leftEdgeShadow,
+    ...stickyClip, ...leftEdgeShadow, ...stickyLeftSize,
     position: "sticky" as const, left: STICKY_L1, zIndex: 2,
     background: "var(--paper)",
+    boxSizing: "border-box" as const,
   };
   const stickyRightBody = {
-    ...stickyClip, ...rightEdgeShadow,
+    ...stickyClip, ...rightEdgeShadow, ...stickyRightSize,
     position: "sticky" as const, right: STICKY_R, zIndex: 2,
     background: "var(--paper)",
+    boxSizing: "border-box" as const,
   };
   const stickyLeftBand = {
-    ...stickyClip, ...leftEdgeShadow,
+    ...stickyClip, ...leftEdgeShadow, ...stickyLeftSize,
     position: "sticky" as const, left: STICKY_L1, zIndex: 4,
     background: "var(--paper-2)",
+    boxSizing: "border-box" as const,
   };
   const stickyRightBand = {
-    ...stickyClip, ...rightEdgeShadow,
+    ...stickyClip, ...rightEdgeShadow, ...stickyRightSize,
     position: "sticky" as const, right: STICKY_R, zIndex: 4,
     background: "var(--paper-2)",
+    boxSizing: "border-box" as const,
   };
 
   const poolsByCenter = useMemo(() => {
