@@ -328,7 +328,10 @@ export function computeStepDownGl(args: {
   const allNodeKeys   = new Set<NodeKey>(nodes.map((n) => n.key));
   const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
 
-  // Step order — display ordering only. Math runs in parallel.
+  // Step order — drives the engine. Both Phase 1 and Phase 2 iterate
+  // stepOrder in sequence so each center's First Pool can include its
+  // upstream centers' First contributions, and each center's Phase 2
+  // input can include upstream centers' Phase 2 contributions.
   const stepOrder: NodeKey[] = [];
   const seenStep = new Set<NodeKey>();
   for (const cn of centerOrder) {
