@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { basisForPool } from "@/lib/data/capStepDown";
-import type { GlNode, NodeKey } from "@/lib/data/capStepDownGl";
+import type { GlNode } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 
 /** Per-pool Allocation Detail report in NBS published format.

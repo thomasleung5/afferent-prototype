@@ -3,7 +3,6 @@ import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/compo
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];

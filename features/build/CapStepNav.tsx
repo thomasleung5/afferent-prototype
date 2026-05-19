@@ -3,7 +3,7 @@ export type CapStep =
   | "centers" | "pools" | "drivers"
   | "detail" | "matrixByCenter";
 
-export const CAP_STEPS: { id: CapStep; label: string; hint: string }[] = [
+const CAP_STEPS: { id: CapStep; label: string; hint: string }[] = [
   { id: "centers",        label: "Indirect Cost Centers", hint: "Indirect departments ordered for step-down." },
   { id: "pools",          label: "Cost Pools",            hint: "Functional overhead pools and recovery policy." },
   { id: "drivers",        label: "Allocation Bases",      hint: "Allocation drivers by department." },

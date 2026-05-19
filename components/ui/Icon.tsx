@@ -1,6 +1,6 @@
 import type { CSSProperties } from "react";
 
-export type IconName =
+type IconName =
   | "arrow-right" | "arrow-left"
   | "arrow-up-to-line"
   | "chevron-right" | "chevron-down"

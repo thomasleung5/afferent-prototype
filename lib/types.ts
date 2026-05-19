@@ -10,7 +10,7 @@ export interface City {
   peers: string[];
 }
 
-export interface Department {
+interface Department {
   code: DeptCode;
   name: string;
   /** Fully-burdened hourly rate */
@@ -46,16 +46,9 @@ export interface Service {
   sourceFile?: string;
 }
 
-export interface EnrichedService extends Service {
-  /** fee / cost * 100 */
-  recovery: number;
-  /** (cost − fee) × volume — annual under-recovery */
-  gap: number;
-}
-
 /* ---------- Build Model inputs ---------- */
 
-export type PositionFlag = "title-changed" | "missing-hours";
+type PositionFlag = "title-changed" | "missing-hours";
 
 export interface Position {
   id: string;
@@ -257,7 +250,7 @@ export interface PolicyException {
 }
 
 /** Signal classification for recovery percent. */
-export type SignalKey = "pos" | "warn" | "neg";
+type SignalKey = "pos" | "warn" | "neg";
 
 export interface Signal {
   key: SignalKey;

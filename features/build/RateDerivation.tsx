@@ -1,5 +1,5 @@
 ﻿
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import {
   DataTable, type Column,
 } from "@/components/table";
@@ -8,7 +8,6 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { DEPTS } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { FBHR } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";

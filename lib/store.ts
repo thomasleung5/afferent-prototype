@@ -234,7 +234,7 @@ const loggedCapDiagnostics = new Set<string>();
 
 export const useBuildStore = create<BuildState & BuildActions>()(
   persist(
-    (set, get) => ({
+    (set) => ({
       ...initialState(),
 
       updatePosition: (id, patch) =>

@@ -5,7 +5,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect, DeptChip,
+  CellInput, CellSelect,
   DrilldownShell, DrilldownColumn, SectionLabel, SourcePill, TraceBlock,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";

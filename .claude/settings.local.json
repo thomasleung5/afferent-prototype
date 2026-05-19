@@ -36,7 +36,12 @@
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000)",
       "Bash(pkill -f \"vite\\\\|node.*server\")",
       "Bash(sed -i '' '215,536d' /Users/thomasleung/Developer/afferent-prototype/features/build/AllocationMatrixByCenter.tsx)",
-      "Bash(sed -n '210,225p' /Users/thomasleung/Developer/afferent-prototype/features/build/AllocationMatrixByCenter.tsx)"
+      "Bash(sed -n '210,225p' /Users/thomasleung/Developer/afferent-prototype/features/build/AllocationMatrixByCenter.tsx)",
+      "Bash(grep -n \"return {$\\\\|return { alloc1, alloc2\\\\|^}\\\\|fmtUSD\\\\|MatrixDeptCode\" /Users/thomasleung/Developer/afferent-prototype/lib/data/capStepDownGl.ts)",
+      "Bash(perl -i -pe 's/eligiblePercent: *\\\\d+, +//g' /Users/thomasleung/Developer/afferent-prototype/lib/data/cap.ts)",
+      "Bash(perl -i -pe 's/    eligiblePercent: 100,\\\\n//g; s/ eligiblePercent: \\\\d+,//g' /Users/thomasleung/Developer/afferent-prototype/lib/data/__tests__/capStepDownGl.fixture.ts)",
+      "Bash(npx --yes tsc --noEmit --noUnusedLocals --noUnusedParameters)",
+      "Bash(npx --yes knip --reporter compact)"
     ]
   }
 }

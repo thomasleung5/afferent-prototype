@@ -9,7 +9,7 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
-import type { DeptCode, Service } from "@/lib/types";
+import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
 interface Row {

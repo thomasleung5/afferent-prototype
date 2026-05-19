@@ -3,7 +3,7 @@ import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AddRowButton } from "@/components/ui/AddRowButton";
 
 export type SortDir = "asc" | "desc";
-export type CellAlign = "left" | "right" | "center";
+type CellAlign = "left" | "right" | "center";
 
 export interface Column<Row> {
   key: string;
@@ -35,7 +35,7 @@ export interface DataTableRow {
   flag?: boolean;
 }
 
-export interface RowStyle {
+interface RowStyle {
   bg?: string;
   accent?: string;
   style?: CSSProperties;

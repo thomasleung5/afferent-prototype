@@ -21,27 +21,21 @@
  */
 
 import type {
-  AllocationBasis, BasisKey, CapPool, MatrixDeptCode, PoolReceiver,
+  AllocationBasis, BasisKey, CapPool, MatrixDeptCode,
 } from "@/lib/types";
 import { basisForPool } from "./capStepDown";
 import type { StudyContext } from "./studyContext";
 
-export type ReceiverRole = "receiver" | "center";
+type ReceiverRole = "receiver" | "center";
 
 /** Build the namespaced row key. Opaque to callers; only stable within one
  *  (cityId, fiscalYear) pair — never use as a cross-study join key. */
-export function receiverKey(
+function receiverKey(
   role: ReceiverRole,
   glCodeOrFallback: string,
   ctx: StudyContext,
 ): string {
   return `${ctx.cityId}:${ctx.fiscalYear}:${role}:${glCodeOrFallback}`;
-}
-
-/** Normalize a dept name for use as a fallback identity when glCode is
- *  absent. Lowercase + collapse whitespace + strip diacritics-light. */
-function normDeptName(s: string): string {
-  return s.toLowerCase().replace(/\s+/g, "-").replace(/[^a-z0-9-]/g, "");
 }
 
 /** One distinct receiver, aggregated across every pool that lists it. */

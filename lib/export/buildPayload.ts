@@ -14,7 +14,7 @@ import type { SourceLineage, UnmappedRow } from "@/lib/parse";
 import { DEPTS } from "@/lib/data/departments";
 import { CITY } from "@/lib/data/city";
 
-export interface ExportCover {
+interface ExportCover {
   cityName: string;
   fiscal: string;
   preparedBy: string;
@@ -22,7 +22,7 @@ export interface ExportCover {
   generatedAt: string;
 }
 
-export interface ExportSummary {
+interface ExportSummary {
   services: number;
   positions: number;
   fte: number;
@@ -35,7 +35,7 @@ export interface ExportSummary {
   annualSubsidy: number;
 }
 
-export interface ExportDeptSummary {
+interface ExportDeptSummary {
   dept: DeptCode;
   deptName: string;
   positions: number;
@@ -54,7 +54,7 @@ export interface ExportDeptSummary {
   target: number;
 }
 
-export interface ExportFeeRow {
+interface ExportFeeRow {
   id: string;
   name: string;
   dept: DeptCode;
@@ -71,7 +71,7 @@ export interface ExportFeeRow {
   confidence: "high" | "med" | "low";
 }
 
-export interface ExportCostRow {
+interface ExportCostRow {
   id: string;
   name: string;
   dept: DeptCode;
@@ -83,13 +83,13 @@ export interface ExportCostRow {
   annualRevenue: number;
 }
 
-export interface ExportRecommendation extends ExportFeeRow {
+interface ExportRecommendation extends ExportFeeRow {
   priority: "high" | "med" | "low" | "none";
   action: string;
   rationale: string[];
 }
 
-export interface ExportBenchmarkRow {
+interface ExportBenchmarkRow {
   id: string;
   name: string;
   dept: DeptCode;
@@ -99,14 +99,14 @@ export interface ExportBenchmarkRow {
   varianceVsCost: number;
 }
 
-export interface ExportReviewFlag {
+interface ExportReviewFlag {
   domain: Domain;
   label: string;
   count: number;
   unmapped: UnmappedRow[];
 }
 
-export interface ExportLineageRow {
+interface ExportLineageRow {
   domain: Domain;
   id: string;
   label: string;

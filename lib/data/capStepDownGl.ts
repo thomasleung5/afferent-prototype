@@ -23,7 +23,7 @@
  *     the pool is surfaced in model.diagnostics for review tooling. */
 
 import type {
-  AllocationBasis, BasisKey, CapPool, DeptCode, MatrixDeptCode, PoolReceiver,
+  AllocationBasis, BasisKey, CapPool, DeptCode, MatrixDeptCode,
 } from "../types";
 import {
   basisForPool, CENTER_NAME_TO_CODE, DRIVERS, INDIRECT_DEPTS,
@@ -75,7 +75,7 @@ export interface GlEngineGraph {
  *  net allocable $ to any node — typically a DIRECT pool whose receivers
  *  list is empty or all-zero-glCode. Review tooling can render these
  *  for the user to fix. */
-export interface PoolDiagnostic {
+interface PoolDiagnostic {
   poolId: string;
   center: string;
   pool: string;
@@ -88,7 +88,7 @@ export interface PoolDiagnostic {
  *  is `fromKey`; the receiver is `toKey`. firstAmount is the pool's own
  *  eligible × percent; secondAmount is the pool's share of incoming $ at
  *  its home center × percent; amount = first + second. */
-export interface GlStepContribution {
+interface GlStepContribution {
   poolId: string;
   fromKey: NodeKey;
   fromName: string;

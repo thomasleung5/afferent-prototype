@@ -1,7 +1,7 @@
 
 import { useState, type ReactNode } from "react";
 
-export interface DeptSummaryCol {
+interface DeptSummaryCol {
   key: string;
   label: string;
   width?: string;
@@ -148,14 +148,14 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
 
 /** Compact category/position/pool ledger used inside DeptSummaryTable
  *  drilldowns. Header row + body rows + emphasized total. */
-export interface LedgerCol {
+interface LedgerCol {
   key: string;
   label: string;
   width?: string;
   align?: "left" | "right" | "center";
 }
 
-export interface LedgerRow {
+interface LedgerRow {
   key: string;
   cells: Record<string, ReactNode>;
 }

@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
-export type BtnKind = "ghost" | "primary" | "subtle";
+type BtnKind = "ghost" | "primary" | "subtle";
 
 interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
   kind?: BtnKind;

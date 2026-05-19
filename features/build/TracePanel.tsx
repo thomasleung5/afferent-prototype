@@ -174,66 +174,6 @@ export function BigFormula({ children }: { children: ReactNode }) {
   );
 }
 
-export interface FlowStep {
-  label: string;
-  value: ReactNode;
-  /** Optional smaller line under the value (e.g. units or formula fragment). */
-  detail?: ReactNode;
-  /** Promote to outcome styling (accent, bigger). */
-  emphasis?: boolean;
-}
-
-export function FlowDiagram({ steps }: { steps: FlowStep[] }) {
-  return (
-    <ol style={{
-      listStyle: "none", margin: 0, padding: 0,
-      display: "flex", flexDirection: "column", alignItems: "stretch", gap: 0,
-    }}>
-      {steps.map((s, i) => (
-        <li key={i}>
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "160px 1fr",
-            gap: 16,
-            alignItems: "baseline",
-            padding: "14px 18px",
-            background: s.emphasis ? "var(--accent-tint)" : "var(--paper-2)",
-            border: `1px solid ${s.emphasis ? "var(--accent)" : "var(--rule)"}`,
-          }}>
-            <div className="mono" style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
-              color: s.emphasis ? "var(--accent)" : "var(--ink-3)",
-              textTransform: "uppercase",
-            }}>{s.label}</div>
-            <div>
-              <div style={{
-                fontSize: 13.5,
-                fontWeight: 500,
-                color: s.emphasis ? "var(--accent)" : "var(--ink)",
-                fontVariantNumeric: "tabular-nums",
-                lineHeight: 1.35,
-              }}>{s.value}</div>
-              {s.detail && (
-                <div className="mono" style={{
-                  fontSize: 11, color: "var(--ink-3)", marginTop: 4,
-                  fontVariantNumeric: "tabular-nums",
-                }}>{s.detail}</div>
-              )}
-            </div>
-          </div>
-          {i < steps.length - 1 && (
-            <div aria-hidden="true" style={{
-              display: "flex", justifyContent: "center",
-              padding: "6px 0",
-              color: "var(--ink-4)", fontSize: 14, lineHeight: 1,
-            }}>↓</div>
-          )}
-        </li>
-      ))}
-    </ol>
-  );
-}
-
 // ============================================================================
 // Metadata — collapsible auditor detail
 // ============================================================================

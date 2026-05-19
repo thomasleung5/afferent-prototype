@@ -43,7 +43,7 @@ export const INDIRECT_DEPTS: MatrixDept[] = [
   { code: "CMTE",     name: "Committees",                         kind: "indirect" },
 ];
 
-export const DIRECT_DEPTS: MatrixDept[] = [
+const DIRECT_DEPTS: MatrixDept[] = [
   { code: "PLAN",  name: "Planning",          kind: "direct" },
   { code: "BLDG",  name: "Building",          kind: "direct" },
   { code: "ENG",   name: "Engineering",       kind: "direct" },
@@ -53,7 +53,7 @@ export const DIRECT_DEPTS: MatrixDept[] = [
   { code: "FIRE",  name: "Fire Prevention",   kind: "direct" },
 ];
 
-export const ALL_DEPTS: MatrixDept[] = [...INDIRECT_DEPTS, ...DIRECT_DEPTS];
+const ALL_DEPTS: MatrixDept[] = [...INDIRECT_DEPTS, ...DIRECT_DEPTS];
 
 /** Center-name → indirect-dept code (matches CAP_POOLS.center text). */
 export const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {

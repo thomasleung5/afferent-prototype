@@ -1,29 +1,7 @@
 import type {
-  CapAllocation, DeptCode, EnrichedService, OperatingLine, Position,
+  CapAllocation, DeptCode, OperatingLine, Position,
   PolicyException, PolicyTarget, Service,
 } from "./types";
-
-export interface TopFix extends EnrichedService {
-  /** Recommended fee for display, rounded to nearest $1. */
-  recommended: number;
-  /** Annual revenue lift if recommended fee is adopted (full-precision math). */
-  annualUplift: number;
-}
-
-export function topFixes(services: Service[], limit = 6): TopFix[] {
-  return services
-    .map<TopFix>((s) => {
-      const calculatedRecommendedFee = (s.cost * (s.target || 100)) / 100;
-      const recommended = Math.round(calculatedRecommendedFee);
-      const recovery = s.cost > 0 ? (s.fee / s.cost) * 100 : 0;
-      const gap = (s.cost - s.fee) * s.volume;
-      const annualUplift = (calculatedRecommendedFee - s.fee) * s.volume;
-      return { ...s, recovery, gap, recommended, annualUplift };
-    })
-    .filter((s) => s.annualUplift > 0)
-    .sort((a, b) => b.annualUplift - a.annualUplift)
-    .slice(0, limit);
-}
 
 /* ---------- Build Model derivations ----------
  * The four input nodes (Direct Labor, Operating, Cost Allocation, Workload)

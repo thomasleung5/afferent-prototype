@@ -1,35 +1,5 @@
 /* Parser and extractor types shared across the import pipeline. */
 
-export type ParsedFormat = "csv" | "xlsx" | "pdf";
-
-export interface ParsedSheet {
-  name: string;
-  /** Headers (row 0 of the sheet, or inferred). */
-  headers: string[];
-  /** Body rows as raw cell arrays. */
-  rows: (string | number | null)[][];
-}
-
-export interface ParsedPage {
-  page: number;
-  /** Page text as one string. Lines preserved with "\n". */
-  text: string;
-  /** Extracted text spans with rough positional grouping. */
-  lines: string[];
-}
-
-export interface ParsedDoc {
-  format: ParsedFormat;
-  /** Source filename, e.g. "FY 26-27 Salary Table.xlsx". */
-  fileName: string;
-  /** Total raw row count (sum over sheets) or PDF line count. */
-  rowCount: number;
-  sheets?: ParsedSheet[];
-  pages?: ParsedPage[];
-  /** Parse-time errors that don't block extraction. */
-  warnings: string[];
-}
-
 /** Per-imported-row lineage. Kept on BuildContext keyed by domain + id. */
 export interface SourceLineage {
   file: string;
@@ -43,7 +13,7 @@ export interface SourceLineage {
   importedAt: string;
 }
 
-export type Confidence = "high" | "med" | "low" | "review";
+type Confidence = "high" | "med" | "low" | "review";
 
 /** Output of any extractor — typed rows, plus rows that need user attention. */
 export interface ExtractionResult<T> {
@@ -59,7 +29,7 @@ export interface ExtractionResult<T> {
   stats: ExtractionStats;
 }
 
-export interface ExtractionStats {
+interface ExtractionStats {
   /** Total raw rows considered (excludes blank rows + headers). */
   total: number;
   mapped: number;

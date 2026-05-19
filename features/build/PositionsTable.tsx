@@ -4,7 +4,7 @@ import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect, DeptChip, SectionLabel, SourcePill } from "@/components/ui";
+import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui";
 import type { DeptCode, Position } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 

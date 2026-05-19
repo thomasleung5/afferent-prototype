@@ -31,7 +31,7 @@ const confidence = z.enum(["high", "med", "low"]);
 const num = z.coerce.number();
 const nonEmpty = z.string().trim().min(1);
 
-export const positionSchema = z.object({
+const positionSchema = z.object({
   title: nonEmpty,
   dept,
   fte: num.optional().default(1),
@@ -40,7 +40,7 @@ export const positionSchema = z.object({
   hours: num.optional().default(1720),
 });
 
-export const operatingSchema = z.object({
+const operatingSchema = z.object({
   code: z.string().optional().default(""),
   line: nonEmpty,
   dept: opDept,
@@ -49,7 +49,7 @@ export const operatingSchema = z.object({
   include: z.boolean().optional().default(true),
 });
 
-export const serviceSchema = z.object({
+const serviceSchema = z.object({
   name: nonEmpty,
   dept,
   hours: num.optional().default(0),
@@ -58,7 +58,7 @@ export const serviceSchema = z.object({
   target: num.optional().default(100),
 });
 
-export const feeSchema = z.object({
+const feeSchema = z.object({
   name: nonEmpty,
   dept,
   fee: num.optional().default(0),
@@ -66,14 +66,14 @@ export const feeSchema = z.object({
   peer: num.optional().default(0),
 });
 
-export const workloadSchema = z.object({
+const workloadSchema = z.object({
   name: nonEmpty,
   current: num.optional(),
   prior: num.optional(),
   unit: z.string().optional().default("Item"),
 });
 
-export const capSchema = z.object({
+const capSchema = z.object({
   center: z.string().optional().default(""),
   pool: nonEmpty,
   amount: num.optional().default(0),
@@ -94,7 +94,7 @@ export const aiRawSuggestionSchema = z.object({
 export type RawSuggestion = z.infer<typeof aiRawSuggestionSchema>;
 
 /** Maps a domain to its entity schema. */
-export const ENTITY_SCHEMA = {
+const ENTITY_SCHEMA = {
   positions: positionSchema,
   operating: operatingSchema,
   services: serviceSchema,
@@ -102,9 +102,6 @@ export const ENTITY_SCHEMA = {
   workload: workloadSchema,
   cap: capSchema,
 } as const;
-
-export type EntityFor<D extends keyof typeof ENTITY_SCHEMA> =
-  z.infer<(typeof ENTITY_SCHEMA)[D]>;
 
 /** Validate one raw suggestion's entity against its domain schema.
  *  Returns the parsed entity on success, or null + first issue message on failure. */

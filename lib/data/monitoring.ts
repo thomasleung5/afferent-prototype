@@ -14,7 +14,7 @@ export type Trend = "up" | "down" | "flat";
 export type RecoveryStatus = "below" | "watch" | "on-track";
 export type AlertSeverity = "high" | "stale" | "below" | "ready";
 
-export interface MonitoringSummary {
+interface MonitoringSummary {
   citywideRecovery: number;
   policyTarget: number;
   revenueDrift: number;
@@ -53,7 +53,7 @@ export interface RecoveryAlert {
   severity: AlertSeverity;
 }
 
-export interface StaffAction {
+interface StaffAction {
   id: string;
   title: string;
   rationale: string;

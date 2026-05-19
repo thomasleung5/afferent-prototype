@@ -339,7 +339,7 @@ const BASIS_KEYS: BasisKey[] = [
   "PRA", "CONTRACT", "SQFT", "VEHICLE", "COMMITS", "DIRECT",
 ];
 
-export function normBasisKey(v: string | undefined): BasisKey | null {
+function normBasisKey(v: string | undefined): BasisKey | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   return (BASIS_KEYS as readonly string[]).includes(s) ? (s as BasisKey) : null;
@@ -351,7 +351,7 @@ const MATRIX_DEPTS: MatrixDeptCode[] = [
   "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE",
 ];
 
-export function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
+function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
@@ -422,7 +422,7 @@ function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
  *  3. relaxed match ignoring punctuation/whitespace
  *  Returns null if no match — the caller keeps the raw name in pool.basis
  *  and leaves basisId blank, matching the behavior of legacy imported pools. */
-export function normBasisName(
+function normBasisName(
   v: string,
   catalog: AllocationBasis[] = SEED_ALLOCATION_BASES,
 ): AllocationBasis | null {
