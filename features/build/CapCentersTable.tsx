@@ -143,7 +143,6 @@ export function CapCentersTable() {
             ? `${fmt.dollars(r.totalCost)} − ${fmt.dollars(r.disallowed)} = ${fmt.dollars(r.netAllocable)}`
             : "All expenses are allocable"}
           style={{
-            fontWeight: 500,
             color: r.disallowed > 0 ? "var(--ink)" : "var(--ink-2)",
           }}
         >{fmt.dollars(r.netAllocable)}</span>
