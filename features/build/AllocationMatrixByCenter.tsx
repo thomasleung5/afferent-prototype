@@ -25,7 +25,26 @@ export function AllocationMatrixByCenter() {
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
   const model = derived.capStepDown;
-  const cols: GlNode[] = model.nodes.filter((n) => n.role === "direct");
+  // Columns = direct receiver nodes, sorted by glCode so the x-axis reads
+  // in fund-program order (matches NBS publications). Seed nodes (no real
+  // glCode) sort last so the imported receivers stay grouped on the left.
+  const cols: GlNode[] = [...model.nodes.filter((n) => n.role === "direct")]
+    .sort((a, b) => {
+      const aSeed = a.glCode.startsWith("seed:");
+      const bSeed = b.glCode.startsWith("seed:");
+      if (aSeed !== bSeed) return aSeed ? 1 : -1;
+      return a.glCode.localeCompare(b.glCode);
+    });
+  // Cost center → imported glCode for the row-label glCode prefix.
+  const glCodeByCenter = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of model.nodes) {
+      if (n.role !== "indirect") continue;
+      if (n.glCode.startsWith("seed:")) continue;
+      m.set(n.name, n.glCode);
+    }
+    return m;
+  }, [model.nodes]);
   const allocSrc = model.alloc2;
 
   const grid =
@@ -120,7 +139,15 @@ export function AllocationMatrixByCenter() {
                 fontVariantNumeric: "tabular-nums",
               }}>
                 <div style={{ fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
-                  <div style={{ fontWeight: 500 }}>{center}</div>
+                  <div style={{ fontWeight: 500 }}>
+                    {glCodeByCenter.get(center) && (
+                      <span className="mono" style={{
+                        fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+                        letterSpacing: "0.02em", fontWeight: 400,
+                      }}>{glCodeByCenter.get(center)}</span>
+                    )}
+                    {center}
+                  </div>
                 </div>
                 <div className="num" style={{ textAlign: "right", fontSize: 12 }}>
                   {fmt.dollarsK(amt)}

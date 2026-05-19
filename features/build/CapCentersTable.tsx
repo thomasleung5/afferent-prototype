@@ -28,14 +28,11 @@ interface Row {
 export function CapCentersTable() {
   const {
     capPools, capCenterOrder, capCenterTotals, capCenterDisallowed, capCenterSources,
+    capCenterGlCodes,
     addCapCenter, renameCapCenter, updateCenterTotal, updateCenterDisallowed,
   } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
-    // Synthesize a fund-program code from the first pool that belongs to
-    // this center, so the column has something useful even though our data
-    // model doesn't track Fund-Program at the center level.
-    const samplePool = capPools.find((p) => p.center === c.name);
     const provenance = capCenterSources[c.name];
     // Total Expenses (gross). Falls back to derived Σ pool.amount only when
     // no stored total exists — that path treats the imported pool sum as
@@ -43,10 +40,18 @@ export function CapCentersTable() {
     const totalCost = capCenterTotals[c.name] ?? c.total;
     const disallowed = capCenterDisallowed[c.name] ?? 0;
     const netAllocable = Math.max(0, totalCost - disallowed);
+    // Use the imported glCode (e.g. "011-1100" for City Council, "BLDG"
+    // for Building Use) — matches NBS published format. Falls back to the
+    // legacy per-pool synthesized prefix only when no glCode was imported.
+    const importedGl = capCenterGlCodes[c.name];
+    const samplePool = capPools.find((p) => p.center === c.name);
+    const code = importedGl
+      ?? samplePool?.id.replace(/^cap-/, "").split("-")[0]
+      ?? "—";
     return {
       id: `center-${i}`,
       idx: i + 1,
-      code: samplePool?.id.replace(/^cap-/, "").split("-")[0] ?? "—",
+      code,
       name: c.name,
       totalCost,
       disallowed,

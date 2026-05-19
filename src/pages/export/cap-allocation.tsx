@@ -248,6 +248,7 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
   for (const pl of payload.capPools) {
     poolCountByCenter.set(pl.center, (poolCountByCenter.get(pl.center) ?? 0) + 1);
   }
+  const glByName = pdfGlCodeByCenter(payload);
   let totalGross = 0, totalDis = 0;
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
@@ -262,6 +263,7 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
         <thead>
           <tr>
             <th className="num">#</th>
+            <th>glCode</th>
             <th>Center</th>
             <th className="num">Total Expenses</th>
             <th className="num">Disallowed</th>
@@ -274,10 +276,12 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
             const gross = payload.capCenterTotals[name] ?? 0;
             const dis = payload.capCenterDisallowed[name] ?? 0;
             const net = Math.max(0, gross - dis);
+            const gl = glByName.get(name);
             totalGross += gross; totalDis += dis;
             return (
               <tr key={name}>
                 <td className="num mono dim">{String(i + 1).padStart(2, "0")}</td>
+                <td><span className="mono" style={{ fontSize: 10, color: gl ? "var(--ink-2)" : "var(--ink-4)" }}>{gl ?? "—"}</span></td>
                 <td>{name}</td>
                 <td className="num">{fmt.dollars(gross)}</td>
                 <td className="num">{dis > 0 ? fmt.dollars(dis) : <span className="dim">—</span>}</td>
@@ -287,6 +291,7 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
             );
           })}
           <tr className="total">
+            <td/>
             <td/>
             <td>Total</td>
             <td className="num">{fmt.dollars(totalGross)}</td>
@@ -298,6 +303,17 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
       </table>
     </section>
   );
+}
+
+/** Center name → imported glCode for PDF use; seed centers return undefined. */
+function pdfGlCodeByCenter(payload: CapExportPayload): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const nn of payload.model.nodes) {
+    if (nn.role !== "indirect") continue;
+    if (nn.glCode.startsWith("seed:")) continue;
+    m.set(nn.name, nn.glCode);
+  }
+  return m;
 }
 
 function AllocationBasesSection({ payload }: { payload: CapExportPayload }) {
@@ -329,6 +345,7 @@ function AllocationBasesSection({ payload }: { payload: CapExportPayload }) {
 }
 
 function CostPools({ payload }: { payload: CapExportPayload }) {
+  const glByName = pdfGlCodeByCenter(payload);
   let totalEligible = 0;
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
@@ -342,6 +359,7 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
       <table>
         <thead>
           <tr>
+            <th>glCode</th>
             <th>Center</th>
             <th>Pool</th>
             <th>Basis</th>
@@ -354,9 +372,11 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
           {payload.capPools.map((pl) => {
             const { basis } = basisForPool(pl, payload.allocationBases);
             const eligible = pl.amount * (pl.eligiblePercent / 100);
+            const gl = glByName.get(pl.center);
             totalEligible += eligible;
             return (
               <tr key={pl.id}>
+                <td><span className="mono" style={{ fontSize: 10, color: gl ? "var(--ink-2)" : "var(--ink-4)" }}>{gl ?? "—"}</span></td>
                 <td style={{ color: "var(--ink-2)" }}>{pl.center}</td>
                 <td><b>{pl.pool}</b></td>
                 <td><span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span></td>
@@ -367,7 +387,7 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
             );
           })}
           <tr className="total">
-            <td colSpan={5}>Total eligible</td>
+            <td colSpan={6}>Total eligible</td>
             <td className="num">{fmt.dollars(totalEligible)}</td>
           </tr>
         </tbody>
@@ -485,7 +505,15 @@ function CenterBlock({
           fontSize: 9.5, fontWeight: 600, letterSpacing: "0.14em",
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>Center {indexLabel} · Step {indexLabel}</div>
-        <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>{centerName}</div>
+        <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>
+          {pdfGlCodeByCenter(payload).get(centerName) && (
+            <span className="mono" style={{
+              fontSize: 14, color: "var(--ink-3)", marginRight: 10,
+              letterSpacing: "0.02em",
+            }}>{pdfGlCodeByCenter(payload).get(centerName)}</span>
+          )}
+          {centerName}
+        </div>
       </div>
 
       {(departmental >= 0.5 || totalFirst >= 0.5 || totalSecond >= 0.5) && (
@@ -511,9 +539,15 @@ function CenterBlock({
                 const isSelf = r.name === centerName;
                 const total = r.first + r.second;
                 const allZero = r.first < 0.5 && r.second < 0.5;
+                const sourceGl = pdfGlCodeByCenter(payload).get(r.name);
                 return (
                   <tr key={r.name}>
                     <td style={{ color: allZero ? "var(--ink-4)" : "var(--ink-2)" }}>
+                      {sourceGl && (
+                        <span className="mono dim" style={{
+                          fontSize: 10, marginRight: 6, letterSpacing: "0.02em",
+                        }}>{sourceGl}</span>
+                      )}
                       {r.name}{isSelf && <span className="mono dim" style={{ marginLeft: 6, fontSize: 9 }}>(SELF)</span>}
                     </td>
                     <td className="num" style={{ color: r.first < 0.5 ? "var(--ink-4)" : undefined }}>
@@ -589,9 +623,20 @@ function PoolBlock({
   const totalFirst = allRows.reduce((a, r) => a + r.first, 0);
   const totalSecond = allRows.reduce((a, r) => a + r.second, 0);
 
+  const centerNode = model.nodes.find(
+    (n) => n.role === "indirect" && n.name === pool.center,
+  );
+  const centerGl = centerNode && !centerNode.glCode.startsWith("seed:")
+    ? centerNode.glCode : undefined;
   return (
     <div className="pool-block row" style={{ marginBottom: 22 }}>
       <h3 className="h3" style={{ marginBottom: 4 }}>
+        {centerGl && (
+          <span className="mono" style={{
+            fontSize: 11, color: "var(--ink-3)", marginRight: 8,
+            letterSpacing: "0.02em", fontWeight: 400,
+          }}>{centerGl}</span>
+        )}
         {pool.center} · {pool.pool}
       </h3>
       <div style={{

@@ -39,11 +39,11 @@ export async function exportCapXlsx(p: CapExportPayload): Promise<Blob> {
   const wb = XLSX.utils.book_new();
 
   addSheet(XLSX, wb, "Summary",                 buildSummary(p),              [28, 60]);
-  addSheet(XLSX, wb, "Cost Centers",            buildCenters(p),              [4, 36, 16, 16, 16, 8]);
+  addSheet(XLSX, wb, "Cost Centers",            buildCenters(p),              [4, 12, 36, 16, 16, 16, 8]);
   addSheet(XLSX, wb, "Allocation Bases",        buildBases(p),                [30, 14, 50]);
-  addSheet(XLSX, wb, "Cost Pools",              buildPools(p),                [30, 38, 14, 12, 12, 14]);
+  addSheet(XLSX, wb, "Cost Pools",              buildPools(p),                [12, 30, 38, 14, 12, 12, 14]);
   addSheet(XLSX, wb, "Allocation by Center",    buildAllocationByCenter(p),   [4, 30, 36, 16, 12, 12, 14, 14, 14, 14]);
-  addSheet(XLSX, wb, "Allocation Matrix",       buildAllocationMatrix(p),     [30, 38, ...new Array(20).fill(14)]);
+  addSheet(XLSX, wb, "Allocation Matrix",       buildAllocationMatrix(p),     [12, 30, 38, ...new Array(20).fill(14)]);
   addSheet(XLSX, wb, "FBHR Roll-up",            buildFbhrRollup(p),           [20, 16, 60]);
 
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
@@ -110,12 +110,13 @@ function buildSummary(p: CapExportPayload): Cell[][] {
 
 function buildCenters(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("#"), h("Center"), h("Total Expenses"), h("Disallowed"), h("Net Allocable"), h("Pools")],
+    [h("#"), h("glCode"), h("Center"), h("Total Expenses"), h("Disallowed"), h("Net Allocable"), h("Pools")],
   ];
   const poolCountByCenter = new Map<string, number>();
   for (const pl of p.capPools) {
     poolCountByCenter.set(pl.center, (poolCountByCenter.get(pl.center) ?? 0) + 1);
   }
+  const glByName = glCodeByCenter(p);
   let totalGross = 0;
   let totalDisallowed = 0;
   p.capCenterOrder.forEach((name, i) => {
@@ -126,6 +127,7 @@ function buildCenters(p: CapExportPayload): Cell[][] {
     totalDisallowed += dis;
     rows.push([
       i + 1,
+      glByName.get(name) ?? "—",
       name,
       n(gross, "$#,##0"),
       n(dis, "$#,##0"),
@@ -134,7 +136,7 @@ function buildCenters(p: CapExportPayload): Cell[][] {
     ]);
   });
   rows.push([
-    "",
+    "", "",
     h("Total"),
     n(totalGross, "$#,##0"),
     n(totalDisallowed, "$#,##0"),
@@ -142,6 +144,18 @@ function buildCenters(p: CapExportPayload): Cell[][] {
     "",
   ]);
   return rows;
+}
+
+/** Shared helper: center name → imported glCode (e.g. "011-1200" for City
+ *  Manager). Returns an empty Map when no centers have imported glCodes. */
+function glCodeByCenter(p: CapExportPayload): Map<string, string> {
+  const m = new Map<string, string>();
+  for (const nn of p.model.nodes) {
+    if (nn.role !== "indirect") continue;
+    if (nn.glCode.startsWith("seed:")) continue;
+    m.set(nn.name, nn.glCode);
+  }
+  return m;
 }
 
 function buildBases(p: CapExportPayload): Cell[][] {
@@ -156,14 +170,16 @@ function buildBases(p: CapExportPayload): Cell[][] {
 
 function buildPools(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("Center"), h("Pool"), h("Basis"), h("Amount"), h("Eligible %"), h("Eligible $")],
+    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Amount"), h("Eligible %"), h("Eligible $")],
   ];
+  const glByName = glCodeByCenter(p);
   let totalEligible = 0;
   for (const pl of p.capPools) {
     const { basis } = basisForPool(pl, p.allocationBases);
     const eligible = pl.amount * (pl.eligiblePercent / 100);
     totalEligible += eligible;
     rows.push([
+      glByName.get(pl.center) ?? "—",
       pl.center,
       pl.pool,
       basis,
@@ -172,7 +188,7 @@ function buildPools(p: CapExportPayload): Cell[][] {
       n(eligible, "$#,##0"),
     ]);
   }
-  rows.push(["", h("Total"), "", "", "", n(totalEligible, "$#,##0")]);
+  rows.push(["", "", h("Total"), "", "", "", n(totalEligible, "$#,##0")]);
   return rows;
 }
 
@@ -194,6 +210,7 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
     const node = p.model.nodes.find((nn) => nn.key === k);
     if (node) stepIndex.set(node.name, i);
   });
+  const glByName = glCodeByCenter(p);
 
   const poolsByCenter = new Map<string, CapPool[]>();
   for (const pl of p.capPools) {
@@ -221,9 +238,13 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
 
     // -------- Center header band --------
     const stepLabel = String(centerIdx + 1).padStart(2, "0");
+    const centerGl = glByName.get(centerName);
+    const centerHeader = centerGl
+      ? `${centerGl} · ${centerName.toUpperCase()}`
+      : centerName.toUpperCase();
     rows.push([
       h(`STEP ${stepLabel}`),
-      h(centerName.toUpperCase()),
+      h(centerHeader),
       "", "", "", "", "", "", "", "",
     ]);
 
@@ -259,7 +280,9 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
       n(departmental, "$#,##0"), n(departmental, "$#,##0"), n(0, "$#,##0"), n(departmental, "$#,##0"),
     ]);
     for (const r of sourceRows) {
-      const label = r.name === centerName ? `${r.name} (self)` : r.name;
+      const sourceGl = glByName.get(r.name);
+      const baseLabel = sourceGl ? `${sourceGl} · ${r.name}` : r.name;
+      const label = r.name === centerName ? `${baseLabel} (self)` : baseLabel;
       rows.push([
         "", "", label, "", "Incoming", "",
         "", n(r.first, "$#,##0"), n(r.second, "$#,##0"), n(r.first + r.second, "$#,##0"),
@@ -327,8 +350,13 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
   const directNodes = p.model.nodes
     .filter((n) => n.role === "direct")
     .sort((a, b) => a.glCode.localeCompare(b.glCode));
+  const glByName = glCodeByCenter(p);
 
-  const header: Cell[] = [h("Center"), h("Pool"), ...directNodes.map((n) => h(`${n.glCode} · ${n.name}`)), h("Row total")];
+  const header: Cell[] = [
+    h("glCode"), h("Center"), h("Pool"),
+    ...directNodes.map((n) => h(`${n.glCode.startsWith("seed:") ? "—" : n.glCode} · ${n.name}`)),
+    h("Row total"),
+  ];
   const rows: Cell[][] = [header];
 
   const sortByCenter = new Map<string, number>();
@@ -345,7 +373,7 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
 
   const colTotals = new Array<number>(directNodes.length).fill(0);
   for (const pl of sortedPools) {
-    const row: Cell[] = [pl.center, pl.pool];
+    const row: Cell[] = [glByName.get(pl.center) ?? "—", pl.center, pl.pool];
     let rowTotal = 0;
     for (let i = 0; i < directNodes.length; i++) {
       const v = p.model.alloc2[pl.id]?.[directNodes[i].key] ?? 0;
@@ -356,7 +384,7 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
     row.push(n(rowTotal, "$#,##0"));
     rows.push(row);
   }
-  const totalRow: Cell[] = ["", h("Column total")];
+  const totalRow: Cell[] = ["", "", h("Column total")];
   for (const v of colTotals) totalRow.push(n(v, "$#,##0"));
   totalRow.push(n(colTotals.reduce((a, v) => a + v, 0), "$#,##0"));
   rows.push(totalRow);

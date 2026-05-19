@@ -24,6 +24,19 @@ export function AllocationDetailReport() {
   const { capPools, allocationBases, derived } = useBuildState();
   const model = derived.capStepDown;
 
+  // Center name → imported glCode (e.g. "011-1200" for City Manager).
+  // Seed centers without a real imported glCode resolve to undefined, which
+  // CenterCode renders as "—".
+  const glCodeByCenter = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of model.nodes) {
+      if (n.role !== "indirect") continue;
+      if (n.glCode.startsWith("seed:")) continue;
+      m.set(n.name, n.glCode);
+    }
+    return m;
+  }, [model.nodes]);
+
   // Sort pools by their center order (then pool name) for predictability.
   const sortedPools = useMemo(() => {
     const byCenter = new Map<string, number>();
@@ -59,6 +72,7 @@ export function AllocationDetailReport() {
         pools={sortedPools}
         selectedId={selected.id}
         onSelect={setSelectedId}
+        glCodeByCenter={glCodeByCenter}
       />
       <CenterCostsToBeAllocated centerName={selected.center}/>
       <PoolDetailCard pool={selected}/>
@@ -146,7 +160,15 @@ export function AllocationDetailReport() {
           <div style={{
             fontSize: 14, fontWeight: 600, color: "var(--ink)",
             marginTop: 4,
-          }}>{centerName}</div>
+          }}>
+            {glCodeByCenter.get(centerName) && (
+              <span className="mono" style={{
+                fontSize: 12, color: "var(--ink-3)", marginRight: 8,
+                letterSpacing: "0.02em",
+              }}>{glCodeByCenter.get(centerName)}</span>
+            )}
+            {centerName}
+          </div>
         </div>
 
         <div style={{
@@ -186,6 +208,7 @@ export function AllocationDetailReport() {
           <CostsRow
             key={r.name}
             label={r.name}
+            glCode={glCodeByCenter.get(r.name)}
             first={r.first}
             second={r.second}
             total={r.total}
@@ -257,7 +280,12 @@ export function AllocationDetailReport() {
       <div style={{
         background: "var(--paper)", border: "1px solid var(--rule)",
       }}>
-        <PoolHeader pool={pool} eligibleAmount={eligibleAmount} basis={basis}/>
+        <PoolHeader
+          pool={pool}
+          centerGlCode={glCodeByCenter.get(pool.center)}
+          eligibleAmount={eligibleAmount}
+          basis={basis}
+        />
         <div style={{ overflowX: "auto" }}>
           <div style={{ minWidth: 1100 }}>
             <ColumnHeaders/>
@@ -278,9 +306,10 @@ export function AllocationDetailReport() {
 }
 
 function CostsRow({
-  label, first, second, total, emphasis, divider, isSelf,
+  label, glCode, first, second, total, emphasis, divider, isSelf,
 }: {
   label: string;
+  glCode?: string;
   first: number;
   second: number;
   total: number;
@@ -312,6 +341,12 @@ function CostsRow({
         fontFamily: "var(--ff-ui)",
         color: emphasis ? "var(--ink)" : "var(--ink-2)",
       }}>
+        {glCode && (
+          <span className="mono" style={{
+            fontSize: 10, color: "var(--ink-4)", marginRight: 8,
+            letterSpacing: "0.02em",
+          }}>{glCode}</span>
+        )}
         {label}
         {isSelf && (
           <span className="mono" style={{
@@ -336,11 +371,12 @@ function CostsRow({
 }
 
 function PoolPicker({
-  pools, selectedId, onSelect,
+  pools, selectedId, onSelect, glCodeByCenter,
 }: {
   pools: { id: string; center: string; pool: string; amount: number; eligiblePercent: number }[];
   selectedId: string;
   onSelect: (id: string) => void;
+  glCodeByCenter: Map<string, string>;
 }) {
   return (
     <div>
@@ -354,6 +390,7 @@ function PoolPicker({
         {pools.map((p, i) => {
           const eligible = p.amount * (p.eligiblePercent / 100);
           const selected = p.id === selectedId;
+          const gl = glCodeByCenter.get(p.center);
           return (
             <button
               key={p.id}
@@ -361,7 +398,7 @@ function PoolPicker({
               style={{
                 width: "100%",
                 display: "grid",
-                gridTemplateColumns: "minmax(200px, 1.6fr) minmax(220px, 2.4fr) 120px",
+                gridTemplateColumns: "80px minmax(180px, 1.5fr) minmax(220px, 2.4fr) 120px",
                 gap: 12, alignItems: "baseline",
                 padding: "8px 14px",
                 background: selected ? "var(--accent-tint)" : "transparent",
@@ -375,6 +412,10 @@ function PoolPicker({
                 fontWeight: selected ? 600 : 400,
               }}
             >
+              <span className="mono" style={{
+                color: gl ? "var(--ink-2)" : "var(--ink-4)",
+                fontSize: 11, letterSpacing: "0.02em",
+              }}>{gl ?? "—"}</span>
               <span style={{
                 color: "var(--ink-2)",
                 overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
@@ -396,9 +437,10 @@ function PoolPicker({
 }
 
 function PoolHeader({
-  pool, eligibleAmount, basis,
+  pool, centerGlCode, eligibleAmount, basis,
 }: {
   pool: { center: string; pool: string };
+  centerGlCode: string | undefined;
   eligibleAmount: number;
   basis: string;
 }) {
@@ -416,6 +458,12 @@ function PoolHeader({
         fontSize: 16, fontWeight: 600, color: "var(--ink)",
         marginTop: 4,
       }}>
+        {centerGlCode && (
+          <span className="mono" style={{
+            fontSize: 13, color: "var(--ink-3)", marginRight: 8,
+            letterSpacing: "0.02em",
+          }}>{centerGlCode}</span>
+        )}
         {pool.center} · {pool.pool}
       </div>
       <div style={{
