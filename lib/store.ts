@@ -54,6 +54,13 @@ interface BuildState {
    *  pool's allocationPercent. Editing a center total rescales all member
    *  pool amounts proportionally. */
   capCenterTotals: Record<string, number>;
+  /** Center name → disallowed expenses (capital outlay, one-time spend,
+   *  pass-through, grant-funded non-fee items, etc.) excluded before
+   *  allocation. Net Allocable = Total − Disallowed; the engine reads
+   *  pool.amount (derived from net), so all downstream math reflects this
+   *  reduction automatically. Default 0 per center; preserved separately
+   *  from capCenterTotals so the gross/net trail is auditable. */
+  capCenterDisallowed: Record<string, number>;
   /** Center name → glCode (from imported CenterRow.glCode). Drives the
    *  glCode-first center routing in computeStepDown's center resolver. */
   capCenterGlCodes: Record<string, string>;
@@ -97,6 +104,9 @@ interface BuildActions {
   /** Set a cost center's source-department total cost. Rescales every pool
    *  in that center: pool.amount = totalCost × pool.allocationPercent / 100. */
   updateCenterTotal: (centerName: string, totalCost: number) => void;
+  /** Set a cost center's disallowed expenses. Clamped to [0, Total]; rescales
+   *  all pools in the center by net = Total − Disallowed. */
+  updateCenterDisallowed: (centerName: string, disallowed: number) => void;
   /** Append a user-defined allocation basis to the catalog. Returns the new id. */
   addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
@@ -159,6 +169,7 @@ const initialState = (): BuildState => {
     },
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
+    capCenterDisallowed: {},
     capCenterGlCodes: {},
     capCenterSources: Object.fromEntries(
       Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
@@ -316,42 +327,47 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           };
         }),
 
-      // Keep allocationPercent and amount in sync. Editing % rederives $
-      // from the center's source-dept total. Editing $ rederives % when a
-      // reference total exists; when the center total is missing or zero,
-      // the new $ value redefines the center total (Σ pool.amount) and
-      // every pool's % is rederived against it so the Centers table, the
-      // Pools table, and the KPI rail agree.
+      // Keep allocationPercent and amount in sync. Pool $ is derived from
+      // the center's NET ALLOCABLE balance (Total Expenses − Disallowed),
+      // not the gross total — every downstream consumer (engine, KPI rail,
+      // exports) reads pool.amount, so the net reduction propagates
+      // automatically.
       updateCapPool: (id, patch) =>
         set((s) => {
           const target = s.capPools.find((p) => p.id === id);
           if (!target) return s;
           const centerTotal = s.capCenterTotals[target.center] ?? 0;
+          const centerDisallowed = s.capCenterDisallowed[target.center] ?? 0;
+          const centerNet = Math.max(0, centerTotal - centerDisallowed);
 
           let nextPools = s.capPools.map((p) => {
             if (p.id !== id) return p;
             let next = { ...p, ...patch };
             if (patch.allocationPercent != null && patch.amount == null) {
-              // % drives $
-              next.amount = centerTotal * (next.allocationPercent / 100);
-            } else if (patch.amount != null && patch.allocationPercent == null && centerTotal > 0) {
-              // $ drives % when we have a reference total. When centerTotal
-              // is 0/missing, defer to the rebuild below.
-              next.allocationPercent = (next.amount / centerTotal) * 100;
+              // % drives $ — relative to net allocable, not gross.
+              next.amount = centerNet * (next.allocationPercent / 100);
+            } else if (patch.amount != null && patch.allocationPercent == null && centerNet > 0) {
+              // $ drives % when we have a reference net total. When net is
+              // 0/missing, defer to the rebuild below.
+              next.allocationPercent = (next.amount / centerNet) * 100;
             }
             return next;
           });
 
           let nextTotals = s.capCenterTotals;
-          if (patch.amount != null && centerTotal === 0) {
-            const derivedTotal = nextPools
+          if (patch.amount != null && centerNet === 0) {
+            // No reference net yet — let the new $ value redefine the
+            // center's NET, then back-fill Total Expenses = Net + Disallowed
+            // so the gross figure stays consistent.
+            const derivedNet = nextPools
               .filter((p) => p.center === target.center)
               .reduce((a, p) => a + p.amount, 0);
-            if (derivedTotal > 0) {
-              nextTotals = { ...s.capCenterTotals, [target.center]: derivedTotal };
+            if (derivedNet > 0) {
+              const newTotal = derivedNet + centerDisallowed;
+              nextTotals = { ...s.capCenterTotals, [target.center]: newTotal };
               nextPools = nextPools.map((p) =>
                 p.center === target.center
-                  ? { ...p, allocationPercent: (p.amount / derivedTotal) * 100 }
+                  ? { ...p, allocationPercent: (p.amount / derivedNet) * 100 }
                   : p,
               );
             }
@@ -368,24 +384,51 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             nextTotals[newName] = nextTotals[oldName];
             delete nextTotals[oldName];
           }
+          const nextDisallowed = { ...s.capCenterDisallowed };
+          if (oldName in nextDisallowed) {
+            nextDisallowed[newName] = nextDisallowed[oldName];
+            delete nextDisallowed[oldName];
+          }
           return {
             capPools: s.capPools.map((p) =>
               p.center === oldName ? { ...p, center: newName } : p,
             ),
             capCenterTotals: nextTotals,
+            capCenterDisallowed: nextDisallowed,
             capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
           };
         }),
 
       updateCenterTotal: (centerName, totalCost) =>
-        set((s) => ({
-          capCenterTotals: { ...s.capCenterTotals, [centerName]: totalCost },
-          capPools: s.capPools.map((p) =>
-            p.center === centerName
-              ? { ...p, amount: totalCost * (p.allocationPercent / 100) }
-              : p,
-          ),
-        })),
+        set((s) => {
+          const newTotal = Math.max(0, totalCost);
+          const disallowed = s.capCenterDisallowed[centerName] ?? 0;
+          const net = Math.max(0, newTotal - disallowed);
+          return {
+            capCenterTotals: { ...s.capCenterTotals, [centerName]: newTotal },
+            capPools: s.capPools.map((p) =>
+              p.center === centerName
+                ? { ...p, amount: net * (p.allocationPercent / 100) }
+                : p,
+            ),
+          };
+        }),
+
+      updateCenterDisallowed: (centerName, disallowed) =>
+        set((s) => {
+          const total = s.capCenterTotals[centerName] ?? 0;
+          // Clamp to [0, Total] so Net Allocable can never be negative.
+          const clamped = Math.max(0, Math.min(disallowed, total));
+          const net = Math.max(0, total - clamped);
+          return {
+            capCenterDisallowed: { ...s.capCenterDisallowed, [centerName]: clamped },
+            capPools: s.capPools.map((p) =>
+              p.center === centerName
+                ? { ...p, amount: net * (p.allocationPercent / 100) }
+                : p,
+            ),
+          };
+        }),
 
       addAllocationBasis: ({ name, source, methodologyNote }) => {
         const id = `bas-user-${Date.now()}`;
@@ -695,6 +738,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           },
           capPools: pools,
           capCenterTotals: { ...CAP_CENTER_TOTALS },
+          capCenterDisallowed: {},
           capCenterGlCodes: {},
           capCenterSources: Object.fromEntries(
             Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
@@ -712,6 +756,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           operating: [],
           capPools: [],
           capCenterTotals: {},
+          capCenterDisallowed: {},
           capCenterGlCodes: {},
           capCenterSources: {},
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
@@ -742,6 +787,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         // Backfill for state persisted before glCode / studyContext existed.
         if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
+        // Backfill for state persisted before capCenterDisallowed existed.
+        // Default each center to $0 disallowed so existing math is unchanged.
+        if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
 
         // Backfill for state persisted before the SourceTag standardization:
         //   - capCenterSources didn't exist: synthesize "seed" for every

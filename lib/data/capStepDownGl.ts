@@ -84,9 +84,19 @@ export interface GlStepDownModel {
   /** Per-pool First Allocation — pool's own eligible × receiver percent.
    *  Matches the "First Allocation" column on a CAP PDF. */
   firstAllocation: Record<string, Record<NodeKey, number>>;
-  /** Per-pool Second Allocation — pool's share of incoming $ at its home
-   *  center × receiver percent. Matches "Second Allocation". */
+  /** Per-pool Second Allocation — pool's share of incomingRound1 at its
+   *  home center × receiver percent (self excluded, renormalized). Single
+   *  pass per the NBS two-step methodology — no iteration past Round 2. */
   secondAllocation: Record<string, Record<NodeKey, number>>;
+  /** Per-center Round 1 incoming = Σ over pools of firstAllocation[*][center].
+   *  Matches the "First Allocation" column in NBS's "Costs to be Allocated"
+   *  report for the receiving center. */
+  incomingRound1: Record<NodeKey, number>;
+  /** Per-center Round 2 incoming = Σ over pools of secondAllocation[*][center].
+   *  The Round 2 cross-flows that landed on this center from other pools'
+   *  redistribution. Matches the "Second Allocation" column in NBS's
+   *  "Costs to be Allocated" report. */
+  incomingRound2: Record<NodeKey, number>;
   /** Indirect-node keys in step order. */
   stepOrder: NodeKey[];
   contributions: GlStepContribution[];
@@ -266,33 +276,43 @@ function resolveReceiverNode(
 // Step-down compute
 // ---------------------------------------------------------------------------
 
-/** Single-pass sequential step-down over the glCode graph, with
- *  processing-pool attribution (matches the NBS CAP PDF format).
+/** Sequential two-phase CAP allocation over the glCode graph — matches NBS
+ *  published full-cost methodology.
  *
- *  Each indirect center I closes once in `centerOrder`. When I closes:
- *    - X = incoming[I], the $ accumulated at I from earlier centers.
- *    - For each of I's own pools `op`:
- *        opEligible  = op.amount × op.eligiblePercent / 100
- *        opWeight    = opEligible / totalOwnEligible  (or 1/N if all zero)
- *        firstAmount  = opEligible             // pool's own
- *        secondAmount = X × opWeight           // pool's share of incoming
- *        Distribute (firstAmount + secondAmount) via op's receiver schedule,
- *        filtered to downstream-or-direct and renormalized to 100%.
- *        Each receiver share goes into:
- *           - firstAllocation[op.id][receiver] (the first slice)
- *           - secondAllocation[op.id][receiver] (the second slice)
- *           - alloc2[op.id][receiver] (the combined cell value)
- *        If the receiver is an indirect downstream center, also accumulate
- *        in incoming[receiver] so the receiver's own pools can redistribute
- *        when their turn comes.
- *    - I is closed (incoming[I] := 0). Predecessors cannot receive from I.
+ *  Step ordering matters: each center sits at a position in stepOrder, and
+ *  "upstream" = centers at earlier positions.
  *
- *  Per-pool conservation:
- *    Σ over receivers of alloc2[op.id][r] = opEligible + opWeight × incoming
+ *  PHASE 1 (First Allocation, in step order):
+ *  For each center C in step order:
+ *      firstIncoming[C]   = Σ over UPSTREAM pools q of firstAllocation[q][C]
+ *      For each pool p at C:
+ *        firstPool[p]     = p.eligible + p.weight × firstIncoming[C]
+ *        distribute firstPool[p] via p's schedule, NO exclusions
+ *        (= NBS's "Gross Allocation" / "First Allocation" column total)
  *
- *  System conservation:
- *    Σ over pools of allocatedToDirect ≈ Σ pool eligibles (modulo leakage
- *    when a pool's schedule has no allowed receivers).
+ *  Each pool's First Allocation column thus equals (own + share of upstream
+ *  contributions) × schedule percent. Self-allocation rows are populated
+ *  when the schedule names the pool's home center.
+ *
+ *  PHASE 2 (Second Allocation, in step order):
+ *  After Phase 1 completes, then for each center C in step order:
+ *      totalReceived[C]   = Σ firstAllocation[*][C]
+ *                         + Σ secondAllocation[upstream-of-C][C]
+ *      secondIncoming[C]  = totalReceived[C] - firstIncoming[C]
+ *      For each pool p at C:
+ *        secondPool[p]    = p.weight × secondIncoming[C]
+ *        distribute secondPool[p] via p's schedule, SELF + UPSTREAM excluded,
+ *        percents renormalized over the surviving (= self + downstream)
+ *        receivers.
+ *
+ *  Phase 2 is also processed in step order so upstream centers' Phase 2
+ *  contributions are available when downstream centers compute their
+ *  totalReceived. No further iteration.
+ *
+ *  alloc2[pool.id][receiver] = First + Second per pool per receiver.
+ *  Matches the per-pool "Allocation Detail" page in the NBS PDF cell-for-
+ *  cell. DIRECT-basis pools route their full eligible to their single
+ *  fee-dept target in Phase 1 and skip Phase 2.
  */
 export function computeStepDownGl(args: {
   pools: CapPool[];
@@ -305,10 +325,10 @@ export function computeStepDownGl(args: {
 
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
   const directNodes   = nodes.filter((n) => n.role === "direct");
+  const allNodeKeys   = new Set<NodeKey>(nodes.map((n) => n.key));
   const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
 
-  // Step order: user-defined centerOrder first, then any indirect nodes the
-  // user hasn't placed yet (cleanup tail).
+  // Step order — display ordering only. Math runs in parallel.
   const stepOrder: NodeKey[] = [];
   const seenStep = new Set<NodeKey>();
   for (const cn of centerOrder) {
@@ -322,9 +342,7 @@ export function computeStepDownGl(args: {
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
-  // === INITIAL PLACEMENT (alloc1) ===
-  // Each pool's eligible $ sits on its home center (or DIRECT target).
-  // Diagnostic only — engine uses incoming[] for the actual flow.
+  // alloc1 — pre-step-down placement. Diagnostic only.
   const alloc1: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
     const row = zeroRow();
@@ -342,9 +360,6 @@ export function computeStepDownGl(args: {
     alloc1[p.id] = row;
   }
 
-  // === PER-POOL ATTRIBUTION ===
-  // What THIS pool distributed to each receiver. First = own × percent;
-  // Second = incoming portion × percent; Total in alloc2 = first + second.
   const firstAllocation: Record<string, Record<NodeKey, number>> = {};
   const secondAllocation: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
@@ -352,25 +367,7 @@ export function computeStepDownGl(args: {
     secondAllocation[p.id] = zeroRow();
   }
 
-  // DIRECT-basis pools route their full eligible amount straight to the
-  // single target — that's First Allocation with no schedule.
-  for (const p of pools) {
-    const eligible = p.amount * (p.eligiblePercent / 100);
-    const { basis, directTo } = basisForPool(p, bases);
-    if (basis === "DIRECT" && directTo) {
-      const k = resolveDirectNode(directTo);
-      if (k) firstAllocation[p.id][k] += eligible;
-    }
-  }
-
-  // incoming[centerKey] — $ accumulated at an indirect center waiting for
-  // it to close and redistribute via its own pool schedules.
-  const incoming: Record<NodeKey, number> = {};
-  for (const n of indirectNodes) incoming[n.key] = 0;
-
-  const contributions: GlStepContribution[] = [];
-
-  // Pre-bucket each center's own pools.
+  // Pre-bucket each center's own pools (used for Round 2 weighting).
   const ownPoolsByCenter = new Map<NodeKey, CapPool[]>();
   for (const p of pools) {
     const homeKey = resolveCenterNode(p.center);
@@ -380,23 +377,26 @@ export function computeStepDownGl(args: {
     ownPoolsByCenter.set(homeKey, list);
   }
 
-  // ------------------------------------------------------------------------
+  // -----------------------------------------------------------------------
   // distributeAmount — apply pool op's schedule to `amount`, writing into
-  // `allocMap` (firstAllocation or secondAllocation). Filters receivers to
-  // downstream-or-direct, renormalizes percents, and updates incoming[]
-  // for indirect receivers. Returns the share distributed per receiver,
-  // keyed by glCode, so contributions can aggregate first/second together.
+  // allocMap. `excludeKeys` is the set of node keys filtered out and
+  // renormalized over (Phase 2 self + upstream exclusion); pass an empty
+  // set in Phase 1 so every listed receiver is eligible. Returns the
+  // per-node distribution.
   const distributeAmount = (
     op: CapPool, amount: number, allocMap: Record<NodeKey, number>,
-    allowedKeys: Set<NodeKey>, allowedNodes: GlNode[],
+    excludeKeys: Set<NodeKey>,
   ): Record<NodeKey, number> => {
     const distributed: Record<NodeKey, number> = {};
     if (amount <= 0) return distributed;
 
-    // Try the published receiver schedule first.
+    // Published receiver schedule.
     const receivers = op.receivers ?? [];
     const validReceivers = receivers.filter(
-      (r) => r.glCode && allowedKeys.has(r.glCode) && (r.percent ?? 0) > 0,
+      (r) => r.glCode
+        && allNodeKeys.has(r.glCode)
+        && !excludeKeys.has(r.glCode)
+        && (r.percent ?? 0) > 0,
     );
     const totalPct = validReceivers.reduce((a, r) => a + (r.percent ?? 0), 0);
 
@@ -406,95 +406,193 @@ export function computeStepDownGl(args: {
         const share = amount * ((r.percent ?? 0) / totalPct);
         allocMap[targetKey] = (allocMap[targetKey] ?? 0) + share;
         distributed[targetKey] = (distributed[targetKey] ?? 0) + share;
-        const targetNode = nodeByKey.get(targetKey);
-        if (targetNode?.role === "indirect") {
-          incoming[targetKey] = (incoming[targetKey] ?? 0) + share;
-        }
       }
       return distributed;
     }
 
-    // Fall back to driver units (seed pools without imported receivers).
+    // Driver-unit fallback (seed pools without imported receivers).
     const { basis } = basisForPool(op, bases);
     if (basis === "DIRECT") return distributed;
-    const totalDriver = allowedNodes.reduce(
+    const denomNodes = excludeKeys.size > 0
+      ? nodes.filter((n) => !excludeKeys.has(n.key))
+      : nodes;
+    const totalDriver = denomNodes.reduce(
       (a, n) => a + (drivers[n.key]?.[basis] ?? 0), 0,
     );
     if (totalDriver <= 0) return distributed;
-    for (const n of allowedNodes) {
+    for (const n of denomNodes) {
       const drv = drivers[n.key]?.[basis] ?? 0;
       if (drv <= 0) continue;
       const share = amount * (drv / totalDriver);
       allocMap[n.key] = (allocMap[n.key] ?? 0) + share;
       distributed[n.key] = (distributed[n.key] ?? 0) + share;
-      if (n.role === "indirect") {
-        incoming[n.key] = (incoming[n.key] ?? 0) + share;
-      }
     }
     return distributed;
   };
 
-  // ------------------------------------------------------------------------
-  // SEQUENTIAL CLOSURE — process each indirect center once in centerOrder.
-  for (let i = 0; i < stepOrder.length; i++) {
-    const I = stepOrder[i];
-    const nodeI = nodeByKey.get(I);
-    if (!nodeI) continue;
-    const stepIndex = i + 1;
+  // Build upstream key sets — used by both phases. The upstream of a
+  // center at step S is everything at step < S in stepOrder.
+  const upstreamKeysFor = (targetKey: NodeKey): Set<NodeKey> => {
+    const idx = stepOrder.indexOf(targetKey);
+    return new Set(idx > 0 ? stepOrder.slice(0, idx) : []);
+  };
 
-    const downstreamIndirects = stepOrder.slice(i + 1)
-      .map((k) => nodeByKey.get(k))
-      .filter((n): n is GlNode => !!n);
-    const allowedNodes = [...downstreamIndirects, ...directNodes];
-    const allowedKeys = new Set<NodeKey>(allowedNodes.map((n) => n.key));
+  // incomingRound1 will hold per-center First Incoming (= upstream Phase 1
+  // contributions to center). NBS reports this as the "First Allocation"
+  // column in the receiving center's "Costs to be Allocated" view.
+  const incomingRound1: Record<NodeKey, number> = {};
+  for (const n of indirectNodes) incomingRound1[n.key] = 0;
 
-    const ownPools = ownPoolsByCenter.get(I) ?? [];
-    if (ownPools.length === 0) {
-      // No schedule — anything accumulated here cannot be redistributed.
-      // Close and lose the residual as leakage.
-      incoming[I] = 0;
-      continue;
+  // -----------------------------------------------------------------------
+  // PHASE 1 — sequential in step order.
+  // Each center's pools distribute (own + pool-weight × firstIncoming[C])
+  // via the schedule with NO exclusions. Upstream centers run before
+  // downstream so firstIncoming[C] only sees finalized upstream Phase 1
+  // contributions.
+  for (const centerKey of stepOrder) {
+    const upstreamKeys = upstreamKeysFor(centerKey);
+
+    // firstIncoming[centerKey] = Σ upstream pools' Phase 1 contributions
+    // to centerKey, finalized in earlier loop iterations.
+    let firstInc = 0;
+    for (const p of pools) {
+      const ph = resolveCenterNode(p.center);
+      if (!ph || !upstreamKeys.has(ph)) continue;
+      firstInc += firstAllocation[p.id]?.[centerKey] ?? 0;
     }
+    incomingRound1[centerKey] = firstInc;
 
-    const totalOwnEligible = ownPools.reduce(
+    const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
+    const totalCenterEligible = centerPools.reduce(
       (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
     );
-    const X = incoming[I];
 
-    for (const op of ownPools) {
-      const opEligible = op.amount * (op.eligiblePercent / 100);
-      const opWeight = totalOwnEligible > 0
-        ? opEligible / totalOwnEligible
-        : 1 / ownPools.length;
-      const firstAmount  = opEligible;       // pool's own
-      const secondAmount = X * opWeight;     // pool's share of incoming
+    for (const p of centerPools) {
+      const eligible = p.amount * (p.eligiblePercent / 100);
+      const { basis, directTo } = basisForPool(p, bases);
+      if (basis === "DIRECT") {
+        // Direct-billed pools route own + share-of-incoming to the single
+        // fee-dept target — no schedule, no exclusions, no Phase 2.
+        const firstPool = eligible + (totalCenterEligible > 0
+          ? (eligible / totalCenterEligible) * firstInc
+          : firstInc / centerPools.length);
+        if (firstPool > 0 && directTo) {
+          const k = resolveDirectNode(directTo);
+          if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + firstPool;
+        }
+        continue;
+      }
+      const poolWeight = totalCenterEligible > 0
+        ? eligible / totalCenterEligible
+        : 1 / Math.max(1, centerPools.length);
+      const firstPool = eligible + poolWeight * firstInc;
+      if (firstPool <= 0) continue;
+      distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
+    }
+  }
 
-      // Distribute each slice independently so first/second remain
-      // separately attributable. Both write into alloc2 indirectly via
-      // their respective maps; the alloc2 sum is computed below.
-      const firstDist = distributeAmount(
-        op, firstAmount, firstAllocation[op.id], allowedKeys, allowedNodes,
-      );
-      const secondDist = distributeAmount(
-        op, secondAmount, secondAllocation[op.id], allowedKeys, allowedNodes,
-      );
+  // Also handle pools whose home center isn't in stepOrder (defensive —
+  // shouldn't happen, but covers any legacy data).
+  const stepOrderSet = new Set(stepOrder);
+  for (const p of pools) {
+    const homeKey = resolveCenterNode(p.center);
+    if (homeKey && stepOrderSet.has(homeKey)) continue;
+    const eligible = p.amount * (p.eligiblePercent / 100);
+    if (eligible <= 0) continue;
+    const { basis, directTo } = basisForPool(p, bases);
+    if (basis === "DIRECT") {
+      if (directTo) {
+        const k = resolveDirectNode(directTo);
+        if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + eligible;
+      }
+      continue;
+    }
+    distributeAmount(p, eligible, firstAllocation[p.id], new Set());
+  }
 
-      // Emit one combined contribution per receiver for the trace UI.
-      const seenReceivers = new Set<NodeKey>([
-        ...Object.keys(firstDist),
-        ...Object.keys(secondDist),
-      ]);
-      for (const targetKey of seenReceivers) {
-        const f = firstDist[targetKey] ?? 0;
-        const s = secondDist[targetKey] ?? 0;
-        contributions.push({
-          poolId: op.id, fromKey: I, fromName: nodeI.name, stepIndex,
-          firstAmount: f, secondAmount: s, amount: f + s, toKey: targetKey,
-        });
+  // -----------------------------------------------------------------------
+  // PHASE 2 — sequential in step order.
+  // For each center C:
+  //   totalReceived[C]   = Σ firstAllocation[*][C] + Σ secondAllocation[upstream][C]
+  //   secondIncoming[C]  = totalReceived[C] - firstIncoming[C]
+  // Each pool at C redistributes its share via the schedule with self +
+  // upstream excluded; surviving percents renormalize to 100%.
+  for (const centerKey of stepOrder) {
+    const upstreamKeys = upstreamKeysFor(centerKey);
+
+    let totalReceived = 0;
+    for (const p of pools) {
+      totalReceived += firstAllocation[p.id]?.[centerKey] ?? 0;
+      const ph = resolveCenterNode(p.center);
+      if (ph && upstreamKeys.has(ph)) {
+        totalReceived += secondAllocation[p.id]?.[centerKey] ?? 0;
       }
     }
+    const firstInc = incomingRound1[centerKey] ?? 0;
+    const secondInc = totalReceived - firstInc;
+    if (secondInc <= 0) continue;
 
-    incoming[I] = 0;
+    const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
+    const totalCenterEligible = centerPools.reduce(
+      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
+    );
+
+    // Phase 2 schedule excludes self (center) AND every upstream center.
+    const excludeKeys = new Set<NodeKey>([centerKey, ...upstreamKeys]);
+
+    for (const p of centerPools) {
+      const { basis } = basisForPool(p, bases);
+      if (basis === "DIRECT") continue;
+      const eligible = p.amount * (p.eligiblePercent / 100);
+      const poolWeight = totalCenterEligible > 0
+        ? eligible / totalCenterEligible
+        : 1 / Math.max(1, centerPools.length);
+      const secondPool = poolWeight * secondInc;
+      if (secondPool <= 0) continue;
+      distributeAmount(p, secondPool, secondAllocation[p.id], excludeKeys);
+    }
+  }
+
+  // incomingRound2[centerKey] = Σ over pools of secondAllocation[*][centerKey]
+  // The Phase 2 cross-flows that landed on this center, summed across all
+  // sources. Equals NBS's "Second Allocation" column total minus the
+  // self + downstream Phase 1 contributions (which are also categorized
+  // there in NBS's per-source view).
+  const incomingRound2: Record<NodeKey, number> = {};
+  for (const n of indirectNodes) incomingRound2[n.key] = 0;
+  for (const p of pools) {
+    for (const n of indirectNodes) {
+      const share = secondAllocation[p.id]?.[n.key] ?? 0;
+      if (share > 0) incomingRound2[n.key] = (incomingRound2[n.key] ?? 0) + share;
+    }
+  }
+
+  // -----------------------------------------------------------------------
+  // Contributions — one entry per (pool, receiver) carrying first + second.
+  const contributions: GlStepContribution[] = [];
+  for (const p of pools) {
+    const homeKey = resolveCenterNode(p.center);
+    const homeNode = homeKey ? nodeByKey.get(homeKey) : undefined;
+    const fromName = homeNode?.name ?? p.center;
+    const stepIndex = homeKey ? Math.max(1, stepOrder.indexOf(homeKey) + 1) : 1;
+
+    const f = firstAllocation[p.id] ?? {};
+    const s = secondAllocation[p.id] ?? {};
+    const seen = new Set<NodeKey>();
+    for (const k of Object.keys(f)) if ((f[k] ?? 0) > 0) seen.add(k);
+    for (const k of Object.keys(s)) if ((s[k] ?? 0) > 0) seen.add(k);
+    for (const targetKey of seen) {
+      const firstAmount  = f[targetKey] ?? 0;
+      const secondAmount = s[targetKey] ?? 0;
+      contributions.push({
+        poolId: p.id,
+        fromKey: homeKey ?? p.center,
+        fromName,
+        stepIndex,
+        firstAmount, secondAmount, amount: firstAmount + secondAmount,
+        toKey: targetKey,
+      });
+    }
   }
 
   // === alloc2 = First + Second per pool per receiver ===
@@ -544,6 +642,7 @@ export function computeStepDownGl(args: {
 
   return {
     alloc1, alloc2, firstAllocation, secondAllocation,
+    incomingRound1, incomingRound2,
     stepOrder, contributions, directTotals, byPool, nodes,
   };
 }

@@ -11,11 +11,22 @@ interface Props {
   /** When true, shows a spinning indicator on the Export button. */
   busy?: boolean;
   label?: string;
+  /** Optional dropdown item labels — defaults to fee-study copy. */
+  pdfLabel?: string;
+  pdfSub?: string;
+  excelLabel?: string;
+  excelSub?: string;
 }
 
 /** Dropdown menu attached to the Export button. Two items: PDF (print-friendly
  *  route) and Excel (xlsx workbook). Closes on outside click + ESC. */
-export function ExportMenu({ onDownloadExcel, onOpenPdf, busy = false, label = "Export" }: Props) {
+export function ExportMenu({
+  onDownloadExcel, onOpenPdf, busy = false, label = "Export",
+  pdfLabel = "Fee study report (PDF)",
+  pdfSub = "Council-ready, print-formatted",
+  excelLabel = "Excel workbook (.xlsx)",
+  excelSub = "9 sheets, with formulas as values",
+}: Props) {
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
@@ -68,13 +79,13 @@ export function ExportMenu({ onDownloadExcel, onOpenPdf, busy = false, label = "
           boxShadow: "0 10px 24px rgba(15,23,42,0.10)",
         }}>
           <MenuItem
-            label="Fee study report (PDF)"
-            sub="Council-ready, print-formatted"
+            label={pdfLabel}
+            sub={pdfSub}
             onClick={handlePdf}
           />
           <MenuItem
-            label="Excel workbook (.xlsx)"
-            sub="9 sheets, with formulas as values"
+            label={excelLabel}
+            sub={excelSub}
             onClick={handleExcel}
             divider
           />

@@ -1,6 +1,7 @@
 ﻿
 import { DataTable, type Column } from "@/components/table";
 import { CellInput, SectionLabel, SourcePill } from "@/components/ui";
+import { fmt } from "@/lib/format";
 import type { SourceTag } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
@@ -11,18 +12,23 @@ interface Row {
   code: string;
   name: string;
   totalCost: number;
+  disallowed: number;
+  netAllocable: number;
   poolCount: number;
   source: SourceTag;
   sourceFile?: string;
 }
 
 /** Cost centers summary derived from CapPools, grouped by center name.
- *  Mirrors the legacy CapCentersTable shape so the screen reads as a faithful
- *  port of the original Claude Design CAP Step-1 view. */
+ *  Three editable money columns: Total Expenses (gross/source), Disallowed
+ *  Expenses (the carve-out before allocation), and Net Allocable Expenses
+ *  (= Total − Disallowed, read-only). All downstream math reads pool.amount,
+ *  which is derived from the NET — toggling Disallowed propagates through
+ *  the engine, CAP rates, FBHR, and the fee study automatically. */
 export function CapCentersTable() {
   const {
-    capPools, capCenterOrder, capCenterTotals, capCenterSources,
-    addCapCenter, renameCapCenter, updateCenterTotal,
+    capPools, capCenterOrder, capCenterTotals, capCenterDisallowed, capCenterSources,
+    addCapCenter, renameCapCenter, updateCenterTotal, updateCenterDisallowed,
   } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
@@ -31,15 +37,20 @@ export function CapCentersTable() {
     // model doesn't track Fund-Program at the center level.
     const samplePool = capPools.find((p) => p.center === c.name);
     const provenance = capCenterSources[c.name];
+    // Total Expenses (gross). Falls back to derived Σ pool.amount only when
+    // no stored total exists — that path treats the imported pool sum as
+    // the gross figure (net = gross since disallowed is 0 by default).
+    const totalCost = capCenterTotals[c.name] ?? c.total;
+    const disallowed = capCenterDisallowed[c.name] ?? 0;
+    const netAllocable = Math.max(0, totalCost - disallowed);
     return {
       id: `center-${i}`,
       idx: i + 1,
       code: samplePool?.id.replace(/^cap-/, "").split("-")[0] ?? "—",
       name: c.name,
-      // Source-department total cost — the 100% reference. Falls back to
-      // the derived sum (Σ pool.amount) for centers whose totals haven't
-      // been persisted yet.
-      totalCost: capCenterTotals[c.name] ?? c.total,
+      totalCost,
+      disallowed,
+      netAllocable,
       poolCount: c.pools,
       source: provenance?.source ?? "seed",
       sourceFile: provenance?.sourceFile,
@@ -60,7 +71,7 @@ export function CapCentersTable() {
     {
       key: "code",
       label: "Fund-Program",
-      width: "120px",
+      width: "110px",
       sortable: true,
       render: (r) => (
         <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-2)" }}>
@@ -71,7 +82,7 @@ export function CapCentersTable() {
     {
       key: "name",
       label: "Center",
-      width: "minmax(260px, 2.4fr)",
+      width: "minmax(220px, 2fr)",
       sortable: true,
       render: (r) => (
         <CellInput
@@ -85,8 +96,8 @@ export function CapCentersTable() {
     },
     {
       key: "totalCost",
-      label: "Total cost",
-      width: "140px",
+      label: "Total Expenses",
+      width: "150px",
       align: "right",
       sortable: true,
       render: (r) => (
@@ -98,9 +109,45 @@ export function CapCentersTable() {
       ),
     },
     {
+      key: "disallowed",
+      label: "Disallowed",
+      width: "150px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <CellInput
+          type="currency"
+          value={Math.round(r.disallowed)}
+          min={0}
+          max={Math.round(r.totalCost)}
+          onChange={(v) => updateCenterDisallowed(r.name, Number(v) || 0)}
+          align="right" prefix="$"
+        />
+      ),
+    },
+    {
+      key: "netAllocable",
+      label: "Net Allocable",
+      width: "150px",
+      align: "right",
+      sortable: true,
+      render: (r) => (
+        <span
+          className="num"
+          title={r.disallowed > 0
+            ? `${fmt.dollars(r.totalCost)} − ${fmt.dollars(r.disallowed)} = ${fmt.dollars(r.netAllocable)}`
+            : "All expenses are allocable"}
+          style={{
+            fontWeight: 500,
+            color: r.disallowed > 0 ? "var(--ink)" : "var(--ink-2)",
+          }}
+        >{fmt.dollars(r.netAllocable)}</span>
+      ),
+    },
+    {
       key: "poolCount",
       label: "# pools",
-      width: "90px",
+      width: "70px",
       align: "right",
       sortable: true,
       render: (r) => <span className="num">{r.poolCount}</span>,
@@ -126,7 +173,7 @@ export function CapCentersTable() {
         rows={rows}
         onAdd={addCapCenter}
         addLabel="Add cost center"
-        defaultSort={{ key: "totalCost", dir: "desc" }}
+        defaultSort={{ key: "netAllocable", dir: "desc" }}
       />
     </div>
   );

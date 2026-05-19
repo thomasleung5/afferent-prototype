@@ -34,7 +34,9 @@
       "Bash(grep -n \"^export\\\\|^}\\\\|^  }$\\\\|^};$\" /Users/thomasleung/Developer/afferent-prototype/lib/data/annual.ts)",
       "Bash(grep -E \"\\\\\\\\.tsx$\")",
       "Bash(curl -s -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:3000)",
-      "Bash(pkill -f \"vite\\\\|node.*server\")"
+      "Bash(pkill -f \"vite\\\\|node.*server\")",
+      "Bash(sed -i '' '215,536d' /Users/thomasleung/Developer/afferent-prototype/features/build/AllocationMatrixByCenter.tsx)",
+      "Bash(sed -n '210,225p' /Users/thomasleung/Developer/afferent-prototype/features/build/AllocationMatrixByCenter.tsx)"
     ]
   }
 }

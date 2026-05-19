@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
+import { useCapExport } from "@/features/build/useCapExport";
 import { CapKpiRail, StepDownSequence } from "@/features/build/CapKpiRail";
 import { CapCentersTable } from "@/features/build/CapCentersTable";
 import { CapSummary } from "@/features/build/CapSummary";
 import { CapPoolsTable } from "@/features/build/CapPoolsTable";
 import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
-import { AllocationMatrix } from "@/features/build/AllocationMatrix";
+import { AllocationDetailReport } from "@/features/build/AllocationDetailReport";
 import { AllocationMatrixByCenter } from "@/features/build/AllocationMatrixByCenter";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
@@ -57,6 +58,7 @@ const CAP_SCHEMA = `{
 
 export default function CapPage() {
   const { mergeCapBundle } = useBuildState();
+  const { downloadExcel, openPdf } = useCapExport();
   const [step, setStep] = useState<CapStep>("centers");
   const [importerOpen, setImporterOpen] = useState(false);
   // Bases the model returned with driverKey "OTHER" or otherwise un-bindable.
@@ -138,11 +140,21 @@ export default function CapPage() {
         title="Cost Allocation"
         subtitle="Citywide indirect, allocated to direct departments."
         actions={
-          showImport ? (
-            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-          ) : null
+          <>
+            {showImport && (
+              <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+                <Icon name="arrow-up-to-line" size={13}/> Import
+              </Btn>
+            )}
+            <ExportMenu
+              onDownloadExcel={downloadExcel}
+              onOpenPdf={openPdf}
+              pdfLabel="Cost Allocation Plan (PDF)"
+              pdfSub="Council-ready, print-formatted"
+              excelLabel="Excel workbook (.xlsx)"
+              excelSub="8 sheets — centers, pools, bases, schedules, matrix"
+            />
+          </>
         }
       />
 
@@ -224,7 +236,7 @@ export default function CapPage() {
 
       {step === "drivers" && <AllocationBases/>}
 
-      {step === "matrix" && <AllocationMatrix/>}
+      {step === "detail" && <AllocationDetailReport/>}
 
       {step === "matrixByCenter" && <AllocationMatrixByCenter/>}
 
