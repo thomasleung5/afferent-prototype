@@ -47,23 +47,19 @@ export function AllocationMatrixByCenter() {
   }, [model.nodes]);
   const allocSrc = model.alloc2;
 
-  // Fixed pixel widths on the frozen columns (Center / Pools / Row total)
-  // are required so position: sticky knows where to pin each cell. fr-based
+  // Fixed pixel widths on the frozen columns (Center / Row total) are
+  // required so position: sticky knows where to pin each cell. fr-based
   // widths can't be expressed as a sticky `left` offset.
-  const CENTER_W = 240;          // px — frozen left, column 1
-  const POOLS_W  = 96;           // px — frozen left, column 2
+  const CENTER_W = 240;          // px — frozen left
   const ROW_TOTAL_W = 100;       // px — frozen right
   const ROW_PAD  = 14;           // px — left/right padding inside each row
   const COL_GAP  = 8;            // px — gap between grid tracks
   const grid =
-    `${CENTER_W}px ${POOLS_W}px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} ${ROW_TOTAL_W}px`;
+    `${CENTER_W}px ${cols.map(() => "minmax(78px, 1fr)").join(" ")} ${ROW_TOTAL_W}px`;
 
-  // Sticky offsets are set to each cell's NATURAL left/right position so the
-  // cell pins in place without sliding when horizontal scroll starts.
-  // Col 1 natural left = ROW_PAD. Col 2 natural left = ROW_PAD + CENTER_W +
-  // COL_GAP. Row-total natural right = ROW_PAD.
+  // Sticky offsets pin cells at their natural left/right position so they
+  // don't slide when horizontal scroll starts.
   const STICKY_L1 = ROW_PAD;
-  const STICKY_L2 = ROW_PAD + CENTER_W + COL_GAP;
   const STICKY_R  = ROW_PAD;
 
   // Layering rules:
@@ -91,14 +87,9 @@ export function AllocationMatrixByCenter() {
   const leftEdgeShadow  = { boxShadow: "1px 0 0 var(--rule)" };
   const rightEdgeShadow = { boxShadow: "-1px 0 0 var(--rule)" };
 
-  const stickyLeft1Body = {
+  const stickyLeftBody = {
     ...stickyClip, ...leftEdgeShadow,
     position: "sticky" as const, left: STICKY_L1, zIndex: 2,
-    background: "var(--paper)",
-  };
-  const stickyLeft2Body = {
-    ...stickyClip, ...leftEdgeShadow,
-    position: "sticky" as const, left: STICKY_L2, zIndex: 2,
     background: "var(--paper)",
   };
   const stickyRightBody = {
@@ -106,14 +97,9 @@ export function AllocationMatrixByCenter() {
     position: "sticky" as const, right: STICKY_R, zIndex: 2,
     background: "var(--paper)",
   };
-  const stickyLeft1Band = {
+  const stickyLeftBand = {
     ...stickyClip, ...leftEdgeShadow,
     position: "sticky" as const, left: STICKY_L1, zIndex: 4,
-    background: "var(--paper-2)",
-  };
-  const stickyLeft2Band = {
-    ...stickyClip, ...leftEdgeShadow,
-    position: "sticky" as const, left: STICKY_L2, zIndex: 4,
     background: "var(--paper-2)",
   };
   const stickyRightBand = {
@@ -166,8 +152,7 @@ export function AllocationMatrixByCenter() {
             fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
             letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
-            <div style={stickyLeft1Band}>Center</div>
-            <div style={stickyLeft2Band}>Pools</div>
+            <div style={stickyLeftBand}>Center</div>
             {cols.map((n) => (
               <div key={n.key} title={n.glCode} style={{
                 textAlign: "right", color: "var(--ink-2)",
@@ -202,7 +187,7 @@ export function AllocationMatrixByCenter() {
                 fontFamily: "var(--ff-mono)",
                 fontVariantNumeric: "tabular-nums",
               }}>
-                <div style={{ ...stickyLeft1Body, fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
+                <div style={{ ...stickyLeftBody, fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3 }}>
                   <div style={{
                     fontWeight: 500,
                     overflow: "hidden",
@@ -218,11 +203,6 @@ export function AllocationMatrixByCenter() {
                     {center}
                   </div>
                 </div>
-                <div className="mono" style={{
-                  ...stickyLeft2Body,
-                  fontSize: 10.5, color: "var(--ink-3)",
-                  letterSpacing: "0.04em",
-                }}>{pools.length} pool{pools.length === 1 ? "" : "s"}</div>
                 {cols.map((n) => {
                   const v = centerCell(center, n.key);
                   const zero = v < 0.5;
@@ -267,11 +247,10 @@ export function AllocationMatrixByCenter() {
             fontVariantNumeric: "tabular-nums",
           }}>
             <div className="mono" style={{
-              ...stickyLeft1Band,
+              ...stickyLeftBand,
               fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
               textTransform: "uppercase",
             }}>Column total</div>
-            <div style={stickyLeft2Band}/>
             {cols.map((n) => {
               const t = colTotal(n.key);
               const zero = t < 0.5;
