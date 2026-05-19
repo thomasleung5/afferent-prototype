@@ -144,94 +144,77 @@ export function AllocationDetailReport() {
     if (totalIncoming <= 0.5 && departmental <= 0.5) return null;
 
     const COL = "minmax(220px, 1.8fr) 120px 120px 120px";
+    const centerGl = glCodeByCenter.get(centerName);
     return (
-      <div style={{
-        background: "var(--paper)", border: "1px solid var(--rule)",
-      }}>
+      <div>
+        <SectionLabel right={centerGl ? `${centerGl} · ${centerName}` : centerName}>
+          Costs to be Allocated
+        </SectionLabel>
         <div style={{
-          padding: "12px 18px",
-          borderBottom: "1px solid var(--rule-strong)",
-          background: "var(--paper-2)",
+          background: "var(--paper)", border: "1px solid var(--rule)",
         }}>
-          <div className="mono" style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-            textTransform: "uppercase", color: "var(--ink-3)",
-          }}>Costs to be Allocated</div>
           <div style={{
-            fontSize: 14, fontWeight: 600, color: "var(--ink)",
-            marginTop: 4,
-          }}>
-            {glCodeByCenter.get(centerName) && (
-              <span className="mono" style={{
-                fontSize: 12, color: "var(--ink-3)", marginRight: 8,
-                letterSpacing: "0.02em",
-              }}>{glCodeByCenter.get(centerName)}</span>
-            )}
-            {centerName}
-          </div>
-        </div>
-
-        <div style={{
-          display: "grid", gridTemplateColumns: COL, gap: 10,
-          padding: "8px 18px",
-          background: "var(--paper-2)",
-          borderBottom: "1px solid var(--rule-strong)",
-          fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
-          letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
-        }}>
-          <div>Source</div>
-          <div style={{ textAlign: "right" }}>First</div>
-          <div style={{ textAlign: "right" }}>Second</div>
-          <div style={{ textAlign: "right" }}>Total</div>
-        </div>
-
-        <CostsRow
-          label="Departmental Expenditures"
-          first={departmental}
-          second={0}
-          total={departmental}
-          emphasis
-        />
-
-        {sourceRows.length > 0 && (
-          <div className="mono" style={{
-            padding: "6px 18px",
+            display: "grid", gridTemplateColumns: COL, gap: 10,
+            padding: "10px 18px",
             background: "var(--paper-2)",
-            borderTop: "1px solid var(--rule)",
-            borderBottom: "1px solid var(--rule)",
-            fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
-            color: "var(--ink-3)", textTransform: "uppercase",
-          }}>Incoming Costs</div>
-        )}
+            borderBottom: "1px solid var(--rule-strong)",
+            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+            letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
+          }}>
+            <div>Source</div>
+            <div style={{ textAlign: "right" }}>First</div>
+            <div style={{ textAlign: "right" }}>Second</div>
+            <div style={{ textAlign: "right" }}>Total</div>
+          </div>
 
-        {sourceRows.map((r) => (
           <CostsRow
-            key={r.name}
-            label={r.name}
-            glCode={glCodeByCenter.get(r.name)}
-            first={r.first}
-            second={r.second}
-            total={r.total}
-            isSelf={r.name === centerName}
+            label="Departmental Expenditures"
+            first={departmental}
+            second={0}
+            total={departmental}
+            emphasis
           />
-        ))}
 
-        <CostsRow
-          label="Total Incoming Costs"
-          first={totalFirst}
-          second={totalSecond}
-          total={totalIncoming}
-          emphasis
-          divider="top"
-        />
-        <CostsRow
-          label="Total Costs to be Allocated"
-          first={departmental + totalFirst}
-          second={totalSecond}
-          total={totalCosts}
-          emphasis
-          divider="double"
-        />
+          {sourceRows.length > 0 && (
+            <div className="mono" style={{
+              padding: "6px 18px",
+              background: "var(--paper-2)",
+              borderTop: "1px solid var(--rule)",
+              borderBottom: "1px solid var(--rule)",
+              fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}>Incoming Costs</div>
+          )}
+
+          {sourceRows.map((r) => (
+            <CostsRow
+              key={r.name}
+              label={r.name}
+              glCode={glCodeByCenter.get(r.name)}
+              first={r.first}
+              second={r.second}
+              total={r.total}
+              isSelf={r.name === centerName}
+            />
+          ))}
+
+          <CostsRow
+            label="Total Incoming Costs"
+            first={totalFirst}
+            second={totalSecond}
+            total={totalIncoming}
+            emphasis
+            divider="top"
+          />
+          <CostsRow
+            label="Total Costs to be Allocated"
+            first={departmental + totalFirst}
+            second={totalSecond}
+            total={totalCosts}
+            emphasis
+            divider="double"
+          />
+        </div>
       </div>
     );
   }
@@ -276,28 +259,52 @@ export function AllocationDetailReport() {
       total: acc.total + r.total,
     }), { units: 0, percent: 0, gross: 0, directBilled: 0, first: 0, second: 0, total: 0 });
 
+    const centerGl = glCodeByCenter.get(pool.center);
+    const rightLabel = [
+      centerGl,
+      pool.center,
+      pool.pool,
+    ].filter(Boolean).join(" · ");
     return (
-      <div style={{
-        background: "var(--paper)", border: "1px solid var(--rule)",
-      }}>
-        <PoolHeader
-          pool={pool}
-          centerGlCode={glCodeByCenter.get(pool.center)}
-          eligibleAmount={eligibleAmount}
-          basis={basis}
-        />
-        <div style={{ overflowX: "auto" }}>
-          <div style={{ minWidth: 1100 }}>
-            <ColumnHeaders/>
-            <SectionHeader label="Allocable Budget Units"/>
-            {allocableRows.map((r) => (
-              <DetailRow key={r.node.key} row={r}/>
-            ))}
-            <SectionHeader label="Receiving Budget Units"/>
-            {receivingRows.map((r) => (
-              <DetailRow key={r.node.key} row={r}/>
-            ))}
-            <TotalRow totals={totals}/>
+      <div>
+        <SectionLabel right={rightLabel}>
+          Allocation Detail
+        </SectionLabel>
+        <div style={{
+          background: "var(--paper)", border: "1px solid var(--rule)",
+        }}>
+          <div style={{
+            display: "flex", gap: 18,
+            padding: "10px 14px",
+            background: "var(--paper-2)",
+            borderBottom: "1px solid var(--rule)",
+            fontSize: 11.5, color: "var(--ink-3)",
+          }}>
+            <span title={`This pool claims ${pool.allocationPercent.toFixed(2)}% of ${pool.center}'s total budget`}>
+              Pool share of center: <span className="num" style={{
+                color: "var(--ink-2)", fontWeight: 500,
+              }}>{pool.allocationPercent.toFixed(2)}%</span>
+            </span>
+            <span>Allocable: <span className="num" style={{
+              color: "var(--ink-2)", fontWeight: 500,
+            }}>{fmt.dollars(eligibleAmount)}</span></span>
+            <span>Basis: <span className="mono" style={{
+              color: "var(--ink-2)", letterSpacing: "0.04em",
+            }}>{basis}</span></span>
+          </div>
+          <div style={{ overflowX: "auto" }}>
+            <div style={{ minWidth: 1100 }}>
+              <ColumnHeaders/>
+              <SectionHeader label="Allocable Budget Units"/>
+              {allocableRows.map((r) => (
+                <DetailRow key={r.node.key} row={r}/>
+              ))}
+              <SectionHeader label="Receiving Budget Units"/>
+              {receivingRows.map((r) => (
+                <DetailRow key={r.node.key} row={r}/>
+              ))}
+              <TotalRow totals={totals}/>
+            </div>
           </div>
         </div>
       </div>
@@ -441,56 +448,6 @@ function PoolPicker({
   );
 }
 
-function PoolHeader({
-  pool, centerGlCode, eligibleAmount, basis,
-}: {
-  pool: { center: string; pool: string; allocationPercent: number };
-  centerGlCode: string | undefined;
-  eligibleAmount: number;
-  basis: string;
-}) {
-  return (
-    <div style={{
-      padding: "14px 18px",
-      borderBottom: "1px solid var(--rule-strong)",
-      background: "var(--paper-2)",
-    }}>
-      <div className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-        textTransform: "uppercase", color: "var(--ink-3)",
-      }}>Allocation Detail</div>
-      <div style={{
-        fontSize: 16, fontWeight: 600, color: "var(--ink)",
-        marginTop: 4,
-      }}>
-        {centerGlCode && (
-          <span className="mono" style={{
-            fontSize: 13, color: "var(--ink-3)", marginRight: 8,
-            letterSpacing: "0.02em",
-          }}>{centerGlCode}</span>
-        )}
-        {pool.center} · {pool.pool}
-      </div>
-      <div style={{
-        display: "flex", gap: 18, marginTop: 6,
-        fontSize: 11.5, color: "var(--ink-3)",
-      }}>
-        <span title={`This pool claims ${pool.allocationPercent.toFixed(2)}% of ${pool.center}'s total budget`}>
-          Pool share of center: <span className="num" style={{
-            color: "var(--ink-2)", fontWeight: 500,
-          }}>{pool.allocationPercent.toFixed(2)}%</span>
-        </span>
-        <span>Allocable: <span className="num" style={{
-          color: "var(--ink-2)", fontWeight: 500,
-        }}>{fmt.dollars(eligibleAmount)}</span></span>
-        <span>Basis: <span className="mono" style={{
-          color: "var(--ink-2)", letterSpacing: "0.04em",
-        }}>{basis}</span></span>
-      </div>
-    </div>
-  );
-}
-
 // First / Second / Total columns share the 120px width used by the
 // Costs to be Allocated table above so the two schedules line up
 // visually when stacked.
@@ -503,7 +460,7 @@ function ColumnHeaders() {
       padding: "10px 14px",
       background: "var(--paper-2)",
       borderBottom: "1px solid var(--rule-strong)",
-      fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
+      fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
       letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
     }}>
       <div>Budget Unit</div>
