@@ -483,18 +483,28 @@ export function computeStepDownGl(args: {
       const eligible = p.amount * (p.eligiblePercent / 100);
       const poolWeight = weightOf(p);
       const { basis, directTo } = basisForPool(p, bases);
+      const firstPool = eligible + poolWeight * firstInc;
+      if (firstPool <= 0) continue;
+
+      // DIRECT pools: prefer the imported receivers list when populated
+      // (e.g. a single "100% to 011-1000 Recreation Administration" row).
+      // Falls back to the basis catalog's directTo target only when no
+      // receivers are imported, and only then via the fee-dept resolver
+      // (which is limited to PLAN/BLDG/ENG). Without this preference, a
+      // DIRECT pool routed to a non-fee dept like PARKS / PD / FIRE would
+      // silently drop its dollars even though the schedule names a node.
       if (basis === "DIRECT") {
-        // Direct-billed pools route own + share-of-incoming to the single
-        // fee-dept target — no schedule, no exclusions, no Phase 2.
-        const firstPool = eligible + poolWeight * firstInc;
-        if (firstPool > 0 && directTo) {
+        const hasReceivers = (p.receivers ?? []).some(
+          (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
+        );
+        if (hasReceivers) {
+          distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
+        } else if (directTo) {
           const k = resolveDirectNode(directTo);
           if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + firstPool;
         }
         continue;
       }
-      const firstPool = eligible + poolWeight * firstInc;
-      if (firstPool <= 0) continue;
       distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
     }
   }
@@ -509,7 +519,12 @@ export function computeStepDownGl(args: {
     if (eligible <= 0) continue;
     const { basis, directTo } = basisForPool(p, bases);
     if (basis === "DIRECT") {
-      if (directTo) {
+      const hasReceivers = (p.receivers ?? []).some(
+        (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
+      );
+      if (hasReceivers) {
+        distributeAmount(p, eligible, firstAllocation[p.id], new Set());
+      } else if (directTo) {
         const k = resolveDirectNode(directTo);
         if (k) firstAllocation[p.id][k] = (firstAllocation[p.id][k] ?? 0) + eligible;
       }
