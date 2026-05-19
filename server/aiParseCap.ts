@@ -62,6 +62,7 @@ Extract the catalog of named denominators (drivers) the document defines.
   * "FTE"      — full-time-equivalent counts (budgeted, actual, time-study %, direct-labor hours)
   * "EXPEND"   — operating expenditures, AP invoices, permit volume, population, anything denominated in spending
   * "EXPEND_X" — operating expenditures excluding development services / fee-modeled depts
+  * "EXPEND_PW"— operating expenditures of Public Works departments only (e.g. "Budgeted Expenditures (PW Departments Only)" — restricts denominator to PW-classed depts such as Storm Drain, Street Operations, Pathway Operations)
   * "PAYROLL"  — payroll transactions, salaries (compensation dollars treated as a count)
   * "ACCT"     — accounting transactions, GL line counts
   * "AGENDA"   — Council / Commission agenda item count
@@ -72,7 +73,7 @@ Extract the catalog of named denominators (drivers) the document defines.
   * "COMMITS"  — number of standing committees supported
   * "DIRECT"   — a one-to-one direct assignment (the pool routes entirely to one department, bypassing the step-down)
   * "OTHER"    — the basis does not match any key above. Use ONLY as a last resort (see routing rule below).
-- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund" is "EXPEND". Use "OTHER" ONLY when the underlying driver is genuinely outside every named key (e.g. "# of Work Stations", "Council Chamber Breakout") — not merely because the wording is unfamiliar. Whenever driverKey is "OTHER", set confidence to "low" so the basis is surfaced for review. Do NOT invent new key values; "OTHER" is the only permitted overflow.
+- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund" is "EXPEND"; "Budgeted Expenditures (PW Departments Only)" / "Public Works Operating $" → "EXPEND_PW"; "Budgeted Expenditures (excl. Development)" → "EXPEND_X". Use "OTHER" ONLY when the underlying driver is genuinely outside every named key (e.g. "# of Work Stations", "Council Chamber Breakout") — not merely because the wording is unfamiliar. Whenever driverKey is "OTHER", set confidence to "low" so the basis is surfaced for review. Do NOT invent new key values; "OTHER" is the only permitted overflow.
 - directTo: ONLY meaningful when driverKey === "DIRECT". The single receiving department's MatrixDeptCode — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE". Omit when driverKey !== "DIRECT".
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
 - confidence: "high" if name, source, and driverKey are unambiguous from the document; "low" if driverKey is "OTHER" or any field is uncertain.

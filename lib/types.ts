@@ -121,7 +121,7 @@ export type MatrixDeptCode =
   | "PLAN" | "BLDG" | "ENG" | "PW" | "PARKS" | "PD" | "FIRE";
 
 export type BasisKey =
-  | "FTE" | "EXPEND" | "EXPEND_X" | "PAYROLL" | "ACCT" | "AGENDA"
+  | "FTE" | "EXPEND" | "EXPEND_X" | "EXPEND_PW" | "PAYROLL" | "ACCT" | "AGENDA"
   | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
 
 /** One row of a cost pool's per-receiver allocation matrix as published in

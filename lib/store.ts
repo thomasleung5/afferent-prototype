@@ -824,6 +824,38 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.allocationBases || state.allocationBases.length === 0) {
           state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
         }
+        // Backfill for state persisted before EXPEND_PW existed in the
+        // catalog. Ensure the seed entry is present so pools whose basis
+        // text matches "(PW Departments Only)" can be re-bound to the
+        // correct driver. Without this, those pools fall back to the
+        // generic EXPEND denominator (= all departments), losing the
+        // PW-only restriction.
+        if (Array.isArray(state.allocationBases)) {
+          const seedPw = SEED_ALLOCATION_BASES.find((b) => b.id === "bas-op-expend-pw");
+          if (seedPw && !state.allocationBases.some((b) => b.id === "bas-op-expend-pw")) {
+            state.allocationBases.push({ ...seedPw });
+          }
+        }
+        // Re-bind any pool whose basis text now matches a new variant —
+        // currently used to retroactively route "(PW Departments Only)"
+        // pools to bas-op-expend-pw. Conservative: only touch pools whose
+        // current basisId resolves to a different driverKey than what the
+        // text inference would pick now, so manual overrides survive.
+        if (Array.isArray(state.capPools) && Array.isArray(state.allocationBases)) {
+          const byId = new Map(state.allocationBases.map((b) => [b.id, b]));
+          state.capPools = state.capPools.map((p) => {
+            const text = (p.basis ?? "").toLowerCase();
+            const wantsPw = text.includes("pw departments only")
+              || text.includes("public works only")
+              || text.includes("pw only");
+            if (!wantsPw) return p;
+            const current = p.basisId ? byId.get(p.basisId) : undefined;
+            if (current?.driverKey === "EXPEND_PW") return p;
+            const target = state.allocationBases.find((b) => b.driverKey === "EXPEND_PW");
+            if (!target) return p;
+            return { ...p, basisId: target.id };
+          });
+        }
         // Backfill for state persisted before eligiblePercent existed.
         // Default to 100 (fully fee-eligible) to preserve existing math.
         if (state.capPools) {

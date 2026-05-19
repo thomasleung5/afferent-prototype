@@ -95,6 +95,7 @@ function inferBasis(p: CapPool): BasisKey {
   if (t.includes("vehicle") || t.includes("equipment depreciation")) return "VEHICLE";
   if (t.includes("committee"))       return "COMMITS";
   if (t.includes("excl. planning") || t.includes("excluding development")) return "EXPEND_X";
+  if (t.includes("pw departments only") || t.includes("public works only") || t.includes("pw only")) return "EXPEND_PW";
   if (t.includes("budgeted expend")) return "EXPEND";
   if (t.includes("direct"))          return "DIRECT";
   return "EXPEND";

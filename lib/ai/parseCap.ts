@@ -342,7 +342,7 @@ export function capPoolsToExtractionResult(
 // ---------------------------------------------------------------------------
 
 const BASIS_KEYS: BasisKey[] = [
-  "FTE", "EXPEND", "EXPEND_X", "PAYROLL", "ACCT", "AGENDA",
+  "FTE", "EXPEND", "EXPEND_X", "EXPEND_PW", "PAYROLL", "ACCT", "AGENDA",
   "PRA", "CONTRACT", "SQFT", "VEHICLE", "COMMITS", "DIRECT",
 ];
 

@@ -13,6 +13,7 @@ export const ALLOCATION_BASES = [
   { key: "FTE",      label: "FTE",       longName: "Full-Time Equivalents",                       unit: "FTE",     unitLong: "Budgeted FTE",                       fmt: "decimal", note: "FY 24/25 budgeted FTE" },
   { key: "EXPEND",   label: "EXPEND",    longName: "Operating Expenditures",                      unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Budgeted expenditures excl. debt, capital, transfers" },
   { key: "EXPEND_X", label: "EXPEND_X",  longName: "Operating Expenditures (excl. Dev Services)", unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Budgeted expenditures excl. Planning, Building, Engineering" },
+  { key: "EXPEND_PW",label: "EXPEND_PW", longName: "Operating Expenditures (PW Departments Only)",unit: "$000",    unitLong: "Thousands of dollars",               fmt: "k",       note: "Budgeted expenditures of Public Works departments only" },
   { key: "PAYROLL",  label: "PAYROLL",   longName: "Payroll Transactions per Year",               unit: "txns/yr", unitLong: "Payroll transactions per year",      fmt: "int",     note: "Payroll transactions, FY 23/24" },
   { key: "ACCT",     label: "ACCT",      longName: "Accounting Transactions per Year",            unit: "txns/yr", unitLong: "Accounting transactions per year",   fmt: "int",     note: "Accounting transactions, FY 23/24" },
   { key: "AGENDA",   label: "AGENDA",    longName: "Council Agenda Items per Year",               unit: "items/yr",unitLong: "Council agenda items per year",      fmt: "int",     note: "Council agenda item count, FY 23/24" },
@@ -117,7 +118,7 @@ const DIRECT: BasisRow[] = [
   {
     code: "PW", name: "Public Works", group: "direct",
     values: {
-      FTE: 4.2, EXPEND: 890000, EXPEND_X: 890000,
+      FTE: 4.2, EXPEND: 890000, EXPEND_X: 890000, EXPEND_PW: 890000,
       PAYROLL: 105, ACCT: 155, AGENDA: 9, PRA: 6, CONTRACT: 44,
       SQFT: 920, VEHICLE: 124000, COMMITS: 1,
     },

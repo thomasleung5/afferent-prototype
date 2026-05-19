@@ -34,6 +34,7 @@ export const SEED_ALLOCATION_BASES: AllocationBasis[] = [
   // ── additional entries needed by the existing CAP_POOLS seed ────────────
   { id: "bas-vehicle",      name: "Vehicle depreciation",     source: "Fleet inventory",             driverKey: "VEHICLE",  validationStatus: "verified", createdAt: SEED_AT },
   { id: "bas-op-expend-x",  name: "Operating expenditures (excl. development)", source: "Budget book", driverKey: "EXPEND_X", validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-op-expend-pw", name: "Operating expenditures (PW departments only)", source: "Budget book", driverKey: "EXPEND_PW", validationStatus: "verified", createdAt: SEED_AT },
   { id: "bas-pra",          name: "PRA request count",        source: "Clerk records log",           driverKey: "PRA",      validationStatus: "verified", createdAt: SEED_AT },
   { id: "bas-committees",   name: "Number of committees",     source: "Council records",             driverKey: "COMMITS",  validationStatus: "verified", createdAt: SEED_AT },
   { id: "bas-direct",       name: "Direct allocation",        source: "Manual assignment",           driverKey: "DIRECT",   directTo: "PARKS", validationStatus: "verified", createdAt: SEED_AT },
