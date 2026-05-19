@@ -122,14 +122,33 @@ export function buildEngineGraph(args: {
     indirectNodeByCenter.set(centerName, key);
   }
 
-  // 2. Direct nodes — per fee dept, one node per imported direct-classified
-  //    receiver glCode; else a single seed:dept node.
+  // 2. Every imported receiver glCode that isn't already an indirect center
+  //    becomes a direct (terminal) node. Allocations stop here — sub-receivers
+  //    are destinations, not pass-throughs. feeDept is set only when the
+  //    receiver's classification matches PLAN/BLDG/ENG (the one place
+  //    deptCode is consulted, for FBHR roll-up); every other classification
+  //    leaves feeDept undefined and the node is invisible to FBHR.
+  for (const r of capReceivers) {
+    if (!r.glCode) continue;
+    if (nodeByKey.has(r.glCode)) continue; // already an indirect center
+    const isFeeDept = r.deptCode === "PLAN" || r.deptCode === "BLDG" || r.deptCode === "ENG";
+    addNode({
+      key: r.glCode, glCode: r.glCode, name: r.dept,
+      role: "direct",
+      feeDept: isFeeDept ? (r.deptCode as DeptCode) : undefined,
+      classification: r.deptCode,
+    });
+  }
+
+  // 3. Fee-dept fallbacks — ensure each PLAN/BLDG/ENG has at least one
+  //    direct node so FBHR has somewhere to route to even when the import
+  //    didn't publish a receiver for that fee dept.
   const directNodesByDept = new Map<DeptCode, NodeKey[]>();
   for (const dept of FEE_DEPTS) {
-    const directReceivers = capReceivers.filter(
-      (r) => r.deptCode === dept && r.glCode,
-    );
-    if (directReceivers.length === 0) {
+    const covered = nodes
+      .filter((n) => n.role === "direct" && n.feeDept === dept)
+      .map((n) => n.key);
+    if (covered.length === 0) {
       const key = seedDeptKey(dept);
       addNode({
         key, glCode: key, name: dept, role: "direct", feeDept: dept,
@@ -137,16 +156,7 @@ export function buildEngineGraph(args: {
       });
       directNodesByDept.set(dept, [key]);
     } else {
-      const keys: NodeKey[] = [];
-      for (const r of directReceivers) {
-        const key = r.glCode!;
-        addNode({
-          key, glCode: key, name: r.dept, role: "direct", feeDept: dept,
-          classification: dept,
-        });
-        keys.push(key);
-      }
-      directNodesByDept.set(dept, keys);
+      directNodesByDept.set(dept, covered);
     }
   }
 
@@ -190,7 +200,7 @@ export function buildEngineGraph(args: {
     if (driverKey === "DIRECT") continue;
     for (const r of p.receivers) {
       if (typeof r.units !== "number" || !Number.isFinite(r.units) || r.units <= 0) continue;
-      const targetKey = resolveReceiverNode(r, nodeByKey, indirectNodeByCenter, directNodesByDept);
+      const targetKey = resolveReceiverNode(r, nodeByKey);
       if (!targetKey) continue;
       const cellKey = `${targetKey}|${driverKey}`;
       let seen = seenInCell.get(cellKey);
@@ -215,23 +225,15 @@ export function buildEngineGraph(args: {
   return { nodes, drivers, resolveCenterNode, resolveDirectNode };
 }
 
-/** Map an imported receiver onto an engine node. Prefers an exact glCode
- *  match against an existing node; falls back to classification → first
- *  direct node for fee depts or the seed indirect node for indirect depts. */
+/** Look up the node for an imported receiver. glCode is the only signal —
+ *  no classification fallback. Receivers without a glCode are surfaced to
+ *  the review queue upstream (buildReceiverRegistry.missing). */
 function resolveReceiverNode(
-  r: { glCode?: string; dept: string; deptCode: MatrixDeptCode | "OTHER" },
+  r: { glCode?: string },
   nodeByKey: Map<NodeKey, GlNode>,
-  indirectNodeByCenter: Map<string, NodeKey>,
-  directNodesByDept: Map<DeptCode, NodeKey[]>,
 ): NodeKey | undefined {
   if (r.glCode && nodeByKey.has(r.glCode)) return r.glCode;
-  if (r.deptCode === "OTHER") return undefined;
-  if (r.deptCode === "PLAN" || r.deptCode === "BLDG" || r.deptCode === "ENG") {
-    return directNodesByDept.get(r.deptCode)?.[0];
-  }
-  const centerEntry = Object.entries(CENTER_NAME_TO_CODE)
-    .find(([, code]) => code === r.deptCode);
-  return centerEntry ? indirectNodeByCenter.get(centerEntry[0]) : undefined;
+  return undefined;
 }
 
 // ---------------------------------------------------------------------------
@@ -256,7 +258,7 @@ export function computeStepDownGl(args: {
   const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
 
   // Step order: user-defined centerOrder first, then any indirect nodes the
-  // user hasn't placed yet (mirrors legacy indirectOrder).
+  // user hasn't placed yet (cleanup tail).
   const stepOrder: NodeKey[] = [];
   const seenStep = new Set<NodeKey>();
   for (const cn of centerOrder) {
