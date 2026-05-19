@@ -72,7 +72,7 @@ export interface GlEngineGraph {
 }
 
 /** Per-pool diagnostic surfaced when the engine can't route a pool's
- *  eligible $ to any node — typically a DIRECT pool whose receivers
+ *  net allocable $ to any node — typically a DIRECT pool whose receivers
  *  list is empty or all-zero-glCode. Review tooling can render these
  *  for the user to fix. */
 export interface PoolDiagnostic {
@@ -80,7 +80,7 @@ export interface PoolDiagnostic {
   center: string;
   pool: string;
   kind: "no-receivers" | "no-valid-glcodes" | "zero-percent-receivers";
-  eligibleAmount: number;
+  amount: number;
   message: string;
 }
 
@@ -133,9 +133,7 @@ export interface GlStepDownModel {
    *  received across every pool's distribution. */
   directTotals: Record<NodeKey, number>;
   byPool: Record<string, {
-    rawAmount: number;
-    eligibleAmount: number;
-    excluded: number;
+    amount: number;
     /** $ this pool distributed to direct (terminal) nodes. */
     allocatedToDirect: number;
     /** $ this pool distributed to indirect nodes — not residual; the
@@ -366,13 +364,13 @@ export function computeStepDownGl(args: {
     );
 
   // Helper: append a routing diagnostic for a pool that couldn't reach a
-  // node. The eligible$ becomes leakage.
+  // node. The pool's $ becomes leakage.
   const noteDiagnostic = (
-    p: CapPool, kind: PoolDiagnostic["kind"], eligibleAmount: number, message: string,
+    p: CapPool, kind: PoolDiagnostic["kind"], amount: number, message: string,
   ) => {
     diagnostics.push({
       poolId: p.id, center: p.center, pool: p.pool,
-      kind, eligibleAmount, message,
+      kind, amount, message,
     });
   };
 
@@ -400,16 +398,15 @@ export function computeStepDownGl(args: {
   const alloc1: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
     const row = zeroRow();
-    const eligible = p.amount * (p.eligiblePercent / 100);
     const { basis } = basisForPool(p, bases);
     if (basis === "DIRECT") {
       const first = (p.receivers ?? []).find(
         (r) => r.glCode && allNodeKeys.has(r.glCode) && (r.percent ?? 0) > 0,
       );
-      if (first?.glCode) row[first.glCode] = eligible;
+      if (first?.glCode) row[first.glCode] = p.amount;
     } else {
       const k = resolveCenterNode(p.center);
-      if (k) row[k] = eligible;
+      if (k) row[k] = p.amount;
     }
     alloc1[p.id] = row;
   }
@@ -534,10 +531,9 @@ export function computeStepDownGl(args: {
         : 1 / Math.max(1, centerPools.length);
 
     for (const p of centerPools) {
-      const eligible = p.amount * (p.eligiblePercent / 100);
       const poolWeight = weightOf(p);
       const { basis } = basisForPool(p, bases);
-      const firstPool = eligible + poolWeight * firstInc;
+      const firstPool = p.amount + poolWeight * firstInc;
       if (firstPool <= 0) continue;
 
       // DIRECT pools route strictly via imported receiver glCodes. No
@@ -565,21 +561,20 @@ export function computeStepDownGl(args: {
   for (const p of pools) {
     const homeKey = resolveCenterNode(p.center);
     if (homeKey && stepOrderSet.has(homeKey)) continue;
-    const eligible = p.amount * (p.eligiblePercent / 100);
-    if (eligible <= 0) continue;
+    if (p.amount <= 0) continue;
     const { basis } = basisForPool(p, bases);
     if (basis === "DIRECT") {
       if (hasValidReceivers(p)) {
-        distributeAmount(p, eligible, firstAllocation[p.id], new Set());
+        distributeAmount(p, p.amount, firstAllocation[p.id], new Set());
       } else {
         noteDiagnostic(
-          p, "no-valid-glcodes", eligible,
-          `DIRECT pool (orphaned home center) has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(eligible)} leaks.`,
+          p, "no-valid-glcodes", p.amount,
+          `DIRECT pool (orphaned home center) has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(p.amount)} leaks.`,
         );
       }
       continue;
     }
-    distributeAmount(p, eligible, firstAllocation[p.id], new Set());
+    distributeAmount(p, p.amount, firstAllocation[p.id], new Set());
   }
 
   // -----------------------------------------------------------------------
@@ -692,25 +687,22 @@ export function computeStepDownGl(args: {
 
   const byPool: GlStepDownModel["byPool"] = {};
   for (const p of pools) {
-    const rawAmount = p.amount;
-    const eligibleAmount = rawAmount * (p.eligiblePercent / 100);
-    const excluded = rawAmount - eligibleAmount;
     const allocatedToDirect = directNodes.reduce(
       (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
     );
     const routedToIndirect = indirectNodes.reduce(
       (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
     );
-    // Leakage = pool's eligible that didn't reach any receiver via First
+    // Leakage = pool's amount that didn't reach any receiver via First
     // Allocation. (Pool may have gotten a second allocation portion too,
     // but that's tracked through the receiving center's flow and isn't a
     // separate "leakage" attributable to this pool.)
     const firstAllocSum = nodes.reduce(
       (a, n) => a + (firstAllocation[p.id]?.[n.key] ?? 0), 0,
     );
-    const leakage = Math.max(0, eligibleAmount - firstAllocSum);
+    const leakage = Math.max(0, p.amount - firstAllocSum);
     byPool[p.id] = {
-      rawAmount, eligibleAmount, excluded,
+      amount: p.amount,
       allocatedToDirect, routedToIndirect, leakage,
     };
   }

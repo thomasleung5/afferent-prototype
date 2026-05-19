@@ -170,16 +170,12 @@ export interface CapPool {
    *  center should normally reconcile to 100% but may temporarily drift
    *  during editing. */
   allocationPercent: number;
-  /** Denormalized derived value: capCenterTotals[center] × allocationPercent / 100.
-   *  Kept in sync by updateCapPool/updateCenterTotal so downstream readers
-   *  (step-down engine, exports) can ignore the percent indirection. */
+  /** Net allocable dollars for this pool — the amount the step-down engine
+   *  distributes downstream. Denormalized derived value:
+   *  capCenterTotals[center] × allocationPercent / 100. Kept in sync by
+   *  updateCapPool/updateCenterTotal so downstream readers (step-down
+   *  engine, exports) can ignore the percent indirection. */
   amount: number;
-  /** Fee-eligibility policy: the share of `amount` that is allowed to flow
-   *  into fee-supported allocations. Range 0-100. The step-down engine
-   *  distributes (amount × eligiblePercent / 100); the remainder is the
-   *  excluded amount (covered by the General Fund or otherwise out of fee
-   *  scope). Default 100 — fully fee-eligible. */
-  eligiblePercent: number;
   /** Foreign key into BuildState.allocationBases. Drives which catalog
    *  entry's source/methodology display under the pool's basis cell. */
   basisId: string;
@@ -194,7 +190,8 @@ export interface CapPool {
    *  engine does not yet consume this field — it remains the imported
    *  reference for reconciliation and future use. */
   receivers?: PoolReceiver[];
-  /** Policy explanation surfaced as the Eligible % tooltip. Used in exports. */
+  /** Free-text policy explanation (e.g. "Fully recoverable", "Excluded —
+   *  public benefit"). Surfaced in exports for context. */
   recoverability: string;
   review: "Reviewed" | "Review";
 }

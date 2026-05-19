@@ -25,7 +25,7 @@ Return ONLY this JSON, no prose:
   "pools": [
     {
       "center": "City Manager", "pool": "Human Resources",
-      "allocationPercent": 38.62, "amount": 424820, "eligiblePercent": 100,
+      "allocationPercent": 38.62, "amount": 424820,
       "basis": "Budgeted FTE",
       "receivers": [
         { "dept": "Planning Admin", "glCode": "011-3100", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "firstAllocation": 19500, "secondAllocation": 3430, "total": 22930, "confidence": "high" },
@@ -87,8 +87,7 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
 - center: the cost-center name this pool belongs to (matches a Section 1 center name).
 - pool: the human-readable pool / function name (e.g. "Human Resources", "Risk Management", "Contract Review", "Records").
 - allocationPercent: the percentage share of the center this pool claims. Range 0–100 as a plain number, NO % sign. (e.g. "38.62%" → 38.62.)
-- amount: the dollar amount allocated by this pool. Plain number, NO $ sign, NO commas. (e.g. "$424,820" → 424820.)
-- eligiblePercent: the fee-eligible share, 0–100. DEFAULT to 100 (fully fee-eligible). Set lower ONLY when the document explicitly excludes part of the pool from fee-supported allocations. NEVER set above 100.
+- amount: the net allocable dollar amount this pool distributes. Plain number, NO $ sign, NO commas. (e.g. "$424,820" → 424820.) If the source document separates a gross amount from a fee-eligible portion, extract the fee-eligible portion here.
 - basis: the allocation basis name. MUST be either a name from Section 2 of the same document, or one of the canonical seed names ("Budgeted FTE", "Actual FTE", "Salaries", "Payroll transactions", "AP invoices", "Agenda item count", "Contract count", "Square footage", "Direct labor hours", "Permit volume", "Operating expenditures", "Accounting transactions", "Time study %", "Population", "Vehicle depreciation", "Operating expenditures (excl. development)", "PRA request count", "Number of committees", "Direct allocation"). If the document uses a wording that clearly matches one of these, use the canonical name.
 - receivers: the full list of budget units that receive a non-zero share of this pool, taken from the pool's allocation-detail schedule (the "X - Allocations" pages). Each receiver is an object:
   * dept: the receiving budget unit name exactly as written.
@@ -169,7 +168,6 @@ interface PoolRow {
   pool: string;
   allocationPercent: number;
   amount: number;
-  eligiblePercent?: number;
   basis: string;
   /** Per-receiver allocation breakdown lifted from the pool's allocation-
    *  detail schedule. Receivers' `amount` values sum to the pool's `amount`. */

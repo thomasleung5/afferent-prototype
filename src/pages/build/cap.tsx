@@ -52,7 +52,7 @@ function bundleCountsMessage(counts: { centers: number; bases: number; pools: nu
 const CAP_SCHEMA = `{
   centers: [{ name, glCode, totalCost, confidence }],
   bases:   [{ name, source, methodologyNote, driverKey, directTo, confidence }],
-  pools:   [{ center, pool, allocationPercent, amount, eligiblePercent,
+  pools:   [{ center, pool, allocationPercent, amount,
               basis, receivers, recoverability, confidence }]
 }`;
 

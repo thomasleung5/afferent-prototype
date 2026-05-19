@@ -349,7 +349,7 @@ function CenterCellTrace({
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);
   const totalToNode = contribs.reduce((a, c) => a + c.value, 0);
-  const centerEligible = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+  const centerEligible = pools.reduce((a, p) => a + p.amount, 0);
   const centerShare = centerEligible > 0 ? (totalToNode / centerEligible) * 100 : 0;
 
   return (

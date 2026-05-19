@@ -305,7 +305,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             ...s.capPools,
             { id: `cap-${Date.now()}`, center, pool: "New pool",
               allocationPercent: 0, amount: 0,
-              eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+              basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
           ],
         })),
 
@@ -317,7 +317,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               ...s.capPools,
               { id: `cap-${Date.now()}`, center: name, pool: "New pool",
                 allocationPercent: 100, amount: 0,
-                eligiblePercent: 100, basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+                basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
             ],
             capCenterTotals: name in s.capCenterTotals
               ? s.capCenterTotals
@@ -860,12 +860,15 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             return { ...p, basisId: target.id };
           });
         }
-        // Backfill for state persisted before eligiblePercent existed.
-        // Default to 100 (fully fee-eligible) to preserve existing math.
+        // Strip persisted-state's eligiblePercent — pools now allocate at
+        // their full `amount` (the net allocable). TS-cast through Record
+        // since the field is no longer on CapPool.
         if (state.capPools) {
-          state.capPools = state.capPools.map((p) =>
-            typeof p.eligiblePercent === "number" ? p : { ...p, eligiblePercent: 100 },
-          );
+          state.capPools = state.capPools.map((p) => {
+            const { eligiblePercent: _drop, ...rest } = p as CapPool & { eligiblePercent?: number };
+            void _drop;
+            return rest;
+          });
         }
         // Backfill capCenterTotals + allocationPercent for state persisted
         // before the % column became editable. Derive totals from Σ amount

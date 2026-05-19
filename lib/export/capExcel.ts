@@ -170,25 +170,22 @@ function buildBases(p: CapExportPayload): Cell[][] {
 
 function buildPools(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Amount"), h("Allocable %"), h("Allocable $")],
+    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Net allocable $")],
   ];
   const glByName = glCodeByCenter(p);
-  let totalEligible = 0;
+  let total = 0;
   for (const pl of p.capPools) {
     const { basis } = basisForPool(pl, p.allocationBases);
-    const eligible = pl.amount * (pl.eligiblePercent / 100);
-    totalEligible += eligible;
+    total += pl.amount;
     rows.push([
       glByName.get(pl.center) ?? "—",
       pl.center,
       pl.pool,
       basis,
       n(pl.amount, "$#,##0"),
-      n(pl.eligiblePercent / 100, "0.0%"),
-      n(eligible, "$#,##0"),
     ]);
   }
-  rows.push(["", "", h("Total"), "", "", "", n(totalEligible, "$#,##0")]);
+  rows.push(["", "", h("Total"), "", n(total, "$#,##0")]);
   return rows;
 }
 
@@ -250,7 +247,7 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
 
     // -------- Costs to be Allocated --------
     const departmental = centerPools
-      .reduce((a, pl) => a + pl.amount * (pl.eligiblePercent / 100), 0);
+      .reduce((a, pl) => a + pl.amount, 0);
 
     const sources = new Map<string, { first: number; second: number }>();
     for (const node of p.model.nodes) {

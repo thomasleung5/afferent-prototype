@@ -17,7 +17,6 @@ export function CapSummary() {
   const { capPools, derived } = useBuildState();
   const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
-  const eligibleTotal = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
 
   // Pre-computed in useBuildState. Used here for the per-pool drilldown
   // breakdown (model.alloc2[poolId][deptCode]).
@@ -139,7 +138,7 @@ export function CapSummary() {
         pools: capPools.length,
         top: (
           <span style={{ color: "var(--ink-3)" }}>
-            {fmt.dollarsK(eligibleTotal)} allocable of {fmt.dollarsK(poolTotal)} raw
+            {fmt.dollarsK(poolTotal)} net allocable across pools
           </span>
         ),
       }}

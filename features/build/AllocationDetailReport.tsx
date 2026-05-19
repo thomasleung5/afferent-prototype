@@ -87,10 +87,10 @@ export function AllocationDetailReport() {
     if (!centerNode) return null;
     const homeKey = centerNode.key;
 
-    // Departmental = Σ eligible across all pools at this center.
+    // Departmental = Σ net allocable across all pools at this center.
     const departmental = capPools
       .filter((p) => p.center === centerName)
-      .reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
+      .reduce((a, p) => a + p.amount, 0);
 
     // NBS column labeling rule: a source pool's contribution to this center
     // counts as Incoming FIRST iff the source's home center is UPSTREAM
@@ -243,7 +243,7 @@ export function AllocationDetailReport() {
 
     const { basis, directTo } = basisForPool(pool, allocationBases);
     const isDirectCharge = basis === "DIRECT";
-    const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
+    const eligibleAmount = pool.amount;
 
     // Build per-receiver rows. NBS shows every allocable + receiving node,
     // including 0% rows (— in the cells).
@@ -373,7 +373,7 @@ function CostsRow({
 function PoolPicker({
   pools, selectedId, onSelect, glCodeByCenter,
 }: {
-  pools: { id: string; center: string; pool: string; amount: number; eligiblePercent: number; allocationPercent: number }[];
+  pools: { id: string; center: string; pool: string; amount: number; allocationPercent: number }[];
   selectedId: string;
   onSelect: (id: string) => void;
   glCodeByCenter: Map<string, string>;
@@ -388,7 +388,7 @@ function PoolPicker({
         maxHeight: 220, overflowY: "auto",
       }}>
         {pools.map((p, i) => {
-          const eligible = p.amount * (p.eligiblePercent / 100);
+          const eligible = p.amount;
           const selected = p.id === selectedId;
           const gl = glCodeByCenter.get(p.center);
           return (

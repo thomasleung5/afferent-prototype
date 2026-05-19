@@ -55,7 +55,6 @@ interface PoolRow {
   pool: string;
   allocationPercent: number;
   amount: number;
-  eligiblePercent?: number;
   basis: string;
   receivers?: ReceiverRow[];
   receiving?: string;
@@ -282,11 +281,6 @@ export function capPoolsToExtractionResult(
     const basisName = row.basis?.trim() ?? "";
     const basisMatch = normBasisName(basisName, bases);
 
-    const eligibleRaw = Number(row.eligiblePercent);
-    const eligiblePercent = Number.isFinite(eligibleRaw)
-      ? Math.max(0, Math.min(100, eligibleRaw))
-      : 100;
-
     const receivers = normReceivers(row.receivers);
 
     const lineage: SourceLineage = {
@@ -309,7 +303,6 @@ export function capPoolsToExtractionResult(
       pool,
       allocationPercent: Math.max(0, Math.min(100, allocationPercent)),
       amount,
-      eligiblePercent,
       basisId: basisMatch?.id ?? "",
       basis: basisMatch?.name ?? basisName,
       receiving: row.receiving?.trim() || "Multiple departments",

@@ -352,9 +352,8 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
       <div className="eyebrow">Section 4</div>
       <h2 className="h2">Cost pools</h2>
       <div className="body" style={{ marginBottom: 12, maxWidth: 600 }}>
-        Functional overhead pools. Allocable $ = Amount × Allocable %. Only the
-        allocable portion is distributed via the schedule; the excluded portion
-        is treated as non-allocable.
+        Functional overhead pools. Each pool&rsquo;s net allocable amount is
+        distributed via its allocation basis schedule.
       </div>
       <table>
         <thead>
@@ -363,31 +362,26 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
             <th>Center</th>
             <th>Pool</th>
             <th>Basis</th>
-            <th className="num">Amount</th>
-            <th className="num">Alloc %</th>
-            <th className="num">Allocable $</th>
+            <th className="num">Net allocable</th>
           </tr>
         </thead>
         <tbody>
           {payload.capPools.map((pl) => {
             const { basis } = basisForPool(pl, payload.allocationBases);
-            const eligible = pl.amount * (pl.eligiblePercent / 100);
             const gl = glByName.get(pl.center);
-            totalEligible += eligible;
+            totalEligible += pl.amount;
             return (
               <tr key={pl.id}>
                 <td><span className="mono" style={{ fontSize: 10, color: gl ? "var(--ink-2)" : "var(--ink-4)" }}>{gl ?? "—"}</span></td>
                 <td style={{ color: "var(--ink-2)" }}>{pl.center}</td>
                 <td><b>{pl.pool}</b></td>
                 <td><span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span></td>
-                <td className="num">{fmt.dollars(pl.amount)}</td>
-                <td className="num">{pl.eligiblePercent}%</td>
-                <td className="num"><b>{fmt.dollars(eligible)}</b></td>
+                <td className="num"><b>{fmt.dollars(pl.amount)}</b></td>
               </tr>
             );
           })}
           <tr className="total">
-            <td colSpan={6}>Total allocable</td>
+            <td colSpan={4}>Total net allocable</td>
             <td className="num">{fmt.dollars(totalEligible)}</td>
           </tr>
         </tbody>
@@ -457,7 +451,7 @@ function CenterBlock({
   const targetStep = stepIndex.get(centerName) ?? -1;
 
   const departmental = centerPools
-    .reduce((a, pl) => a + pl.amount * (pl.eligiblePercent / 100), 0);
+    .reduce((a, pl) => a + pl.amount, 0);
 
   const sources = new Map<string, { first: number; second: number }>();
   for (const n of payload.model.nodes) {
@@ -601,7 +595,7 @@ function PoolBlock({
   bases: CapExportPayload["allocationBases"];
 }) {
   const { basis } = basisForPool(pool, bases);
-  const eligibleAmount = pool.amount * (pool.eligiblePercent / 100);
+  const eligibleAmount = pool.amount;
 
   const indirectNodes = model.nodes
     .filter((n) => n.role === "indirect")
