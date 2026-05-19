@@ -17,15 +17,15 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
+import type { CapStepDownMethod } from "@/lib/data/capStepDown";
 import {
-  computeStepDown, deriveDriversFromReceivers, mergeDriverMatrices,
-  DRIVERS, CENTER_NAME_TO_CODE, type DriverMatrix,
-  type CenterCodeResolver, type StepDownModel, type CapStepDownMethod,
-} from "@/lib/data/capStepDown";
-import {
-  buildReceiverRegistry, receiverGlCodeToMatrixCode,
+  buildReceiverRegistry,
   type ReceiverEntry, type MissingReceiverEntry,
 } from "@/lib/data/capReceiverRegistry";
+import {
+  buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
+  type GlDriverMatrix, type GlStepDownModel,
+} from "@/lib/data/capStepDownGl";
 import {
   DEFAULT_STUDY_CONTEXT, extractStudyContext, type StudyContext,
 } from "@/lib/data/studyContext";
@@ -825,29 +825,23 @@ export interface BuildDerived {
   costs: ServiceCost[];
   comparisons: FeeComparison[];
   impact: PolicyImpact;
-  /** Per-dept total $ landing on direct departments after the step-down
-   *  closes every indirect center. Derived from capPools + capCenterOrder +
-   *  allocationBases via computeStepDown; flows into deptFBHR so the CAP
-   *  rate ($/hr) reconciles to the pool inventory. The `state.capAllocation`
-   *  field is deprecated and no longer read by the fee-study math. */
+  /** Per-fee-dept (PLAN/BLDG/ENG) total $ landing on direct nodes after the
+   *  step-down closes every indirect center. Each fee dept sums every
+   *  direct node whose feeDept classification matches. Flows into deptFBHR
+   *  so the CAP rate ($/hr) reconciles to the pool inventory. */
   capAllocated: Record<DeptCode, number>;
-  /** Effective department × basis driver matrix: the seed DRIVERS table
-   *  with imported per-pool receiver-units overlaid wherever a pool has
-   *  receivers. Source of truth for the step-down distribution. */
-  capDrivers: DriverMatrix;
-  /** Distinct receivers across imported pools, keyed by glCode. Each row
-   *  preserves per-receiver identity (multiple receivers sharing a deptCode
-   *  classification appear as separate rows). Source of truth for the
-   *  Allocation Bases / Pool Allocations / Allocation Matrix views when
-   *  receivers have been imported. */
+  /** Per-node, per-basis driver matrix used by the engine. Imported
+   *  receiver units overlay the seed driver row for seed nodes only —
+   *  imported nodes get their units strictly from the receiver aggregation. */
+  capDrivers: GlDriverMatrix;
+  /** Distinct receivers across imported pools, keyed by glCode. */
   capReceivers: ReceiverEntry[];
   /** Receivers the document published without a glCode — routed here for
    *  human review rather than collapsed onto a sibling row. */
   capReceiversForReview: MissingReceiverEntry[];
-  /** Pre-computed step-down model. Exposed here so views don't each
-   *  re-call computeStepDown — and so the glCode-first center resolver
-   *  is applied uniformly (not just in the derived FBHR rollup). */
-  capStepDown: StepDownModel;
+  /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
+   *  seed:* key). Source of truth for the matrix tabs + cell traces. */
+  capStepDown: GlStepDownModel;
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */
@@ -864,45 +858,32 @@ export function useBuildState() {
     };
     const operatingByDept = deptOperating(state.operating, hoursByDept);
 
-    // Per-dept allocated $ is now derived from the step-down engine over
-    // the pool inventory — the source of truth. The legacy
-    // state.capAllocation field is no longer read by the fee-study math.
-    //
-    // Driver matrix: overlay imported pool.receivers' units on top of the
-    // seed DRIVERS, so the step-down distributes via the document's own
-    // numbers wherever they're available and falls back to seed for any
-    // (dept, basis) cell the receivers don't cover. This makes both the
-    // Pool Allocations matrix and the Allocation Bases display respond
-    // to CAP imports without losing the seed scaffolding.
-    const derivedDrivers = deriveDriversFromReceivers(state.capPools, state.allocationBases);
-    const capDrivers = mergeDriverMatrices(DRIVERS, derivedDrivers);
-
-    // Per-receiver registry. Keyed by glCode (namespaced by cityId +
-    // fiscalYear + role), with receivers missing glCode routed to a
-    // separate review queue rather than collapsed onto a sibling row.
+    // glCode-native CAP engine. Nodes = one indirect node per cost center
+    // (using capCenterGlCodes[center] or a synth seed:center:* key) plus
+    // one direct node per imported PLAN/BLDG/ENG-classified receiver glCode
+    // (or a synth seed:dept:* fallback). FBHR sums each direct node's total
+    // into its feeDept classification — multiple PLAN-classified glCodes
+    // all roll into PLAN's CAP rate.
     const { entries: capReceivers, missing: capReceiversForReview } =
       buildReceiverRegistry(state.capPools, state.allocationBases, state.studyContext);
 
-    // Center resolver: try the imported center's glCode first (via the
-    // receiver registry's glCode→MatrixDeptCode map), fall back to the
-    // legacy LAH name map. Lets non-LAH CAPs route their indirect centers
-    // correctly even when their center names don't match the seed.
-    const glToMatrix = receiverGlCodeToMatrixCode(capReceivers);
-    const centerResolver: CenterCodeResolver = (centerName) => {
-      const gl = state.capCenterGlCodes[centerName];
-      if (gl && glToMatrix[gl]) return glToMatrix[gl];
-      return CENTER_NAME_TO_CODE[centerName];
-    };
+    const graph = buildEngineGraph({
+      capPools: state.capPools,
+      allocationBases: state.allocationBases,
+      capCenterTotals: state.capCenterTotals,
+      capCenterGlCodes: state.capCenterGlCodes,
+      capReceivers,
+    });
 
-    const stepDown = computeStepDown(
-      state.capPools, state.capCenterOrder, state.allocationBases,
-      capDrivers, centerResolver, state.capStepDownMethod,
-    );
-    const capAllocated: Record<DeptCode, number> = {
-      PLAN: stepDown.directTotals.PLAN ?? 0,
-      BLDG: stepDown.directTotals.BLDG ?? 0,
-      ENG:  stepDown.directTotals.ENG  ?? 0,
-    };
+    const stepDown = computeStepDownGl({
+      pools: state.capPools,
+      centerOrder: state.capCenterOrder,
+      bases: state.allocationBases,
+      graph,
+      method: state.capStepDownMethod,
+    });
+
+    const capAllocated = capAllocatedFromGl(stepDown);
     const derivedCapAllocation: Record<DeptCode, CapAllocation> = {
       PLAN: { dept: "PLAN", allocated: capAllocated.PLAN },
       BLDG: { dept: "BLDG", allocated: capAllocated.BLDG },
@@ -917,13 +898,14 @@ export function useBuildState() {
     const impact = policyImpact(comparisons);
     return {
       labor, operatingByDept, fbhr, costs, comparisons, impact,
-      capAllocated, capDrivers, capReceivers, capReceiversForReview,
+      capAllocated, capDrivers: graph.drivers, capReceivers, capReceiversForReview,
       capStepDown: stepDown,
     };
   }, [
     state.positions, state.operating,
-    state.capPools, state.capCenterOrder, state.allocationBases,
-    state.capCenterGlCodes, state.studyContext, state.capStepDownMethod,
+    state.capPools, state.capCenterTotals, state.capCenterOrder,
+    state.allocationBases, state.capCenterGlCodes, state.studyContext,
+    state.capStepDownMethod,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 

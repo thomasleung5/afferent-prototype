@@ -9,7 +9,7 @@ import {
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
-import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
+import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { FBHR } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 
@@ -122,7 +122,7 @@ export function RateDerivation() {
       renderDrilldown={(r) => {
         const f = r.fbhr;
         const allocRows = capPools
-          .map((p) => ({ poolId: p.id, allocated: stepModel.alloc2[p.id]?.[r.dept as MatrixDeptCode] ?? 0 }))
+          .map((p) => ({ poolId: p.id, allocated: poolToFeeDept(stepModel, p.id, r.dept) }))
           .filter((p) => p.allocated > 0.5)
           .sort((a, b) => b.allocated - a.allocated);
         const totalCAP = allocRows.reduce((a, x) => a + x.allocated, 0);

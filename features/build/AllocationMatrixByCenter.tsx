@@ -1,12 +1,9 @@
-﻿
+
 import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import {
-  ALL_DEPTS, DIRECT_DEPTS,
-  basisForPool, computeStepDown,
-  type MatrixDeptCode,
-} from "@/lib/data/capStepDown";
+import { basisForPool } from "@/lib/data/capStepDown";
+import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownGl";
 import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
 import {
@@ -16,24 +13,19 @@ import {
 
 interface OpenCell {
   center: string;
-  deptCode: MatrixDeptCode;
+  nodeKey: NodeKey;
 }
 
-/** Step 5 of the CAP flow. Center × dept aggregated matrix. Columns are the
- *  direct MatrixDeptCodes; cells come from the step-down engine's
- *  recomputed distribution — always engine-driven, regardless of whether
- *  per-receiver amounts were imported. Receiver imports still feed the
- *  engine via the driver matrix; this view always reports what the engine
- *  computed. */
+/** Step 5 of the CAP flow. Center × direct-node aggregated matrix. Columns
+ *  are the engine's direct nodes (per-glCode PLAN/BLDG/ENG receivers, plus
+ *  any other direct nodes the registry produces). Cells come from the
+ *  step-down engine — always engine-driven. */
 export function AllocationMatrixByCenter() {
   const { capPools, capCenterOrder, derived } = useBuildState();
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
 
-  // Pre-computed in useBuildState — every view reads the same model.
   const model = derived.capStepDown;
-
-  // Final placement only — indirect depts have been closed via step-down.
-  const cols = DIRECT_DEPTS;
+  const cols: GlNode[] = model.nodes.filter((n) => n.role === "direct");
   const allocSrc = model.alloc2;
 
   const grid =
@@ -54,17 +46,17 @@ export function AllocationMatrixByCenter() {
       (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
     );
 
-  const centerCell = (center: string, deptCode: MatrixDeptCode): number =>
+  const centerCell = (center: string, nodeKey: NodeKey): number =>
     (poolsByCenter.get(center) ?? []).reduce(
-      (a, p) => a + (allocSrc[p.id]?.[deptCode] ?? 0),
+      (a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0),
       0,
     );
 
   const centerRowTotal = (center: string): number =>
-    cols.reduce((a, d) => a + centerCell(center, d.code), 0);
+    cols.reduce((a, n) => a + centerCell(center, n.key), 0);
 
-  const colTotal = (deptCode: MatrixDeptCode): number =>
-    capPools.reduce((a, p) => a + (allocSrc[p.id]?.[deptCode] ?? 0), 0);
+  const colTotal = (nodeKey: NodeKey): number =>
+    capPools.reduce((a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0), 0);
 
   const totalCap = capPools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
   const grandTotal = capCenterOrder.reduce((a, c) => a + centerRowTotal(c), 0);
@@ -72,7 +64,7 @@ export function AllocationMatrixByCenter() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
-        <SectionLabel right={`${capCenterOrder.length} centers · ${DIRECT_DEPTS.length} direct depts`}>
+        <SectionLabel right={`${capCenterOrder.length} centers · ${cols.length} direct nodes`}>
           Allocation Matrix
         </SectionLabel>
         <div style={{
@@ -92,14 +84,21 @@ export function AllocationMatrixByCenter() {
             <div>Center</div>
             <div style={{ textAlign: "right" }}>Eligible $</div>
             <div>Pools</div>
-            {cols.map((d) => (
-              <div key={d.code} title={d.code} style={{
-                textAlign: "right",
-                color: d.kind === "direct" ? "var(--ink-2)" : "var(--ink-4)",
+            {cols.map((n) => (
+              <div key={n.key} title={n.glCode} style={{
+                textAlign: "right", color: "var(--ink-2)",
                 fontFamily: "var(--ff-ui)", fontSize: 11, fontWeight: 500,
-                letterSpacing: 0, textTransform: "none",
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }}>{d.name}</div>
+                letterSpacing: 0, textTransform: "none", lineHeight: 1.3,
+                overflow: "hidden",
+              }}>
+                <div style={{
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }}>{n.name}</div>
+                <div className="mono" style={{
+                  fontSize: 9.5, color: "var(--ink-4)", letterSpacing: "0.04em",
+                  textTransform: "uppercase", marginTop: 2,
+                }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
+              </div>
             ))}
             <div style={{ textAlign: "right" }}>Row total</div>
           </div>
@@ -130,14 +129,14 @@ export function AllocationMatrixByCenter() {
                   fontSize: 10.5, color: "var(--ink-3)",
                   letterSpacing: "0.04em",
                 }}>{pools.length} pool{pools.length === 1 ? "" : "s"}</div>
-                {cols.map((d) => {
-                  const v = centerCell(center, d.code);
+                {cols.map((n) => {
+                  const v = centerCell(center, n.key);
                   const zero = v < 0.5;
-                  const isOpen = openCell?.center === center && openCell?.deptCode === d.code;
+                  const isOpen = openCell?.center === center && openCell?.nodeKey === n.key;
                   return (
                     <button
-                      key={d.code}
-                      onClick={() => !zero && setOpenCell(isOpen ? null : { center, deptCode: d.code })}
+                      key={n.key}
+                      onClick={() => !zero && setOpenCell(isOpen ? null : { center, nodeKey: n.key })}
                       title={zero ? "—" : `${fmt.dollars(v)} — click for trace`}
                       style={{
                         textAlign: "right", padding: "3px 4px",
@@ -180,11 +179,11 @@ export function AllocationMatrixByCenter() {
               {fmt.dollarsK(totalCap)}
             </div>
             <div/>
-            {cols.map((d) => {
-              const t = colTotal(d.code);
+            {cols.map((n) => {
+              const t = colTotal(n.key);
               const zero = t < 0.5;
               return (
-                <div key={d.code} className="num" style={{
+                <div key={n.key} className="num" style={{
                   textAlign: "right", fontSize: 12,
                   color: zero ? "var(--ink-4)" : "var(--ink)",
                 }}>{zero ? "—" : fmt.dollarsK(t)}</div>
@@ -201,7 +200,7 @@ export function AllocationMatrixByCenter() {
       {openCell ? (
         <CenterCellTrace
           center={openCell.center}
-          deptCode={openCell.deptCode}
+          nodeKey={openCell.nodeKey}
           model={model}
           onClose={() => setOpenCell(null)}
         />
@@ -228,48 +227,45 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-zero cell to see its formula, driver inputs, and (for Final) the contributions from each indirect department that produced the value.</span>
+      <span>Click any non-zero cell to see its formula, driver inputs, and the contributions from each pool in the center.</span>
     </div>
   );
 }
 
 function CenterCellTrace({
-  center, deptCode, model, onClose,
+  center, nodeKey, model, onClose,
 }: {
-  center: string; deptCode: MatrixDeptCode;
-  model: ReturnType<typeof computeStepDown>;
+  center: string; nodeKey: NodeKey;
+  model: GlStepDownModel;
   onClose: () => void;
 }) {
   const { capPools, allocationBases } = useBuildState();
-  const dept = ALL_DEPTS.find((d) => d.code === deptCode);
-  if (!dept) return null;
+  const node = model.nodes.find((n) => n.key === nodeKey);
+  if (!node) return null;
 
   const pools = capPools.filter((p) => p.center === center);
   const allocSrc = model.alloc2;
 
-  // Contributing pools — one row per pool that lands non-zero $ on the
-  // selected dept. Sorted desc for the breakdown.
   const contribs = pools
     .map((p) => {
-      const value = allocSrc[p.id]?.[deptCode] ?? 0;
+      const value = allocSrc[p.id]?.[nodeKey] ?? 0;
       const { basis } = basisForPool(p, allocationBases);
       const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
       return { pool: p, value, basis, basisLongName: basisMeta?.longName ?? basis };
     })
     .filter((r) => r.value > 0.5)
     .sort((a, b) => b.value - a.value);
-  const totalToDept = contribs.reduce((a, c) => a + c.value, 0);
+  const totalToNode = contribs.reduce((a, c) => a + c.value, 0);
   const centerEligible = pools.reduce((a, p) => a + p.amount * (p.eligiblePercent / 100), 0);
-  const centerShare = centerEligible > 0 ? (totalToDept / centerEligible) * 100 : 0;
+  const centerShare = centerEligible > 0 ? (totalToNode / centerEligible) * 100 : 0;
 
   return (
     <TracePanel
       eyebrow="Center allocation trace"
       from={center}
-      to={dept.name}
+      to={node.name}
       onClose={onClose}
     >
-      {/* Section 1 — Summary */}
       <TraceSection>
         <SummaryStrip cols={3}>
           <TraceStat
@@ -280,11 +276,11 @@ function CenterCellTrace({
           <TraceStat
             label="Share of center"
             value={`${centerShare.toFixed(1)}%`}
-            sub={`Reaching ${dept.name} after step-down`}
+            sub={`Reaching ${node.name} after step-down`}
           />
           <TraceStat
             label="Final allocation"
-            value={fmt.dollars(totalToDept)}
+            value={fmt.dollars(totalToNode)}
             sub={contribs.length > 0
               ? `Built from ${contribs.length} pool${contribs.length === 1 ? "" : "s"}`
               : "No contributions"}
@@ -293,7 +289,6 @@ function CenterCellTrace({
         </SummaryStrip>
       </TraceSection>
 
-      {/* Section 2 — Pool-by-pool breakdown (the "math" for a center cell) */}
       <TraceSection title="How this allocation was built">
         {contribs.length === 0 ? (
           <div style={{
@@ -302,7 +297,7 @@ function CenterCellTrace({
             border: "1px solid var(--rule)",
             fontSize: 12.5, color: "var(--ink-3)",
           }}>
-            No pool from <strong>{center}</strong> contributes to <strong>{dept.name}</strong>.
+            No pool from <strong>{center}</strong> contributes to <strong>{node.name}</strong>.
           </div>
         ) : (
           <div style={{
@@ -326,7 +321,7 @@ function CenterCellTrace({
               ))}
             </div>
             {contribs.map((c, i) => {
-              const pct = totalToDept > 0 ? (c.value / totalToDept) * 100 : 0;
+              const pct = totalToNode > 0 ? (c.value / totalToNode) * 100 : 0;
               return (
                 <div key={c.pool.id} style={{
                   display: "grid",
@@ -375,25 +370,25 @@ function CenterCellTrace({
               background: "var(--paper)",
               fontSize: 13, fontWeight: 500,
             }}>
-              <div>Total to {dept.name}</div>
+              <div>Total to {node.name}</div>
               <div/>
               <div/>
               <div className="num" style={{
                 textAlign: "right", color: "var(--accent)",
                 fontVariantNumeric: "tabular-nums",
-              }}>{fmt.dollars(totalToDept)}</div>
+              }}>{fmt.dollars(totalToNode)}</div>
             </div>
           </div>
         )}
       </TraceSection>
 
-      {/* Section 3 — Auditor metadata */}
       <CollapsibleMetadata title="Allocation metadata">
         <MetadataRow label="Center">{center}</MetadataRow>
         <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
         <MetadataRow label="Eligible (center)">{fmt.dollars(centerEligible)}</MetadataRow>
-        <MetadataRow label="Recipient">{dept.name}</MetadataRow>
-        <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToDept)}</MetadataRow>
+        <MetadataRow label="Recipient node">{node.name}</MetadataRow>
+        <MetadataRow label="Recipient glCode">{node.glCode.startsWith("seed:") ? "—" : node.glCode}</MetadataRow>
+        <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToNode)}</MetadataRow>
         <MetadataRow label="Share of center">{centerShare.toFixed(2)}%</MetadataRow>
         <MetadataRow label="Contributing pools">{contribs.length.toString()}</MetadataRow>
       </CollapsibleMetadata>

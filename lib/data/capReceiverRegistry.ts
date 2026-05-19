@@ -174,21 +174,3 @@ function isIndirectCode(c: MatrixDeptCode | "OTHER"): boolean {
   return INDIRECT_CODES.has(c);
 }
 
-/** Build a `glCode → MatrixDeptCode` lookup from receiver entries. Used by
- *  computeStepDown's center resolver when an imported center carries a
- *  glCode that also appears among receivers (which is the common case for
- *  indirect centers in two-step CAPs). Not the only path — the resolver
- *  also tries the legacy CENTER_NAME_TO_CODE name map. */
-export function receiverGlCodeToMatrixCode(
-  entries: ReceiverEntry[],
-): Record<string, MatrixDeptCode> {
-  const out: Record<string, MatrixDeptCode> = {};
-  for (const e of entries) {
-    if (!e.glCode) continue;
-    if (e.deptCode === "OTHER") continue;
-    // First-seen wins on conflict — within a single document a glCode
-    // points at exactly one budget unit, so conflicts indicate data noise.
-    if (!(e.glCode in out)) out[e.glCode] = e.deptCode;
-  }
-  return out;
-}

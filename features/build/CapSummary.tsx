@@ -4,7 +4,7 @@ import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/compo
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
+import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
@@ -27,7 +27,7 @@ export function CapSummary() {
     const allocated = derived.capAllocated[d];
     const rate = derived.fbhr[d].capRate;
     const sorted = capPools
-      .map((p) => ({ poolId: p.id, allocated: model.alloc2[p.id]?.[d as MatrixDeptCode] ?? 0 }))
+      .map((p) => ({ poolId: p.id, allocated: poolToFeeDept(model, p.id, d) }))
       .filter((p) => p.allocated > 0.5)
       .sort((a, b) => b.allocated - a.allocated);
     const top = sorted[0];

@@ -9,7 +9,7 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { computeStepDown, type MatrixDeptCode } from "@/lib/data/capStepDown";
+import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { ServiceCost } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 
@@ -118,7 +118,7 @@ export function CostOfServiceTable() {
         const dept = r.dept as DeptCode;
         const f = derived.fbhr[dept];
         const allocRows = capPools
-          .map((p) => ({ poolId: p.id, allocated: stepModel.alloc2[p.id]?.[dept as MatrixDeptCode] ?? 0 }))
+          .map((p) => ({ poolId: p.id, allocated: poolToFeeDept(stepModel, p.id, dept) }))
           .filter((p) => p.allocated > 0.5)
           .sort((a, b) => b.allocated - a.allocated);
         const totalCAPForDept = allocRows.reduce((a, x) => a + x.allocated, 0);

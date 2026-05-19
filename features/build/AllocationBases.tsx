@@ -1,4 +1,4 @@
-﻿
+
 import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -6,8 +6,8 @@ import {
   ALLOCATION_BASES,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
-import { ALL_DEPTS, INDIRECT_DEPTS, type DriverMatrix } from "@/lib/data/capStepDown";
-import type { ReceiverEntry, MissingReceiverEntry } from "@/lib/data/capReceiverRegistry";
+import type { MissingReceiverEntry } from "@/lib/data/capReceiverRegistry";
+import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
@@ -19,91 +19,42 @@ interface OpenCell {
   rowCode: string;
 }
 
-/** A renderable row in the Allocation Bases matrix. Extends BasisRow with
- *  per-row identity attributes used when the rows come from the receiver
- *  registry (per glCode) rather than the seed DRIVERS matrix (per
- *  MatrixDeptCode). */
+/** Renderable row — one per engine node (indirect cost center or direct
+ *  fee-dept receiver). Extends BasisRow with the node's glCode caption. */
 interface EffectiveRow extends BasisRow {
-  /** When present, this row is a per-receiver row keyed on glCode; the
-   *  glCode renders as the small mono caption after the dept name. */
+  /** glCode caption next to the dept name (omitted for synth seed nodes). */
   glCode?: string;
-  /** Classification code displayed as a secondary mono caption. Distinct
-   *  from `code` (which is the row's identity key — glCode in receiver
-   *  mode, MatrixDeptCode in seed mode). */
-  classification?: string;
 }
 
-/** Set of basis keys ALLOCATION_BASES treats as denominator columns. Used
- *  to filter the BasisKey union (which also includes "DIRECT") when
- *  projecting the effective DriverMatrix into BasisRow form. */
 const BASIS_COLUMN_KEYS: ReadonlySet<string> =
   new Set(ALLOCATION_BASES.map((b) => b.key));
 
-const INDIRECT_CODES = new Set<string>([
-  "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE",
-]);
-
-/** SEED PATH — Project the effective DriverMatrix into the BasisRow shape
- *  the table expects. Each ALL_DEPTS entry becomes a row; used when no
- *  receivers have been imported. */
-function buildEffectiveBasisRows(drivers: DriverMatrix): EffectiveRow[] {
-  const indirectSet = new Set<string>(INDIRECT_DEPTS.map((d) => d.code));
-  return ALL_DEPTS.map((d) => {
+/** Build display rows from the engine's nodes + driver matrix. One row per
+ *  node; values pulled from drivers[node.key]. */
+function buildRowsFromNodes(nodes: GlNode[], drivers: GlDriverMatrix): EffectiveRow[] {
+  return nodes.map((n) => {
     const values: Partial<Record<AllocationBasisKey, number>> = {};
-    for (const [k, v] of Object.entries(drivers[d.code] ?? {})) {
+    for (const [k, v] of Object.entries(drivers[n.key] ?? {})) {
       if (!BASIS_COLUMN_KEYS.has(k)) continue;
       if (typeof v === "number" && v !== 0) values[k as AllocationBasisKey] = v;
     }
     return {
-      code: d.code,
-      name: d.name,
-      group: indirectSet.has(d.code) ? "indirect" : "direct",
+      code: n.key,
+      name: n.name,
+      group: n.role,
       values,
+      glCode: n.glCode.startsWith("seed:") ? undefined : n.glCode,
     };
   });
 }
 
-/** RECEIVER PATH — One row per glCode-distinct receiver imported across all
- *  pools. Multiple receivers sharing a deptCode classification (e.g. all
- *  three Planning budget units) render as separate rows. */
-function buildRowsFromReceivers(entries: ReceiverEntry[]): EffectiveRow[] {
-  return entries.map((e) => {
-    const values: Partial<Record<AllocationBasisKey, number>> = {};
-    for (const [k, v] of Object.entries(e.values)) {
-      if (!BASIS_COLUMN_KEYS.has(k)) continue;
-      if (typeof v === "number" && v !== 0) values[k as AllocationBasisKey] = v;
-    }
-    return {
-      // Identity key: the namespaced glCode (or noglcode-fallback handled
-      // upstream by the registry). NOT deptCode — multiple receivers share
-      // one deptCode and would collide.
-      code: e.key,
-      name: e.dept,
-      group: INDIRECT_CODES.has(e.deptCode) ? "indirect" : "direct",
-      values,
-      glCode: e.glCode,
-      classification: e.deptCode,
-    };
-  });
-}
-
-/** Step 3 of the CAP flow. The department × basis denominator matrix — the
- *  table the city's CAP workbook is actually built around.
- *
- *  Two render modes:
- *    - Receiver mode (when imports have published per-receiver data):
- *      one row per glCode-distinct receiver. Multiple receivers sharing a
- *      deptCode classification (e.g. three Planning budget units) appear
- *      as separate rows.
- *    - Seed mode (no receivers imported): one row per MatrixDeptCode from
- *      the seed DRIVERS matrix, matching the legacy LAH layout. */
+/** Step 3 of the CAP flow. The node × basis denominator matrix — one row
+ *  per engine node (cost center or direct fee-dept receiver). */
 export function AllocationBases() {
   const { derived } = useBuildState();
   const rows = useMemo(
-    () => derived.capReceivers.length > 0
-      ? buildRowsFromReceivers(derived.capReceivers)
-      : buildEffectiveBasisRows(derived.capDrivers),
-    [derived.capReceivers, derived.capDrivers],
+    () => buildRowsFromNodes(derived.capStepDown.nodes, derived.capDrivers),
+    [derived.capStepDown.nodes, derived.capDrivers],
   );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
@@ -181,9 +132,6 @@ function ReceiversForReviewBanner({ missing }: { missing: MissingReceiverEntry[]
 
 function formatCell(value: number | undefined, fmtKind: string): string {
   if (value == null || value === 0) return "—";
-  // "k"-fmt drivers (EXPEND / EXPEND_X / VEHICLE) are now stored as raw
-  // dollars throughout — seed and AI-imported alike — so the formatter
-  // doesn't scale. fmt.dollarsK auto-collapses to $K / $M as appropriate.
   if (fmtKind === "k")        return fmt.dollarsK(value);
   if (fmtKind === "decimal")  return value.toFixed(2);
   return fmt.int(value);
@@ -208,7 +156,7 @@ function Matrix({
 
   return (
     <div>
-      <SectionLabel right={`${rows.length} departments · ${ALLOCATION_BASES.length} bases`}>
+      <SectionLabel right={`${rows.length} nodes · ${ALLOCATION_BASES.length} bases`}>
         Allocation Bases
       </SectionLabel>
       <div style={{
@@ -227,21 +175,19 @@ function Matrix({
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <div>#</div>
-            <div>Department</div>
+            <div>Node</div>
             {ALLOCATION_BASES.map((b) => (
               <div key={b.key} title={b.note} style={{ textAlign: "right" }}>{b.label}</div>
             ))}
           </div>
 
-          {/* Indirect section label */}
           <GroupLabel cols={2 + ALLOCATION_BASES.length}>Indirect cost centers</GroupLabel>
           {indirect.map((r, i) => (
             <MatrixRow key={r.code} idx={i + 1} row={r} grid={grid}
               openCell={openCell} setOpenCell={setOpenCell}/>
           ))}
 
-          {/* Direct section label */}
-          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Direct departments</GroupLabel>
+          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Direct receivers</GroupLabel>
           {direct.map((r, i) => (
             <MatrixRow key={r.code} idx={i + 1} row={r} grid={grid}
               openCell={openCell} setOpenCell={setOpenCell}/>
@@ -316,9 +262,6 @@ function MatrixRow({
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
 }) {
-  // Caption: per-receiver rows show the document's glCode identity;
-  // seed rows show nothing (the dept name fully identifies the row in
-  // that mode, and the user explicitly asked deptCode not be displayed).
   const caption = row.glCode ?? "";
   return (
     <div style={{
@@ -383,7 +326,7 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-empty cell to see its basis, formula, share, and how every other department contributes to the same basis.</span>
+      <span>Click any non-empty cell to see its basis, formula, share, and how every other node contributes to the same basis.</span>
     </div>
   );
 }
@@ -414,7 +357,6 @@ function CellTrace({
       to={`${basis.label} basis`}
       onClose={onClose}
     >
-      {/* Section 1 — Summary */}
       <TraceSection>
         <SummaryStrip cols={4}>
           <TraceStat
@@ -423,12 +365,12 @@ function CellTrace({
             sub={<span className="mono" style={{ letterSpacing: "0.1em" }}>{basis.label}</span>}
           />
           <TraceStat
-            label="Department"
+            label="Node"
             value={row.name}
-            sub={row.group === "indirect" ? "Indirect cost center" : "Direct department"}
+            sub={row.group === "indirect" ? "Indirect cost center" : "Direct receiver"}
           />
           <TraceStat
-            label="Department units"
+            label="Node units"
             value={valueWithUnit}
             sub={`of ${totalWithUnit} total`}
           />
@@ -440,7 +382,6 @@ function CellTrace({
         </SummaryStrip>
       </TraceSection>
 
-      {/* Section 2 — Logic / Formula */}
       <TraceSection title="How this share is calculated">
         <BigFormula>
           {formatCell(raw, basis.fmt)} {basis.unit}
@@ -459,16 +400,14 @@ function CellTrace({
         </div>
       </TraceSection>
 
-      {/* Section 3 — Auditor metadata */}
       <CollapsibleMetadata title="Basis metadata">
         <MetadataRow label="Basis code">{basis.label}</MetadataRow>
         <MetadataRow label="Long name">{basis.longName}</MetadataRow>
         <MetadataRow label="Unit">{basis.unitLong} ({basis.unit})</MetadataRow>
         <MetadataRow label="Source">{basis.note}</MetadataRow>
         {row.glCode && <MetadataRow label="glCode">{row.glCode}</MetadataRow>}
-        <MetadataRow label="Department group">{row.group === "indirect" ? "Indirect cost center" : "Direct department"}</MetadataRow>
+        <MetadataRow label="Node group">{row.group === "indirect" ? "Indirect cost center" : "Direct receiver"}</MetadataRow>
       </CollapsibleMetadata>
     </TracePanel>
   );
 }
-
