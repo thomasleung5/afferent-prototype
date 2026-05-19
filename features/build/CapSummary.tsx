@@ -139,7 +139,7 @@ export function CapSummary() {
         pools: capPools.length,
         top: (
           <span style={{ color: "var(--ink-3)" }}>
-            {fmt.dollarsK(eligibleTotal)} eligible of {fmt.dollarsK(poolTotal)} raw
+            {fmt.dollarsK(eligibleTotal)} allocable of {fmt.dollarsK(poolTotal)} raw
           </span>
         ),
       }}

@@ -170,7 +170,7 @@ function buildBases(p: CapExportPayload): Cell[][] {
 
 function buildPools(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Amount"), h("Eligible %"), h("Eligible $")],
+    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Amount"), h("Allocable %"), h("Allocable $")],
   ];
   const glByName = glCodeByCenter(p);
   let totalEligible = 0;

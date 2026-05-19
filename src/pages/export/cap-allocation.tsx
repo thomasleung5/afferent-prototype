@@ -352,8 +352,8 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
       <div className="eyebrow">Section 4</div>
       <h2 className="h2">Cost pools</h2>
       <div className="body" style={{ marginBottom: 12, maxWidth: 600 }}>
-        Functional overhead pools. Eligible $ = Amount × Eligible %. Only the
-        Eligible portion is distributed via the schedule; the excluded portion
+        Functional overhead pools. Allocable $ = Amount × Allocable %. Only the
+        allocable portion is distributed via the schedule; the excluded portion
         is treated as non-allocable.
       </div>
       <table>
@@ -364,8 +364,8 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
             <th>Pool</th>
             <th>Basis</th>
             <th className="num">Amount</th>
-            <th className="num">Elig %</th>
-            <th className="num">Eligible $</th>
+            <th className="num">Alloc %</th>
+            <th className="num">Allocable $</th>
           </tr>
         </thead>
         <tbody>
@@ -387,7 +387,7 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
             );
           })}
           <tr className="total">
-            <td colSpan={6}>Total eligible</td>
+            <td colSpan={6}>Total allocable</td>
             <td className="num">{fmt.dollars(totalEligible)}</td>
           </tr>
         </tbody>
@@ -643,7 +643,7 @@ function PoolBlock({
         fontSize: 11, color: "var(--ink-3)", marginBottom: 8,
         display: "flex", gap: 14,
       }}>
-        <span>Eligible: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(eligibleAmount)}</b></span>
+        <span>Allocable: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(eligibleAmount)}</b></span>
         <span>Basis: <span className="mono">{basis}</span></span>
         <span>First Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalFirst)}</b></span>
         <span>Second Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalSecond)}</b></span>

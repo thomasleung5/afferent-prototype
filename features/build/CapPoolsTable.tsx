@@ -80,8 +80,8 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
             <div>Pool</div>
             <div style={{ textAlign: "right" }}>%</div>
             <div style={{ textAlign: "right" }}>$</div>
-            <div style={{ textAlign: "right" }}>Eligible %</div>
-            <div style={{ textAlign: "right" }}>Eligible $</div>
+            <div style={{ textAlign: "right" }}>Allocable %</div>
+            <div style={{ textAlign: "right" }}>Allocable $</div>
             <div>Basis</div>
           </div>
 
@@ -131,7 +131,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
             <div
               className="num"
               style={{ textAlign: "right", color: "var(--ink-2)" }}
-              title={total > 0 ? `${fmt.dollars(eligibleTotal)} eligible of ${fmt.dollars(total)} raw` : undefined}
+              title={total > 0 ? `${fmt.dollars(eligibleTotal)} allocable of ${fmt.dollars(total)} raw` : undefined}
             >
               {total > 0 ? `${weightedEligiblePct}%` : "—"}
             </div>

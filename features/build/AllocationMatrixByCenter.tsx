@@ -101,7 +101,7 @@ export function AllocationMatrixByCenter() {
             letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <div>Center</div>
-            <div style={{ textAlign: "right" }}>Eligible $</div>
+            <div style={{ textAlign: "right" }}>Allocable $</div>
             <div>Pools</div>
             {cols.map((n) => (
               <div key={n.key} title={n.glCode} style={{
@@ -301,7 +301,7 @@ function CenterCellTrace({
       <TraceSection>
         <SummaryStrip cols={3}>
           <TraceStat
-            label="Center eligible cost"
+            label="Center allocable cost"
             value={fmt.dollars(centerEligible)}
             sub={`${pools.length} pool${pools.length === 1 ? "" : "s"} in ${center}`}
           />
@@ -425,7 +425,7 @@ function CenterCellTrace({
       <CollapsibleMetadata title="Allocation metadata">
         <MetadataRow label="Center">{center}</MetadataRow>
         <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
-        <MetadataRow label="Eligible (center)">{fmt.dollars(centerEligible)}</MetadataRow>
+        <MetadataRow label="Allocable (center)">{fmt.dollars(centerEligible)}</MetadataRow>
         <MetadataRow label="Recipient node">{node.name}</MetadataRow>
         <MetadataRow label="Recipient glCode">{node.glCode.startsWith("seed:") ? "—" : node.glCode}</MetadataRow>
         <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToNode)}</MetadataRow>

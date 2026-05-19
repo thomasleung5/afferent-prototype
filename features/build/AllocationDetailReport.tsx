@@ -470,7 +470,7 @@ function PoolHeader({
         display: "flex", gap: 18, marginTop: 6,
         fontSize: 11.5, color: "var(--ink-3)",
       }}>
-        <span>Eligible: <span className="num" style={{
+        <span>Allocable: <span className="num" style={{
           color: "var(--ink-2)", fontWeight: 500,
         }}>{fmt.dollars(eligibleAmount)}</span></span>
         <span>Basis: <span className="mono" style={{
