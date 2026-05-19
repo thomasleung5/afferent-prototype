@@ -1,12 +1,14 @@
 
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { ExportMenu, NodeEyebrow } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { BenchmarkTable } from "@/features/build/BenchmarkTable";
+import { useBenchmarkExport } from "@/features/build/useBenchmarkExport";
 import { useBuildState } from "@/lib/store";
 
 export default function FeeBenchmarkPage() {
   const { services } = useBuildState();
+  const { downloadExcel, openPdf } = useBenchmarkExport();
 
   const withPeer = services.filter((s) => s.peer > 0);
   const aboveMedian = withPeer.filter((s) => s.fee > s.peer * 1.05).length;
@@ -23,7 +25,14 @@ export default function FeeBenchmarkPage() {
         title="Fee Benchmark Database"
         subtitle="Adopted fees in peer cities."
         actions={
-          <Btn kind="ghost"><Icon name="download" size={13}/> Export</Btn>
+          <ExportMenu
+            onDownloadExcel={downloadExcel}
+            onOpenPdf={openPdf}
+            pdfLabel="Fee benchmark report (PDF)"
+            pdfSub="Council-ready, print-formatted"
+            excelLabel="Excel workbook (.xlsx)"
+            excelSub="Summary · benchmark · notes"
+          />
         }
       />
 
