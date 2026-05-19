@@ -28,8 +28,8 @@ Return ONLY this JSON, no prose:
       "allocationPercent": 38.62, "amount": 424820, "eligiblePercent": 100,
       "basis": "Budgeted FTE",
       "receivers": [
-        { "dept": "Planning Admin", "glCode": "011-3100", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "confidence": "high" },
-        { "dept": "Building Admin", "glCode": "011-3200", "deptCode": "BLDG", "units": 2.81, "percent": 18.08, "amount": 22066, "confidence": "high" }
+        { "dept": "Planning Admin", "glCode": "011-3100", "deptCode": "PLAN", "units": 2.92, "percent": 18.79, "amount": 22930, "firstAllocation": 19500, "secondAllocation": 3430, "total": 22930, "confidence": "high" },
+        { "dept": "Building Admin", "glCode": "011-3200", "deptCode": "BLDG", "units": 2.81, "percent": 18.08, "amount": 22066, "firstAllocation": 18750, "secondAllocation": 3316, "total": 22066, "confidence": "high" }
       ],
       "recoverability": "Fully recoverable", "confidence": "high"
     }
@@ -46,7 +46,7 @@ Extract every named INDIRECT cost center with its total dollar cost — the "100
 - glCode: the center's account / GL code exactly as printed in the document — e.g. "011-1200", "061-4300", "BLDG", "EQUIP". This is the center's UNIQUE IDENTIFIER within the document; two centers never share a glCode. Capture it verbatim, including fund/division segments. Omit this field ONLY when the document prints no code for the unit.
 - totalCost: the source-department's full budgeted cost for the year — a plain number, NO $ sign, NO commas, NO units. (e.g. "$1,100,000" → 1100000.)
 - SKIP pool-level subtotals, grand totals, fund totals, and direct departmental operating budgets (Planning, Building, Engineering, Public Works, Parks, Police, Fire). Those are NOT cost centers — they are receivers, not allocators.
-- SKIP rows whose totalCost is zero, missing, or non-numeric.
+- KEEP rows whose totalCost is zero IF the row appears in the document's Allocation Inventory or ALLOCABLE BUDGET UNITS list — these are internal-service / allocable budget units (e.g. "Fringe Benefits Allocation", "Town Center Operations", "Corp Yard Operations", "Vehicle / Equipment Operations") that have no own dollars but publish a redistribution schedule. SKIP rows whose totalCost is missing or non-numeric.
 - confidence: "high" if name and totalCost are unambiguous, "low" otherwise.
 
 ================================================================
@@ -95,14 +95,15 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
   * deptCode: the receiver's MatrixDeptCode — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" if the receiver is a fund/program with no matching code (CIP funds, grant funds, "All Other"). Set the receiver's confidence to "low" whenever deptCode is "OTHER".
   * units: the raw allocation-factor units for this receiver (the "Allocation Units" column), plain number. Omit if no unit count shown.
   * percent: the receiver's share of the pool, 0-100, plain number, no % sign (the "Allocated Percent" column).
-  * amount: the dollar amount allocated to this receiver. DERIVE as the pool's \`amount\` × the receiver's \`percent\` / 100. Do NOT copy the "Gross Allocation", "First Allocation", or "Total" dollar columns — in a two-step CAP all three include incoming step-down costs and will NOT sum to the pool's originated amount; the percent column is the reliable distribution factor. Round to whole dollars and assign any rounding residual to the largest receiver so receivers sum exactly to the pool \`amount\`.
+  * amount: the dollar amount allocated to this receiver. DERIVE as the pool's \`amount\` × the receiver's \`percent\` / 100. The percent column is the canonical distribution factor; the engine will compute first/second/total itself. Round to whole dollars and assign any rounding residual to the largest receiver so receivers sum exactly to the pool \`amount\`.
+  * grossAllocation, directBilled, firstAllocation, secondAllocation, total: the document's own published per-receiver dollar columns from a full-cost CAP schedule. Capture each ONLY when the document prints it for this receiver. These are for reconciliation/display — the engine derives its own pass results from the percent schedule. Plain numbers, no $ or commas. Omit any field the document does not print.
   * confidence: "high" if dept, percent, and amount are unambiguous; "low" otherwise.
-- SKIP receiver rows whose allocated amount is zero.
+- KEEP receiver rows whose allocated amount is zero IF the receiver appears as an allocable budget unit elsewhere — zero rows still document the redistribution path.
 - Allocation schedules list BOTH "ALLOCABLE BUDGET UNITS" (other indirect cost centers — these receive during the step-down) and "RECEIVING BUDGET UNITS" (direct departments). Include BOTH: in a two-step CAP, indirect centers receive from each other before the second pass pushes costs to direct departments, so omitting the allocable-budget-unit rows drops real receivers and leaves the receiver percents summing below 100.
 - Receivers' amount values must sum (within rounding) to the pool's amount; receivers' percent values must sum to ~100.
 - recoverability: a short policy note quoting the document (e.g. "Fully recoverable", "Partially recoverable", "Excluded — General Fund subsidy"). Omit if not stated.
 - SKIP center subtotals, "Total" / "Grand Total" rows, narrative footnotes, blank rows, and any row whose center or pool field is missing.
-- SKIP pool rows whose amount is zero or missing.
+- KEEP pool rows whose amount is zero IF the row carries an allocation schedule for an internal-service / allocable budget unit (the row exists so the unit's redistribution receivers can be captured). SKIP pool rows whose amount is missing entirely.
 - confidence: "high" if all required fields (center, pool, allocationPercent, amount, basis) are unambiguous, "low" otherwise.
 
 ================================================================
@@ -148,6 +149,13 @@ interface ReceiverRow {
   units?: number;
   percent: number;
   amount: number;
+  /** Published allocation columns from full-cost CAP schedules — captured
+   *  for reconciliation/display, not for engine math. */
+  grossAllocation?: number;
+  directBilled?: number;
+  firstAllocation?: number;
+  secondAllocation?: number;
+  total?: number;
   confidence: "high" | "low";
 }
 

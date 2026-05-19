@@ -149,6 +149,15 @@ export interface PoolReceiver {
   /** Dollar amount allocated to this receiver — derived as
    *  pool.amount × percent / 100 and rounded to whole dollars. */
   amount: number;
+  /** Published allocation-detail columns from full-cost CAP schedules.
+   *  Optional — used for reconciliation/display when the document prints
+   *  them; the engine derives its own first/second/total figures from the
+   *  receiver percent schedule. */
+  grossAllocation?: number;
+  directBilled?: number;
+  firstAllocation?: number;
+  secondAllocation?: number;
+  total?: number;
 }
 
 /** Indirect overhead allocated to direct departments by the CAP. */

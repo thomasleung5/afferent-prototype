@@ -41,6 +41,12 @@ interface ReceiverRow {
   units?: number;
   percent: number;
   amount: number;
+  /** Optional published allocation columns (full-cost CAPs print these). */
+  grossAllocation?: number;
+  directBilled?: number;
+  firstAllocation?: number;
+  secondAllocation?: number;
+  total?: number;
   confidence: "high" | "low";
 }
 
@@ -107,7 +113,13 @@ export function capCentersToExtractionResult(
   rows.forEach((row, i) => {
     const name = row.name?.trim();
     const totalCost = Number(row.totalCost);
-    if (!name || !Number.isFinite(totalCost) || totalCost <= 0) return;
+    if (!name || !Number.isFinite(totalCost)) return;
+    if (totalCost < 0) return;
+    // Keep zero-totalCost centers — allocable internal-service units
+    // (Fringe Benefits Allocation, Town Center Operations, Corp Yard
+    // Operations, Vehicle / Equipment Operations) appear in the
+    // Allocation Inventory with no own $ but redistribute incoming
+    // costs via their own schedule in the second allocation pass.
 
     const glCode = row.glCode?.trim() || undefined;
     const lineage: SourceLineage = {
@@ -261,7 +273,11 @@ export function capPoolsToExtractionResult(
     const amount = Number(row.amount);
     if (!center || !pool) return;
     if (!Number.isFinite(allocationPercent) || !Number.isFinite(amount)) return;
-    if (amount <= 0) return; // skip zero-dollar rows the SYSTEM prompt was told to drop
+    // Keep zero-amount rows — internal service units / allocable budget
+    // units (Fringe Benefits Allocation, Town Center Ops, etc.) publish
+    // an allocation schedule with no own $ but redistribute incoming costs
+    // via their receivers. Dropping them breaks the second allocation pass.
+    if (amount < 0) return;
 
     const basisName = row.basis?.trim() ?? "";
     const basisMatch = normBasisName(basisName, bases);
@@ -360,9 +376,10 @@ function normReceiverDeptCode(v: string | undefined): MatrixDeptCode | "OTHER" |
 }
 
 /** Convert wire-format receivers to PoolReceiver entities. Drops receivers
- *  whose dept name or deptCode can't be resolved, or whose amount is zero
- *  (the SYSTEM prompt was told to skip these but we re-enforce client-side
- *  so a noisy response can't corrupt downstream sums). */
+ *  whose dept name or deptCode can't be resolved, or whose amount is
+ *  negative. Zero-amount receivers ARE kept — allocable internal-service
+ *  units publish receiver rows without their own $ and would otherwise
+ *  vanish from the second allocation pass. */
 function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
   if (!Array.isArray(rows)) return [];
   const out: PoolReceiver[] = [];
@@ -372,7 +389,7 @@ function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
     const code = normReceiverDeptCode(r.deptCode);
     if (!code) continue;
     const amount = Number(r.amount);
-    if (!Number.isFinite(amount) || amount <= 0) continue;
+    if (!Number.isFinite(amount) || amount < 0) continue;
     const percentRaw = Number(r.percent);
     const percent = Number.isFinite(percentRaw)
       ? Math.max(0, Math.min(100, percentRaw))
@@ -380,6 +397,15 @@ function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
     const unitsRaw = Number(r.units);
     const units = Number.isFinite(unitsRaw) ? unitsRaw : undefined;
     const glCode = r.glCode?.trim() || undefined;
+    const optNum = (v: unknown): number | undefined => {
+      const n = Number(v);
+      return Number.isFinite(n) ? n : undefined;
+    };
+    const grossAllocation  = optNum(r.grossAllocation);
+    const directBilled     = optNum(r.directBilled);
+    const firstAllocation  = optNum(r.firstAllocation);
+    const secondAllocation = optNum(r.secondAllocation);
+    const total            = optNum(r.total);
     out.push({
       dept,
       ...(glCode ? { glCode } : {}),
@@ -387,6 +413,11 @@ function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
       percent,
       amount,
       ...(units != null ? { units } : {}),
+      ...(grossAllocation  != null ? { grossAllocation }  : {}),
+      ...(directBilled     != null ? { directBilled }     : {}),
+      ...(firstAllocation  != null ? { firstAllocation }  : {}),
+      ...(secondAllocation != null ? { secondAllocation } : {}),
+      ...(total            != null ? { total }            : {}),
     });
   }
   return out;

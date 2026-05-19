@@ -17,7 +17,6 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
-import type { CapStepDownMethod } from "@/lib/data/capStepDown";
 import {
   buildReceiverRegistry,
   type ReceiverEntry, type MissingReceiverEntry,
@@ -75,7 +74,6 @@ interface BuildState {
   lineage: Record<string, SourceLineage>;
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
-  capStepDownMethod: CapStepDownMethod;
   imports: BuildImportLog[];
 }
 
@@ -131,7 +129,6 @@ interface BuildActions {
     unmappedBases: UnmappedRow[];
   };
   moveCenter: (name: string, direction: "up" | "down") => void;
-  setCapStepDownMethod: (method: CapStepDownMethod) => void;
   resetAll: () => void;
   clearAll: () => void;
   seedUpstream: () => void;
@@ -175,7 +172,6 @@ const initialState = (): BuildState => {
     lineage: {},
     pendingReview: { ...emptyPending },
     capCenterOrder: defaultCenterOrder(pools),
-    capStepDownMethod: "step-down",
     imports: [],
   };
 };
@@ -682,9 +678,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return { capCenterOrder: next };
         }),
 
-      setCapStepDownMethod: (method) =>
-        set({ capStepDownMethod: method }),
-
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -709,7 +702,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capCenterOrder: defaultCenterOrder(pools),
-          capStepDownMethod: "step-down",
         });
       },
 
@@ -736,7 +728,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           lineage: {},
           pendingReview: { ...emptyPending },
           capCenterOrder: [],
-          capStepDownMethod: "step-down",
           imports: [],
         });
       },
@@ -748,7 +739,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
         }
-        if (!state.capStepDownMethod) state.capStepDownMethod = "step-down";
         // Backfill for state persisted before glCode / studyContext existed.
         if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
@@ -880,7 +870,6 @@ export function useBuildState() {
       centerOrder: state.capCenterOrder,
       bases: state.allocationBases,
       graph,
-      method: state.capStepDownMethod,
     });
 
     const capAllocated = capAllocatedFromGl(stepDown);
@@ -905,7 +894,6 @@ export function useBuildState() {
     state.positions, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.allocationBases, state.capCenterGlCodes, state.studyContext,
-    state.capStepDownMethod,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 

@@ -18,8 +18,6 @@ import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 // AllocationBasis (also in types.ts) can reference them without a cycle.
 export type { BasisKey, MatrixDeptCode };
 
-export type CapStepDownMethod = "step-down" | "double-step-down";
-
 // ---------------------------------------------------------------------------
 // Departments (matrix-only)
 // ---------------------------------------------------------------------------

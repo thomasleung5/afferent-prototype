@@ -12,11 +12,10 @@
  * Behind useGlCodeEngine flag until matrix tabs + traces switch over. */
 
 import type {
-  AllocationBasis, BasisKey, CapPool, DeptCode, MatrixDeptCode,
+  AllocationBasis, BasisKey, CapPool, DeptCode, MatrixDeptCode, PoolReceiver,
 } from "../types";
 import {
   basisForPool, CENTER_NAME_TO_CODE, DRIVERS, INDIRECT_DEPTS,
-  type CapStepDownMethod,
 } from "./capStepDown";
 import type { ReceiverEntry } from "./capReceiverRegistry";
 
@@ -80,7 +79,6 @@ export interface GlStepDownModel {
     residual: number;
     leakage: number;
   }>;
-  method: CapStepDownMethod;
   nodes: GlNode[];
 }
 
@@ -240,17 +238,28 @@ function resolveReceiverNode(
 // Step-down compute
 // ---------------------------------------------------------------------------
 
-/** Step-down over the glCode graph. Same conservation as the legacy engine:
- *  Σ pool.eligibleAmount ≈ Σ alloc2[pool][directNode] (FP rounding aside). */
+/** Single-pass sequential step-down over the glCode graph.
+ *
+ *  Each indirect node closes once, in `centerOrder`. When I closes:
+ *    - Its total $ (own pools' eligible + everything accumulated from
+ *      already-closed centers) is distributed via I's own pool schedule.
+ *    - Incoming $ is split proportionally to I's pools' eligible weights
+ *      (even-split when all are zero — the internal-service / allocable-
+ *      budget-unit case), then each pool slice routes via that pool's
+ *      receivers (percents) — or by driver units when receivers are absent.
+ *    - Receivers are filtered to downstream-or-direct. Closed centers
+ *      cannot receive; flow is one-directional through centerOrder.
+ *
+ *  Conservation: Σ pool eligible ≈ Σ alloc2[pool][directNode] (FP rounding
+ *  aside; leakage when a pool's basis denominator is zero across allowed
+ *  targets). */
 export function computeStepDownGl(args: {
   pools: CapPool[];
   centerOrder: string[];
   bases: AllocationBasis[];
   graph: GlEngineGraph;
-  method?: CapStepDownMethod;
 }): GlStepDownModel {
   const { pools, centerOrder, bases, graph } = args;
-  const method = args.method ?? "step-down";
   const { nodes, drivers, resolveCenterNode, resolveDirectNode } = graph;
 
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
@@ -296,54 +305,136 @@ export function computeStepDownGl(args: {
 
   const contributions: GlStepContribution[] = [];
 
-  const pushSitting = (
-    p: CapPool, fromKey: NodeKey, receivers: GlNode[], stepIndex: number,
-  ) => {
-    const sitting = running[p.id][fromKey] ?? 0;
-    if (sitting <= 0) return;
-    const { basis } = basisForPool(p, bases);
-    if (basis === "DIRECT") return;
-    const fromNode = nodeByKey.get(fromKey);
-    const fromName = fromNode?.name ?? fromKey;
+  // Pre-bucket each center's own pools so the closure loop can find them
+  // in O(1) per center instead of re-scanning `pools` every iteration.
+  const ownPoolsByCenter = new Map<NodeKey, CapPool[]>();
+  for (const p of pools) {
+    const homeKey = resolveCenterNode(p.center);
+    if (!homeKey) continue;
+    const list = ownPoolsByCenter.get(homeKey) ?? [];
+    list.push(p);
+    ownPoolsByCenter.set(homeKey, list);
+  }
 
-    const totalDriver = receivers.reduce(
-      (a, r) => a + (drivers[r.key]?.[basis] ?? 0), 0,
+  // ------------------------------------------------------------------------
+  // distributeViaReceivers — published-percent routing. Filters to receivers
+  // whose glCode is allowed (downstream-or-direct) and renormalizes the
+  // surviving percents so partial closure doesn't leak $. Returns true when
+  // at least one allowed receiver got a positive share, so callers can fall
+  // back to driver-unit distribution when no percent path exists.
+  const distributeViaReceivers = (
+    sourcePoolId: string, fromKey: NodeKey, fromName: string, amount: number,
+    receivers: PoolReceiver[], allowedKeys: Set<NodeKey>, stepIndex: number,
+  ): boolean => {
+    if (amount <= 0) return false;
+    const valid = receivers.filter(
+      (r) => r.glCode && allowedKeys.has(r.glCode) && (r.percent ?? 0) > 0,
     );
-    if (totalDriver <= 0) return;
-
-    for (const r of receivers) {
-      const drv = drivers[r.key]?.[basis] ?? 0;
-      if (drv <= 0) continue;
-      const share = sitting * (drv / totalDriver);
-      running[p.id][r.key] = (running[p.id][r.key] ?? 0) + share;
+    const totalPct = valid.reduce((a, r) => a + (r.percent ?? 0), 0);
+    if (totalPct <= 0) return false;
+    for (const r of valid) {
+      const targetKey = r.glCode!;
+      const share = amount * ((r.percent ?? 0) / totalPct);
+      running[sourcePoolId][targetKey] = (running[sourcePoolId][targetKey] ?? 0) + share;
       contributions.push({
-        poolId: p.id, fromKey, fromName, stepIndex, amount: share, toKey: r.key,
+        poolId: sourcePoolId, fromKey, fromName, stepIndex, amount: share, toKey: targetKey,
       });
     }
-    running[p.id][fromKey] = 0;
+    return true;
   };
 
-  if (method === "double-step-down") {
-    // First allocation: each pool's eligible amount goes from its home to
-    // all other indirect nodes plus all direct nodes.
-    for (const p of pools) {
-      const homeKey = resolveCenterNode(p.center);
-      if (!homeKey) continue;
-      const others = indirectNodes.filter((n) => n.key !== homeKey);
-      pushSitting(p, homeKey, [...others, ...directNodes], 1);
+  // ------------------------------------------------------------------------
+  // distributeViaDrivers — driver-unit fallback for pools without imported
+  // receivers (seed pools, or pools whose receivers are all already-closed
+  // upstream centers). Splits the amount across allowed nodes by the pool's
+  // basis driver units.
+  const distributeViaDrivers = (
+    sourcePoolId: string, fromKey: NodeKey, fromName: string, amount: number,
+    pool: CapPool, allowedNodes: GlNode[], stepIndex: number,
+  ): boolean => {
+    if (amount <= 0) return false;
+    const { basis } = basisForPool(pool, bases);
+    if (basis === "DIRECT") return false;
+    const totalDriver = allowedNodes.reduce(
+      (a, n) => a + (drivers[n.key]?.[basis] ?? 0), 0,
+    );
+    if (totalDriver <= 0) return false;
+    for (const n of allowedNodes) {
+      const drv = drivers[n.key]?.[basis] ?? 0;
+      if (drv <= 0) continue;
+      const share = amount * (drv / totalDriver);
+      running[sourcePoolId][n.key] = (running[sourcePoolId][n.key] ?? 0) + share;
+      contributions.push({
+        poolId: sourcePoolId, fromKey, fromName, stepIndex, amount: share, toKey: n.key,
+      });
     }
-    // Second allocation: each indirect node closes to direct nodes only.
-    stepOrder.forEach((I, i) => {
-      for (const p of pools) pushSitting(p, I, directNodes, i + 2);
-    });
-  } else {
-    stepOrder.forEach((I, i) => {
-      const remainingIndirects = stepOrder.slice(i + 1)
-        .map((k) => nodeByKey.get(k))
-        .filter((n): n is GlNode => !!n);
-      const receivers = [...remainingIndirects, ...directNodes];
-      for (const p of pools) pushSitting(p, I, receivers, i + 1);
-    });
+    return true;
+  };
+
+  // ------------------------------------------------------------------------
+  // SEQUENTIAL CLOSURE — process each indirect center once in centerOrder.
+  // When I closes, its accumulated $ (own pools' eligible + everything
+  // received from already-closed centers) flows downstream via I's own
+  // pools' published schedules. Once closed, I cannot receive more $.
+  for (let i = 0; i < stepOrder.length; i++) {
+    const I = stepOrder[i];
+    const nodeI = nodeByKey.get(I);
+    if (!nodeI) continue;
+    const stepIndex = i + 1;
+
+    // Allowed targets for I's closure: every indirect node still ahead of
+    // I in the step order + all direct nodes. I and its predecessors are
+    // closed and cannot receive.
+    const downstreamIndirects = stepOrder.slice(i + 1)
+      .map((k) => nodeByKey.get(k))
+      .filter((n): n is GlNode => !!n);
+    const allowedNodes = [...downstreamIndirects, ...directNodes];
+    const allowedKeys = new Set<NodeKey>(allowedNodes.map((n) => n.key));
+
+    const ownPools = ownPoolsByCenter.get(I) ?? [];
+    const totalOwnEligible = ownPools.reduce(
+      (a, p) => a + p.amount * (p.eligiblePercent / 100), 0,
+    );
+
+    // For each source pool with $ sitting on I, distribute via I's own
+    // pool schedule. Per-source-pool tracking preserves lineage so the
+    // trace panel can attribute every direct-side $ back to its origin
+    // pool, even after multi-hop routing.
+    for (const sp of pools) {
+      const sitting = running[sp.id][I] ?? 0;
+      if (sitting <= 0) continue;
+
+      if (ownPools.length === 0) {
+        // No own pool — fall back to the source pool's basis driver units
+        // across allowed downstream targets. Source pool's basis is the
+        // only signal available when the closing center has no schedule.
+        distributeViaDrivers(sp.id, I, nodeI.name, sitting, sp, allowedNodes, stepIndex);
+      } else {
+        // Split sitting across I's own pools by eligible weight (even-split
+        // when all are zero — internal-service / allocable-budget-unit
+        // pattern: the center owns redistribution pools with no own $).
+        for (const op of ownPools) {
+          const opEligible = op.amount * (op.eligiblePercent / 100);
+          const weight = totalOwnEligible > 0
+            ? opEligible / totalOwnEligible
+            : 1 / ownPools.length;
+          const portion = sitting * weight;
+          if (portion <= 0) continue;
+
+          // Prefer the own-pool's published receivers; fall back to that
+          // own-pool's basis driver units when no allowed receiver exists.
+          const usedReceivers = distributeViaReceivers(
+            sp.id, I, nodeI.name, portion, op.receivers ?? [],
+            allowedKeys, stepIndex,
+          );
+          if (!usedReceivers) {
+            distributeViaDrivers(sp.id, I, nodeI.name, portion, op, allowedNodes, stepIndex);
+          }
+        }
+      }
+
+      running[sp.id][I] = 0;
+    }
   }
 
   const alloc2 = running;
@@ -374,7 +465,7 @@ export function computeStepDownGl(args: {
   }
 
   return {
-    alloc1, alloc2, stepOrder, contributions, directTotals, byPool, method, nodes,
+    alloc1, alloc2, stepOrder, contributions, directTotals, byPool, nodes,
   };
 }
 
