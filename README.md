@@ -1,6 +1,6 @@
 # Afferent
 
-Cost-of-service / revenue intelligence app for the Town of Los Altos Hills.
+Cost-of-service / revenue intelligence app.
 
 ## Stack
 
