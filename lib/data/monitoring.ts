@@ -291,5 +291,5 @@ function formatLastImport(imports: BuildImportLog[]): string {
   const latest = imports.reduce((a, b) => (b.id > a.id ? b : a));
   const d = new Date(latest.at);
   if (Number.isNaN(d.getTime())) return "Seed data";
-  return d.toLocaleString(undefined, { month: "short", day: "numeric" });
+  return d.toLocaleString(undefined, { month: "short", day: "numeric", year: "numeric" });
 }
