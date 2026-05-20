@@ -180,9 +180,7 @@ export function FeeScheduleTable() {
       render: (r) => {
         const peer = peerById.get(r.id) ?? 0;
         return (
-          <span className="num" style={{ color: "var(--ink-3)" }}>
-            {peer > 0 ? fmt.dollars(peer) : "—"}
-          </span>
+          <span className="num">{peer > 0 ? fmt.dollars(peer) : "—"}</span>
         );
       },
     },
