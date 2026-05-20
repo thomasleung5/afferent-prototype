@@ -495,7 +495,7 @@ function ColumnHeaders() {
     }}>
       <div>Budget Unit</div>
       <div style={{ textAlign: "right" }}>Units</div>
-      <div style={{ textAlign: "right" }}>Pct</div>
+      <div style={{ textAlign: "right" }}>%</div>
       <div style={{ textAlign: "right" }}>Gross</div>
       <div style={{ textAlign: "right" }}>Direct Billed</div>
       <div style={{ textAlign: "right" }}>First</div>
