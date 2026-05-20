@@ -3,7 +3,10 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
-import { CAP_CENTER_TOTALS, CAP_POOLS } from "@/lib/data/cap";
+import {
+  CAP_BASIS_UNITS, CAP_CENTER_GLCODES, CAP_CENTER_TOTALS, CAP_DIRECT_ALLOCATIONS,
+  CAP_POOLS,
+} from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
@@ -173,14 +176,18 @@ const initialState = (): BuildState => {
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},
-    capCenterGlCodes: {},
+    capCenterGlCodes: { ...CAP_CENTER_GLCODES },
     capCenterSources: Object.fromEntries(
       Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
     ),
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
-    capBasisUnits: [],
-    capDirectAllocations: [],
+    capBasisUnits: CAP_BASIS_UNITS.map((bu) => ({
+      ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
+    })),
+    capDirectAllocations: CAP_DIRECT_ALLOCATIONS.map((da) => ({
+      ...da, receivers: da.receivers.map((r) => ({ ...r })),
+    })),
     workload: WORKLOAD.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
@@ -799,18 +806,40 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
         }
-        // Backfill for state persisted before glCode / studyContext existed.
+        // Backfill for state persisted before glCode / studyContext
+        // existed, or before the seed glCode map was added. Merge the
+        // canonical seed codes in so any centers that already had user-
+        // assigned codes are preserved.
         if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
+        for (const [name, glCode] of Object.entries(CAP_CENTER_GLCODES)) {
+          if (!state.capCenterGlCodes[name]) state.capCenterGlCodes[name] = glCode;
+        }
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
         // Backfill for state persisted before capCenterDisallowed existed.
         // Default each center to $0 disallowed so existing math is unchanged.
         if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
 
         // Backfill the new basis-units + direct-allocations slices for
-        // state persisted before the import-shape refactor. The engine
-        // falls back to seeded DRIVERS values when basisUnits is empty.
+        // state persisted before the import-shape refactor, or before
+        // these slices were seeded. Merge the canonical seed entries in
+        // (keyed by basisId / poolId) so user-supplied schedules
+        // overlay the seed rather than colliding with it.
         if (!state.capBasisUnits) state.capBasisUnits = [];
+        const seenBasisIds = new Set(state.capBasisUnits.map((bu) => bu.basisId));
+        for (const bu of CAP_BASIS_UNITS) {
+          if (seenBasisIds.has(bu.basisId)) continue;
+          state.capBasisUnits.push({
+            ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
+          });
+        }
         if (!state.capDirectAllocations) state.capDirectAllocations = [];
+        const seenPoolIds = new Set(state.capDirectAllocations.map((d) => d.poolId));
+        for (const da of CAP_DIRECT_ALLOCATIONS) {
+          if (seenPoolIds.has(da.poolId)) continue;
+          state.capDirectAllocations.push({
+            ...da, receivers: da.receivers.map((r) => ({ ...r })),
+          });
+        }
 
         // Backfill seed imports if the persisted store has an empty log.
         // The Annual Update tab needs at least one import to render the

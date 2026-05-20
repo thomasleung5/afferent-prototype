@@ -1,4 +1,8 @@
-import type { CapPool } from "../types";
+import type {
+  BasisUnitRow, CapPool, DirectAllocationRow, MatrixDeptCode,
+} from "../types";
+import { ALLOCATION_BASIS_ROWS, type AllocationBasisKey } from "./allocationBases";
+import { SEED_ALLOCATION_BASES } from "./allocationBasesCatalog";
 
 /* Source: data-extended.jsx CAP_POOLS (Town of Los Altos Hills CAP,
  * Sept 4 2025). The step-down engine reads these via the live store. */
@@ -44,3 +48,93 @@ export const CAP_CENTER_TOTALS: Record<string, number> = (() => {
   }
   return map;
 })();
+
+/** Indirect-center GL codes (fund-division). Used as each center's
+ *  routing identity in the step-down engine — without these, centers
+ *  resolve to synth `seed:center:*` keys and can't reconcile against
+ *  imported per-center allocations. Pattern: General Fund (011)
+ *  · administrative-services range (11xx) for governance + finance
+ *  · internal-service range (19xx) for facilities-style centers. */
+export const CAP_CENTER_GLCODES: Record<string, string> = {
+  "City Council":                       "011-1100",
+  "City Manager":                       "011-1200",
+  "City Clerk":                         "011-1300",
+  "Finance & Administrative Services":  "011-1400",
+  "City Attorney":                      "011-1500",
+  "Insurance":                          "011-1600",
+  "Committees":                         "011-1700",
+  "Building Use":                       "011-1800",
+  "Equipment Use":                      "011-1900",
+};
+
+/** Receiver-side GL codes for every MatrixDeptCode the step-down engine
+ *  can route to. Indirect codes mirror CAP_CENTER_GLCODES so a center's
+ *  identity is consistent whether it appears as a pool source or a
+ *  pool receiver. Direct codes live in the General Fund operating range
+ *  (3xxx), numbered in step-down-receiving order. */
+export const CAP_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
+  // Indirect — mirror CAP_CENTER_GLCODES
+  BLDG_USE: "011-1800",
+  EQUIP:    "011-1900",
+  COUNCIL:  "011-1100",
+  CMGR:     "011-1200",
+  CLERK:    "011-1300",
+  FAS:      "011-1400",
+  ATTY:     "011-1500",
+  INS:      "011-1600",
+  CMTE:     "011-1700",
+  // Direct (operating divisions)
+  PLAN:  "011-3100",
+  BLDG:  "011-3200",
+  ENG:   "011-3300",
+  PW:    "011-3400",
+  PARKS: "011-3500",
+  PD:    "011-3600",
+  FIRE:  "011-3700",
+};
+
+/** Seed per-basis allocation schedules. One BasisUnitRow per non-DIRECT
+ *  seed basis that a CAP_POOLS entry references; receivers + units are
+ *  pulled from ALLOCATION_BASIS_ROWS so the seed step-down has a
+ *  ready-to-run schedule with GL codes attached — no AI import needed
+ *  to see end-to-end routing. */
+export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
+  const usedBasisIds = new Set(CAP_POOLS.map((p) => p.basisId));
+  const rows: BasisUnitRow[] = [];
+  for (const basis of SEED_ALLOCATION_BASES) {
+    if (!usedBasisIds.has(basis.id)) continue;
+    if (basis.driverKey === "DIRECT") continue;
+    const driverKey: AllocationBasisKey = basis.driverKey;
+    const receivers = ALLOCATION_BASIS_ROWS.flatMap((row) => {
+      const v = row.values[driverKey];
+      if (v == null || v <= 0) return [];
+      const code = row.code as MatrixDeptCode;
+      const glCode = CAP_DEPT_GLCODES[code];
+      if (!glCode) return [];
+      return [{ glCode, dept: row.name, deptCode: code, units: v }];
+    });
+    if (receivers.length === 0) continue;
+    rows.push({
+      basisId: basis.id, basis: basis.name, source: basis.source, receivers,
+    });
+  }
+  return rows;
+})();
+
+/** Seed DIRECT-pool routing — one DirectAllocationRow per CAP_POOLS
+ *  entry whose basis has driverKey "DIRECT". The Building Use → Parks
+ *  pool is currently the only seeded direct allocation. */
+export const CAP_DIRECT_ALLOCATIONS: DirectAllocationRow[] = [
+  {
+    poolId: "cap-bldguse-pr",
+    pool: "Parks and Recreation",
+    receivers: [
+      {
+        glCode: CAP_DEPT_GLCODES.PARKS,
+        dept: "Parks & Recreation",
+        deptCode: "PARKS",
+        percent: 100,
+      },
+    ],
+  },
+];
