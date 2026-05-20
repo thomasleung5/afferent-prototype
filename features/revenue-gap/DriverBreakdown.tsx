@@ -16,9 +16,9 @@ interface Row {
 export function DriverBreakdown({ direct, operating, cap }: Props) {
   const total = direct + operating + cap || 1;
   const rows: Row[] = [
-    { label: "Direct labor",            value: direct,    color: "var(--ink)" },
-    { label: "Recurring non-labor",     value: operating, color: "var(--ink-2)" },
-    { label: "Allocated overhead (CAP)", value: cap,       color: "var(--ink-3)" },
+    { label: "Direct labor",              value: direct,    color: "var(--ink)" },
+    { label: "Operating",                 value: operating, color: "var(--ink-2)" },
+    { label: "Overhead cost allocation",  value: cap,       color: "var(--ink-3)" },
   ];
 
   return (
