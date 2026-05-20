@@ -151,7 +151,7 @@ export function BenchmarkTable() {
     {
       key: "status",
       label: "Status",
-      width: "92px",
+      width: "90px",
       sortable: true,
       sortKey: (r) => STATUS_RANK[r.status],
       render: (r) => <StatusChip status={r.status}/>,
@@ -165,21 +165,19 @@ export function BenchmarkTable() {
       sortKey: (r) => r.peerMax - r.peerMin,
       render: (r) => (
         r.peerCount > 0
-          ? <span className="num" style={{ color: "var(--ink-3)" }}>
-              {fmt.dollars(r.peerMin)} – {fmt.dollars(r.peerMax)}
-            </span>
+          ? <span className="num">{fmt.dollars(r.peerMin)} – {fmt.dollars(r.peerMax)}</span>
           : <span style={{ color: "var(--ink-4)" }}>—</span>
       ),
     },
     {
       key: "peerCount",
-      label: "Peer count",
+      label: "Peers",
       width: "80px",
       align: "right",
       sortable: true,
       render: (r) => (
         r.peerCount > 0
-          ? <span className="num" style={{ color: "var(--ink-3)" }}>{r.peerCount}</span>
+          ? <span className="num">{r.peerCount}</span>
           : <span style={{ color: "var(--ink-4)" }}>—</span>
       ),
     },
@@ -294,9 +292,9 @@ const STATUS_RANK: Record<Row["status"], number> = {
 };
 
 const STATUS_LABEL: Record<Row["status"], string> = {
-  below: "Below median",
+  below: "Below",
   "in-line": "In line",
-  above: "Above median",
+  above: "Above",
   "no-peer": "—",
 };
 
