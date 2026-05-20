@@ -8,7 +8,7 @@ const NODE_LABEL: Record<NodeId, string> = {
   services:  "Services",
   salary:    "Direct Labor",
   operating: "Operating",
-  cap:       "Cost Allocation",
+  cap:       "Overhead cost allocation",
   workload:  "Workload",
   costs:     "Cost of Service",
   policy:    "Recovery Policy",

@@ -32,7 +32,7 @@ const INPUTS: Node[] = [
   { href: "/build/services",  label: "Services",        desc: "hours × role mix",                       metric: "37 services",          state: "Locked" },
   { href: "/build/salary",    label: "Direct Labor",    desc: "(salary + benefits) ÷ productive hours", metric: "73 positions",         state: "Locked" },
   { href: "/build/operating", label: "Operating",       desc: "non-labor · per dept",                   metric: "214 expense lines",    state: "Locked" },
-  { href: "/build/cap",       label: "Cost Allocation", desc: "indirect → direct",                      metric: "14 indirect pools",    state: "Locked" },
+  { href: "/build/cap",       label: "Overhead cost allocation", desc: "indirect → direct",             metric: "14 indirect pools",    state: "Locked" },
   { href: "/build/workload",  label: "Workload",        desc: "annual volume",                          metric: "1,246 activity records", state: "Locked" },
 ];
 
