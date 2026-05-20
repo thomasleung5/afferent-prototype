@@ -14,10 +14,6 @@
 import type { AllocationBasis, BasisKey, CapPool, MatrixDeptCode } from "../types";
 import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 
-// Re-export for backwards compat — these types now live in lib/types.ts so
-// AllocationBasis (also in types.ts) can reference them without a cycle.
-export type { BasisKey, MatrixDeptCode };
-
 // ---------------------------------------------------------------------------
 // Departments (matrix-only)
 // ---------------------------------------------------------------------------
