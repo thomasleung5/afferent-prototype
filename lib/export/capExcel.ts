@@ -302,14 +302,19 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
     for (const pl of centerPools) {
       rows.push(["", h(`Pool · ${pl.pool}`), "", "", "", "", "", "", "", ""]);
 
+      // Derive per-receiver percent from the engine's Phase 1 distribution
+      // — first / Σ first across receivers. Reproduces the schedule that
+      // actually got applied without re-reading the source basisUnits.
+      const firstByNode = p.model.firstAllocation[pl.id] ?? {};
+      const firstTotal = Object.values(firstByNode).reduce((a, v) => a + v, 0);
+
       const emit = (node: GlNode, section: string) => {
-        const receiver = (pl.receivers ?? []).find((r) => r.glCode === node.key);
-        const pct = receiver?.percent ?? 0;
-        const first = p.model.firstAllocation[pl.id]?.[node.key] ?? 0;
+        const first = firstByNode[node.key] ?? 0;
         const second = p.model.secondAllocation[pl.id]?.[node.key] ?? 0;
         const gross = first;
         const total = first + second;
-        if (pct <= 0 && first < 0.5 && second < 0.5) return;
+        if (first < 0.5 && second < 0.5) return;
+        const pct = firstTotal > 0 ? (first / firstTotal) * 100 : 0;
         rows.push([
           "", "",
           node.glCode.startsWith("seed:") ? "" : node.glCode,
@@ -326,15 +331,15 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
       for (const node of directNodes)   emit(node, "Receiving");
 
       const allKeys = [...indirectNodes, ...directNodes].map((nn) => nn.key);
-      const firstTotal  = allKeys.reduce((a, k) => a + (p.model.firstAllocation[pl.id]?.[k] ?? 0), 0);
+      const poolFirstTotal  = allKeys.reduce((a, k) => a + (p.model.firstAllocation[pl.id]?.[k] ?? 0), 0);
       const secondTotal = allKeys.reduce((a, k) => a + (p.model.secondAllocation[pl.id]?.[k] ?? 0), 0);
       rows.push([
         "", "", "", h("Pool total"), "",
         n(1, "0.000%"),
-        n(firstTotal, "$#,##0"),
-        n(firstTotal, "$#,##0"),
+        n(poolFirstTotal, "$#,##0"),
+        n(poolFirstTotal, "$#,##0"),
         n(secondTotal, "$#,##0"),
-        n(firstTotal + secondTotal, "$#,##0"),
+        n(poolFirstTotal + secondTotal, "$#,##0"),
       ]);
       rows.push([]);
     }

@@ -1,5 +1,6 @@
 import type {
-  AllocationBasis, BasisKey, CapPool, MatrixDeptCode, PoolReceiver,
+  AllocationBasis, BasisKey, BasisUnitReceiver, BasisUnitRow, CapPool,
+  DirectAllocationReceiver, DirectAllocationRow, MatrixDeptCode,
 } from "@/lib/types";
 import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
@@ -27,27 +28,39 @@ interface BasisRow {
   confidence: "high" | "low";
 }
 
-/** Wire shape for one receiver row inside PoolRow.receivers. Mirrors the
- *  server's ReceiverRow in server/aiParseCap.ts. */
-interface ReceiverRow {
+/** Wire shape for one receiver row inside a BasisUnitsRow.receivers. */
+interface BasisUnitsReceiverRow {
   dept: string;
-  /** Document's own account code. Unique within a single document; use as
-   *  the receiver/center identity key. Stable within one city + fiscal
-   *  year — NOT a cross-city join key. */
-  glCode?: string;
-  /** MatrixDeptCode or "OTHER"; coerced via normReceiverDeptCode.
-   *  Classification, NOT identity — use glCode for per-row identity. */
-  deptCode: string;
-  units?: number;
+  glCode: string;
+  /** Optional MatrixDeptCode classification. Defaults to "OTHER" when
+   *  missing or unmappable — glCode is the identity anyway. */
+  deptCode?: string;
+  units: number;
+  confidence?: "high" | "low";
+}
+
+interface BasisUnitsRow {
+  basis: string;
+  source?: string;
+  receivers: BasisUnitsReceiverRow[];
+}
+
+/** Wire shape for one receiver row inside a DirectAllocationsRow. */
+interface DirectReceiverRow {
+  dept: string;
+  glCode: string;
+  deptCode?: string;
   percent: number;
-  amount: number;
-  /** Optional published allocation columns (full-cost CAPs print these). */
-  grossAllocation?: number;
-  directBilled?: number;
-  firstAllocation?: number;
-  secondAllocation?: number;
-  total?: number;
-  confidence: "high" | "low";
+  confidence?: "high" | "low";
+}
+
+interface DirectAllocationsRow {
+  /** Pool name to match against — DIRECT pools are looked up by name
+   *  (within their center). */
+  pool: string;
+  /** Optional center disambiguator when two pools share a name. */
+  center?: string;
+  receivers: DirectReceiverRow[];
 }
 
 interface PoolRow {
@@ -55,8 +68,13 @@ interface PoolRow {
   pool: string;
   allocationPercent: number;
   amount: number;
+  /** Personnel-cost portion (salaries + benefits). Optional. */
+  personnelCost?: number;
+  /** Operating-cost portion (non-personnel). Optional. */
+  operatingCost?: number;
+  /** Disallowed / excluded portion (capital, one-time, pass-through). Optional. */
+  disallowedCost?: number;
   basis: string;
-  receivers?: ReceiverRow[];
   receiving?: string;
   recoverability?: string;
   confidence: "high" | "low";
@@ -66,7 +84,9 @@ export interface AiParseCapResult {
   ok: boolean;
   centers: CenterRow[];
   bases: BasisRow[];
+  basisUnits: BasisUnitsRow[];
   pools: PoolRow[];
+  directAllocations: DirectAllocationsRow[];
   message?: string;
 }
 
@@ -76,14 +96,20 @@ export async function aiParseCapPdf(file: File): Promise<AiParseCapResult> {
   const res = await fetch("/api/ai/parse-cap", { method: "POST", body: form });
   if (!res.ok && res.status !== 502) {
     const text = await res.text().catch(() => "");
-    return { ok: false, centers: [], bases: [], pools: [], message: text || `HTTP ${res.status}` };
+    return {
+      ok: false,
+      centers: [], bases: [], basisUnits: [], pools: [], directAllocations: [],
+      message: text || `HTTP ${res.status}`,
+    };
   }
   const body = await res.json() as Partial<AiParseCapResult>;
   return {
     ok: body.ok ?? false,
     centers: Array.isArray(body.centers) ? body.centers : [],
     bases: Array.isArray(body.bases) ? body.bases : [],
+    basisUnits: Array.isArray(body.basisUnits) ? body.basisUnits : [],
     pools: Array.isArray(body.pools) ? body.pools : [],
+    directAllocations: Array.isArray(body.directAllocations) ? body.directAllocations : [],
     message: body.message,
   };
 }
@@ -94,9 +120,7 @@ export async function aiParseCapPdf(file: File): Promise<AiParseCapResult> {
 
 export interface CapCenterEntity {
   name: string;
-  /** Document's own account code. Unique within a single document; use as
-   *  the receiver/center identity key. Stable within one city + fiscal
-   *  year — NOT a cross-city join key. */
+  /** Document's own account code. */
   glCode?: string;
   totalCost: number;
 }
@@ -114,11 +138,6 @@ export function capCentersToExtractionResult(
     const totalCost = Number(row.totalCost);
     if (!name || !Number.isFinite(totalCost)) return;
     if (totalCost < 0) return;
-    // Keep zero-totalCost centers — allocable internal-service units
-    // (Fringe Benefits Allocation, Town Center Operations, Corp Yard
-    // Operations, Vehicle / Equipment Operations) appear in the
-    // Allocation Inventory with no own $ but redistribute incoming
-    // costs via their own schedule in the second allocation pass.
 
     const glCode = row.glCode?.trim() || undefined;
     const lineage: SourceLineage = {
@@ -180,11 +199,6 @@ export function capBasesToExtractionResult(
       importedAt: now,
     };
 
-    // OTHER is the SYSTEM prompt's overflow bucket for bases whose underlying
-    // driver doesn't match any of the twelve named keys. There's no DRIVERS
-    // column for OTHER, so the step-down engine can't route it — surface to
-    // the user for review (or to redefine to a real key) instead of silently
-    // dropping it.
     const rawKey = (row.driverKey ?? "").trim().toUpperCase();
     if (rawKey === "OTHER") {
       unmapped.push({
@@ -197,9 +211,6 @@ export function capBasesToExtractionResult(
 
     const driverKey = normBasisKey(row.driverKey);
     if (!driverKey) {
-      // Any other unknown key the model returned despite the prompt's
-      // instructions — surface it the same way as OTHER so the user can
-      // see what was rejected.
       unmapped.push({
         reason: "schema-mismatch",
         raw: [row.name ?? "", row.driverKey ?? "", row.source ?? "", row.methodologyNote ?? ""],
@@ -209,7 +220,6 @@ export function capBasesToExtractionResult(
     }
     const directTo = driverKey === "DIRECT" ? normMatrixDept(row.directTo) ?? undefined : undefined;
     if (driverKey === "DIRECT" && !directTo) {
-      // DIRECT with no resolvable target — also surface for review.
       unmapped.push({
         reason: "missing-required-field",
         raw: [row.name ?? "", `DIRECT → ${row.directTo ?? "(none)"}`, row.source ?? "", row.methodologyNote ?? ""],
@@ -249,6 +259,75 @@ export function capBasesToExtractionResult(
 }
 
 // ---------------------------------------------------------------------------
+// Basis units — ExtractionResult<BasisUnitRow>
+// ---------------------------------------------------------------------------
+
+/** Convert wire basisUnits to BasisUnitRow entities. basisId is left blank
+ *  here; mergeCapBundle re-resolves it against the post-merge catalog. */
+export function capBasisUnitsToExtractionResult(
+  rows: BasisUnitsRow[],
+  fileName: string,
+): ExtractionResult<BasisUnitRow> {
+  const now = new Date().toISOString();
+  const mapped: { entity: BasisUnitRow; lineage: SourceLineage }[] = [];
+  const lowConfidence: typeof mapped = [];
+
+  rows.forEach((row, i) => {
+    const basisName = row.basis?.trim();
+    if (!basisName) return;
+    const receivers: BasisUnitReceiver[] = [];
+    let anyLow = false;
+    for (const r of Array.isArray(row.receivers) ? row.receivers : []) {
+      const dept = r.dept?.trim();
+      const glCode = r.glCode?.trim();
+      const units = Number(r.units);
+      // glCode is the routing identity — receivers without one are
+      // dropped at this layer. The schema is required to provide one.
+      if (!dept || !glCode || !Number.isFinite(units) || units < 0) continue;
+      const deptCode = normReceiverDeptCode(r.deptCode) ?? "OTHER";
+      receivers.push({ dept, glCode, deptCode, units });
+      if (r.confidence === "low") anyLow = true;
+    }
+    if (receivers.length === 0) return;
+
+    const entity: BasisUnitRow = {
+      basisId: "",
+      basis: basisName,
+      source: row.source?.trim() || undefined,
+      receivers,
+    };
+    const lineage: SourceLineage = {
+      file: fileName,
+      sheet: "AI parsed",
+      row: i + 1,
+      rawCells: {
+        basis: row.basis,
+        source: row.source ?? null,
+        receiverCount: receivers.length,
+      },
+      confidence: anyLow ? "review" : "high",
+      importedAt: now,
+    };
+    const extracted = { entity, lineage };
+    if (anyLow) lowConfidence.push(extracted);
+    else mapped.push(extracted);
+  });
+
+  return {
+    mapped, lowConfidence,
+    unmapped: [], duplicates: [],
+    stats: {
+      total: rows.length,
+      mapped: mapped.length,
+      lowConfidence: lowConfidence.length,
+      unmapped: 0,
+      duplicates: 0,
+      detected: "Basis units (AI parsed)",
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
 // Pools — ExtractionResult<CapPool>
 // ---------------------------------------------------------------------------
 
@@ -272,16 +351,21 @@ export function capPoolsToExtractionResult(
     const amount = Number(row.amount);
     if (!center || !pool) return;
     if (!Number.isFinite(allocationPercent) || !Number.isFinite(amount)) return;
-    // Keep zero-amount rows — internal service units / allocable budget
-    // units (Fringe Benefits Allocation, Town Center Ops, etc.) publish
-    // an allocation schedule with no own $ but redistribute incoming costs
-    // via their receivers. Dropping them breaks the second allocation pass.
     if (amount < 0) return;
 
     const basisName = row.basis?.trim() ?? "";
     const basisMatch = normBasisName(basisName, bases);
 
-    const receivers = normReceivers(row.receivers);
+    // Optional cost-breakdown fields. Coerced to non-negative numbers
+    // when present; omitted when missing or malformed (the engine doesn't
+    // use them — they're for traceability / future surfacing).
+    const optMoney = (v: unknown): number | undefined => {
+      const n = Number(v);
+      return Number.isFinite(n) && n >= 0 ? n : undefined;
+    };
+    const personnelCost = optMoney(row.personnelCost);
+    const operatingCost = optMoney(row.operatingCost);
+    const disallowedCost = optMoney(row.disallowedCost);
 
     const lineage: SourceLineage = {
       file: fileName,
@@ -290,8 +374,10 @@ export function capPoolsToExtractionResult(
       rawCells: {
         center: row.center, pool: row.pool,
         allocationPercent: row.allocationPercent, amount: row.amount,
+        personnelCost: row.personnelCost ?? null,
+        operatingCost: row.operatingCost ?? null,
+        disallowedCost: row.disallowedCost ?? null,
         basis: row.basis,
-        receiverCount: receivers.length,
       },
       confidence: row.confidence === "high" ? "high" : "review",
       importedAt: now,
@@ -306,7 +392,9 @@ export function capPoolsToExtractionResult(
       basisId: basisMatch?.id ?? "",
       basis: basisMatch?.name ?? basisName,
       receiving: row.receiving?.trim() || "Multiple departments",
-      ...(receivers.length > 0 ? { receivers } : {}),
+      ...(personnelCost  != null ? { personnelCost }  : {}),
+      ...(operatingCost  != null ? { operatingCost }  : {}),
+      ...(disallowedCost != null ? { disallowedCost } : {}),
       recoverability: row.recoverability?.trim() || "TBD",
       review: row.confidence === "high" ? "Reviewed" : "Review",
     };
@@ -330,8 +418,94 @@ export function capPoolsToExtractionResult(
 }
 
 // ---------------------------------------------------------------------------
-// Normalization guards — coerce model output to canonical unions, drop
-// rows whose required fields cannot be coerced.
+// Direct allocations — ExtractionResult<DirectAllocationRow>
+// ---------------------------------------------------------------------------
+
+/** Convert wire directAllocations to DirectAllocationRow entities. The
+ *  poolId field is resolved by matching pool name (and optional center)
+ *  against the pools also being imported in this bundle. */
+export function capDirectAllocationsToExtractionResult(
+  rows: DirectAllocationsRow[],
+  pools: ExtractionResult<CapPool>,
+  fileName: string,
+): ExtractionResult<DirectAllocationRow> {
+  const now = new Date().toISOString();
+  const mapped: { entity: DirectAllocationRow; lineage: SourceLineage }[] = [];
+  const lowConfidence: typeof mapped = [];
+
+  // Pool lookup by (center, name) — newly-imported pools only. The merge
+  // layer later cross-references against the existing store.
+  const poolEntries = [...pools.mapped, ...pools.lowConfidence].map((p) => p.entity);
+  const byName = new Map<string, CapPool[]>();
+  for (const p of poolEntries) {
+    const list = byName.get(p.pool.toLowerCase()) ?? [];
+    list.push(p);
+    byName.set(p.pool.toLowerCase(), list);
+  }
+
+  rows.forEach((row, i) => {
+    const poolName = row.pool?.trim();
+    if (!poolName) return;
+    const candidates = byName.get(poolName.toLowerCase()) ?? [];
+    const targetPool = row.center
+      ? candidates.find((p) => p.center.toLowerCase() === row.center!.trim().toLowerCase())
+      : candidates[0];
+    if (!targetPool) return;
+
+    const receivers: DirectAllocationReceiver[] = [];
+    let anyLow = false;
+    for (const r of Array.isArray(row.receivers) ? row.receivers : []) {
+      const dept = r.dept?.trim();
+      const glCode = r.glCode?.trim();
+      const percent = Number(r.percent);
+      if (!dept || !glCode || !Number.isFinite(percent) || percent <= 0) continue;
+      const deptCode = normReceiverDeptCode(r.deptCode) ?? "OTHER";
+      receivers.push({
+        dept, glCode, deptCode,
+        percent: Math.max(0, Math.min(100, percent)),
+      });
+      if (r.confidence === "low") anyLow = true;
+    }
+    if (receivers.length === 0) return;
+
+    const entity: DirectAllocationRow = {
+      poolId: targetPool.id,
+      pool: targetPool.pool,
+      receivers,
+    };
+    const lineage: SourceLineage = {
+      file: fileName,
+      sheet: "AI parsed",
+      row: i + 1,
+      rawCells: {
+        pool: row.pool,
+        center: row.center ?? null,
+        receiverCount: receivers.length,
+      },
+      confidence: anyLow ? "review" : "high",
+      importedAt: now,
+    };
+    const extracted = { entity, lineage };
+    if (anyLow) lowConfidence.push(extracted);
+    else mapped.push(extracted);
+  });
+
+  return {
+    mapped, lowConfidence,
+    unmapped: [], duplicates: [],
+    stats: {
+      total: rows.length,
+      mapped: mapped.length,
+      lowConfidence: lowConfidence.length,
+      unmapped: 0,
+      duplicates: 0,
+      detected: "Direct allocations (AI parsed)",
+    },
+  };
+}
+
+// ---------------------------------------------------------------------------
+// Normalization guards
 // ---------------------------------------------------------------------------
 
 const BASIS_KEYS: BasisKey[] = [
@@ -360,68 +534,17 @@ function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
 /** Coerce a receiver row's deptCode. Receivers may legitimately point at a
  *  fund/program with no MatrixDeptCode (CIP funds, grant funds, "All Other"),
  *  which the SYSTEM prompt encodes as the literal "OTHER" — so unlike
- *  normMatrixDept this returns "OTHER" instead of null in that case. */
+ *  normMatrixDept this returns "OTHER" instead of null in that case.
+ *  Returns null only when the value is missing entirely; the caller can
+ *  then fall back to "OTHER" since glCode is the identity anyway. */
 function normReceiverDeptCode(v: string | undefined): MatrixDeptCode | "OTHER" | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   if (s === "OTHER") return "OTHER";
-  return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
+  return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : "OTHER";
 }
 
-/** Convert wire-format receivers to PoolReceiver entities. Drops receivers
- *  whose dept name or deptCode can't be resolved, or whose amount is
- *  negative. Zero-amount receivers ARE kept — allocable internal-service
- *  units publish receiver rows without their own $ and would otherwise
- *  vanish from the second allocation pass. */
-function normReceivers(rows: ReceiverRow[] | undefined): PoolReceiver[] {
-  if (!Array.isArray(rows)) return [];
-  const out: PoolReceiver[] = [];
-  for (const r of rows) {
-    const dept = r.dept?.trim();
-    if (!dept) continue;
-    const code = normReceiverDeptCode(r.deptCode);
-    if (!code) continue;
-    const amount = Number(r.amount);
-    if (!Number.isFinite(amount) || amount < 0) continue;
-    const percentRaw = Number(r.percent);
-    const percent = Number.isFinite(percentRaw)
-      ? Math.max(0, Math.min(100, percentRaw))
-      : 0;
-    const unitsRaw = Number(r.units);
-    const units = Number.isFinite(unitsRaw) ? unitsRaw : undefined;
-    const glCode = r.glCode?.trim() || undefined;
-    const optNum = (v: unknown): number | undefined => {
-      const n = Number(v);
-      return Number.isFinite(n) ? n : undefined;
-    };
-    const grossAllocation  = optNum(r.grossAllocation);
-    const directBilled     = optNum(r.directBilled);
-    const firstAllocation  = optNum(r.firstAllocation);
-    const secondAllocation = optNum(r.secondAllocation);
-    const total            = optNum(r.total);
-    out.push({
-      dept,
-      ...(glCode ? { glCode } : {}),
-      deptCode: code,
-      percent,
-      amount,
-      ...(units != null ? { units } : {}),
-      ...(grossAllocation  != null ? { grossAllocation }  : {}),
-      ...(directBilled     != null ? { directBilled }     : {}),
-      ...(firstAllocation  != null ? { firstAllocation }  : {}),
-      ...(secondAllocation != null ? { secondAllocation } : {}),
-      ...(total            != null ? { total }            : {}),
-    });
-  }
-  return out;
-}
-
-/** Resolve a free-text basis name to a catalog entry. Tries:
- *  1. exact (case-insensitive) match on the supplied catalog
- *  2. exact (case-insensitive) match on the seed catalog
- *  3. relaxed match ignoring punctuation/whitespace
- *  Returns null if no match — the caller keeps the raw name in pool.basis
- *  and leaves basisId blank, matching the behavior of legacy imported pools. */
+/** Resolve a free-text basis name to a catalog entry. */
 function normBasisName(
   v: string,
   catalog: AllocationBasis[] = SEED_ALLOCATION_BASES,

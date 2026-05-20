@@ -21,8 +21,18 @@ import { useBuildState } from "@/lib/store";
  *
  *  Cross-checks the engine output against the source CAP PDF row-by-row. */
 export function AllocationDetailReport() {
-  const { capPools, allocationBases, derived } = useBuildState();
+  const {
+    capPools, allocationBases, capBasisUnits, capDirectAllocations, derived,
+  } = useBuildState();
   const model = derived.capStepDown;
+  const basisUnitsByBasisId = useMemo(
+    () => new Map(capBasisUnits.map((bu) => [bu.basisId, bu])),
+    [capBasisUnits],
+  );
+  const directByPoolId = useMemo(
+    () => new Map(capDirectAllocations.map((da) => [da.poolId, da])),
+    [capDirectAllocations],
+  );
 
   // Center name → imported glCode (e.g. "011-1200" for City Manager).
   // Seed centers without a real imported glCode resolve to undefined, which
@@ -228,12 +238,32 @@ export function AllocationDetailReport() {
     const isDirectCharge = basis === "DIRECT";
     const eligibleAmount = pool.amount;
 
+    // Build the per-receiver schedule for this pool. Non-DIRECT pools
+    // share their basis's BasisUnitRow — units come from the schedule and
+    // percent is derived as units / Σ units. DIRECT pools have their own
+    // explicit DirectAllocationRow with hand-written percents.
+    const schedule = new Map<string, { units?: number; percent: number }>();
+    if (isDirectCharge) {
+      const da = directByPoolId.get(pool.id);
+      for (const r of da?.receivers ?? []) {
+        schedule.set(r.glCode, { percent: r.percent });
+      }
+    } else {
+      const bu = basisUnitsByBasisId.get(pool.basisId);
+      const rows = bu?.receivers ?? [];
+      const totalUnits = rows.reduce((a, r) => a + r.units, 0);
+      for (const r of rows) {
+        const pct = totalUnits > 0 ? (r.units / totalUnits) * 100 : 0;
+        schedule.set(r.glCode, { units: r.units, percent: pct });
+      }
+    }
+
     // Build per-receiver rows. NBS shows every allocable + receiving node,
     // including 0% rows (— in the cells).
     const buildRow = (node: GlNode) => {
-      const receiver = (pool.receivers ?? []).find((r) => r.glCode === node.key);
-      const units = receiver?.units;
-      const percent = receiver?.percent ?? 0;
+      const sched = schedule.get(node.key);
+      const units = sched?.units;
+      const percent = sched?.percent ?? 0;
       const first  = model.firstAllocation[pool.id]?.[node.key] ?? 0;
       const second = model.secondAllocation[pool.id]?.[node.key] ?? 0;
       const directBilled = isDirectCharge && directTo && node.feeDept === directTo

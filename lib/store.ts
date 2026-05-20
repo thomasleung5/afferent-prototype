@@ -10,8 +10,9 @@ import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import { IMPORTS } from "@/lib/data/imports";
 import type {
-  AllocationBasis, CapAllocation, CapPool, DeptCode, OperatingLine, PolicyException,
-  PolicyTarget, Position, Service, SourceTag, WorkloadRow,
+  AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
+  DirectAllocationRow, OperatingLine, PolicyException, PolicyTarget,
+  Position, Service, SourceTag, WorkloadRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -20,7 +21,7 @@ import {
 } from "@/lib/calc";
 import {
   buildReceiverRegistry,
-  type ReceiverEntry, type MissingReceiverEntry,
+  type ReceiverEntry,
 } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
@@ -75,6 +76,14 @@ interface BuildState {
   /** Study-scoped catalog of named allocation bases. Seeded with canonical
    *  entries; users can extend at runtime via AllocationBasisCombobox. */
   allocationBases: AllocationBasis[];
+  /** Per-basis allocation schedules — receiver glCodes + units. The
+   *  step-down engine derives each pool's per-receiver percent on the
+   *  fly as `units / Σ units` across the basis. One schedule serves
+   *  every pool whose `basisId` points at the basis. */
+  capBasisUnits: BasisUnitRow[];
+  /** Per-DIRECT-pool explicit allocations. DIRECT pools skip the
+   *  basis-driven split and route to the receivers listed here. */
+  capDirectAllocations: DirectAllocationRow[];
   workload: WorkloadRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
@@ -126,13 +135,17 @@ interface BuildActions {
     r: {
       centers: ExtractionResult<{ name: string; glCode?: string; totalCost: number }>;
       bases: ExtractionResult<AllocationBasis>;
+      basisUnits: ExtractionResult<BasisUnitRow>;
       pools: ExtractionResult<CapPool>;
+      directAllocations: ExtractionResult<DirectAllocationRow>;
     },
     fileName: string,
   ) => ImportApplyResult & {
     centersImported: number;
     basesImported: number;
+    basisUnitsImported: number;
     poolsImported: number;
+    directAllocationsImported: number;
     /** Rows surfaced for human review (e.g. bases with driverKey "OTHER"
      *  or any other unresolvable schema mismatch). Already routed into
      *  pendingReview.cap; returned here so the page UI can show them
@@ -177,6 +190,8 @@ const initialState = (): BuildState => {
     ),
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
+    capBasisUnits: [],
+    capDirectAllocations: [],
     workload: WORKLOAD.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
@@ -546,17 +561,27 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergeCapBundle: (r, fileName) => {
         const centersIn = [...r.centers.mapped, ...r.centers.lowConfidence];
         const basesIn   = [...r.bases.mapped,   ...r.bases.lowConfidence];
+        const basisUnitsIn = [...r.basisUnits.mapped, ...r.basisUnits.lowConfidence];
         const poolsIn   = [...r.pools.mapped,   ...r.pools.lowConfidence];
+        const directIn  = [...r.directAllocations.mapped, ...r.directAllocations.lowConfidence];
         const unmappedBases = r.bases.unmapped;
 
         const totalMapped =
-          r.centers.stats.mapped + r.bases.stats.mapped + r.pools.stats.mapped;
+          r.centers.stats.mapped + r.bases.stats.mapped
+          + r.basisUnits.stats.mapped + r.pools.stats.mapped
+          + r.directAllocations.stats.mapped;
         const totalLow =
-          r.centers.stats.lowConfidence + r.bases.stats.lowConfidence + r.pools.stats.lowConfidence;
+          r.centers.stats.lowConfidence + r.bases.stats.lowConfidence
+          + r.basisUnits.stats.lowConfidence + r.pools.stats.lowConfidence
+          + r.directAllocations.stats.lowConfidence;
         const totalUnmapped =
-          r.centers.stats.unmapped + r.bases.stats.unmapped + r.pools.stats.unmapped;
+          r.centers.stats.unmapped + r.bases.stats.unmapped
+          + r.basisUnits.stats.unmapped + r.pools.stats.unmapped
+          + r.directAllocations.stats.unmapped;
         const totalRows =
-          r.centers.stats.total + r.bases.stats.total + r.pools.stats.total;
+          r.centers.stats.total + r.bases.stats.total
+          + r.basisUnits.stats.total + r.pools.stats.total
+          + r.directAllocations.stats.total;
 
         const at = new Date().toISOString();
         const result: ImportApplyResult = {
@@ -678,6 +703,41 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             basisLineage[id] = lineage;
           }
 
+          // ── 5. Basis units ─────────────────────────────────────────────
+          // Re-resolve basisId for each BasisUnitRow against the post-merge
+          // catalog. Upsert by basisId so re-importing replaces the
+          // schedule wholesale (rather than appending duplicates).
+          const fixedBasisUnits = basisUnitsIn.map(({ entity, lineage }) => {
+            let basisId = entity.basisId;
+            if (basisId && basisIdRemap.has(basisId)) {
+              basisId = basisIdRemap.get(basisId)!;
+            } else if (!basisId || !nextBases.some((b) => b.id === basisId)) {
+              const match = nextBases.find(
+                (b) => b.name.toLowerCase() === entity.basis.toLowerCase(),
+              );
+              basisId = match?.id ?? "";
+            }
+            return { entity: { ...entity, basisId }, lineage };
+          });
+          const nextBasisUnits = [...s.capBasisUnits];
+          const basisUnitsByBasisId = new Map(nextBasisUnits.map((bu) => [bu.basisId, bu]));
+          for (const { entity } of fixedBasisUnits) {
+            if (!entity.basisId) continue;
+            basisUnitsByBasisId.set(entity.basisId, entity);
+          }
+          const mergedBasisUnits = [...basisUnitsByBasisId.values()];
+
+          // ── 6. Direct allocations ──────────────────────────────────────
+          // Upsert by poolId. Pool ids may have been remapped during the
+          // pools merge (mergeRows dedupes by id) — keep direct rows keyed
+          // by the (possibly fresh) pool id from the import payload.
+          const nextDirect = [...s.capDirectAllocations];
+          const directByPoolId = new Map(nextDirect.map((d) => [d.poolId, d]));
+          for (const { entity } of directIn) {
+            directByPoolId.set(entity.poolId, entity);
+          }
+          const mergedDirect = [...directByPoolId.values()];
+
           return {
             capPools: mergedPools,
             capCenterTotals: nextTotals,
@@ -685,6 +745,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             capCenterSources: nextCenterSources,
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
+            capBasisUnits: mergedBasisUnits,
+            capDirectAllocations: mergedDirect,
             studyContext: mergedContext,
             lineage: { ...s.lineage, ...centerLineage, ...basisLineage, ...poolLineage },
             // Append bundle-level unmapped rows to the existing CAP review
@@ -696,7 +758,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
                 ...s.pendingReview.cap,
                 ...unmappedBases,
                 ...r.centers.unmapped,
+                ...r.basisUnits.unmapped,
                 ...r.pools.unmapped,
+                ...r.directAllocations.unmapped,
               ],
             },
             imports: [...s.imports, { id: Date.now(), domain: "cap", result, at }],
@@ -707,7 +771,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           ...result,
           centersImported: centersIn.length,
           basesImported: basesIn.length,
+          basisUnitsImported: basisUnitsIn.length,
           poolsImported: poolsIn.length,
+          directAllocationsImported: directIn.length,
           unmappedBases,
         };
       },
@@ -750,6 +816,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           ),
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
+          capBasisUnits: [],
+          capDirectAllocations: [],
           capCenterOrder: defaultCenterOrder(pools),
         });
       },
@@ -766,6 +834,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capCenterSources: {},
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
+          capBasisUnits: [],
+          capDirectAllocations: [],
           capAllocation: {
             PLAN: { dept: "PLAN", allocated: 0 },
             BLDG: { dept: "BLDG", allocated: 0 },
@@ -795,6 +865,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         // Backfill for state persisted before capCenterDisallowed existed.
         // Default each center to $0 disallowed so existing math is unchanged.
         if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
+
+        // Backfill the new basis-units + direct-allocations slices for
+        // state persisted before the import-shape refactor. The engine
+        // falls back to seeded DRIVERS values when basisUnits is empty.
+        if (!state.capBasisUnits) state.capBasisUnits = [];
+        if (!state.capDirectAllocations) state.capDirectAllocations = [];
 
         // Backfill seed imports if the persisted store has an empty log.
         // The Annual Update tab needs at least one import to render the
@@ -922,11 +998,9 @@ export interface BuildDerived {
    *  receiver units overlay the seed driver row for seed nodes only —
    *  imported nodes get their units strictly from the receiver aggregation. */
   capDrivers: GlDriverMatrix;
-  /** Distinct receivers across imported pools, keyed by glCode. */
+  /** Distinct receivers across basisUnits + directAllocations, keyed by
+   *  glCode. */
   capReceivers: ReceiverEntry[];
-  /** Receivers the document published without a glCode — routed here for
-   *  human review rather than collapsed onto a sibling row. */
-  capReceiversForReview: MissingReceiverEntry[];
   /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
    *  seed:* key). Source of truth for the matrix tabs + cell traces. */
   capStepDown: GlStepDownModel;
@@ -952,12 +1026,15 @@ export function useBuildState() {
     // (or a synth seed:dept:* fallback). FBHR sums each direct node's total
     // into its feeDept classification — multiple PLAN-classified glCodes
     // all roll into PLAN's CAP rate.
-    const { entries: capReceivers, missing: capReceiversForReview } =
-      buildReceiverRegistry(state.capPools, state.allocationBases, state.studyContext);
+    const { entries: capReceivers } = buildReceiverRegistry(
+      state.capBasisUnits, state.capDirectAllocations,
+      state.allocationBases, state.studyContext,
+    );
 
     const graph = buildEngineGraph({
-      capPools: state.capPools,
       allocationBases: state.allocationBases,
+      basisUnits: state.capBasisUnits,
+      directAllocations: state.capDirectAllocations,
       capCenterTotals: state.capCenterTotals,
       capCenterGlCodes: state.capCenterGlCodes,
       capReceivers,
@@ -967,6 +1044,8 @@ export function useBuildState() {
       pools: state.capPools,
       centerOrder: state.capCenterOrder,
       bases: state.allocationBases,
+      basisUnits: state.capBasisUnits,
+      directAllocations: state.capDirectAllocations,
       graph,
     });
 
@@ -1001,12 +1080,13 @@ export function useBuildState() {
     const impact = policyImpact(comparisons);
     return {
       labor, operatingByDept, fbhr, costs, comparisons, impact,
-      capAllocated, capDrivers: graph.drivers, capReceivers, capReceiversForReview,
+      capAllocated, capDrivers: graph.drivers, capReceivers,
       capStepDown: stepDown,
     };
   }, [
     state.positions, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
+    state.capBasisUnits, state.capDirectAllocations,
     state.allocationBases, state.capCenterGlCodes, state.studyContext,
     state.services, state.policyTargets, state.policyExceptions,
   ]);

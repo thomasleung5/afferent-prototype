@@ -6,7 +6,6 @@ import {
   ALLOCATION_BASES,
   type AllocationBasisKey, type BasisRow,
 } from "@/lib/data/allocationBases";
-import type { MissingReceiverEntry } from "@/lib/data/capReceiverRegistry";
 import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 import {
@@ -59,9 +58,6 @@ export function AllocationBases() {
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {derived.capReceiversForReview.length > 0 && (
-        <ReceiversForReviewBanner missing={derived.capReceiversForReview}/>
-      )}
       <Matrix rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>
       {openCell ? (
         <CellTrace
@@ -72,55 +68,6 @@ export function AllocationBases() {
         />
       ) : (
         <TraceHint/>
-      )}
-    </div>
-  );
-}
-
-function ReceiversForReviewBanner({ missing }: { missing: MissingReceiverEntry[] }) {
-  return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-    }}>
-      <div style={{
-        padding: "10px 16px",
-        background: "var(--paper-2)",
-        borderBottom: "1px solid var(--rule)",
-        display: "flex", alignItems: "baseline", gap: 10,
-      }}>
-        <span className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Receivers for review</span>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-          {missing.length} receiver{missing.length === 1 ? "" : "s"} imported without a glCode.
-          Assign one (or accept exclusion from the matrix) so they aren't collapsed onto a sibling row.
-        </span>
-      </div>
-      {missing.slice(0, 8).map((m, i) => (
-        <div key={m.key} style={{
-          display: "grid",
-          gridTemplateColumns: "minmax(220px, 2fr) 100px 1fr",
-          gap: 12, alignItems: "baseline",
-          padding: "8px 16px",
-          fontSize: 12,
-          borderBottom: i < Math.min(missing.length, 8) - 1 ? "1px solid var(--rule)" : "none",
-        }}>
-          <span style={{ color: "var(--ink)" }}>{m.dept}</span>
-          <span className="num" style={{
-            textAlign: "right", color: "var(--ink-2)",
-            fontVariantNumeric: "tabular-nums",
-          }}>{fmt.dollars(m.amount)}</span>
-          <span style={{ fontSize: 11, color: "var(--ink-4)" }}>
-            from {m.poolId} · basis {m.basis}
-          </span>
-        </div>
-      ))}
-      {missing.length > 8 && (
-        <div style={{
-          padding: "8px 16px",
-          fontSize: 11.5, color: "var(--ink-3)",
-        }}>+ {missing.length - 8} more</div>
       )}
     </div>
   );

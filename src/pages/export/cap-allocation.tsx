@@ -604,15 +604,20 @@ function PoolBlock({
     .filter((n) => n.role === "direct")
     .sort((a, b) => a.glCode.localeCompare(b.glCode));
 
+  // Derive the per-receiver percent from the engine's Phase 1 distribution.
+  // firstAllocation = pool.amount × pct, so pct = first / Σ first across
+  // every receiver this pool reached. Mirrors what was published in the
+  // source schedule without needing the schedule reattached to the pool.
+  const firstByNode = model.firstAllocation[pool.id] ?? {};
+  const firstTotal = Object.values(firstByNode).reduce((a, v) => a + v, 0);
   const rowFor = (node: GlNode) => {
-    const receiver = (pool.receivers ?? []).find((r) => r.glCode === node.key);
-    const pct = receiver?.percent ?? 0;
-    const first = model.firstAllocation[pool.id]?.[node.key] ?? 0;
+    const first = firstByNode[node.key] ?? 0;
     const second = model.secondAllocation[pool.id]?.[node.key] ?? 0;
+    const pct = firstTotal > 0 ? (first / firstTotal) * 100 : 0;
     return { node, pct, first, second, total: first + second };
   };
-  const allocableRows = indirectNodes.map(rowFor).filter((r) => r.pct > 0 || r.first > 0.5 || r.second > 0.5);
-  const receivingRows = directNodes.map(rowFor).filter((r) => r.pct > 0 || r.first > 0.5 || r.second > 0.5);
+  const allocableRows = indirectNodes.map(rowFor).filter((r) => r.first > 0.5 || r.second > 0.5);
+  const receivingRows = directNodes.map(rowFor).filter((r) => r.first > 0.5 || r.second > 0.5);
   const allRows = [...allocableRows, ...receivingRows];
   const totalFirst = allRows.reduce((a, r) => a + r.first, 0);
   const totalSecond = allRows.reduce((a, r) => a + r.second, 0);

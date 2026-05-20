@@ -117,40 +117,53 @@ export type BasisKey =
   | "FTE" | "EXPEND" | "EXPEND_X" | "EXPEND_PW" | "PAYROLL" | "ACCT" | "AGENDA"
   | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
 
-/** One row of a cost pool's per-receiver allocation matrix as published in
- *  the source document's "X - Allocations" schedule. Receivers' `amount`
- *  values sum (within rounding) to the parent pool's `amount`. */
-export interface PoolReceiver {
-  /** Receiving budget-unit name exactly as written in the document. */
+/** One receiver row inside a basis's unit schedule. `glCode` is the
+ *  routing identity used by the engine. `deptCode` is classification
+ *  metadata only — multiple receivers can share a deptCode and the
+ *  engine never routes by it. `units` is the raw allocation-factor unit
+ *  count for this receiver under this basis (e.g. FTE count, sq ft). */
+export interface BasisUnitReceiver {
+  glCode: string;
   dept: string;
-  /** Document's own account code. Unique within a single document; use as
-   *  the receiver/center identity key. Stable within one city + fiscal
-   *  year — NOT a cross-city join key. */
-  glCode?: string;
-  /** MatrixDeptCode for the receiver, or "OTHER" when the document points
-   *  at a fund/program with no matching code (CIP funds, grant funds,
-   *  "All Other"). Kept as MatrixDeptCode | "OTHER" rather than a narrower
-   *  union so step-down receivers and unmapped fund rows can coexist.
-   *  Classification, NOT identity — multiple receivers can share a deptCode
-   *  (e.g. several Public Works divisions). Use glCode for per-row identity. */
   deptCode: MatrixDeptCode | "OTHER";
-  /** Raw allocation-factor units for this receiver (the "Allocation Units"
-   *  column on the schedule). Omitted when the document doesn't print one. */
-  units?: number;
-  /** Receiver's share of the pool, 0–100. */
+  units: number;
+}
+
+/** Basis-level allocation schedule. One row per AllocationBasis the
+ *  document publishes a unit schedule for. The same schedule serves
+ *  every pool whose `basisId` points here — the engine derives each
+ *  pool's per-receiver share from these units, never from a per-pool
+ *  duplicate. */
+export interface BasisUnitRow {
+  basisId: string;
+  /** Denormalized basis name so exports / legacy readers don't need to
+   *  go through the AllocationBasis catalog. Kept in sync on edit. */
+  basis: string;
+  /** Where the unit counts came from — typically the document filename
+   *  or section that produced the schedule. Optional. */
+  source?: string;
+  receivers: BasisUnitReceiver[];
+}
+
+/** One receiver inside a DIRECT pool's explicit allocation. DIRECT
+ *  pools don't have basis denominators (units) — the document publishes
+ *  a percent split directly. */
+export interface DirectAllocationReceiver {
+  glCode: string;
+  dept: string;
+  deptCode: MatrixDeptCode | "OTHER";
+  /** Receiver's share of the pool, 0–100. Sum across receivers in one
+   *  DIRECT row should equal 100. */
   percent: number;
-  /** Dollar amount allocated to this receiver — derived as
-   *  pool.amount × percent / 100 and rounded to whole dollars. */
-  amount: number;
-  /** Published allocation-detail columns from full-cost CAP schedules.
-   *  Optional — used for reconciliation/display when the document prints
-   *  them; the engine derives its own first/second/total figures from the
-   *  receiver percent schedule. */
-  grossAllocation?: number;
-  directBilled?: number;
-  firstAllocation?: number;
-  secondAllocation?: number;
-  total?: number;
+}
+
+/** Per-DIRECT-pool routing. DIRECT-basis pools skip the step-down's
+ *  basis-driven split and route directly to the receivers listed here. */
+export interface DirectAllocationRow {
+  poolId: string;
+  /** Denormalized pool name for traceability in exports. */
+  pool: string;
+  receivers: DirectAllocationReceiver[];
 }
 
 /** Indirect overhead allocated to direct departments by the CAP. */
@@ -170,19 +183,27 @@ export interface CapPool {
    *  engine, exports) can ignore the percent indirection. */
   amount: number;
   /** Foreign key into BuildState.allocationBases. Drives which catalog
-   *  entry's source/methodology display under the pool's basis cell. */
+   *  entry's source/methodology display under the pool's basis cell, AND
+   *  which BasisUnitRow supplies the per-receiver units for the schedule. */
   basisId: string;
   /** Denormalized display text — kept in sync with the catalog name on
    *  selection so exports/legacy readers don't need catalog access. */
   basis: string;
   receiving: string;
-  /** Optional per-receiver allocation breakdown imported from the source
-   *  document. Populated by capPoolsToExtractionResult when the model
-   *  returns a structured receivers array; absent for legacy / hand-built
-   *  pools that only carry the free-text `receiving` label. The step-down
-   *  engine does not yet consume this field — it remains the imported
-   *  reference for reconciliation and future use. */
-  receivers?: PoolReceiver[];
+  /** Total personnel cost reported for this pool — salaries + benefits.
+   *  Informational breakdown the source document may publish alongside
+   *  `amount`; the engine does not use it for routing. Optional. */
+  personnelCost?: number;
+  /** Total operating cost reported for this pool — non-personnel spend
+   *  (contracts, supplies, services). Informational; engine does not use
+   *  it for routing. Optional. */
+  operatingCost?: number;
+  /** Disallowed costs excluded from allocation (capital outlay, one-time
+   *  charges, grant-funded items, etc.). Captured from the source
+   *  document for traceability. The pool's `amount` should already
+   *  exclude this figure (net allocable = gross − disallowed); the
+   *  engine reads `amount` directly. Optional. */
+  disallowedCost?: number;
   /** Free-text policy explanation (e.g. "Fully recoverable", "Excluded —
    *  public benefit"). Surfaced in exports for context. */
   recoverability: string;

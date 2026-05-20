@@ -1,29 +1,27 @@
 /* CAP receiver registry.
  *
- * Distinct receivers across all imported pools, keyed by glCode. The legacy
- * driver matrix (DRIVERS in capStepDown.ts) buckets receivers by deptCode —
- * that's a ~16-value classification, not an identity, so multiple distinct
- * receivers collapse into one bucket. The registry preserves per-receiver
- * identity by keying on glCode and treating deptCode as a category attribute.
+ * Distinct receivers across the basis-unit schedules and DIRECT pool
+ * allocations, keyed by glCode. glCode is the receiver's identity for
+ * step-down routing; deptCode is classification metadata used for
+ * grouping/filtering only.
  *
- * Identity rules (from the brief):
- *   - Key on glCode when present, else a normalized dept string
+ * Identity rules:
+ *   - Key on glCode (BasisUnitReceiver / DirectAllocationReceiver both
+ *     require it — receivers without a glCode are rejected at import).
  *   - Namespace the key by role ("receiver" vs "center") because both can
- *     share a glCode (e.g. "City Manager 011-1200" appears in both maps)
- *   - Prefix with cityId + fiscalYear so cross-study models don't collide
- *   - Receivers missing glCode go to the `missing` list for human review,
- *     never silently dropped or collapsed onto an existing row
+ *     share a glCode (e.g. "City Manager 011-1200" appears in both maps).
+ *   - Prefix with cityId + fiscalYear so cross-study models don't collide.
  *
- * A receiver appearing in N pools (with the same glCode) aggregates its
- * units across pools that share a driverKey — that's the unit count the
- * step-down would use. Per-pool detail is retained on the entry so the
- * UI can show which pools each receiver participates in.
+ * Units are now counted ONCE per basis (not per pool): one BasisUnitRow
+ * per basis × one receiver row per glCode within it. The same schedule
+ * serves every pool whose basisId points at the basis, so no per-pool
+ * duplication is possible.
  */
 
 import type {
-  AllocationBasis, BasisKey, CapPool, MatrixDeptCode,
+  BasisUnitRow, DirectAllocationRow, MatrixDeptCode,
 } from "@/lib/types";
-import { basisForPool } from "./capStepDown";
+import type { BasisKey, AllocationBasis } from "@/lib/types";
 import type { StudyContext } from "./studyContext";
 
 type ReceiverRole = "receiver" | "center";
@@ -32,120 +30,81 @@ type ReceiverRole = "receiver" | "center";
  *  (cityId, fiscalYear) pair — never use as a cross-study join key. */
 function receiverKey(
   role: ReceiverRole,
-  glCodeOrFallback: string,
+  glCode: string,
   ctx: StudyContext,
 ): string {
-  return `${ctx.cityId}:${ctx.fiscalYear}:${role}:${glCodeOrFallback}`;
+  return `${ctx.cityId}:${ctx.fiscalYear}:${role}:${glCode}`;
 }
 
-/** One distinct receiver, aggregated across every pool that lists it. */
+/** One distinct receiver, aggregated across every basis schedule that
+ *  lists it. */
 export interface ReceiverEntry {
-  /** Namespaced row key — `${cityId}:${fiscalYear}:receiver:${glCode || fallback}`. */
+  /** Namespaced row key — `${cityId}:${fiscalYear}:receiver:${glCode}`. */
   key: string;
-  /** Document's GL/account code. Undefined when the document didn't print one. */
-  glCode?: string;
-  /** Display name from the source document. */
+  glCode: string;
+  /** Display name from the source document (first-seen). */
   dept: string;
-  /** Classification (MatrixDeptCode | "OTHER") — for grouping/filtering only. */
+  /** Classification (MatrixDeptCode | "OTHER") — for grouping/filtering. */
   deptCode: MatrixDeptCode | "OTHER";
-  /** Per-basis aggregated unit counts. Sum across every pool whose basis
-   *  matches and which lists this receiver with a numeric `units` value. */
+  /** Per-basis aggregated unit counts. One BasisUnitRow per basis means
+   *  this is just a copy of the per-receiver unit row, keyed by basis. */
   values: Partial<Record<BasisKey, number>>;
-  /** Pools that contribute to this entry. Useful for the UI breakdown. */
-  sources: { poolId: string; basis: BasisKey; units?: number; amount: number }[];
-}
-
-/** A receiver the document published without a glCode. Surfaced for human
- *  review — the user can either assign a glCode and re-import, or accept
- *  that this receiver won't participate in the driver matrix. */
-export interface MissingReceiverEntry {
-  key: string; // synthetic, derived from pool + index
-  dept: string;
-  deptCode: MatrixDeptCode | "OTHER";
-  poolId: string;
-  /** The pool's basis at the time this receiver was extracted. */
-  basis: BasisKey;
-  units?: number;
-  amount: number;
+  /** Where the unit counts came from — basis ids that listed this receiver. */
+  sources: { basisId: string; basisKey: BasisKey; units: number }[];
 }
 
 export interface ReceiverRegistry {
-  /** Distinct receivers keyed by glCode (or normalized name fallback). */
   entries: ReceiverEntry[];
-  /** Receivers the document published without a glCode — for review. */
-  missing: MissingReceiverEntry[];
 }
 
-/** Build the registry from the current pool inventory. Pure function; the
- *  store memoizes the result and exposes it on `derived`. */
+/** Build the registry from the basis-units schedule + DIRECT allocations.
+ *  Pure function; the store memoizes the result and exposes it on
+ *  `derived`. */
 export function buildReceiverRegistry(
-  pools: CapPool[],
+  basisUnits: BasisUnitRow[],
+  directAllocations: DirectAllocationRow[],
   bases: AllocationBasis[],
   ctx: StudyContext,
 ): ReceiverRegistry {
   const byKey = new Map<string, ReceiverEntry>();
-  const missing: MissingReceiverEntry[] = [];
+  const basisById = new Map(bases.map((b) => [b.id, b]));
 
-  for (const p of pools) {
-    if (!p.receivers || p.receivers.length === 0) continue;
-    const { basis: driverKey } = basisForPool(p, bases);
-    if (driverKey === "DIRECT") continue;
+  const upsert = (
+    glCode: string, dept: string, deptCode: MatrixDeptCode | "OTHER",
+  ): ReceiverEntry => {
+    const key = receiverKey("receiver", glCode, ctx);
+    let entry = byKey.get(key);
+    if (!entry) {
+      entry = { key, glCode, dept, deptCode, values: {}, sources: [] };
+      byKey.set(key, entry);
+    }
+    return entry;
+  };
 
-    p.receivers.forEach((r, i) => {
-      // Reject receivers the parse layer let through but the registry can't
-      // place — no dept name means no row identity at all.
-      if (!r.dept) return;
-
-      const glCode = r.glCode?.trim();
-      if (!glCode) {
-        // Surface for review rather than silent-collapse onto a sibling row.
-        missing.push({
-          key: receiverKey("receiver", `noglcode-${p.id}-${i}`, ctx),
-          dept: r.dept,
-          deptCode: r.deptCode,
-          poolId: p.id,
-          basis: driverKey,
-          units: r.units,
-          amount: r.amount,
-        });
-        return;
-      }
-
-      const key = receiverKey("receiver", glCode, ctx);
-      let entry = byKey.get(key);
-      if (!entry) {
-        entry = {
-          key, glCode,
-          dept: r.dept,
-          deptCode: r.deptCode,
-          values: {},
-          sources: [],
-        };
-        byKey.set(key, entry);
-      }
-      // Units are a per-receiver attribute: the same receiver shows up in
-      // every pool's allocation schedule with the SAME units value. Take
-      // first-seen; warn on inconsistency. Summing across pools would
-      // multiply the receiver's true unit count by the pool count — the
-      // bug that produced 4× EXPEND inflation upstream.
-      if (typeof r.units === "number" && Number.isFinite(r.units) && r.units > 0) {
-        const existing = entry.values[driverKey];
-        if (existing == null) {
-          entry.values[driverKey] = r.units;
-        } else if (Math.abs(existing - r.units) > 0.001) {
-          // eslint-disable-next-line no-console
-          console.warn(
-            `[buildReceiverRegistry] inconsistent units for ${glCode}/${driverKey}: ${existing} vs ${r.units}; keeping first-seen`,
-          );
-        }
-      }
+  // Non-DIRECT receivers — one BasisUnitRow per basis, one row per glCode.
+  for (const bu of basisUnits) {
+    const basis = basisById.get(bu.basisId);
+    if (!basis) continue;
+    if (basis.driverKey === "DIRECT") continue;
+    for (const r of bu.receivers) {
+      if (!r.glCode) continue;
+      if (!Number.isFinite(r.units) || r.units <= 0) continue;
+      const entry = upsert(r.glCode, r.dept, r.deptCode);
+      entry.values[basis.driverKey] = r.units;
       entry.sources.push({
-        poolId: p.id,
-        basis: driverKey,
-        units: r.units,
-        amount: r.amount,
+        basisId: bu.basisId, basisKey: basis.driverKey, units: r.units,
       });
-    });
+    }
+  }
+
+  // DIRECT pool receivers — surfaced so the engine graph creates a node
+  // for each direct target. No units; they don't participate in the
+  // driver matrix.
+  for (const da of directAllocations) {
+    for (const r of da.receivers) {
+      if (!r.glCode) continue;
+      upsert(r.glCode, r.dept, r.deptCode);
+    }
   }
 
   // Stable ordering: indirect-classification receivers first, then direct,
@@ -157,7 +116,7 @@ export function buildReceiverRegistry(
     return a.dept.localeCompare(b.dept);
   });
 
-  return { entries, missing };
+  return { entries };
 }
 
 /** Indirect-class deptCodes; used only for ordering, not identity. */
@@ -167,4 +126,3 @@ const INDIRECT_CODES = new Set<MatrixDeptCode | "OTHER">([
 function isIndirectCode(c: MatrixDeptCode | "OTHER"): boolean {
   return INDIRECT_CODES.has(c);
 }
-

@@ -16,7 +16,9 @@ import {
   aiParseCapPdf,
   capCentersToExtractionResult,
   capBasesToExtractionResult,
+  capBasisUnitsToExtractionResult,
   capPoolsToExtractionResult,
+  capDirectAllocationsToExtractionResult,
 } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
 
@@ -40,20 +42,30 @@ function unmappedBasisDetails(u: UnmappedRow): {
   };
 }
 
-/** Compact "3 centers, 4 bases, 15 pools" summary; omits zero sections. */
-function bundleCountsMessage(counts: { centers: number; bases: number; pools: number }): string {
+/** Compact "3 centers, 4 bases, 2 schedules, 15 pools, 1 direct alloc"
+ *  summary; omits zero sections. */
+function bundleCountsMessage(counts: {
+  centers: number; bases: number; basisUnits: number;
+  pools: number; directAllocations: number;
+}): string {
   const parts: string[] = [];
   if (counts.centers > 0) parts.push(`${counts.centers} center${counts.centers === 1 ? "" : "s"}`);
   if (counts.bases > 0)   parts.push(`${counts.bases} bas${counts.bases === 1 ? "is" : "es"}`);
+  if (counts.basisUnits > 0) parts.push(`${counts.basisUnits} schedule${counts.basisUnits === 1 ? "" : "s"}`);
   if (counts.pools > 0)   parts.push(`${counts.pools} pool${counts.pools === 1 ? "" : "s"}`);
+  if (counts.directAllocations > 0) parts.push(`${counts.directAllocations} direct alloc${counts.directAllocations === 1 ? "" : "s"}`);
   return parts.length ? parts.join(", ") : "nothing";
 }
 
 const CAP_SCHEMA = `{
   centers: [{ name, glCode, totalCost, confidence }],
   bases:   [{ name, source, methodologyNote, driverKey, directTo, confidence }],
+  basisUnits: [{ basis, source?, receivers:
+    [{ dept, glCode, deptCode?, units, confidence? }] }],
   pools:   [{ center, pool, allocationPercent, amount,
-              basis, receivers, recoverability, confidence }]
+              basis, recoverability, confidence }],
+  directAllocations: [{ pool, center?, receivers:
+    [{ dept, glCode, deptCode?, percent, confidence? }] }]
 }`;
 
 export default function CapPage() {
@@ -71,7 +83,9 @@ export default function CapPage() {
     const counts = bundleCountsMessage({
       centers: applied.centersImported,
       bases: applied.basesImported,
+      basisUnits: applied.basisUnitsImported,
       pools: applied.poolsImported,
+      directAllocations: applied.directAllocationsImported,
     });
     const unmatched = applied.unmappedBases.length;
     const parts: string[] = [`${applied.mapped} accepted`, `${applied.lowConfidence} for review`];
@@ -84,10 +98,15 @@ export default function CapPage() {
     try {
       const result = await aiParseCapPdf(file);
       if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
+      const pools = capPoolsToExtractionResult(result.pools, file.name);
       const bundle = {
         centers: capCentersToExtractionResult(result.centers, file.name),
         bases:   capBasesToExtractionResult(result.bases, file.name),
-        pools:   capPoolsToExtractionResult(result.pools, file.name),
+        basisUnits: capBasisUnitsToExtractionResult(result.basisUnits, file.name),
+        pools,
+        directAllocations: capDirectAllocationsToExtractionResult(
+          result.directAllocations, pools, file.name,
+        ),
       };
       const applied = mergeCapBundle(bundle, file.name);
       setUnmappedBases(applied.unmappedBases);
@@ -106,21 +125,34 @@ export default function CapPage() {
       const jsonMatch = text.match(/\{[\s\S]*\}/);
       if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
       const parsed = JSON.parse(jsonMatch[0]) as {
-        centers?: unknown[]; bases?: unknown[]; pools?: unknown[];
+        centers?: unknown[]; bases?: unknown[]; basisUnits?: unknown[];
+        pools?: unknown[]; directAllocations?: unknown[];
       };
       const centers = Array.isArray(parsed.centers) ? parsed.centers : [];
       const bases   = Array.isArray(parsed.bases)   ? parsed.bases   : [];
+      const basisUnits = Array.isArray(parsed.basisUnits) ? parsed.basisUnits : [];
       const pools   = Array.isArray(parsed.pools)   ? parsed.pools   : [];
-      if (centers.length + bases.length + pools.length === 0) {
-        throw new Error('Expected { centers?: [...], bases?: [...], pools?: [...] } with at least one section.');
+      const directAllocations = Array.isArray(parsed.directAllocations)
+        ? parsed.directAllocations : [];
+      const total = centers.length + bases.length + basisUnits.length
+        + pools.length + directAllocations.length;
+      if (total === 0) {
+        throw new Error('Expected { centers?, bases?, basisUnits?, pools?, directAllocations? } with at least one section.');
       }
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+      const poolsResult = capPoolsToExtractionResult(pools as any, "clipboard");
       const bundle = {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         centers: capCentersToExtractionResult(centers as any, "clipboard"),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         bases:   capBasesToExtractionResult(bases as any,   "clipboard"),
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        pools:   capPoolsToExtractionResult(pools as any,   "clipboard"),
+        basisUnits: capBasisUnitsToExtractionResult(basisUnits as any, "clipboard"),
+        pools: poolsResult,
+        directAllocations: capDirectAllocationsToExtractionResult(
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          directAllocations as any, poolsResult, "clipboard",
+        ),
       };
       const applied = mergeCapBundle(bundle, "clipboard");
       setUnmappedBases(applied.unmappedBases);
