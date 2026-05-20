@@ -140,7 +140,15 @@ export function DataTable<Row extends DataTableRow>({
       )}
 
       <div style={{ overflowX: minWidth ? "auto" : "visible" }}>
-        <div style={{ minWidth: minWidth ?? "auto" }}>
+        <div style={{
+          // When minWidth is set, the inner content must size to its
+          // natural content width (max-content) so the middle scroll
+          // container can detect overflow. Without this, `minWidth`
+          // alone leaves the inner block at the parent's width and
+          // the grid rows inside silently squeeze.
+          width: minWidth ? "max-content" : "auto",
+          minWidth: minWidth ?? "auto",
+        }}>
           {/* Header */}
           <div style={{
             display: "grid", gridTemplateColumns: grid, gap: 14,
