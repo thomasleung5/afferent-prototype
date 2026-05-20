@@ -34,25 +34,19 @@ function SharedChip() {
   );
 }
 
-interface Row extends OperatingLine {
-  flag?: boolean;
-}
-
 export function OperatingTable() {
   const { operating, updateOperating, addOperatingLine } = useBuildState();
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
 
-  const rows: Row[] = useMemo(() => operating.filter((r) => {
+  const rows: OperatingLine[] = useMemo(() => operating.filter((r) => {
     if (deptFilter !== "ALL" && r.dept !== deptFilter) return false;
     if (categoryFilter !== "ALL" && r.category !== categoryFilter) return false;
     if (includeFilter === "INC" && !r.include) return false;
     if (includeFilter === "EXC" && r.include) return false;
     return true;
-    // The legacy `flag: r.include && !r.source` flagged missing GL strings,
-    // which is meaningless now that source is the SourceTag enum. Drop it.
-  }).map((r) => ({ ...r, flag: false })), [operating, deptFilter, categoryFilter, includeFilter]);
+  }), [operating, deptFilter, categoryFilter, includeFilter]);
 
   const deptOptions = [
     { value: "ALL",        label: "All",         count: operating.length },
@@ -83,7 +77,7 @@ export function OperatingTable() {
     { id: "include",  label: "Status",   options: includeOptions,  value: includeFilter,  onChange: setIncludeFilter },
   ];
 
-  const cols: Column<Row>[] = [
+  const cols: Column<OperatingLine>[] = [
     {
       key: "code",
       label: "Fund-Program",
@@ -176,7 +170,7 @@ export function OperatingTable() {
       width: "150px",
       align: "right",
       sortable: true,
-      sortKey: (r: Row) => r.sourceFile ?? r.source,
+      sortKey: (r) => r.sourceFile ?? r.source,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <SourcePill source={r.source} sourceFile={r.sourceFile}/>
