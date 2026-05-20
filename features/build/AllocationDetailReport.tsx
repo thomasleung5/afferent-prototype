@@ -322,20 +322,16 @@ export function AllocationDetailReport() {
               color: "var(--ink-2)", letterSpacing: "0.04em",
             }}>{basis}</span></span>
           </div>
-          <div style={{ overflowX: "auto" }}>
-            <div style={{ minWidth: 1100 }}>
-              <ColumnHeaders/>
-              <SectionHeader label="Allocable Budget Units"/>
-              {allocableRows.map((r) => (
-                <DetailRow key={r.node.key} row={r}/>
-              ))}
-              <SectionHeader label="Receiving Budget Units"/>
-              {receivingRows.map((r) => (
-                <DetailRow key={r.node.key} row={r}/>
-              ))}
-              <TotalRow totals={totals}/>
-            </div>
-          </div>
+          <ColumnHeaders/>
+          <SectionHeader label="Allocable Budget Units"/>
+          {allocableRows.map((r) => (
+            <DetailRow key={r.node.key} row={r}/>
+          ))}
+          <SectionHeader label="Receiving Budget Units"/>
+          {receivingRows.map((r) => (
+            <DetailRow key={r.node.key} row={r}/>
+          ))}
+          <TotalRow totals={totals}/>
         </div>
       </div>
     );

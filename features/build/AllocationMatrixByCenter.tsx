@@ -155,7 +155,7 @@ export function AllocationMatrixByCenter() {
                   borderBottom: "1px solid var(--rule-strong)",
                   fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
                   letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
-                }}>Center</th>
+                }}>Cost Center</th>
                 {cols.map((n) => (
                   <th key={n.key} title={n.glCode} style={{
                     padding: cellPad,

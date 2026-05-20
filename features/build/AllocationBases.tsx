@@ -1,12 +1,10 @@
 
-import { useMemo, useState } from "react";
+import { useMemo, useState, type CSSProperties } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import {
-  ALLOCATION_BASES,
-  type AllocationBasisKey, type BasisRow,
-} from "@/lib/data/allocationBases";
+import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownGl";
+import type { BasisKey } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
@@ -14,28 +12,159 @@ import {
 } from "./TracePanel";
 
 interface OpenCell {
-  basisKey: AllocationBasisKey;
+  basisKey: BasisKey;
   rowCode: string;
 }
 
+interface BasisColumn {
+  key: BasisKey;
+  label: string;
+  longName: string;
+  unit: string;
+  unitLong: string;
+  fmt: string;
+  note: string;
+}
+
 /** Renderable row — one per engine node (indirect cost center or direct
- *  fee-dept receiver). Extends BasisRow with the node's glCode caption. */
-interface EffectiveRow extends BasisRow {
+ *  fee-dept receiver). */
+interface EffectiveRow {
+  code: string;
+  name: string;
+  group: "indirect" | "direct";
+  values: Partial<Record<BasisKey, number>>;
   /** glCode caption next to the dept name (omitted for synth seed nodes). */
   glCode?: string;
 }
 
-const BASIS_COLUMN_KEYS: ReadonlySet<string> =
-  new Set(ALLOCATION_BASES.map((b) => b.key));
+const SEED_COLUMNS = ALLOCATION_BASES.map((b) => ({ ...b, key: b.key as BasisKey }));
+
+const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">>> = {
+  RECORDS: {
+    label: "RECORDS",
+    longName: "Records / Document Volume",
+    unit: "records",
+    unitLong: "Records or documents",
+    fmt: "int",
+    note: "Imported CAP document records or Laserfiche volume schedule",
+  },
+  EQUAL: {
+    label: "EQUAL",
+    longName: "Equal Allocation",
+    unit: "units",
+    unitLong: "Equal-weight units",
+    fmt: "decimal",
+    note: "Imported CAP equal-allocation schedule",
+  },
+  MEETING_HOURS: {
+    label: "MTG HRS",
+    longName: "Meeting Hours Supported",
+    unit: "hrs",
+    unitLong: "Meeting hours supported",
+    fmt: "decimal",
+    note: "Imported CAP meeting-hour schedule",
+  },
+  MEETINGS: {
+    label: "MEETINGS",
+    longName: "Meetings Supported",
+    unit: "mtgs",
+    unitLong: "Meetings supported",
+    fmt: "int",
+    note: "Imported CAP meeting-count schedule",
+  },
+  APPLICATIONS: {
+    label: "APPS",
+    longName: "Applications / Permits",
+    unit: "count",
+    unitLong: "Applications, permits, or cases",
+    fmt: "int",
+    note: "Imported CAP application-volume schedule",
+  },
+  RECRUITMENTS: {
+    label: "RECRUIT",
+    longName: "Recruitments",
+    unit: "count",
+    unitLong: "Recruitment counts",
+    fmt: "int",
+    note: "Imported CAP recruitment-count schedule",
+  },
+  CLAIMS: {
+    label: "CLAIMS",
+    longName: "Claim History",
+    unit: "claims",
+    unitLong: "Claims or claim-history units",
+    fmt: "int",
+    note: "Imported CAP claims-history schedule",
+  },
+  RENTAL_HOURS: {
+    label: "RENT HRS",
+    longName: "Rental Hours",
+    unit: "hrs",
+    unitLong: "Rental or facility-use hours",
+    fmt: "decimal",
+    note: "Imported CAP rental-hour schedule",
+  },
+};
+
+function fallbackColumn(key: BasisKey, basisNames: string[]): BasisColumn {
+  const fallback = DRIVER_COLUMN_FALLBACKS[key];
+  const longName = basisNames.length > 0 ? basisNames.join(" / ") : key;
+  return {
+    key,
+    label: fallback?.label ?? key,
+    longName: fallback?.longName ?? longName,
+    unit: fallback?.unit ?? "units",
+    unitLong: fallback?.unitLong ?? "Allocation units",
+    fmt: fallback?.fmt ?? "decimal",
+    note: fallback?.note ?? (basisNames.length > 0 ? `Imported basis: ${basisNames.join(", ")}` : "Imported CAP basis"),
+  };
+}
+
+function buildColumns(
+  allocationBases: { name: string; driverKey: BasisKey }[],
+  drivers: GlDriverMatrix,
+): BasisColumn[] {
+  const seedByKey = new Map<BasisKey, BasisColumn>(
+    SEED_COLUMNS.map((b) => [b.key, b]),
+  );
+  const basisNamesByKey = new Map<BasisKey, string[]>();
+  const keys = new Set<BasisKey>();
+
+  for (const b of allocationBases) {
+    if (b.driverKey === "DIRECT") continue;
+    keys.add(b.driverKey);
+    const names = basisNamesByKey.get(b.driverKey) ?? [];
+    if (!names.includes(b.name)) names.push(b.name);
+    basisNamesByKey.set(b.driverKey, names);
+  }
+  for (const driverRow of Object.values(drivers)) {
+    for (const key of Object.keys(driverRow) as BasisKey[]) {
+      if (key !== "DIRECT") keys.add(key);
+    }
+  }
+
+  const ordered = [
+    ...SEED_COLUMNS.map((b) => b.key).filter((key) => keys.has(key)),
+    ...[...keys].filter((key) => !seedByKey.has(key)).sort(),
+  ];
+  return ordered.map((key) =>
+    seedByKey.get(key) ?? fallbackColumn(key, basisNamesByKey.get(key) ?? []),
+  );
+}
 
 /** Build display rows from the engine's nodes + driver matrix. One row per
  *  node; values pulled from drivers[node.key]. */
-function buildRowsFromNodes(nodes: GlNode[], drivers: GlDriverMatrix): EffectiveRow[] {
+function buildRowsFromNodes(
+  nodes: GlNode[],
+  drivers: GlDriverMatrix,
+  columns: BasisColumn[],
+): EffectiveRow[] {
+  const columnKeys = new Set(columns.map((b) => b.key));
   return nodes.map((n) => {
-    const values: Partial<Record<AllocationBasisKey, number>> = {};
+    const values: Partial<Record<BasisKey, number>> = {};
     for (const [k, v] of Object.entries(drivers[n.key] ?? {})) {
-      if (!BASIS_COLUMN_KEYS.has(k)) continue;
-      if (typeof v === "number" && v !== 0) values[k as AllocationBasisKey] = v;
+      if (!columnKeys.has(k as BasisKey)) continue;
+      if (typeof v === "number" && v !== 0) values[k as BasisKey] = v;
     }
     return {
       code: n.key,
@@ -50,17 +179,22 @@ function buildRowsFromNodes(nodes: GlNode[], drivers: GlDriverMatrix): Effective
 /** Step 3 of the CAP flow. The node × basis denominator matrix — one row
  *  per engine node (cost center or direct fee-dept receiver). */
 export function AllocationBases() {
-  const { derived } = useBuildState();
+  const { allocationBases, derived } = useBuildState();
+  const columns = useMemo(
+    () => buildColumns(allocationBases, derived.capDrivers),
+    [allocationBases, derived.capDrivers],
+  );
   const rows = useMemo(
-    () => buildRowsFromNodes(derived.capStepDown.nodes, derived.capDrivers),
-    [derived.capStepDown.nodes, derived.capDrivers],
+    () => buildRowsFromNodes(derived.capStepDown.nodes, derived.capDrivers, columns),
+    [derived.capStepDown.nodes, derived.capDrivers, columns],
   );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <Matrix rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>
+      <Matrix columns={columns} rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>
       {openCell ? (
         <CellTrace
+          columns={columns}
           rows={rows}
           basisKey={openCell.basisKey}
           rowCode={openCell.rowCode}
@@ -84,13 +218,14 @@ function formatCell(value: number | undefined, fmtKind: string): string {
   return fmt.int(value);
 }
 
-function colTotal(key: AllocationBasisKey, rows: EffectiveRow[]): number {
+function colTotal(key: BasisKey, rows: EffectiveRow[]): number {
   return rows.reduce((a, r) => a + (r.values[key] ?? 0), 0);
 }
 
 function Matrix({
-  rows, openCell, setOpenCell,
+  columns, rows, openCell, setOpenCell,
 }: {
+  columns: BasisColumn[];
   rows: EffectiveRow[];
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
@@ -98,162 +233,203 @@ function Matrix({
   const indirect = rows.filter((r) => r.group === "indirect");
   const direct   = rows.filter((r) => r.group === "direct");
 
-  const labelCol = "minmax(220px, 1.8fr)";
-  const grid = `40px ${labelCol} ${ALLOCATION_BASES.map(() => "minmax(76px, 1fr)").join(" ")}`;
+  const NODE_W = 280;
+  const COL_W = 88;
+  const tableWidth = NODE_W + columns.length * COL_W;
+
+  const cellPad = "9px 12px";
+  const stickyEllipsis = {
+    overflow: "hidden" as const,
+    whiteSpace: "nowrap" as const,
+    textOverflow: "ellipsis" as const,
+    boxSizing: "border-box" as const,
+  };
+  const stickyLeftBody = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: 0, zIndex: 2,
+    background: "var(--paper)",
+    padding: cellPad,
+    boxShadow: "1px 0 0 var(--rule)",
+    textAlign: "left" as const,
+  };
+  const stickyLeftBand = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: 0, zIndex: 4,
+    background: "var(--paper-2)",
+    padding: cellPad,
+    boxShadow: "1px 0 0 var(--rule)",
+    textAlign: "left" as const,
+  };
+
+  const groupRow = (label: string, withTopBorder: boolean) => (
+    <tr>
+      <td colSpan={1 + columns.length} style={{
+        padding: "8px 16px",
+        background: "var(--paper-2)",
+        borderTop: withTopBorder ? "1px solid var(--rule)" : undefined,
+        borderBottom: "1px solid var(--rule)",
+        fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
+        letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase",
+      }}>{label}</td>
+    </tr>
+  );
 
   return (
     <div>
-      <SectionLabel right={`${rows.length} nodes · ${ALLOCATION_BASES.length} bases`}>
+      <SectionLabel right={`${rows.length} nodes · ${columns.length} drivers`}>
         Allocation Bases
       </SectionLabel>
       <div style={{
         background: "var(--paper)", border: "1px solid var(--rule)",
-        overflow: "hidden",
+        overflowX: "auto",
+        position: "relative",
       }}>
-      <div style={{ overflowX: "auto" }}>
-        <div style={{ minWidth: 1280 }}>
-          {/* Header */}
-          <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 10,
-            padding: "10px 16px",
-            background: "var(--paper-2)",
-            borderBottom: "1px solid var(--rule-strong)",
-            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
-            letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
-          }}>
-            <div>#</div>
-            <div>Node</div>
-            {ALLOCATION_BASES.map((b) => (
-              <div key={b.key} title={b.note} style={{ textAlign: "right" }}>{b.label}</div>
+        <table style={{
+          borderCollapse: "separate",
+          borderSpacing: 0,
+          tableLayout: "fixed",
+          width: tableWidth,
+          fontVariantNumeric: "tabular-nums",
+        }}>
+          <colgroup>
+            <col style={{ width: NODE_W }}/>
+            {columns.map((b) => <col key={b.key} style={{ width: COL_W }}/>)}
+          </colgroup>
+          <thead>
+            <tr>
+              <th style={{
+                ...stickyLeftBand,
+                borderBottom: "1px solid var(--rule-strong)",
+                fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
+              }}>Cost Center</th>
+              {columns.map((b) => (
+                <th key={b.key} title={b.note} style={{
+                  padding: cellPad,
+                  background: "var(--paper-2)",
+                  borderBottom: "1px solid var(--rule-strong)",
+                  textAlign: "right",
+                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
+                }}>{b.label}</th>
+              ))}
+            </tr>
+          </thead>
+          <tbody>
+            {groupRow("Indirect cost centers", false)}
+            {indirect.map((r) => (
+              <MatrixRow key={r.code} row={r} columns={columns}
+                openCell={openCell} setOpenCell={setOpenCell}
+                stickyLeftBody={stickyLeftBody}/>
             ))}
-          </div>
 
-          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Indirect cost centers</GroupLabel>
-          {indirect.map((r, i) => (
-            <MatrixRow key={r.code} idx={i + 1} row={r} grid={grid}
-              openCell={openCell} setOpenCell={setOpenCell}/>
-          ))}
-
-          <GroupLabel cols={2 + ALLOCATION_BASES.length}>Direct receivers</GroupLabel>
-          {direct.map((r, i) => (
-            <MatrixRow key={r.code} idx={i + 1} row={r} grid={grid}
-              openCell={openCell} setOpenCell={setOpenCell}/>
-          ))}
-
-          {/* Totals row */}
-          <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 10,
-            padding: "11px 16px",
-            background: "var(--paper-2)",
-            borderTop: "2px solid var(--ink)",
-            fontFamily: "var(--ff-mono)",
-            fontVariantNumeric: "tabular-nums",
-            fontSize: 12, fontWeight: 600,
-          }}>
-            <div/>
-            <div className="mono" style={{
-              fontSize: 10.5, letterSpacing: "0.1em",
-              textTransform: "uppercase", color: "var(--ink-2)",
-            }}>Total</div>
-            {ALLOCATION_BASES.map((b) => {
-              const t = colTotal(b.key, rows);
-              return (
-                <div key={b.key} className="num" style={{
-                  textAlign: "right", fontSize: 12,
-                }}>{formatCell(t, b.fmt)}</div>
-              );
-            })}
-          </div>
-
-          {/* Unit row */}
-          <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 10,
-            padding: "7px 16px",
-            background: "var(--paper-2)",
-            borderTop: "1px solid var(--rule)",
-            fontFamily: "var(--ff-mono)",
-            fontSize: 10, color: "var(--ink-3)",
-            letterSpacing: "0.04em",
-          }}>
-            <div/>
-            <div style={{ textTransform: "uppercase", letterSpacing: "0.1em" }}>Unit</div>
-            {ALLOCATION_BASES.map((b) => (
-              <div key={b.key} style={{ textAlign: "right" }}>{b.unit}</div>
+            {groupRow("Direct receivers", true)}
+            {direct.map((r) => (
+              <MatrixRow key={r.code} row={r} columns={columns}
+                openCell={openCell} setOpenCell={setOpenCell}
+                stickyLeftBody={stickyLeftBody}/>
             ))}
-          </div>
-        </div>
+          </tbody>
+          <tfoot>
+            <tr>
+              <td className="mono" style={{
+                ...stickyLeftBand,
+                borderTop: "2px solid var(--ink)",
+                fontSize: 10.5, fontWeight: 600, letterSpacing: "0.1em",
+                textTransform: "uppercase", color: "var(--ink-2)",
+              }}>Total</td>
+              {columns.map((b) => {
+                const t = colTotal(b.key, rows);
+                return (
+                  <td key={b.key} className="num" style={{
+                    padding: cellPad,
+                    background: "var(--paper-2)",
+                    borderTop: "2px solid var(--ink)",
+                    textAlign: "right", fontSize: 12, fontWeight: 600,
+                    fontFamily: "var(--ff-mono)",
+                  }}>{formatCell(t, b.fmt)}</td>
+                );
+              })}
+            </tr>
+            <tr>
+              <td style={{
+                ...stickyLeftBand,
+                borderTop: "1px solid var(--rule)",
+                fontFamily: "var(--ff-mono)", fontSize: 10,
+                letterSpacing: "0.1em", color: "var(--ink-3)",
+                textTransform: "uppercase",
+              }}>Unit</td>
+              {columns.map((b) => (
+                <td key={b.key} style={{
+                  padding: cellPad,
+                  background: "var(--paper-2)",
+                  borderTop: "1px solid var(--rule)",
+                  textAlign: "right",
+                  fontFamily: "var(--ff-mono)", fontSize: 10, color: "var(--ink-3)",
+                }}>{b.unit}</td>
+              ))}
+            </tr>
+          </tfoot>
+        </table>
       </div>
-      </div>
-    </div>
-  );
-}
-
-function GroupLabel({ children }: { cols: number; children: string }) {
-  return (
-    <div style={{
-      padding: "8px 16px",
-      background: "var(--paper-2)",
-      borderBottom: "1px solid var(--rule)",
-      fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
-      letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase",
-    }}>
-      {children}
     </div>
   );
 }
 
 function MatrixRow({
-  idx, row, grid, openCell, setOpenCell,
+  row, columns, openCell, setOpenCell, stickyLeftBody,
 }: {
-  idx: number; row: EffectiveRow; grid: string;
+  row: EffectiveRow; columns: BasisColumn[];
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
+  stickyLeftBody: CSSProperties;
 }) {
   const caption = row.glCode ?? "";
   return (
-    <div style={{
-      display: "grid", gridTemplateColumns: grid, gap: 10,
-      padding: "9px 16px",
-      borderBottom: "1px solid var(--rule)",
-      alignItems: "baseline",
-      fontFamily: "var(--ff-mono)",
-      fontVariantNumeric: "tabular-nums",
-      fontSize: 12,
-    }}>
-      <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)" }}>
-        {idx.toString().padStart(2, "0")}
-      </span>
-      <div style={{ fontFamily: "var(--ff-ui)", fontSize: 13, color: "var(--ink)" }}>
+    <tr>
+      <td style={{
+        ...stickyLeftBody,
+        borderBottom: "1px solid var(--rule)",
+        fontFamily: "var(--ff-ui)", fontSize: 13, color: "var(--ink)",
+      }}>
         <span style={{ fontWeight: 500 }}>{row.name}</span>{" "}
         <span className="mono" style={{ fontSize: 10, color: "var(--ink-4)" }}>
           {caption}
         </span>
-      </div>
-      {ALLOCATION_BASES.map((b) => {
+      </td>
+      {columns.map((b) => {
         const v = row.values[b.key];
         const empty = v == null || v === 0;
         const isOpen = openCell?.basisKey === b.key && openCell?.rowCode === row.code;
         return (
-          <button
-            key={b.key}
-            onClick={() => !empty && setOpenCell(isOpen ? null : { basisKey: b.key, rowCode: row.code })}
-            title={empty ? "—" : `${formatCell(v, b.fmt)} ${b.unit} — click for trace`}
-            style={{
-              textAlign: "right", padding: "2px 4px",
-              fontSize: 12,
-              fontFamily: "var(--ff-mono)",
-              fontVariantNumeric: "tabular-nums",
-              color: empty ? "var(--ink-4)" : "var(--ink)",
-              background: isOpen ? "var(--accent-tint)" : "transparent",
-              border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
-              cursor: empty ? "default" : "pointer",
-            }}
-          >
-            {formatCell(v, b.fmt)}
-          </button>
+          <td key={b.key} style={{
+            padding: 0,
+            borderBottom: "1px solid var(--rule)",
+            background: isOpen ? "var(--accent-tint)" : "transparent",
+            textAlign: "right",
+          }}>
+            <button
+              type="button"
+              onClick={() => !empty && setOpenCell(isOpen ? null : { basisKey: b.key, rowCode: row.code })}
+              title={empty ? "—" : `${formatCell(v, b.fmt)} ${b.unit} — click for trace`}
+              style={{
+                display: "block", width: "100%",
+                textAlign: "right", padding: "7px 10px",
+                fontSize: 12,
+                fontFamily: "var(--ff-mono)",
+                fontVariantNumeric: "tabular-nums",
+                color: empty ? "var(--ink-4)" : "var(--ink)",
+                background: "transparent",
+                border: isOpen ? "1px solid var(--accent)" : "1px solid transparent",
+                cursor: empty ? "default" : "pointer",
+              }}
+            >
+              {formatCell(v, b.fmt)}
+            </button>
+          </td>
         );
       })}
-    </div>
+    </tr>
   );
 }
 
@@ -279,14 +455,15 @@ function TraceHint() {
 }
 
 function CellTrace({
-  rows, basisKey, rowCode, onClose,
+  columns, rows, basisKey, rowCode, onClose,
 }: {
+  columns: BasisColumn[];
   rows: EffectiveRow[];
-  basisKey: AllocationBasisKey;
+  basisKey: BasisKey;
   rowCode: string;
   onClose: () => void;
 }) {
-  const basis = ALLOCATION_BASES.find((b) => b.key === basisKey);
+  const basis = columns.find((b) => b.key === basisKey);
   const row = rows.find((r) => r.code === rowCode);
   if (!basis || !row) return null;
 
