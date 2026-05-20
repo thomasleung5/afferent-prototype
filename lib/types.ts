@@ -115,7 +115,10 @@ export type MatrixDeptCode =
 
 export type BasisKey =
   | "FTE" | "EXPEND" | "EXPEND_X" | "EXPEND_PW" | "PAYROLL" | "ACCT" | "AGENDA"
-  | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS" | "DIRECT";
+  | "PRA" | "CONTRACT" | "SQFT" | "VEHICLE" | "COMMITS"
+  | "RECORDS" | "EQUAL" | "MEETING_HOURS" | "MEETINGS" | "APPLICATIONS"
+  | "RECRUITMENTS" | "CLAIMS" | "RENTAL_HOURS"
+  | "DIRECT";
 
 /** One receiver row inside a basis's unit schedule. `glCode` is the
  *  routing identity used by the engine. `deptCode` is classification

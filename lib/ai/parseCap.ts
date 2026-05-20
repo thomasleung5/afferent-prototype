@@ -199,17 +199,7 @@ export function capBasesToExtractionResult(
       importedAt: now,
     };
 
-    const rawKey = (row.driverKey ?? "").trim().toUpperCase();
-    if (rawKey === "OTHER") {
-      unmapped.push({
-        reason: "schema-mismatch",
-        raw: [row.name ?? "", "OTHER (no driver)", row.source ?? "", row.methodologyNote ?? ""],
-        lineage,
-      });
-      return;
-    }
-
-    const driverKey = normBasisKey(row.driverKey);
+    const driverKey = normBasisKey(row.driverKey) ?? inferBasisKey(row);
     if (!driverKey) {
       unmapped.push({
         reason: "schema-mismatch",
@@ -219,14 +209,6 @@ export function capBasesToExtractionResult(
       return;
     }
     const directTo = driverKey === "DIRECT" ? normMatrixDept(row.directTo) ?? undefined : undefined;
-    if (driverKey === "DIRECT" && !directTo) {
-      unmapped.push({
-        reason: "missing-required-field",
-        raw: [row.name ?? "", `DIRECT → ${row.directTo ?? "(none)"}`, row.source ?? "", row.methodologyNote ?? ""],
-        lineage,
-      });
-      return;
-    }
 
     const entity: AllocationBasis = {
       id: `bas-ai-${Date.now()}-${i}`,
@@ -240,7 +222,7 @@ export function capBasesToExtractionResult(
       ...(directTo ? { directTo } : {}),
     };
     const extracted = { entity, lineage };
-    if (row.confidence === "low") lowConfidence.push(extracted);
+    if (row.confidence === "low" || !normBasisKey(row.driverKey)) lowConfidence.push(extracted);
     else mapped.push(extracted);
   });
 
@@ -510,13 +492,36 @@ export function capDirectAllocationsToExtractionResult(
 
 const BASIS_KEYS: BasisKey[] = [
   "FTE", "EXPEND", "EXPEND_X", "EXPEND_PW", "PAYROLL", "ACCT", "AGENDA",
-  "PRA", "CONTRACT", "SQFT", "VEHICLE", "COMMITS", "DIRECT",
+  "PRA", "CONTRACT", "SQFT", "VEHICLE", "COMMITS",
+  "RECORDS", "EQUAL", "MEETING_HOURS", "MEETINGS", "APPLICATIONS",
+  "RECRUITMENTS", "CLAIMS", "RENTAL_HOURS",
+  "DIRECT",
 ];
 
 function normBasisKey(v: string | undefined): BasisKey | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   return (BASIS_KEYS as readonly string[]).includes(s) ? (s as BasisKey) : null;
+}
+
+function inferBasisKey(row: BasisRow): BasisKey | null {
+  const text = [row.name, row.source, row.methodologyNote]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+  if (!text.trim()) return null;
+
+  if (/\bdirect\b/.test(text)) return "DIRECT";
+  if (/\bequal\b|\ball departments\b|\bequally\b|\bflat\b/.test(text)) return "EQUAL";
+  if (/\brecords?\b|\bdocuments?\b|\blaserfiche\b/.test(text)) return "RECORDS";
+  if (/\bmeeting hours?\b|hours of meetings?/.test(text)) return "MEETING_HOURS";
+  if (/\bmeetings?\b/.test(text)) return "MEETINGS";
+  if (/\bapplications?\b|\bpermits?\b/.test(text)) return "APPLICATIONS";
+  if (/\brecruitments?\b|\bhiring\b/.test(text)) return "RECRUITMENTS";
+  if (/\bclaims?\b|\bclaim history\b|\binsurance losses\b/.test(text)) return "CLAIMS";
+  if (/\brental hours?\b|\bfacility rentals?\b|\bhall rentals?\b/.test(text)) return "RENTAL_HOURS";
+
+  return null;
 }
 
 const MATRIX_DEPTS: MatrixDeptCode[] = [

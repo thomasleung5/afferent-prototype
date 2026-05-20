@@ -100,10 +100,13 @@ export const CAP_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
  *  to see end-to-end routing. */
 export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
   const usedBasisIds = new Set(CAP_POOLS.map((p) => p.basisId));
+  const seedDriverKeys = new Set<string>(ALLOCATION_BASIS_ROWS.flatMap((row) => Object.keys(row.values)));
+  const isSeedDriverKey = (key: string): key is AllocationBasisKey => seedDriverKeys.has(key);
   const rows: BasisUnitRow[] = [];
   for (const basis of SEED_ALLOCATION_BASES) {
     if (!usedBasisIds.has(basis.id)) continue;
     if (basis.driverKey === "DIRECT") continue;
+    if (!isSeedDriverKey(basis.driverKey)) continue;
     const driverKey: AllocationBasisKey = basis.driverKey;
     const receivers = ALLOCATION_BASIS_ROWS.flatMap((row) => {
       const v = row.values[driverKey];
