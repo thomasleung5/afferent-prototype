@@ -271,7 +271,7 @@ function DepartmentSummaries({ payload }: { payload: ExportPayload }) {
       <div className="eyebrow">Section 4</div>
       <h2 className="h2">Department summaries</h2>
       <div className="body" style={{ marginBottom: 14, maxWidth: 600 }}>
-        Direct labor + operating + cost allocation, applied to productive hours, yields
+        Direct labor + operating + overhead cost allocation, applied to productive hours, yields
         the Fully Burdened Hourly Rate (FBHR) per department. FBHR × service hours = unit cost.
       </div>
       <table>

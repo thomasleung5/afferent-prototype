@@ -162,7 +162,7 @@ export function RateDerivation() {
                   <b>${Math.round(f.operatingRate)}</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ cost allocation $/hr</span>
+                  <span style={{ color: "var(--ink-3)" }}>+ overhead cost allocation $/hr</span>
                   <b>${Math.round(f.capRate)}</b>
                 </div>
                 <div style={{
@@ -174,7 +174,7 @@ export function RateDerivation() {
                 </div>
               </div>
               <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.55 }}>
-                Operating + cost allocation ={" "}
+                Operating + overhead cost allocation ={" "}
                 {fmt.dollars(Math.round(f.operatingDollars + f.capDollars))} ÷{" "}
                 {f.productiveHours.toFixed(0)} hrs.
               </div>
@@ -192,7 +192,7 @@ export function RateDerivation() {
                   <b>{fmt.dollars(Math.round(f.operatingDollars))}</b>
                 </div>
                 <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ cost allocation</span>
+                  <span style={{ color: "var(--ink-3)" }}>+ overhead cost allocation</span>
                   <b>{fmt.dollars(Math.round(f.capDollars))}</b>
                 </div>
                 <div style={{
@@ -205,7 +205,7 @@ export function RateDerivation() {
               </div>
             </DrilldownColumn>
 
-            <DrilldownColumn marker="③" title="Cost allocation pools feeding this rate">
+            <DrilldownColumn marker="③" title="Overhead cost allocation pools feeding this rate">
               <div style={{
                 background: "var(--paper)", border: "1px solid var(--rule)",
                 fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,

@@ -34,7 +34,7 @@ export function TraceabilityFooter() {
         <div style={{
           fontSize: 11.5, color: "var(--ink-3)", marginTop: 4, lineHeight: 1.5,
         }}>
-          Fee → Service → FBHR → Cost allocation $ → Pools → Drivers → Salary &amp; Budget inputs.
+          Fee → Service → FBHR → Overhead cost allocation $ → Pools → Drivers → Salary &amp; Budget inputs.
         </div>
       </div>
       <div>
@@ -59,7 +59,7 @@ export function TraceabilityFooter() {
         <div className="mono" style={{
           fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Cost allocation conservation</div>
+        }}>Overhead cost allocation conservation</div>
         <div className="num" style={{
           fontSize: 13, fontWeight: 600, fontFamily: "var(--ff-mono)",
           color: balanced ? "var(--pos)" : "var(--warn)",
