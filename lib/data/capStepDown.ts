@@ -2,8 +2,8 @@
  *
  * The engine itself lives in capStepDownGl.ts (glCode-native). This file
  * exposes the constants and helpers that engine uses:
- *   - MatrixDept catalog (INDIRECT_DEPTS, DIRECT_DEPTS, ALL_DEPTS) — used
- *     by graph builders for classification labels.
+ *   - INDIRECT_DEPTS — indirect MatrixDept catalog used by the graph
+ *     builder when seeding driver values onto synth seed:center:* nodes.
  *   - CENTER_NAME_TO_CODE — receiver-fallback classification map for the
  *     legacy LAH center names.
  *   - basisForPool / inferBasis — resolves a pool's basis key + directTo.
@@ -42,18 +42,6 @@ export const INDIRECT_DEPTS: MatrixDept[] = [
   { code: "INS",      name: "Insurance",                          kind: "indirect" },
   { code: "CMTE",     name: "Committees",                         kind: "indirect" },
 ];
-
-const DIRECT_DEPTS: MatrixDept[] = [
-  { code: "PLAN",  name: "Planning",          kind: "direct" },
-  { code: "BLDG",  name: "Building",          kind: "direct" },
-  { code: "ENG",   name: "Engineering",       kind: "direct" },
-  { code: "PW",    name: "Public Works",      kind: "direct" },
-  { code: "PARKS", name: "Parks & Recreation",kind: "direct" },
-  { code: "PD",    name: "Police Services",   kind: "direct" },
-  { code: "FIRE",  name: "Fire Prevention",   kind: "direct" },
-];
-
-const ALL_DEPTS: MatrixDept[] = [...INDIRECT_DEPTS, ...DIRECT_DEPTS];
 
 /** Center-name → indirect-dept code (matches CAP_POOLS.center text). */
 export const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
@@ -118,22 +106,20 @@ export type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, numbe
 
 /** Seed driver values per department × basis — derived from the Allocation
  *  Bases matrix (lib/data/allocationBases.ts) so the Allocation Bases tab
- *  and the step-down engine share one source of truth when no pools have
- *  imported receivers.
+ *  and the step-down engine share one source of truth when no basisUnits
+ *  have been imported for a basis.
  *
  *  Indirect rows are receivers too — a pool sitting on Finance can be
- *  stepped down to City Attorney if Attorney comes later in the sequence.
- *  Departments not present in ALLOCATION_BASIS_ROWS get an empty row. */
+ *  stepped down to City Attorney if Attorney comes later in the sequence. */
 export const DRIVERS: DriverMatrix = (() => {
-  const out = Object.fromEntries(
-    ALL_DEPTS.map((d) => [d.code, {}]),
-  ) as DriverMatrix;
+  const out: DriverMatrix = {} as DriverMatrix;
   for (const row of ALLOCATION_BASIS_ROWS) {
     const code = row.code as MatrixDeptCode;
-    if (!(code in out)) continue;
+    const cell: Partial<Record<BasisKey, number>> = {};
     for (const [k, v] of Object.entries(row.values)) {
-      if (v != null) out[code][k as BasisKey] = v as number;
+      if (v != null) cell[k as BasisKey] = v as number;
     }
+    out[code] = cell;
   }
   return out;
 })();

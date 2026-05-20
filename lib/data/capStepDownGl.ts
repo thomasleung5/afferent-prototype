@@ -78,8 +78,9 @@ export interface GlEngineGraph {
   nodes: GlNode[];
   drivers: GlDriverMatrix;
   /** centerName → indirect node key. The only resolver the engine needs
-   *  — DIRECT pools no longer have a deptCode-based resolver; they route
-   *  via their imported receivers list (each receiver has a glCode). */
+   *  — DIRECT pools route via their DirectAllocationRow receivers (each
+   *  receiver has a glCode); non-DIRECT pools route via the basis's
+   *  BasisUnitRow. */
   resolveCenterNode: (centerName: string) => NodeKey | undefined;
 }
 
@@ -158,10 +159,10 @@ export interface GlStepDownModel {
   }>;
   nodes: GlNode[];
   /** Per-pool routing diagnostics. Populated when a DIRECT pool has no
-   *  imported receivers / no valid glCodes / all-zero percents, or when
-   *  a non-DIRECT pool falls back to the driver-unit path and finds
-   *  no driver units anywhere. Review tooling surfaces these so the
-   *  user can fix the underlying pool/receiver data. */
+   *  DirectAllocationRow / no valid glCodes / all-zero percents, or
+   *  when a non-DIRECT pool's basisUnits + driver-unit fallback yield
+   *  no usable denominator. Review tooling surfaces these so the user
+   *  can fix the underlying pool/receiver data. */
   diagnostics: PoolDiagnostic[];
 }
 
@@ -225,11 +226,11 @@ export function buildEngineGraph(args: {
   }
 
   // 3. Synthetic direct nodes for PLAN/BLDG/ENG when no imported receiver
-  //    covers a fee dept. These exist so the seed CAP state (and any
-  //    pool-without-receivers) has a stable, glCode-keyed receiver for the
-  //    driver-unit fallback path to route to. They are NOT a deptCode-
-  //    routing fallback for DIRECT pools — DIRECT pools route only via
-  //    their imported receivers list (see Phase 1 below).
+  //    covers a fee dept. These exist so the seed CAP state has a stable,
+  //    glCode-keyed receiver for the driver-unit fallback path when no
+  //    BasisUnitRow is imported. They are NOT a deptCode-routing fallback
+  //    for DIRECT pools — DIRECT pools route only via their
+  //    DirectAllocationRow (see Phase 1 below).
   for (const dept of FEE_DEPTS) {
     const covered = nodes.some((n) => n.role === "direct" && n.feeDept === dept);
     if (covered) continue;
