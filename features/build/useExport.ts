@@ -12,7 +12,6 @@ export function useExport() {
     const payload = buildExportPayload({
       positions:    state.positions,
       operating:    state.operating,
-      capAllocation: state.capAllocation,
       capPools:     state.capPools,
       workload:     state.workload,
       services:     state.services,

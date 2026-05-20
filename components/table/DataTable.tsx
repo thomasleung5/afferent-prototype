@@ -42,10 +42,6 @@ interface RowStyle {
 }
 
 interface Props<Row extends DataTableRow> {
-  title?: string;
-  /** Pixel font-size for the title text. Default 13.5. */
-  titleSize?: number;
-  eyebrow?: string;
   cols: Column<Row>[];
   rows: Row[];
   filters?: FilterGroup[];
@@ -55,8 +51,6 @@ interface Props<Row extends DataTableRow> {
   getRowStyle?: (row: Row, i: number, sorted: Row[]) => RowStyle | null | undefined;
   onAdd?: () => void;
   addLabel?: string;
-  footerNote?: ReactNode;
-  selectedId?: string;
   onRowClick?: (row: Row) => void;
   /** When set, table scrolls horizontally below this px width. */
   minWidth?: number;
@@ -82,15 +76,13 @@ function compareValues(a: unknown, b: unknown): number {
 }
 
 export function DataTable<Row extends DataTableRow>({
-  title, titleSize, eyebrow,
   cols, rows,
   filters,
   defaultSort,
   stickySort,
   getRowStyle,
   onAdd, addLabel,
-  footerNote,
-  selectedId, onRowClick,
+  onRowClick,
   minWidth,
   emptyState,
   openId, renderDrilldown,
@@ -140,9 +132,9 @@ export function DataTable<Row extends DataTableRow>({
       background: "var(--paper)", border: "1px solid var(--rule)",
       overflow: "hidden",
     }}>
-      {(title || eyebrow || filters) && (
+      {filters && (
         <Toolbar
-          title={title} titleSize={titleSize} eyebrow={eyebrow} filters={filters}
+          filters={filters}
           shownCount={shownCount} totalCount={totalCount}
         />
       )}
@@ -212,13 +204,10 @@ export function DataTable<Row extends DataTableRow>({
             sortedRows.map((r, i) => {
               const custom = getRowStyle?.(r, i, sortedRows) ?? null;
               const flagged = !!r.flag;
-              const selected = selectedId != null && r.id === selectedId;
               const bg = custom?.bg ??
-                (flagged ? "var(--warn-tint)" :
-                 selected ? "var(--paper-2)" : "var(--paper)");
+                (flagged ? "var(--warn-tint)" : "var(--paper)");
               const accent = custom?.accent ??
-                (flagged ? "3px solid var(--warn)" :
-                 selected ? "3px solid var(--accent)" : "3px solid transparent");
+                (flagged ? "3px solid var(--warn)" : "3px solid transparent");
               const isOpen = openId != null && r.id === openId;
 
               const drilldownId = renderDrilldown && r.id ? `drilldown-${r.id}` : undefined;
@@ -298,18 +287,13 @@ export function DataTable<Row extends DataTableRow>({
             })
           )}
 
-          {(onAdd || footerNote) && (
+          {onAdd && (
             <div style={{
               padding: "10px 16px",
               borderTop: "1px solid var(--rule-strong)",
               background: "var(--paper-2)",
-              display: "flex", justifyContent: "space-between",
-              alignItems: "center", gap: 14,
             }}>
-              {onAdd ? (
-                <AddRowButton label={addLabel ?? "Add row manually"} onClick={onAdd}/>
-              ) : <div/>}
-              {footerNote && <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{footerNote}</div>}
+              <AddRowButton label={addLabel ?? "Add row manually"} onClick={onAdd}/>
             </div>
           )}
         </div>
@@ -330,11 +314,8 @@ function SortCaret({ dir }: { dir: SortDir | null }) {
 }
 
 function Toolbar({
-  title, titleSize, eyebrow, filters, shownCount, totalCount,
+  filters, shownCount, totalCount,
 }: {
-  title?: string;
-  titleSize?: number;
-  eyebrow?: string;
   filters?: FilterGroup[];
   shownCount: number;
   totalCount: number;
@@ -346,22 +327,6 @@ function Toolbar({
       background: "var(--paper)",
       borderBottom: "1px solid var(--rule)",
     }}>
-      {(title || eyebrow) && (
-        <div style={{ display: "flex", flexDirection: "column", gap: 4, marginRight: 6, minWidth: 0 }}>
-          {eyebrow && (
-            <div className="mono" style={{
-              fontSize: 9.5, fontWeight: 600, letterSpacing: "0.14em", lineHeight: 1.3,
-              color: "var(--ink-3)", textTransform: "uppercase",
-            }}>{eyebrow}</div>
-          )}
-          {title && (
-            <div style={{
-              fontSize: titleSize ?? 14, fontWeight: 600, color: "var(--ink)",
-              letterSpacing: "-0.005em", lineHeight: 1.3,
-            }}>{title}</div>
-          )}
-        </div>
-      )}
       {filters?.map((f) => <FilterChips key={f.id} f={f}/>)}
       <div style={{ flex: 1 }}/>
       {shownCount !== totalCount && (

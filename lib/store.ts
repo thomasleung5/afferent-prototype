@@ -3,7 +3,7 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
-import { CAP_ALLOCATION, CAP_CENTER_TOTALS, CAP_POOLS } from "@/lib/data/cap";
+import { CAP_CENTER_TOTALS, CAP_POOLS } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
@@ -19,10 +19,7 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
-import {
-  buildReceiverRegistry,
-  type ReceiverEntry,
-} from "@/lib/data/capReceiverRegistry";
+import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
   type GlDriverMatrix, type GlStepDownModel,
@@ -50,7 +47,6 @@ export interface BuildImportLog {
 interface BuildState {
   positions: Position[];
   operating: OperatingLine[];
-  capAllocation: Record<DeptCode, CapAllocation>;
   capPools: CapPool[];
   /** Source-department cost per cost center — the 100% reference for each
    *  pool's allocationPercent. Editing a center total rescales all member
@@ -97,7 +93,6 @@ interface BuildState {
 interface BuildActions {
   updatePosition: (id: string, patch: Partial<Position>) => void;
   updateOperating: (id: string, patch: Partial<OperatingLine>) => void;
-  updateCapAllocation: (dept: DeptCode, allocated: number) => void;
   updateWorkload: (id: string, patch: Partial<WorkloadRow>) => void;
   updateService: (id: string, patch: Partial<Service>) => void;
   updatePolicyTarget: (id: string, patch: Partial<PolicyTarget>) => void;
@@ -124,13 +119,13 @@ interface BuildActions {
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeWorkload: (r: ExtractionResult<WorkloadRow>, fileName: string) => ImportApplyResult;
-  mergeCap: (r: ExtractionResult<CapPool>, fileName: string) => ImportApplyResult;
-  /** Bulk-import a CAP bundle covering any of three sections: cost centers,
-   *  allocation bases, and cost pools. Centers upsert into capCenterTotals
-   *  by name; bases upsert into allocationBases by name (existing entries
-   *  keep their id); pools merge through the same mergeRows helper as
-   *  mergeCap. Returns one combined ImportApplyResult so the UI can read
-   *  the per-section counts off `mapped`. */
+  /** Bulk-import a CAP bundle covering centers, bases, basisUnits, pools,
+   *  and directAllocations. Centers upsert into capCenterTotals by name;
+   *  bases upsert into allocationBases by name (existing entries keep
+   *  their id); pools merge through mergeRows by id; basisUnits and
+   *  directAllocations upsert by basisId / poolId. Returns one combined
+   *  ImportApplyResult so the UI can read the per-section counts off
+   *  `mapped`. */
   mergeCapBundle: (
     r: {
       centers: ExtractionResult<{ name: string; glCode?: string; totalCost: number }>;
@@ -155,7 +150,6 @@ interface BuildActions {
   moveCenter: (name: string, direction: "up" | "down") => void;
   resetAll: () => void;
   clearAll: () => void;
-  seedUpstream: () => void;
 }
 
 /* ── Helpers ── */
@@ -176,11 +170,6 @@ const initialState = (): BuildState => {
   return {
     positions: POSITIONS.map((p) => ({ ...p })),
     operating: OPERATING.map((o) => ({ ...o })),
-    capAllocation: {
-      PLAN: { ...CAP_ALLOCATION.PLAN },
-      BLDG: { ...CAP_ALLOCATION.BLDG },
-      ENG:  { ...CAP_ALLOCATION.ENG },
-    },
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},
@@ -257,11 +246,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
 
       updateOperating: (id, patch) =>
         set((s) => ({ operating: s.operating.map((o) => o.id === id ? { ...o, ...patch } : o) })),
-
-      updateCapAllocation: (dept, allocated) =>
-        set((s) => ({
-          capAllocation: { ...s.capAllocation, [dept]: { dept, allocated: Math.max(0, allocated) } },
-        })),
 
       updateWorkload: (id, patch) =>
         set((s) => ({ workload: s.workload.map((w) => w.id === id ? { ...w, ...patch } : w) })),
@@ -544,20 +528,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         return result;
       },
 
-      mergeCap: (r, fileName) => {
-        const result = toApplyResult("cap", fileName, r);
-        set((s) => {
-          const { merged, lineagePatch } = mergeRows(s.capPools, r);
-          return {
-            capPools: merged,
-            lineage: { ...s.lineage, ...lineagePatch },
-            pendingReview: { ...s.pendingReview, cap: [...s.pendingReview.cap, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "cap", result, at: new Date().toISOString() }],
-          };
-        });
-        return result;
-      },
-
       mergeCapBundle: (r, fileName) => {
         const centersIn = [...r.centers.mapped, ...r.centers.lowConfidence];
         const basesIn   = [...r.bases.mapped,   ...r.bases.lowConfidence];
@@ -797,31 +767,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set(initialState());
       },
 
-      seedUpstream: () => {
-        const pools = CAP_POOLS.map((p) => ({ ...p }));
-        set({
-          positions: POSITIONS.map((p) => ({ ...p })),
-          operating: OPERATING.map((o) => ({ ...o })),
-          capAllocation: {
-            PLAN: { ...CAP_ALLOCATION.PLAN },
-            BLDG: { ...CAP_ALLOCATION.BLDG },
-            ENG:  { ...CAP_ALLOCATION.ENG },
-          },
-          capPools: pools,
-          capCenterTotals: { ...CAP_CENTER_TOTALS },
-          capCenterDisallowed: {},
-          capCenterGlCodes: {},
-          capCenterSources: Object.fromEntries(
-            Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
-          ),
-          studyContext: { ...DEFAULT_STUDY_CONTEXT },
-          allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
-          capBasisUnits: [],
-          capDirectAllocations: [],
-          capCenterOrder: defaultCenterOrder(pools),
-        });
-      },
-
       clearAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set({
@@ -836,11 +781,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capBasisUnits: [],
           capDirectAllocations: [],
-          capAllocation: {
-            PLAN: { dept: "PLAN", allocated: 0 },
-            BLDG: { dept: "BLDG", allocated: 0 },
-            ENG:  { dept: "ENG",  allocated: 0 },
-          },
           workload: [],
           services: [],
           policyTargets: [],
@@ -966,9 +906,6 @@ export interface BuildDerived {
    *  receiver units overlay the seed driver row for seed nodes only —
    *  imported nodes get their units strictly from the receiver aggregation. */
   capDrivers: GlDriverMatrix;
-  /** Distinct receivers across basisUnits + directAllocations, keyed by
-   *  glCode. */
-  capReceivers: ReceiverEntry[];
   /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
    *  seed:* key). Source of truth for the matrix tabs + cell traces. */
   capStepDown: GlStepDownModel;
@@ -1048,7 +985,7 @@ export function useBuildState() {
     const impact = policyImpact(comparisons);
     return {
       labor, operatingByDept, fbhr, costs, comparisons, impact,
-      capAllocated, capDrivers: graph.drivers, capReceivers,
+      capAllocated, capDrivers: graph.drivers,
       capStepDown: stepDown,
     };
   }, [
@@ -1059,7 +996,5 @@ export function useBuildState() {
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 
-  const lineageFor = (id: string) => state.lineage[id];
-
-  return { ...state, derived, lineageFor };
+  return { ...state, derived };
 }

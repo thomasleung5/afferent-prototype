@@ -10,7 +10,7 @@ import { buildExportPayload } from "../lib/export/buildPayload";
 import { exportFeeStudyXlsx } from "../lib/export/excel";
 import { POSITIONS } from "../lib/data/positions";
 import { OPERATING } from "../lib/data/operating";
-import { CAP_ALLOCATION, CAP_POOLS } from "../lib/data/cap";
+import { CAP_POOLS } from "../lib/data/cap";
 import { WORKLOAD } from "../lib/data/workload";
 import { SERVICES } from "../lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "../lib/data/policy";
@@ -28,7 +28,14 @@ async function main() {
     ENG:  labor.ENG.productiveHours,
   };
   const operatingByDept = deptOperating(OPERATING, hoursByDept);
-  const fbhr = deptFBHR(labor, operatingByDept, CAP_ALLOCATION);
+  // Smoke test runs without the step-down engine — feed deptFBHR a zero
+  // CAP allocation so the rest of the pipeline still produces output.
+  const zeroCapAllocated: Record<DeptCode, { dept: DeptCode; allocated: number }> = {
+    PLAN: { dept: "PLAN", allocated: 0 },
+    BLDG: { dept: "BLDG", allocated: 0 },
+    ENG:  { dept: "ENG",  allocated: 0 },
+  };
+  const fbhr = deptFBHR(labor, operatingByDept, zeroCapAllocated);
   const costs = serviceCosts(SERVICES, fbhr);
   const comparisons = feeComparisons(costs, SERVICES, POLICY_TARGETS, POLICY_EXCEPTIONS);
   const impact = policyImpact(comparisons);
@@ -36,7 +43,6 @@ async function main() {
   const payload = buildExportPayload({
     positions: POSITIONS,
     operating: OPERATING,
-    capAllocation: CAP_ALLOCATION,
     capPools: CAP_POOLS,
     workload: WORKLOAD,
     services: SERVICES,

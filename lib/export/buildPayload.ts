@@ -3,7 +3,7 @@
  * state so the export always reflects the current edits + imports. */
 
 import type {
-  CapAllocation, DeptCode, OperatingLine, PolicyException, PolicyTarget,
+  DeptCode, OperatingLine, PolicyException, PolicyTarget,
   Position, Service, WorkloadRow, CapPool,
 } from "@/lib/types";
 import type {
@@ -138,7 +138,6 @@ export interface ExportPayload {
 export interface ExportInput {
   positions: Position[];
   operating: OperatingLine[];
-  capAllocation: Record<DeptCode, CapAllocation>;
   capPools: CapPool[];
   workload: WorkloadRow[];
   services: Service[];

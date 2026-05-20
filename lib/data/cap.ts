@@ -1,8 +1,7 @@
-import type { CapAllocation, CapPool, DeptCode } from "../types";
+import type { CapPool } from "../types";
 
-/* Source: data-extended.jsx CAP_POOLS (Town of Los Altos Hills CAP, Sept 4 2025).
- * The full step-down engine isn't ported yet — we surface the pre-computed
- * allocations per direct department instead. */
+/* Source: data-extended.jsx CAP_POOLS (Town of Los Altos Hills CAP,
+ * Sept 4 2025). The step-down engine reads these via the live store. */
 
 // Each center's pools sum to its source-department cost. allocationPercent
 // is derived from amount/centerTotal at seed time, then becomes the source
@@ -45,10 +44,3 @@ export const CAP_CENTER_TOTALS: Record<string, number> = (() => {
   }
   return map;
 })();
-
-/** Final CAP allocation per direct department (from the legacy CAP_IMPACT rollup). */
-export const CAP_ALLOCATION: Record<DeptCode, CapAllocation> = {
-  PLAN: { dept: "PLAN", allocated: 420000 },
-  BLDG: { dept: "BLDG", allocated: 510000 },
-  ENG:  { dept: "ENG",  allocated: 190000 },
-};

@@ -11,7 +11,6 @@ export default function FeeStudyExportPage() {
   const payload = useMemo<ExportPayload>(() => buildExportPayload({
     positions:    state.positions,
     operating:    state.operating,
-    capAllocation: state.capAllocation,
     capPools:     state.capPools,
     workload:     state.workload,
     services:     state.services,

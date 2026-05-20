@@ -5,10 +5,13 @@ import { useBuildState } from "@/lib/store";
 /** Persistent footer on the Cost of Service page. Affirms that every number
  *  is traceable to source inputs and shows the conservation check. */
 export function TraceabilityFooter() {
-  const { services, derived, capAllocation, capPools } = useBuildState();
+  const { services, derived, capPools } = useBuildState();
   const totalAnnual = derived.costs.reduce((a, c) => a + c.annualCost, 0);
+  // Live step-down output across the three fee depts. Excludes "OTHER"
+  // (CIP / grant fund) receivers — see derived.capStepDown.directTotals
+  // for the full per-node distribution.
   const totalAllocated =
-    capAllocation.PLAN.allocated + capAllocation.BLDG.allocated + capAllocation.ENG.allocated;
+    derived.capAllocated.PLAN + derived.capAllocated.BLDG + derived.capAllocated.ENG;
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
   const unallocated = poolTotal - totalAllocated;
   const balanced = poolTotal === 0 || Math.abs(unallocated) < 1;

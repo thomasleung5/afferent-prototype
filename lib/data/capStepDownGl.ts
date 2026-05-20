@@ -333,7 +333,6 @@ export function computeStepDownGl(args: {
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
   const directNodes   = nodes.filter((n) => n.role === "direct");
   const allNodeKeys   = new Set<NodeKey>(nodes.map((n) => n.key));
-  const nodeByKey = new Map(nodes.map((n) => [n.key, n]));
 
   // Index basisUnits and directAllocations for quick lookup.
   const basisUnitsById = new Map(basisUnits.map((bu) => [bu.basisId, bu]));
