@@ -427,6 +427,20 @@ export function computeStepDownGl(args: {
     });
   };
 
+  // Pool sizing for center-level weighting. Primary source is
+  // `pool.amount` (the net-allocable headline). When that's zero —
+  // typical for redistribution units like Town Center Operations whose
+  // headline is $0 but whose document publishes personnel + operating
+  // as the implicit weighting basis — fall back to (personnelCost +
+  // operatingCost). This ratio is used to determine each pool's share
+  // of its center's incoming dollars; it does NOT add own dollars
+  // (which would double-count the incoming flow).
+  const poolSize = (p: CapPool): number => {
+    if (p.amount > 0) return p.amount;
+    const breakdown = (p.personnelCost ?? 0) + (p.operatingCost ?? 0);
+    return breakdown > 0 ? breakdown : 0;
+  };
+
   // Step order — drives the engine. Both Phase 1 and Phase 2 iterate
   // stepOrder in sequence so each center's First Pool can include its
   // upstream centers' First contributions, and each center's Phase 2
@@ -568,20 +582,29 @@ export function computeStepDownGl(args: {
 
     const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
 
-    // Pool weight at this center = pool.allocationPercent ÷ Σ allocationPercent.
-    // This is the published split (e.g. Town Center Operations' 64.40 / 25 /
-    // 10.60), and it works for zero-eligible internal-service centers where
-    // an eligible-derived ratio would be 0/0. For ordinary pools the
-    // allocationPercent column already equals each pool's share of total
-    // center eligible, so the two formulas agree. Fall back to an even
-    // split only when no allocationPercent is published anywhere.
+    // Pool weight at this center = pool's effective own dollars
+    // (amount, falling back to personnel + operating when amount is 0) ÷
+    // Σ effective dollars across the center's pools. For ordinary pools
+    // this equals the published allocationPercent split. For zero-amount
+    // internal-service centers (e.g. Town Center Operations) where the
+    // pools publish only personnel + operating, this routes incoming
+    // dollars in proportion to each pool's cost breakdown — which is the
+    // ratio the NBS published worksheets compute against.
+    //
+    // Fall back to allocationPercent when no pool has effective dollars
+    // (defensive), and to an even split only when allocationPercent is
+    // also absent.
+    const totalSize = centerPools.reduce(
+      (a, p) => a + poolSize(p), 0,
+    );
     const totalAllocPct = centerPools.reduce(
       (a, p) => a + (p.allocationPercent ?? 0), 0,
     );
-    const weightOf = (p: CapPool): number =>
-      totalAllocPct > 0
-        ? (p.allocationPercent ?? 0) / totalAllocPct
-        : 1 / Math.max(1, centerPools.length);
+    const weightOf = (p: CapPool): number => {
+      if (totalSize > 0) return poolSize(p) / totalSize;
+      if (totalAllocPct > 0) return (p.allocationPercent ?? 0) / totalAllocPct;
+      return 1 / Math.max(1, centerPools.length);
+    };
 
     for (const p of centerPools) {
       const poolWeight = weightOf(p);
@@ -654,14 +677,20 @@ export function computeStepDownGl(args: {
 
     const centerPools = ownPoolsByCenter.get(centerKey) ?? [];
 
-    // Same weight rule as Phase 1: published allocationPercent split.
+    // Same weight rule as Phase 1: effective dollars first
+    // (amount, or personnel + operating when amount is 0), then
+    // allocationPercent, then even split.
+    const totalSize = centerPools.reduce(
+      (a, p) => a + poolSize(p), 0,
+    );
     const totalAllocPct = centerPools.reduce(
       (a, p) => a + (p.allocationPercent ?? 0), 0,
     );
-    const weightOf = (p: CapPool): number =>
-      totalAllocPct > 0
-        ? (p.allocationPercent ?? 0) / totalAllocPct
-        : 1 / Math.max(1, centerPools.length);
+    const weightOf = (p: CapPool): number => {
+      if (totalSize > 0) return poolSize(p) / totalSize;
+      if (totalAllocPct > 0) return (p.allocationPercent ?? 0) / totalAllocPct;
+      return 1 / Math.max(1, centerPools.length);
+    };
 
     // Phase 2 schedule excludes self (center) AND every upstream center.
     const excludeKeys = new Set<NodeKey>([centerKey, ...upstreamKeys]);
@@ -746,10 +775,11 @@ export function computeStepDownGl(args: {
     const routedToIndirect = indirectNodes.reduce(
       (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
     );
-    // Leakage = pool's amount that didn't reach any receiver via First
-    // Allocation. (Pool may have gotten a second allocation portion too,
-    // but that's tracked through the receiving center's flow and isn't a
-    // separate "leakage" attributable to this pool.)
+    // Leakage = pool's effective own amount that didn't reach any
+    // receiver via First Allocation. Uses effectiveAmount so leakage
+    // is measured against what the engine actually tried to distribute
+    // (which may have been the personnel + operating fallback when
+    // `amount` is 0).
     const firstAllocSum = nodes.reduce(
       (a, n) => a + (firstAllocation[p.id]?.[n.key] ?? 0), 0,
     );

@@ -323,6 +323,119 @@ const bldgEntries = sharedReceivers.filter((r) => r.glCode === "011-3200");
 assert.equal(planEntries.length, 1, "Receiver registry: one entry per glCode regardless of pool count");
 assert.equal(bldgEntries.length, 1, "Receiver registry: one entry per glCode regardless of pool count");
 
+// ── Center-pool weighting by personnel + operating ─────────────────────
+//
+// Town Center Operations–style scenario: a center has multiple pools,
+// all with amount = 0 and personnel + operating populated. The center
+// receives incoming dollars from upstream, and each pool's share of
+// that incoming should be weighted by its personnel + operating
+// breakdown — not by allocationPercent.
+//
+// Pool A: amount=0, p+o=613,161
+// Pool B: amount=0, p+o=339,000
+// (Σ p+o = 952,161). Both pools sit at "Inner Center".
+//
+// We simulate first-incoming by giving the center a single upstream
+// pool that ships its full $1,072,341 into Inner Center. After Phase 1:
+//   firstIncoming[Inner Center] = 1,072,341
+//   Pool A weight = 613,161 / 952,161 = 0.64396
+//   firstPool[Pool A]           = 0 + 0.64396 × 1,072,341 = 690,528
+// Pool A's basis routes 100% to PLAN, so Pool A's First Allocation to
+// PLAN must equal 690,528.
+
+console.log("\n== Center-pool weighting by personnel + operating ==");
+
+const wtBases: AllocationBasis[] = [
+  {
+    id: "wt-upstream", name: "Upstream", source: "Fixture",
+    driverKey: "FTE", createdAt: NOW, validationStatus: "verified",
+  },
+  {
+    id: "wt-inner", name: "Inner schedule", source: "Fixture",
+    driverKey: "PAYROLL", createdAt: NOW, validationStatus: "verified",
+  },
+];
+const wtCenters: Record<string, number> = {
+  "Upstream Center": 1_072_341,
+  "Inner Center": 0,
+};
+const wtGl: Record<string, string> = {
+  "Upstream Center": "UP-CTR",
+  "Inner Center": "IN-CTR",
+};
+const wtOrder = ["Upstream Center", "Inner Center"];
+const wtBasisUnits: BasisUnitRow[] = [
+  // Upstream pool ships its full amount into Inner Center.
+  {
+    basisId: "wt-upstream", basis: "Upstream",
+    receivers: [
+      { dept: "Inner Center", glCode: "IN-CTR", deptCode: "OTHER", units: 100 },
+    ],
+  },
+  // Pool A routes 100% to PLAN.
+  {
+    basisId: "wt-inner", basis: "Inner schedule",
+    receivers: [
+      { dept: "Planning Admin", glCode: "011-3100", deptCode: "PLAN", units: 100 },
+    ],
+  },
+];
+const wtPools: CapPool[] = [
+  {
+    id: "wt-upstream-pool",
+    center: "Upstream Center", pool: "Upstream Pool",
+    allocationPercent: 100, amount: 1_072_341,
+    basisId: "wt-upstream", basis: "Upstream",
+    receiving: "Inner Center", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+  {
+    id: "wt-pool-a",
+    center: "Inner Center", pool: "Pool A (P+O 613,161)",
+    allocationPercent: 64.4, amount: 0,
+    personnelCost: 600_000, operatingCost: 13_161,
+    basisId: "wt-inner", basis: "Inner schedule",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+  {
+    id: "wt-pool-b",
+    center: "Inner Center", pool: "Pool B (P+O 339,000)",
+    allocationPercent: 35.6, amount: 0,
+    personnelCost: 300_000, operatingCost:  39_000,
+    basisId: "wt-inner", basis: "Inner schedule",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+];
+const { entries: wtReceivers } = buildReceiverRegistry(
+  wtBasisUnits, [], wtBases, DEFAULT_STUDY_CONTEXT,
+);
+const wtGraph = buildEngineGraph({
+  allocationBases: wtBases,
+  basisUnits: wtBasisUnits,
+  directAllocations: [],
+  capCenterTotals: wtCenters,
+  capCenterGlCodes: wtGl,
+  capReceivers: wtReceivers,
+});
+const wtModel = computeStepDownGl({
+  pools: wtPools, centerOrder: wtOrder,
+  bases: wtBases, basisUnits: wtBasisUnits,
+  directAllocations: [], graph: wtGraph,
+});
+
+const wtPoolAPlan = wtModel.firstAllocation["wt-pool-a"]?.["011-3100"] ?? 0;
+const wtPoolBPlan = wtModel.firstAllocation["wt-pool-b"]?.["011-3100"] ?? 0;
+const expectPoolA = (613_161 / 952_161) * 1_072_341;
+const expectPoolB = (339_000 / 952_161) * 1_072_341;
+console.log(`  Pool A First → PLAN: ${fmt(wtPoolAPlan)} (expect ${fmt(expectPoolA)})`);
+console.log(`  Pool B First → PLAN: ${fmt(wtPoolBPlan)} (expect ${fmt(expectPoolB)})`);
+console.log(`  Σ → PLAN: ${fmt(wtPoolAPlan + wtPoolBPlan)} (expect ${fmt(1_072_341)})`);
+assert.ok(close(wtPoolAPlan, expectPoolA, 1),
+  "Pool A weighted by 613,161/952,161 (effective $ ratio)");
+assert.ok(close(wtPoolBPlan, expectPoolB, 1),
+  "Pool B weighted by 339,000/952,161 (effective $ ratio)");
+assert.ok(close(wtPoolAPlan + wtPoolBPlan, 1_072_341, 1),
+  "Pool A + Pool B fully redistribute first-incoming");
+
 // ── DIRECT-routing strictness ─────────────────────────────────────────────
 //
 // DIRECT pools route via DirectAllocationRow.receivers. Three scenarios:
