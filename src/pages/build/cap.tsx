@@ -169,7 +169,7 @@ export default function CapPage() {
     <Page>
       <PageHeader
         eyebrow={<NodeEyebrow node="cap"/>}
-        title="Overhead cost allocation"
+        title="Overhead Cost Allocation"
         subtitle="Citywide indirect, allocated to direct departments."
         actions={
           <>
