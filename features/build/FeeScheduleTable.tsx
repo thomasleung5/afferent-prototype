@@ -51,6 +51,14 @@ export function FeeScheduleTable() {
   const stateFor = (id: string): FeeState => stateMap[id] ?? "PENDING";
   const setState = (id: string, st: FeeState) => setStateMap((s) => ({ ...s, [id]: st }));
 
+  // FeeComparison doesn't carry `peer`, so look it up from services — same
+  // source the Fee Benchmark tab reads from. Keeps the column aligned with
+  // the drilldown's `svc.peer`.
+  const peerById = useMemo(
+    () => new Map(services.map((s) => [s.id, s.peer])),
+    [services],
+  );
+
   const enriched: Row[] = useMemo(() => derived.comparisons.map((c) => {
     const confidence = confidenceFor(c.volume, c.hours, c.recoveryPct, c.unitCost);
     return {
@@ -168,13 +176,15 @@ export function FeeScheduleTable() {
       width: "100px",
       align: "right",
       sortable: true,
-      render: (r) => (
-        <span className="num" style={{ color: "var(--ink-3)" }}>
-          {(r as unknown as { peer: number }).peer
-            ? fmt.dollars((r as unknown as { peer: number }).peer)
-            : "—"}
-        </span>
-      ),
+      sortKey: (r) => peerById.get(r.id) ?? 0,
+      render: (r) => {
+        const peer = peerById.get(r.id) ?? 0;
+        return (
+          <span className="num" style={{ color: "var(--ink-3)" }}>
+            {peer > 0 ? fmt.dollars(peer) : "—"}
+          </span>
+        );
+      },
     },
     {
       key: "target",
@@ -213,7 +223,7 @@ export function FeeScheduleTable() {
       ),
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [derived.fbhr, updateService, stateMap]);
+  ], [derived.fbhr, updateService, stateMap, peerById]);
 
   return (
     <div>
