@@ -17,7 +17,7 @@ type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
 type SectionFilter = "ALL" | "SAL" | "WKL" | "CAP" | "FEE" | "SVC" | "OPS";
 
 const SECTION_LABEL: Record<string, string> = {
-  SAL: "Direct Labor", WKL: "Workload", CAP: "Cost Allocation",
+  SAL: "Direct Labor", WKL: "Workload", CAP: "Overhead Cost Allocation",
   FEE: "Fee schedule", SVC: "Services", OPS: "Operating",
 };
 
@@ -141,7 +141,7 @@ export function ChangeReviewTable() {
         { value: "ALL", label: "All" },
         { value: "SAL", label: "Direct Labor" },
         { value: "WKL", label: "Workload" },
-        { value: "CAP", label: "Cost Allocation" },
+        { value: "CAP", label: "Overhead Cost Allocation" },
         { value: "FEE", label: "Fee schedule" },
         { value: "SVC", label: "Services" },
         { value: "OPS", label: "Operating" },

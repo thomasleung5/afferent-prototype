@@ -22,7 +22,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   services:  "Services",
   fees:      "Fee schedule",
   workload:  "Workload",
-  cap:       "Cost Allocation",
+  cap:       "Overhead Cost Allocation",
 };
 
 const DOMAIN_HREF: Record<Domain, string> = {

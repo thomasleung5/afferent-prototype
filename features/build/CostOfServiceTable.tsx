@@ -244,10 +244,10 @@ export function CostOfServiceTable() {
                 </div>
               </div>
               <div style={{ marginTop: 10 }}>
-                <SourcePill tone="cap">FROM COST ALLOCATION</SourcePill>
+                <SourcePill tone="cap">FROM OVERHEAD COST ALLOCATION</SourcePill>
               </div>
               <TraceBlock label="Carries into">
-                Drill further on the Cost Allocation page to see drivers and pass-2 contributions.
+                Drill further on the Overhead Cost Allocation page to see drivers and pass-2 contributions.
               </TraceBlock>
             </DrilldownColumn>
           </DrilldownShell>

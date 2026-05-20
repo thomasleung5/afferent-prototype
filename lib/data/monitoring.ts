@@ -222,7 +222,7 @@ function deriveStaffActions(
       title: `Re-run cost allocation`,
       rationale: `${deptName} recovery is ${Math.abs(worstDept.drift)} pts below target`,
       fiscalImpact: worstDept.subsidy,
-      nextStep: "Open Cost Allocation",
+      nextStep: "Open Overhead Cost Allocation",
       nextHref: "/build/cap",
     });
   }

@@ -274,7 +274,7 @@ export default function CapPage() {
       <PageImportDrawer
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
-        title="Import Cost Allocation"
+        title="Import Overhead Cost Allocation"
         helper="Upload a source PDF, or paste structured JSON as a fallback. Imports the full bundle: cost centers, allocation bases, and cost pools."
         aiPdfHelper="Send a Cost Allocation Plan PDF. We'll extract cost centers, allocation bases, and cost pools."
         onAiPdfImport={uploadPdfToClaude}

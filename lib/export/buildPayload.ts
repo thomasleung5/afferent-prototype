@@ -206,7 +206,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   services:  "Services",
   fees:      "Fee Schedule",
   workload:  "Workload",
-  cap:       "Cost Allocation",
+  cap:       "Overhead Cost Allocation",
 };
 
 export function buildExportPayload(input: ExportInput): ExportPayload {
@@ -361,7 +361,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
         "The fee is recommended at unit cost × recovery target, rounded to the nearest $5.",
     },
     {
-      heading: "Cost Allocation",
+      heading: "Overhead Cost Allocation",
       body:
         "Indirect departments (Council, City Manager, City Clerk, Finance, City Attorney, Insurance, Committees) are allocated " +
         "to direct fee-generating departments using a step-down method. Allocation bases are pool-specific " +
