@@ -97,26 +97,7 @@ interface PoolDiagnostic {
   message: string;
 }
 
-/** One per (processing pool, receiver). The processing pool's home center
- *  is `fromKey`; the receiver is `toKey`. firstAmount is the pool's own
- *  eligible × percent; secondAmount is the pool's share of incoming $ at
- *  its home center × percent; amount = first + second. */
-interface GlStepContribution {
-  poolId: string;
-  fromKey: NodeKey;
-  fromName: string;
-  stepIndex: number;
-  firstAmount: number;
-  secondAmount: number;
-  amount: number;
-  toKey: NodeKey;
-}
-
 export interface GlStepDownModel {
-  /** Pre-step-down placement — each pool's eligible $ sits on its home
-   *  center (or DIRECT target). Diagnostic only; the engine doesn't read
-   *  this after init. */
-  alloc1: Record<string, Record<NodeKey, number>>;
   /** Per-pool distribution after sequential closure. Each pool row shows
    *  what THAT pool distributed to each receiver via its own schedule —
    *  pool's own eligible + pool's share of any incoming $ at its home
@@ -126,37 +107,16 @@ export interface GlStepDownModel {
   /** Per-pool First Allocation — pool's own eligible × receiver percent.
    *  Matches the "First Allocation" column on a CAP PDF. */
   firstAllocation: Record<string, Record<NodeKey, number>>;
-  /** Per-pool Second Allocation — pool's share of incomingRound1 at its
-   *  home center × receiver percent (self excluded, renormalized). Single
-   *  pass per the NBS two-step methodology — no iteration past Round 2. */
+  /** Per-pool Second Allocation — pool's share of upstream incoming at
+   *  its home center × receiver percent (self excluded, renormalized).
+   *  Single pass per the NBS two-step methodology — no iteration past
+   *  Round 2. */
   secondAllocation: Record<string, Record<NodeKey, number>>;
-  /** Per-center Round 1 incoming = Σ over pools of firstAllocation[*][center].
-   *  Matches the "First Allocation" column in NBS's "Costs to be Allocated"
-   *  report for the receiving center. */
-  incomingRound1: Record<NodeKey, number>;
-  /** Per-center Round 2 incoming = Σ over pools of secondAllocation[*][center].
-   *  The Round 2 cross-flows that landed on this center from other pools'
-   *  redistribution. Matches the "Second Allocation" column in NBS's
-   *  "Costs to be Allocated" report. */
-  incomingRound2: Record<NodeKey, number>;
   /** Indirect-node keys in step order. */
   stepOrder: NodeKey[];
-  contributions: GlStepContribution[];
   /** Σ over pools of alloc2[*][direct]. The total $ each direct node
    *  received across every pool's distribution. */
   directTotals: Record<NodeKey, number>;
-  byPool: Record<string, {
-    amount: number;
-    /** $ this pool distributed to direct (terminal) nodes. */
-    allocatedToDirect: number;
-    /** $ this pool distributed to indirect nodes — not residual; the
-     *  receiving indirect's own pools redistribute these via their own
-     *  schedules and that flow shows up in their pool rows. */
-    routedToIndirect: number;
-    /** Eligible $ that did not reach any allowed receiver (the pool's
-     *  schedule had no valid downstream target). */
-    leakage: number;
-  }>;
   nodes: GlNode[];
   /** Per-pool routing diagnostics. Populated when a DIRECT pool has no
    *  DirectAllocationRow / no valid glCodes / all-zero percents, or
@@ -459,25 +419,6 @@ export function computeStepDownGl(args: {
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
-  // alloc1 — pre-step-down placement. Diagnostic only. DIRECT pools place
-  // their eligible $ onto their first valid receiver's glCode; if no valid
-  // receivers exist (no DirectAllocationRow, or all-zero percents) the
-  // placement is left empty (which is also where the leakage diagnostic
-  // gets emitted in Phase 1 below).
-  const alloc1: Record<string, Record<NodeKey, number>> = {};
-  for (const p of pools) {
-    const row = zeroRow();
-    const { basis } = basisForPool(p, bases);
-    if (basis === "DIRECT") {
-      const first = scheduleByPoolId.get(p.id)?.receivers[0];
-      if (first?.glCode) row[first.glCode] = p.amount;
-    } else {
-      const k = resolveCenterNode(p.center);
-      if (k) row[k] = p.amount;
-    }
-    alloc1[p.id] = row;
-  }
-
   const firstAllocation: Record<string, Record<NodeKey, number>> = {};
   const secondAllocation: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
@@ -706,48 +647,6 @@ export function computeStepDownGl(args: {
     }
   }
 
-  // incomingRound2[centerKey] = Σ over pools of secondAllocation[*][centerKey]
-  // The Phase 2 cross-flows that landed on this center, summed across all
-  // sources. Equals NBS's "Second Allocation" column total minus the
-  // self + downstream Phase 1 contributions (which are also categorized
-  // there in NBS's per-source view).
-  const incomingRound2: Record<NodeKey, number> = {};
-  for (const n of indirectNodes) incomingRound2[n.key] = 0;
-  for (const p of pools) {
-    for (const n of indirectNodes) {
-      const share = secondAllocation[p.id]?.[n.key] ?? 0;
-      if (share > 0) incomingRound2[n.key] = (incomingRound2[n.key] ?? 0) + share;
-    }
-  }
-
-  // -----------------------------------------------------------------------
-  // Contributions — one entry per (pool, receiver) carrying first + second.
-  const contributions: GlStepContribution[] = [];
-  for (const p of pools) {
-    const homeKey = resolveCenterNode(p.center);
-    const homeNode = homeKey ? nodeByKey.get(homeKey) : undefined;
-    const fromName = homeNode?.name ?? p.center;
-    const stepIndex = homeKey ? Math.max(1, stepOrder.indexOf(homeKey) + 1) : 1;
-
-    const f = firstAllocation[p.id] ?? {};
-    const s = secondAllocation[p.id] ?? {};
-    const seen = new Set<NodeKey>();
-    for (const k of Object.keys(f)) if ((f[k] ?? 0) > 0) seen.add(k);
-    for (const k of Object.keys(s)) if ((s[k] ?? 0) > 0) seen.add(k);
-    for (const targetKey of seen) {
-      const firstAmount  = f[targetKey] ?? 0;
-      const secondAmount = s[targetKey] ?? 0;
-      contributions.push({
-        poolId: p.id,
-        fromKey: homeKey ?? p.center,
-        fromName,
-        stepIndex,
-        firstAmount, secondAmount, amount: firstAmount + secondAmount,
-        toKey: targetKey,
-      });
-    }
-  }
-
   // === alloc2 = First + Second per pool per receiver ===
   const alloc2: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
@@ -768,33 +667,9 @@ export function computeStepDownGl(args: {
     );
   }
 
-  const byPool: GlStepDownModel["byPool"] = {};
-  for (const p of pools) {
-    const allocatedToDirect = directNodes.reduce(
-      (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
-    );
-    const routedToIndirect = indirectNodes.reduce(
-      (a, d) => a + (alloc2[p.id]?.[d.key] ?? 0), 0,
-    );
-    // Leakage = pool's effective own amount that didn't reach any
-    // receiver via First Allocation. Uses effectiveAmount so leakage
-    // is measured against what the engine actually tried to distribute
-    // (which may have been the personnel + operating fallback when
-    // `amount` is 0).
-    const firstAllocSum = nodes.reduce(
-      (a, n) => a + (firstAllocation[p.id]?.[n.key] ?? 0), 0,
-    );
-    const leakage = Math.max(0, p.amount - firstAllocSum);
-    byPool[p.id] = {
-      amount: p.amount,
-      allocatedToDirect, routedToIndirect, leakage,
-    };
-  }
-
   return {
-    alloc1, alloc2, firstAllocation, secondAllocation,
-    incomingRound1, incomingRound2,
-    stepOrder, contributions, directTotals, byPool, nodes,
+    alloc2, firstAllocation, secondAllocation,
+    stepOrder, directTotals, nodes,
     diagnostics,
   };
 }
