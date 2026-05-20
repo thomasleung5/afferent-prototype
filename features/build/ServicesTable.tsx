@@ -11,21 +11,7 @@ import {
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-const SERVICE_TYPES = ["Permit", "Application", "Inspection", "Review", "Meeting", "Other"];
 const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];
-
-const TYPE_FOR = (id: string): string => {
-  if (/-pc$|-apr$|-fpc$|-pchk/.test(id)) return "Plan check";
-  if (/-insp|-erosion|-ai\b/.test(id)) return "Inspection";
-  if (/-sfr$|-rem$|-pool$|-solar$|-mep$|-tco$|-ext$/.test(id)) return "Permit";
-  if (/-ency|-encl|-grade|-storm/.test(id)) return "Permit";
-  if (/-preap|-adu/.test(id)) return "Meeting";
-  if (/-fence|-oak|-mod|-wlss|-mvar/.test(id)) return "Permit";
-  if (id.startsWith("plan-")) return "Application";
-  if (id.startsWith("bldg-")) return "Permit";
-  if (id.startsWith("eng-")) return "Review";
-  return "Other";
-};
 
 const ROLE_MIX_BY_DEPT: Record<DeptCode, { role: string; pct: number }[]> = {
   PLAN: [{ role: "Planner II",        pct: 70 }, { role: "Senior Planner",       pct: 30 }],
@@ -110,20 +96,6 @@ export function ServicesTable() {
           value={r.dept}
           options={DEPT_OPTIONS}
           onChange={(v) => updateService(r.id, { dept: v as DeptCode })}
-        />
-      ),
-    },
-    {
-      key: "type",
-      label: "Type",
-      width: "130px",
-      sortable: true,
-      sortKey: (r) => TYPE_FOR(r.id),
-      render: (r) => (
-        <CellSelect
-          value={TYPE_FOR(r.id)}
-          options={SERVICE_TYPES}
-          onChange={() => { /* TODO when type lives on Service */ }}
         />
       ),
     },
