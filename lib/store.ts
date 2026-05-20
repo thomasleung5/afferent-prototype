@@ -884,16 +884,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.allocationBases || state.allocationBases.length === 0) {
           state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
         }
-        // Strip persisted-state's eligiblePercent — pools now allocate at
-        // their full `amount` (the net allocable). TS-cast through Record
-        // since the field is no longer on CapPool.
-        if (state.capPools) {
-          state.capPools = state.capPools.map((p) => {
-            const { eligiblePercent: _drop, ...rest } = p as CapPool & { eligiblePercent?: number };
-            void _drop;
-            return rest;
-          });
-        }
         // Backfill capCenterTotals + allocationPercent for state persisted
         // before the % column became editable. Derive totals from Σ amount
         // per center; derive each pool's % from amount/centerTotal.
