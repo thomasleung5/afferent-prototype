@@ -3,7 +3,6 @@ import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { OperatingSummary } from "@/features/build/OperatingSummary";
-import { OperatingBuckets } from "@/features/build/OperatingBuckets";
 import { OperatingTable } from "@/features/build/OperatingTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import { useBuildState } from "@/lib/store";
@@ -87,8 +86,6 @@ export default function OperatingPage() {
       />
 
       <OperatingSummary/>
-
-      <OperatingBuckets/>
 
       <OperatingTable/>
 
