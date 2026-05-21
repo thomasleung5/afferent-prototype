@@ -14,7 +14,6 @@ interface Row {
   totalCost: number;
   disallowed: number;
   netAllocable: number;
-  poolCount: number;
   source: SourceTag;
   sourceFile?: string;
 }
@@ -57,7 +56,6 @@ export function CapCentersTable() {
       totalCost,
       disallowed,
       netAllocable,
-      poolCount: c.pools,
       source: provenance?.source ?? "seed",
       sourceFile: provenance?.sourceFile,
     };
@@ -68,6 +66,7 @@ export function CapCentersTable() {
       key: "idx",
       label: "#",
       width: "44px",
+      sortable: true,
       render: (r) => (
         <span className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>
           {r.idx.toString().padStart(2, "0")}
@@ -148,14 +147,6 @@ export function CapCentersTable() {
           }}
         >{fmt.dollars(r.netAllocable)}</span>
       ),
-    },
-    {
-      key: "poolCount",
-      label: "# pools",
-      width: "70px",
-      align: "right",
-      sortable: true,
-      render: (r) => <span className="num">{r.poolCount}</span>,
     },
     {
       key: "source",
