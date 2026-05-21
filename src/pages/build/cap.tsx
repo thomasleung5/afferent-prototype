@@ -76,6 +76,7 @@ export default function CapPage() {
   // Surfaced inline so users see what didn't bind; populated as a side effect
   // inside the drawer hooks.
   const [unmappedBases, setUnmappedBases] = useState<UnmappedRow[]>([]);
+  const [showUnmappedDetails, setShowUnmappedDetails] = useState(false);
   const showImport = SHOW_IMPORT.includes(step);
 
   function buildStatusMessage(applied: ReturnType<typeof mergeCapBundle>): string {
@@ -195,30 +196,38 @@ export default function CapPage() {
         }}>
           <div style={{
             padding: "10px 16px",
-            background: "var(--paper-2)",
-            borderBottom: "1px solid var(--rule)",
             display: "flex", alignItems: "baseline", gap: 10,
+            borderBottom: showUnmappedDetails ? "1px solid var(--rule)" : "none",
+            background: "var(--paper-2)",
           }}>
             <span className="mono" style={{
               fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Bases for review</span>
             <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-              {unmappedBases.length} bas{unmappedBases.length === 1 ? "is" : "es"} could not be bound to a step-down driver. Pick a real
-              driverKey for them in the bases catalog, or skip.
+              {unmappedBases.length} unbound — pick a driverKey or skip.
             </span>
+            <button
+              type="button"
+              onClick={() => setShowUnmappedDetails((v) => !v)}
+              style={{
+                marginLeft: "auto",
+                all: "unset", cursor: "pointer",
+                fontSize: 11, color: "var(--ink-2)",
+                padding: "2px 8px",
+              }}
+            >{showUnmappedDetails ? "Hide details" : "Show details"}</button>
             <button
               type="button"
               onClick={() => setUnmappedBases([])}
               style={{
-                marginLeft: "auto",
                 all: "unset", cursor: "pointer",
                 fontSize: 11, color: "var(--ink-3)",
                 padding: "2px 8px",
               }}
             >Dismiss all</button>
           </div>
-          {unmappedBases.map((u, i) => {
+          {showUnmappedDetails && unmappedBases.map((u, i) => {
             const d = unmappedBasisDetails(u);
             return (
               <div key={i} style={{
@@ -269,11 +278,11 @@ export default function CapPage() {
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
         title="Import Overhead Cost Allocation"
-        helper="Upload a source PDF, or paste structured JSON as a fallback. Imports the full bundle: cost centers, allocation bases, and cost pools."
-        aiPdfHelper="Send a Cost Allocation Plan PDF. We'll extract cost centers, allocation bases, and cost pools."
+        helper="Imports centers, allocation bases, and cost pools."
+        aiPdfHelper="Upload a Cost Allocation Plan PDF."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ centers?, bases?, pools? }"
-        pasteHelper="Paste structured output shaped like { centers?, bases?, pools? }."
+        pasteHelper="Paste JSON shaped like { centers?, bases?, pools? }."
         pasteSchema={CAP_SCHEMA}
         onPasteJson={pasteJson}
       />

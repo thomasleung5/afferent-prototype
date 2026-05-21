@@ -313,7 +313,7 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-zero cell to see its formula, driver inputs, and the contributions from each pool in the center.</span>
+      <span>Click any non-zero cell to see how it's calculated.</span>
     </div>
   );
 }

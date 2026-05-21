@@ -31,7 +31,7 @@ export default function FeeBenchmarkPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="benchmark"/>}
         title="Fee Benchmark"
-        subtitle="Compare adopted fees against peer-city medians and identify material pricing gaps."
+        subtitle="Adopted fees vs. peer-city medians."
         actions={
           <ExportMenu
             onDownloadExcel={downloadExcel}

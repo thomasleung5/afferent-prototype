@@ -297,7 +297,7 @@ export default function RevenueMonitoringPage() {
       <PageHeader
         eyebrow="Operations · Revenue monitoring"
         title="Revenue Monitoring"
-        subtitle="Track cost recovery drift, subsidy exposure, and fee actions after adoption."
+        subtitle="Cost recovery drift and post-adoption fee actions."
         actions={<Btn kind="ghost"><Icon name="download" size={13}/> Export brief</Btn>}
       />
 

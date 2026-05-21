@@ -30,7 +30,7 @@ export default function BuildOverviewPage() {
       <PageHeader
         eyebrow="Build model"
         title="Model architecture"
-        subtitle="Inputs → Analysis → Policy → Output. Every number is deterministic and traceable to source."
+        subtitle="Inputs → Analysis → Policy → Output."
         actions={
           <>
             {import.meta.env.DEV && (

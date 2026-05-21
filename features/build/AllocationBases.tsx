@@ -458,7 +458,7 @@ function TraceHint() {
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
-      <span>Click any non-empty cell to see its basis, formula, share, and how every other node contributes to the same basis.</span>
+      <span>Click any non-empty cell to see how it's calculated.</span>
     </div>
   );
 }
@@ -528,15 +528,6 @@ function CellTrace({
           {"  =  "}
           <span style={{ color: "var(--accent)" }}>{share.toFixed(1)}%</span>
         </BigFormula>
-        <div style={{
-          marginTop: 12, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
-        }}>
-          {row.name} contributes {formatCell(raw, basis.fmt)} of the{" "}
-          {formatCell(total, basis.fmt)}
-          {basis.fmt === "k" ? "" : ` ${basis.unitLong.toLowerCase()}`} that make
-          up the <strong>{basis.longName}</strong> basis — a{" "}
-          <strong>{share.toFixed(1)}%</strong> share of the citywide denominator.
-        </div>
       </TraceSection>
 
       <CollapsibleMetadata title="Basis metadata">

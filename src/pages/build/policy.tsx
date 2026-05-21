@@ -16,7 +16,7 @@ export default function RecoveryPolicyPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="policy"/>}
         title="Recovery Policy"
-        subtitle="Define subsidy strategy and target cost recovery across departments and fee categories."
+        subtitle="Target cost recovery by department and category."
       />
 
       <StatusRow items={[
