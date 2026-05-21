@@ -68,17 +68,36 @@ export const JURISDICTIONS: Jurisdiction[] = [
     // the bundle lean and makes it easy to swap in alternative demos.
     seedFile: "/test-seed.json",
   },
-  // Placeholder shape for future jurisdictions. Selecting it leaves the
-  // active context unchanged because dataAvailable=false (the TopBar
-  // filters these out of the dropdown).
+  // Coming-soon demos — show in the Demo City picker but render as
+  // disabled until a seedFile lands and dataAvailable flips to true.
   {
-    id: "demo-inland-city",
-    name: "Demo Inland City",
-    fiscalYears: ["FY 2025-26", "FY 2024-25"],
+    id: "city-of-cupertino",
+    name: "City of Cupertino",
+    fiscalYears: ["FY 2025-26"],
     defaultFiscalYear: "FY 2025-26",
-    departments: ["Planning", "Building", "Engineering", "Parks & Recreation"],
+    departments: ["Planning", "Building", "Public Works"],
     peers: [],
-    preparedBy: "Demo Finance Office",
+    preparedBy: "Finance Department",
+    dataAvailable: false,
+  },
+  {
+    id: "city-of-redwood-city",
+    name: "City of Redwood City",
+    fiscalYears: ["FY 2025-26"],
+    defaultFiscalYear: "FY 2025-26",
+    departments: ["Planning", "Building", "Engineering"],
+    peers: [],
+    preparedBy: "Finance Department",
+    dataAvailable: false,
+  },
+  {
+    id: "city-of-menlo-park",
+    name: "City of Menlo Park",
+    fiscalYears: ["FY 2025-26"],
+    defaultFiscalYear: "FY 2025-26",
+    departments: ["Planning", "Building", "Engineering"],
+    peers: [],
+    preparedBy: "Finance Department",
     dataAvailable: false,
   },
 ];

@@ -1,23 +1,20 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu } from "@/components/ui";
+import { DemoCityPicker } from "@/features/build/DemoCityPicker";
 import { WorkflowMap } from "@/features/build/WorkflowMap";
-import { useBuildState, useBuildStore } from "@/lib/store";
+import { useActiveJurisdiction } from "@/lib/active";
+import { useBuildState } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 
 export default function BuildOverviewPage() {
   const { resetAll, clearAll } = useBuildState();
   const { downloadExcel, openPdf } = useExport();
-
-  async function loadTestSeed() {
-    const res = await fetch("/test-seed.json");
-    const data = await res.json();
-    useBuildStore.setState(data);
-  }
+  const jurisdiction = useActiveJurisdiction();
 
   function confirmClearAll() {
     const ok = window.confirm(
-      "Clear all build data?\n\n"
+      `Clear all build data for ${jurisdiction.name}?\n\n`
       + "This removes every service, position, operating line, CAP pool, "
       + "workload row, policy target, and import log — including the seed. "
       + "You can re-seed afterward with Reset edits.",
@@ -33,15 +30,11 @@ export default function BuildOverviewPage() {
         subtitle="Inputs → Analysis → Policy → Output."
         actions={
           <>
-            {import.meta.env.DEV && (
-              <Btn kind="ghost" onClick={loadTestSeed} title="Load test-seed.json into the store">
-                Load test data
-              </Btn>
-            )}
-            <Btn kind="ghost" onClick={resetAll} title="Discard edits and re-seed">
+            <DemoCityPicker/>
+            <Btn kind="ghost" onClick={resetAll} title={`Discard edits in ${jurisdiction.name} and re-seed`}>
               Reset edits
             </Btn>
-            <Btn kind="ghost" onClick={confirmClearAll} title="Wipe every input, including the seed">
+            <Btn kind="ghost" onClick={confirmClearAll} title={`Wipe every input in ${jurisdiction.name}`}>
               Clear all
             </Btn>
             <ExportMenu onDownloadExcel={downloadExcel} onOpenPdf={openPdf}/>
