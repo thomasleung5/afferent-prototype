@@ -335,7 +335,7 @@ export function FeeScheduleTable() {
                 </div>
               )}
               <div style={{ marginTop: 10 }}>
-                <Formula>cost × target ÷ $5</Formula>
+                <Formula>unit cost × target%</Formula>
               </div>
             </DrilldownColumn>
 
