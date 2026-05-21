@@ -1,12 +1,12 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, Formula, SectionLabel, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { CITY } from "@/lib/data/city";
@@ -251,9 +251,6 @@ export function BenchmarkTable() {
                     />
                   </div>
                 </div>
-                <div style={{ marginTop: 10 }}>
-                  <Formula>variance = (our fee − peer median) ÷ peer median</Formula>
-                </div>
               </DrilldownColumn>
 
               <DrilldownColumn marker="②" title="Peer cities">
@@ -292,9 +289,16 @@ export function BenchmarkTable() {
                   Peer fees are listed prices and may understate full cost recovery
                   if peer cities subsidize from general fund.
                 </TraceBlock>
-                <div style={{ marginTop: 10 }}>
-                  <SourcePill>BENCHMARK</SourcePill>
-                </div>
+                <Link
+                  to="/build/feestudy"
+                  search={{ serviceId: r.id }}
+                  style={{
+                    display: "inline-block", marginTop: 10, fontSize: 11,
+                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >
+                  View fee →
+                </Link>
               </DrilldownColumn>
             </DrilldownShell>
           );

@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, SourcePill,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -267,9 +267,6 @@ export function CostOfServiceTable() {
               <div style={{ marginTop: 10 }}>
                 <SourcePill tone="cap">FROM OVERHEAD COST ALLOCATION</SourcePill>
               </div>
-              <TraceBlock label="Carries into">
-                Drill further on the Overhead Cost Allocation page to see drivers and pass-2 contributions.
-              </TraceBlock>
               <Link
                 to="/build/feestudy"
                 search={{ serviceId: r.id }}
