@@ -2,7 +2,6 @@ import { useState, useMemo } from "react";
 import { Link } from "@tanstack/react-router";
 import { DataTable, type Column, type FilterGroup } from "@/components/table";
 import { StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/components/ui";
-import { ConfReason } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
@@ -172,14 +171,7 @@ export function ChangeReviewTable() {
       sortable: true,
       sortKey: (r) => SECTION_LABEL[r.section] ?? "",
       render: (r) => (
-        <span className="mono" style={{
-          display: "inline-block",
-          fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em",
-          color: "var(--ink-2)",
-          padding: "2px 6px",
-          background: "var(--paper-2)",
-          border: "1px solid var(--rule)",
-        }}>{SECTION_LABEL[r.section]}</span>
+        <span style={{ color: "var(--ink-2)" }}>{SECTION_LABEL[r.section]}</span>
       ),
     },
     {
@@ -242,10 +234,7 @@ export function ChangeReviewTable() {
           value: netImpactLabel,
           tone: netImpact > 0 ? "pos" : netImpact < 0 ? "neg" : undefined,
         },
-        { label: "Changes",          value: `${enriched.length}` },
-        { label: "Pending",          value: `${counts.PENDING}`,  tone: counts.PENDING > 0 ? "warn" : undefined },
-        { label: "Accepted",         value: `${counts.ACCEPTED}` },
-        { label: "Deferred",         value: `${counts.DEFERRED}` },
+        { label: "Changes", value: `${enriched.length}` },
         {
           label: "Blended recovery",
           value: `${recovery.currentBlended}% / ${recovery.policyTarget}% target`,
@@ -282,17 +271,6 @@ export function ChangeReviewTable() {
                 <div style={{ fontSize: 13, lineHeight: 1.7 }}>
                   <div style={{ fontWeight: 500 }}>{r.change}</div>
                   <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>Affects: {r.affected}</div>
-                  <div style={{
-                    marginTop: 10, padding: "8px 10px",
-                    background: "var(--paper)", border: "1px solid var(--rule)",
-                    fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.7,
-                  }}>
-                    <div style={{ color: "var(--ink-3)" }}>prior:   <span style={{ color: "var(--ink)" }}>{r.prior}</span></div>
-                    <div style={{ color: "var(--ink-3)" }}>current: <span style={{ color: "var(--ink)" }}>{r.current}</span></div>
-                    <div style={{ borderTop: "1px solid var(--rule)", marginTop: 4, paddingTop: 4, color: "var(--ink-2)", fontWeight: 600 }}>
-                      impact:  {r.impact}
-                    </div>
-                  </div>
                 </div>
               </DrilldownColumn>
 
@@ -306,19 +284,6 @@ export function ChangeReviewTable() {
                       Open {sectionLabelForDomain(r.domain as Parameters<typeof sectionLabelForDomain>[0])} section →
                     </Link>
                   )}
-                </div>
-              </DrilldownColumn>
-
-              <DrilldownColumn marker="③" title="Confidence & source">
-                <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                  <ConfReason ok={r.confidence === "High"} text={`Source confidence: ${r.confidence}`}/>
-                  <ConfReason
-                    ok={!/legal|low confidence/i.test(r.badge)}
-                    text={/legal/i.test(r.badge) ? "Legal review required before adoption" : /low confidence/i.test(r.badge) ? "Low confidence — verify mapping" : "No outstanding review flags"}
-                  />
-                </div>
-                <div style={{ marginTop: 10, fontSize: 10.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
-                  Trace this row back to its section to see the underlying inputs and downstream services.
                 </div>
               </DrilldownColumn>
             </DrilldownShell>
