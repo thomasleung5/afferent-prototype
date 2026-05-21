@@ -25,6 +25,15 @@ input, select { font: inherit; color: inherit; }
   letter-spacing: -0.02em;
 }
 
+/* Row hover highlight for tables whose rows aren't directly clickable but
+   benefit from "what row am I reading" tracking — matches the hover on
+   DeptSummaryTable / DataTable rows. Applied to a <tr>; the rule targets
+   child <td>s so it overrides sticky-cell backgrounds too. */
+.tbl-row-hover > td { transition: background 80ms; }
+.tbl-row-hover:hover > td { background-color: var(--paper-2); }
+.tbl-row-hover-grid { transition: background 80ms; }
+.tbl-row-hover-grid:hover { background-color: var(--paper-2); }
+
 /* Page shell — every screen wraps with this */
 .page {
   max-width: var(--page-max);

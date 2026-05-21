@@ -191,7 +191,7 @@ export function AllocationDetailReport() {
               background: "var(--paper-2)",
               borderTop: "1px solid var(--rule)",
               borderBottom: "1px solid var(--rule)",
-              fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Incoming Costs</div>
           )}
@@ -353,7 +353,7 @@ function CostsRow({
   const fmtMoney = (v: number) => v < 0.5 ? "—" : fmt.dollars(v);
   const dimColor = (v: number) => v < 0.5 ? "var(--ink-4)" : "var(--ink)";
   return (
-    <div style={{
+    <div className={emphasis ? undefined : "tbl-row-hover-grid"} style={{
       display: "grid",
       gridTemplateColumns: "minmax(220px, 1.8fr) 120px 120px 120px",
       gap: 10,
@@ -366,7 +366,7 @@ function CostsRow({
       background: emphasis ? "var(--paper)" : "transparent",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: emphasis ? 12.5 : 11.5,
+      fontSize: emphasis ? 13 : 12,
       fontWeight: emphasis ? 600 : 400,
       alignItems: "baseline",
     }}>
@@ -376,7 +376,7 @@ function CostsRow({
       }}>
         {glCode && (
           <span className="mono" style={{
-            fontSize: 10, color: "var(--ink-4)", marginRight: 8,
+            fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
             letterSpacing: "0.02em",
           }}>{glCode}</span>
         )}
@@ -508,7 +508,7 @@ function SectionHeader({ label }: { label: string }) {
       background: "var(--paper-2)",
       borderBottom: "1px solid var(--rule)",
       borderTop: "1px solid var(--rule)",
-      fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+      fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
       color: "var(--ink-3)", textTransform: "uppercase",
     }}>{label}</div>
   );
@@ -533,19 +533,19 @@ function DetailRow({ row }: { row: Row }) {
   const fmtPct = (v: number) =>
     v <= 0 ? "—" : `${v.toFixed(3)}%`;
   return (
-    <div style={{
+    <div className="tbl-row-hover-grid" style={{
       display: "grid", gridTemplateColumns: COL_GRID, gap: 10,
       padding: "6px 14px",
       borderBottom: "1px solid var(--rule)",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 11.5,
+      fontSize: 12,
       alignItems: "baseline",
     }}>
       <div style={{ fontFamily: "var(--ff-ui)", color: "var(--ink-2)", minWidth: 0 }}>
-        <span style={{
-          color: "var(--ink-4)", fontSize: 10,
-          letterSpacing: "0.04em", marginRight: 8,
+        <span className="mono" style={{
+          color: "var(--ink-3)", fontSize: 10.5,
+          letterSpacing: "0.02em", marginRight: 6,
         }}>
           {row.node.glCode.startsWith("seed:") ? "—" : row.node.glCode}
         </span>

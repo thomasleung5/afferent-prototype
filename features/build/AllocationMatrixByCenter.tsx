@@ -172,7 +172,7 @@ export function AllocationMatrixByCenter() {
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{n.name}</div>
                     <div className="mono" style={{
-                      fontSize: 9.5, color: "var(--ink-4)", letterSpacing: "0.04em",
+                      fontSize: 10, color: "var(--ink-4)", letterSpacing: "0.04em",
                       textTransform: "uppercase", marginTop: 2,
                     }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
                   </th>
@@ -193,11 +193,11 @@ export function AllocationMatrixByCenter() {
                 const isLast = i === capCenterOrder.length - 1;
                 const rowBorder = isLast ? "none" : "1px solid var(--rule)";
                 return (
-                  <tr key={center}>
+                  <tr key={center} className="tbl-row-hover">
                     <td style={{
                       ...stickyLeftBody,
                       borderBottom: rowBorder,
-                      fontFamily: "var(--ff-ui)", fontSize: 12.5, lineHeight: 1.3,
+                      fontFamily: "var(--ff-ui)", fontSize: 13, lineHeight: 1.3,
                       fontWeight: 500, color: "var(--ink)",
                     }}>
                       {glCodeByCenter.get(center) && (
@@ -226,7 +226,7 @@ export function AllocationMatrixByCenter() {
                             style={{
                               display: "block", width: "100%",
                               textAlign: "right", padding: "7px 10px",
-                              fontSize: 11.5,
+                              fontSize: 12,
                               fontFamily: "var(--ff-mono)",
                               fontVariantNumeric: "tabular-nums",
                               color: zero ? "var(--ink-4)" : "var(--ink)",

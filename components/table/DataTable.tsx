@@ -217,6 +217,9 @@ export function DataTable<Row extends DataTableRow>({
               const accent = custom?.accent ??
                 (flagged ? "3px solid var(--warn)" : "3px solid transparent");
               const isOpen = openId != null && r.id === openId;
+              const interactive = !!onRowClick || !!renderDrilldown;
+              const restingBg = (custom?.style as CSSProperties | undefined)?.background as string | undefined
+                ?? bg;
 
               const drilldownId = renderDrilldown && r.id ? `drilldown-${r.id}` : undefined;
               return (
@@ -229,6 +232,12 @@ export function DataTable<Row extends DataTableRow>({
                         onRowClick(r);
                       }
                     } : undefined}
+                    onMouseEnter={(e) => {
+                      if (interactive && !isOpen) e.currentTarget.style.background = "var(--paper-2)";
+                    }}
+                    onMouseLeave={(e) => {
+                      if (interactive && !isOpen) e.currentTarget.style.background = restingBg;
+                    }}
                     role={onRowClick ? "button" : undefined}
                     tabIndex={onRowClick ? 0 : undefined}
                     aria-expanded={renderDrilldown ? isOpen : undefined}
@@ -244,6 +253,7 @@ export function DataTable<Row extends DataTableRow>({
                       borderLeft: accent,
                       fontSize: 12.5,
                       cursor: onRowClick ? "pointer" : "default",
+                      transition: "background 80ms",
                       ...(custom?.style ?? {}),
                     }}
                   >

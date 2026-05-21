@@ -386,16 +386,19 @@ function MatrixRow({
 }) {
   const caption = row.glCode ?? "";
   return (
-    <tr>
+    <tr className="tbl-row-hover">
       <td style={{
         ...stickyLeftBody,
         borderBottom: "1px solid var(--rule)",
         fontFamily: "var(--ff-ui)", fontSize: 13, color: "var(--ink)",
       }}>
-        <span style={{ fontWeight: 500 }}>{row.name}</span>{" "}
-        <span className="mono" style={{ fontSize: 10, color: "var(--ink-4)" }}>
-          {caption}
-        </span>
+        {caption && (
+          <span className="mono" style={{
+            fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+            letterSpacing: "0.02em", fontWeight: 400,
+          }}>{caption}</span>
+        )}
+        <span style={{ fontWeight: 500 }}>{row.name}</span>
       </td>
       {columns.map((b) => {
         const v = row.values[b.key];
