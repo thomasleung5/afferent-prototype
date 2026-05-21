@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { SectionLabel } from "@/components/ui";
+import { fmt } from "@/lib/format";
+import { useBuildState } from "@/lib/store";
 
 function useIsActive(href: string) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
@@ -28,31 +30,25 @@ interface Node {
   colors?: CardColors;
 }
 
-const INPUTS: Node[] = [
-  { href: "/build/services",  label: "Services",        desc: "hours × role mix",                       metric: "37 services",          state: "Locked" },
-  { href: "/build/salary",    label: "Direct Labor",    desc: "(salary + benefits) ÷ productive hours", metric: "73 positions",         state: "Locked" },
-  { href: "/build/operating", label: "Operating",       desc: "non-labor · per dept",                   metric: "214 expense lines",    state: "Locked" },
-  { href: "/build/cap",       label: "Overhead Cost Allocation", desc: "indirect → direct",             metric: "14 indirect pools",    state: "Locked" },
-  { href: "/build/workload",  label: "Workload",        desc: "annual volume",                          metric: "1,246 activity records", state: "Locked" },
-];
+const COST_OF_SERVICE_COLORS: CardColors = {
+  bg: "#1d2236", border: "#3a3f53", title: "#ffffff", secondary: "#b7bcc8",
+};
+const RECOVERY_POLICY_COLORS: CardColors = {
+  bg: "#ebe8df", border: "#1d2236", title: "#1d2236", secondary: "#6f6e74",
+};
+const FEE_SCHEDULE_COLORS: CardColors = {
+  bg: "#3a3f53", border: "#3a3f53", title: "#ffffff", secondary: "#c5cad6",
+};
 
-const WORKFLOW: Node[] = [
-  {
-    href: "/build/costs", label: "Cost of Service",
-    desc: "hours × FBHR × volume", metric: "Deterministic computation", state: "Locked",
-    colors: { bg: "#1d2236", border: "#3a3f53", title: "#ffffff", secondary: "#b7bcc8" },
-  },
-  {
-    href: "/build/policy", label: "Recovery Policy",
-    desc: "target % per service", metric: "72% target recovery", state: "Open",
-    colors: { bg: "#ebe8df", border: "#1d2236", title: "#1d2236", secondary: "#6f6e74" },
-  },
-  {
-    href: "/build/feestudy", label: "Fee Schedule",
-    desc: "cost × target", metric: "+$420K annual impact", state: "Open",
-    colors: { bg: "#3a3f53", border: "#3a3f53", title: "#ffffff", secondary: "#c5cad6" },
-  },
-];
+function plural(n: number, one: string, many: string) {
+  return `${n.toLocaleString()} ${n === 1 ? one : many}`;
+}
+
+function impactLabel(gap: number): string {
+  if (Math.abs(gap) < 500) return "$0 annual impact";
+  const sign = gap > 0 ? "+" : "−";
+  return `${sign}${fmt.dollarsK(Math.abs(gap))} annual impact`;
+}
 
 function StatusPill({ state }: { state: "Locked" | "Open" }) {
   const s = state === "Locked"
@@ -188,6 +184,68 @@ function FlowArrow() {
 }
 
 export function WorkflowMap() {
+  const {
+    services, positions, operating, capPools, workload, derived,
+  } = useBuildState();
+
+  // All metric strings come from live store state — no hardcoded counts.
+  const inputs: Node[] = [
+    {
+      href: "/build/services", label: "Services",
+      desc: "hours × role mix",
+      metric: plural(services.length, "service", "services"),
+      state: "Locked",
+    },
+    {
+      href: "/build/salary", label: "Direct Labor",
+      desc: "(salary + benefits) ÷ productive hours",
+      metric: plural(positions.length, "position", "positions"),
+      state: "Locked",
+    },
+    {
+      href: "/build/operating", label: "Operating",
+      desc: "non-labor · per dept",
+      metric: plural(operating.length, "expense line", "expense lines"),
+      state: "Locked",
+    },
+    {
+      href: "/build/cap", label: "Overhead Cost Allocation",
+      desc: "indirect → direct",
+      metric: plural(capPools.length, "cost pool", "cost pools"),
+      state: "Locked",
+    },
+    {
+      href: "/build/workload", label: "Workload",
+      desc: "annual volume",
+      metric: plural(workload.length, "activity record", "activity records"),
+      state: "Locked",
+    },
+  ];
+
+  const workflow: Node[] = [
+    {
+      href: "/build/costs", label: "Cost of Service",
+      desc: "hours × FBHR × volume",
+      metric: plural(derived.comparisons.length, "service costed", "services costed"),
+      state: "Locked",
+      colors: COST_OF_SERVICE_COLORS,
+    },
+    {
+      href: "/build/policy", label: "Recovery Policy",
+      desc: "target % per service",
+      metric: `${Math.round(derived.impact.overallPct)}% target recovery`,
+      state: "Open",
+      colors: RECOVERY_POLICY_COLORS,
+    },
+    {
+      href: "/build/feestudy", label: "Fee Schedule",
+      desc: "cost × target",
+      metric: impactLabel(derived.impact.recoverableGap),
+      state: "Open",
+      colors: FEE_SCHEDULE_COLORS,
+    },
+  ];
+
   return (
     <div>
       <SectionLabel>Inputs</SectionLabel>
@@ -196,7 +254,7 @@ export function WorkflowMap() {
         display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10,
         marginBottom: 16,
       }}>
-        {INPUTS.map((n) => <InputCard key={n.href} n={n}/>)}
+        {inputs.map((n) => <InputCard key={n.href} n={n}/>)}
       </div>
 
       <div style={{
@@ -217,11 +275,11 @@ export function WorkflowMap() {
         gap: 12,
         alignItems: "center",
       }}>
-        <WorkflowCard n={WORKFLOW[0]}/>
+        <WorkflowCard n={workflow[0]}/>
         <FlowArrow/>
-        <WorkflowCard n={WORKFLOW[1]}/>
+        <WorkflowCard n={workflow[1]}/>
         <FlowArrow/>
-        <WorkflowCard n={WORKFLOW[2]}/>
+        <WorkflowCard n={workflow[2]}/>
       </div>
     </div>
   );
