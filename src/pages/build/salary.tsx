@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNav";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
@@ -83,6 +84,8 @@ export default function DirectLaborPage() {
           </Btn>
         }
       />
+
+      <CostInputsSubsectionNav/>
 
       <LaborSummary/>
 

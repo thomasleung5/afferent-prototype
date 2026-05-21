@@ -2,6 +2,7 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNav";
 import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingTable } from "@/features/build/OperatingTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
@@ -84,6 +85,8 @@ export default function OperatingPage() {
           </Btn>
         }
       />
+
+      <CostInputsSubsectionNav/>
 
       <OperatingSummary/>
 
