@@ -12,7 +12,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
-import { StateChip, ConfReason, type FeeState } from "@/components/ui";
+import { StateChip, type FeeState } from "@/components/ui";
 
 type Confidence = "high" | "med" | "low";
 
@@ -323,18 +323,8 @@ export function FeeScheduleTable() {
               )}
             </DrilldownColumn>
 
-            <DrilldownColumn marker="③" title="Confidence & comparators">
-              <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-                <ConfReason
-                  ok={r.volume > 0}
-                  text={r.volume > 0 ? `Volume: ${r.volume}/yr (FY 24/25 actuals)` : "Volume missing — re-import or estimate"}
-                />
-                <ConfReason
-                  ok={svc.hours > 0}
-                  text={svc.hours > 0 ? `Hours: ${svc.hours} per unit (staff estimate)` : "Hours missing — needs staff input"}
-                />
-              </div>
-              <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--rule)" }}>
+            <DrilldownColumn marker="③" title="Comparators">
+              <div>
                 <div className="mono" style={{
                   fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
                   color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
