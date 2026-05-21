@@ -35,12 +35,6 @@ function confidenceFor(
   return "high";
 }
 
-const CONF_COLOR: Record<Confidence, string> = {
-  high: "var(--pos)",
-  med:  "var(--warn)",
-  low:  "var(--neg)",
-};
-
 export function FeeScheduleTable() {
   const { services, derived, updateService } = useBuildState();
   const [stateMap, setStateMap] = useState<Record<string, FeeState>>({});
@@ -339,15 +333,6 @@ export function FeeScheduleTable() {
                   ok={svc.hours > 0}
                   text={svc.hours > 0 ? `Hours: ${svc.hours} per unit (staff estimate)` : "Hours missing — needs staff input"}
                 />
-                <ConfReason
-                  ok={r.recoveryPct < 200}
-                  text={r.recoveryPct < 200 ? `Current fee recovers approximately ${r.recoveryPct.toFixed(0)}% of estimated cost` : "Current fee suspiciously high vs cost — verify"}
-                />
-                <div style={{
-                  marginTop: 4, fontSize: 11, color: CONF_COLOR[r.confidence], fontWeight: 500,
-                }}>
-                  {r.confidence === "high" ? "High confidence" : r.confidence === "med" ? "Medium confidence" : "Low confidence"}
-                </div>
               </div>
               <div style={{ marginTop: 14, paddingTop: 12, borderTop: "1px dashed var(--rule)" }}>
                 <div className="mono" style={{
