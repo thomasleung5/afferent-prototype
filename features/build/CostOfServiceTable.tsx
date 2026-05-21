@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -263,9 +263,6 @@ export function CostOfServiceTable() {
                   <span>Total CAP → {dept}</span>
                   <span>{fmt.dollarsK(totalCAPForDept)}</span>
                 </div>
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <SourcePill tone="cap">FROM OVERHEAD COST ALLOCATION</SourcePill>
               </div>
               <Link
                 to="/build/feestudy"
