@@ -382,7 +382,7 @@ function CenterCellTrace({
         </SummaryStrip>
       </TraceSection>
 
-      <TraceSection title="How this allocation was built">
+      <TraceSection title="How this is calculated">
         {contribs.length === 0 ? (
           <div style={{
             padding: "14px 18px",

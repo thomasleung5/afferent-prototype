@@ -8,7 +8,7 @@ import type { BasisKey } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  BigFormula, CollapsibleMetadata, MetadataRow,
+  CollapsibleMetadata, MetadataRow,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -488,6 +488,21 @@ function CellTrace({
   const valueWithUnit = `${formatCell(raw, basis.fmt)}${unitSuffix}`;
   const totalWithUnit = `${formatCell(total, basis.fmt)}${unitSuffix}`;
 
+  // Per-node contributions for the breakdown table — every node that has
+  // a non-zero value for this basis, sorted descending so the largest
+  // contributors lead.
+  const contribs = rows
+    .map((r) => ({
+      code: r.code,
+      name: r.name,
+      glCode: r.glCode,
+      value: r.values[basisKey] ?? 0,
+    }))
+    .filter((r) => r.value > 0)
+    .sort((a, b) => b.value - a.value);
+
+  const breakdownGrid = "minmax(220px, 2fr) 1fr 120px";
+
   return (
     <TracePanel
       eyebrow="Allocation basis trace"
@@ -496,16 +511,11 @@ function CellTrace({
       onClose={onClose}
     >
       <TraceSection>
-        <SummaryStrip cols={4}>
+        <SummaryStrip cols={3}>
           <TraceStat
             label="Basis"
             value={basis.longName}
             sub={<span className="mono" style={{ letterSpacing: "0.1em" }}>{basis.label}</span>}
-          />
-          <TraceStat
-            label="Node"
-            value={row.name}
-            sub={row.group === "indirect" ? "Indirect cost center" : "Direct receiver"}
           />
           <TraceStat
             label="Node units"
@@ -520,23 +530,101 @@ function CellTrace({
         </SummaryStrip>
       </TraceSection>
 
-      <TraceSection title="How this share is calculated">
-        <BigFormula>
-          {valueWithUnit}
-          {"  ÷  "}
-          {totalWithUnit}
-          {"  =  "}
-          <span style={{ color: "var(--accent)" }}>{share.toFixed(1)}%</span>
-        </BigFormula>
-        <div style={{
-          marginTop: 12, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
-        }}>
-          {row.name} contributes {formatCell(raw, basis.fmt)} of the{" "}
-          {formatCell(total, basis.fmt)}
-          {basis.fmt === "k" ? "" : ` ${basis.unitLong.toLowerCase()}`} that make
-          up the <strong>{basis.longName}</strong> basis — a{" "}
-          <strong>{share.toFixed(1)}%</strong> share of the citywide denominator.
-        </div>
+      <TraceSection title="How this is calculated">
+        {contribs.length === 0 ? (
+          <div style={{
+            padding: "14px 18px",
+            background: "var(--paper-2)",
+            border: "1px solid var(--rule)",
+            fontSize: 12.5, color: "var(--ink-3)",
+          }}>
+            No nodes contribute to <strong>{basis.longName}</strong>.
+          </div>
+        ) : (
+          <div style={{
+            border: "1px solid var(--rule)",
+            background: "var(--paper-2)",
+          }}>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: breakdownGrid,
+              gap: 14,
+              padding: "10px 16px",
+              borderBottom: "1px solid var(--rule)",
+              background: "var(--paper)",
+            }}>
+              {["Node", "Share of total", ""].map((h, i) => (
+                <div key={i} className="mono" style={{
+                  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+                  color: "var(--ink-3)", textTransform: "uppercase",
+                  textAlign: i === 2 ? "right" : "left",
+                }}>{h || "Units"}</div>
+              ))}
+            </div>
+            {contribs.map((c, i) => {
+              const pct = total > 0 ? (c.value / total) * 100 : 0;
+              const isCurrent = c.code === row.code;
+              return (
+                <div key={c.code} style={{
+                  display: "grid",
+                  gridTemplateColumns: breakdownGrid,
+                  gap: 14, alignItems: "center",
+                  padding: "10px 16px",
+                  borderBottom: i < contribs.length - 1 ? "1px solid var(--rule)" : "none",
+                  fontSize: 12.5,
+                  background: isCurrent ? "var(--accent-tint)" : "transparent",
+                }}>
+                  <div style={{ minWidth: 0 }}>
+                    <div style={{
+                      fontWeight: isCurrent ? 600 : 500,
+                      color: "var(--ink)",
+                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                    }}>
+                      {c.glCode && (
+                        <span className="mono" style={{
+                          fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+                          letterSpacing: "0.02em", fontWeight: 400,
+                        }}>{c.glCode}</span>
+                      )}
+                      {c.name}
+                    </div>
+                  </div>
+                  <div style={{
+                    height: 6, background: "var(--paper)",
+                    border: "1px solid var(--rule)", overflow: "hidden",
+                  }}>
+                    <div style={{
+                      width: `${pct}%`, height: "100%",
+                      background: "var(--accent)",
+                      transition: "width 240ms ease-out",
+                    }}/>
+                  </div>
+                  <div className="num" style={{
+                    textAlign: "right",
+                    fontSize: 12.5, fontWeight: isCurrent ? 600 : 500,
+                    fontVariantNumeric: "tabular-nums",
+                  }}>{formatCell(c.value, basis.fmt)}{unitSuffix}</div>
+                </div>
+              );
+            })}
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: breakdownGrid,
+              gap: 14, alignItems: "center",
+              padding: "12px 16px",
+              borderTop: "2px solid var(--ink)",
+              background: "var(--paper)",
+              fontSize: 13, fontWeight: 500,
+            }}>
+              <div>Total for {basis.label}</div>
+              <div/>
+              <div className="num" style={{
+                textAlign: "right", color: "var(--accent)",
+                fontVariantNumeric: "tabular-nums",
+              }}>{totalWithUnit}</div>
+            </div>
+          </div>
+        )}
       </TraceSection>
 
       <CollapsibleMetadata title="Basis metadata">
