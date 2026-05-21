@@ -1,7 +1,10 @@
+import { useCallback } from "react";
 import { Page } from "@/components/layout";
 import { Btn, Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
+import { CITY } from "@/lib/data/city";
 import { useBuildState } from "@/lib/store";
+import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
 import { DriverBreakdown } from "@/features/revenue-gap/DriverBreakdown";
 import { DeptRecoveryChart } from "@/features/revenue-gap/DeptRecoveryChart";
@@ -9,7 +12,7 @@ import { TopFixesTable } from "@/features/revenue-gap/TopFixesTable";
 
 export default function RevenueGapPage() {
   const { derived, services } = useBuildState();
-  const { impact, fbhr, costs } = derived;
+  const { impact, fbhr, costs, comparisons } = derived;
 
   // Primary revenue gap: target (policy-intended) − current revenue. Clamped
   // for the headline tone — a negative gap means current revenue already
@@ -39,6 +42,37 @@ export default function RevenueGapPage() {
     },
     { direct: 0, operating: 0, cap: 0 },
   );
+
+  const exportBrief = useCallback(() => {
+    // Top fixes: services where adopting the recommended fee would close
+    // the biggest single-row revenue gap. Sort by absolute annual uplift.
+    const topFixes = [...comparisons]
+      .filter((c) => Math.abs(c.annualUplift) >= 1)
+      .sort((a, b) => Math.abs(b.annualUplift) - Math.abs(a.annualUplift))
+      .slice(0, 20);
+    const csv = buildCsv([
+      ["Section", "Metric", "Value"],
+      ["Headline", "Annual gap", fmt.dollars(annualGap)],
+      ["Headline", "Recovery rate", `${recoveryPct.toFixed(1)}%`],
+      ["Headline", "Current revenue", fmt.dollars(impact.currentRevenue)],
+      ["Headline", "Total cost", fmt.dollars(totalCost)],
+      ["Headline", "Data completeness", `${dataCompleteness}%`],
+      ["Headline", "Missing cells", String(missingVolume + missingHours)],
+      null,
+      ["Drivers", "Direct labor", fmt.dollars(drivers.direct)],
+      ["Drivers", "Operating", fmt.dollars(drivers.operating)],
+      ["Drivers", "Overhead Cost Allocation", fmt.dollars(drivers.cap)],
+      null,
+      ["Top fixes", "Service", "Dept · Current → Recommended · Annual uplift"],
+      ...topFixes.map((c) => [
+        "Top fixes",
+        c.name,
+        `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
+      ]),
+    ]);
+    const slug = CITY.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    downloadCsv(csv, `${slug}-revenue-gap-brief.csv`);
+  }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons]);
 
   return (
     <Page>
@@ -74,7 +108,7 @@ export default function RevenueGapPage() {
           ]}
           actions={
             <>
-              <Btn kind="ghost"><Icon name="download" size={13}/> Export brief</Btn>
+              <Btn kind="ghost" onClick={exportBrief}><Icon name="download" size={13}/> Export brief</Btn>
               <Btn kind="primary" href="/build/feestudy">
                 Open fee schedule <Icon name="arrow-right" size={13}/>
               </Btn>
