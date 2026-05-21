@@ -255,8 +255,8 @@ export function FeeScheduleTable() {
         if (r.target < 100) reasons.push(`policy target set to ${r.target}% (vs 100% full cost)`);
         if (r.recoveryPct < 50 && r.fee > 0) reasons.push(`current fee was recovering only ${r.recoveryPct.toFixed(0)}% of cost`);
         if (r.fee === 0) reasons.push("no fee currently charged for this service");
-        if (r.dept === "BLDG" && Math.abs(deltaPct) > 30) reasons.push(`BLDG FBHR is now $${Math.round(fbhr)}/hr after CAP allocation`);
-        if (reasons.length === 0) reasons.push(`hours per unit (${svc.hours}) × FBHR ($${Math.round(fbhr)}) yields a different cost basis`);
+        if (r.dept === "BLDG" && Math.abs(deltaPct) > 30) reasons.push(`BLDG FBHR is now ${fmt.dollars(fbhr)}/hr after CAP allocation`);
+        if (reasons.length === 0) reasons.push(`hours per unit (${svc.hours}) × FBHR (${fmt.dollars(fbhr)}) yields a different cost basis`);
 
         return (
           <DrilldownShell>
@@ -303,15 +303,15 @@ export function FeeScheduleTable() {
                 padding: "12px 14px", background: "var(--paper)", border: "1px solid var(--rule)",
                 fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
               }}>
-                <div>{svc.hours} hrs × ${Math.round(fbhr)}/hr</div>
-                <div style={{ color: "var(--ink-3)" }}>= ${Math.round(r.unitCost)} unit cost</div>
+                <div>{svc.hours} hrs × {fmt.dollars(fbhr)}/hr</div>
+                <div style={{ color: "var(--ink-3)" }}>= {fmt.dollars(r.unitCost)} unit cost</div>
                 <div style={{ color: "var(--ink-3)" }}>× {r.target}% recovery target</div>
                 <div style={{ color: "var(--ink-3)" }}>→ rounded to $1</div>
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
                   recommended: <b>{fmt.dollars(r.recommended)}</b>
                 </div>
                 <div style={{ color: "var(--ink-3)", marginTop: 4 }}>
-                  annual: ${r.recommended} × {r.volume} ={" "}
+                  annual: {fmt.dollars(r.recommended)} × {fmt.int(r.volume)} ={" "}
                   <b style={{ color: "var(--ink-2)" }}>{fmt.dollarsK(r.recommended * r.volume)}</b>
                 </div>
               </div>
