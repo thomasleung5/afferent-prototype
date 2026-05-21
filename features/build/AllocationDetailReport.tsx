@@ -366,7 +366,7 @@ function CostsRow({
       background: emphasis ? "var(--paper)" : "transparent",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: emphasis ? 13 : 12,
+      fontSize: emphasis ? 13 : 12.5,
       fontWeight: emphasis ? 600 : 400,
       alignItems: "baseline",
     }}>
@@ -539,7 +539,7 @@ function DetailRow({ row }: { row: Row }) {
       borderBottom: "1px solid var(--rule)",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 12,
+      fontSize: 12.5,
       alignItems: "baseline",
     }}>
       <div style={{ fontFamily: "var(--ff-ui)", color: "var(--ink-2)", minWidth: 0 }}>
@@ -597,7 +597,7 @@ function TotalRow({
       borderTop: "2px solid var(--ink)",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 12, fontWeight: 600,
+      fontSize: 12.5, fontWeight: 600,
     }}>
       <div className="mono" style={{
         fontFamily: "var(--ff-mono)",

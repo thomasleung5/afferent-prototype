@@ -226,7 +226,7 @@ export function AllocationMatrixByCenter() {
                             style={{
                               display: "block", width: "100%",
                               textAlign: "right", padding: "7px 10px",
-                              fontSize: 12,
+                              fontSize: 12.5,
                               fontFamily: "var(--ff-mono)",
                               fontVariantNumeric: "tabular-nums",
                               color: zero ? "var(--ink-4)" : "var(--ink)",
@@ -245,7 +245,7 @@ export function AllocationMatrixByCenter() {
                       ...stickyRightBody,
                       borderBottom: rowBorder,
                       fontFamily: "var(--ff-mono)",
-                      fontSize: 12, color: "var(--ink)",
+                      fontSize: 12.5, color: "var(--ink)",
                     }}>{fmt.dollarsK(rt)}</td>
                   </tr>
                 );
@@ -267,7 +267,7 @@ export function AllocationMatrixByCenter() {
                       padding: cellPad,
                       background: "var(--paper-2)",
                       borderTop: "2px solid var(--ink)",
-                      textAlign: "right", fontSize: 12,
+                      textAlign: "right", fontSize: 12.5,
                       fontFamily: "var(--ff-mono)",
                       color: zero ? "var(--ink-4)" : "var(--ink)",
                     }}>{zero ? "—" : fmt.dollarsK(t)}</td>

@@ -345,7 +345,7 @@ function Matrix({
                     padding: cellPad,
                     background: "var(--paper-2)",
                     borderTop: "2px solid var(--ink)",
-                    textAlign: "right", fontSize: 12, fontWeight: 600,
+                    textAlign: "right", fontSize: 12.5, fontWeight: 600,
                     fontFamily: "var(--ff-mono)",
                   }}>{formatCell(t, b.fmt)}</td>
                 );
@@ -418,7 +418,7 @@ function MatrixRow({
               style={{
                 display: "block", width: "100%",
                 textAlign: "right", padding: "7px 10px",
-                fontSize: 12,
+                fontSize: 12.5,
                 fontFamily: "var(--ff-mono)",
                 fontVariantNumeric: "tabular-nums",
                 color: empty ? "var(--ink-4)" : "var(--ink)",
