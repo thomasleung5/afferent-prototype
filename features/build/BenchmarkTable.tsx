@@ -1,5 +1,6 @@
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
@@ -51,6 +52,28 @@ export function BenchmarkTable() {
   const { services, derived } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
+  // ?feeId=... means we were cross-navigated here from the Fee Schedule
+  // tab. On arrival, drop any dept filter that would hide the row, open
+  // the matching drilldown, scroll it into view, and flash it briefly
+  // so the user sees where they landed.
+  const { feeId } = useSearch({ from: "/build/benchmark" });
+  useEffect(() => {
+    if (!feeId) return;
+    const match = services.find((s) => s.id === feeId);
+    if (!match) return;
+    setDept("ALL");
+    setOpenId(feeId);
+    // Wait one tick so the row is rendered with its dept-filter cleared
+    // before we try to scroll/flash it.
+    const handle = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(feeId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("row-flash");
+      window.setTimeout(() => el.classList.remove("row-flash"), 1700);
+    }, 30);
+    return () => window.clearTimeout(handle);
+  }, [feeId, services]);
 
   const all: Row[] = useMemo(() => services.map((s) => {
     const fbhr = derived.fbhr[s.dept]?.fbhr ?? 0;

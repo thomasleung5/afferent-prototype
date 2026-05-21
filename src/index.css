@@ -34,6 +34,18 @@ input, select { font: inherit; color: inherit; }
 .tbl-row-hover-grid { transition: background 80ms; }
 .tbl-row-hover-grid:hover { background-color: var(--paper-2); }
 
+/* Brief flash applied to a row when the user is navigated to it from
+   another tab (e.g. Fee Schedule → Fee Benchmark via ?feeId=...). Pulses
+   the accent tint twice so the destination is unmissable, then fades
+   back. ~1.6s total — short enough to stop competing with the actual
+   drilldown content. */
+@keyframes row-flash {
+  0%   { background-color: var(--accent-tint); }
+  40%  { background-color: var(--accent-tint); }
+  100% { background-color: transparent; }
+}
+.row-flash > * { animation: row-flash 1600ms ease-out; }
+
 /* Page shell — every screen wraps with this */
 .page {
   max-width: var(--page-max);

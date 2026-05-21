@@ -343,10 +343,14 @@ export function FeeScheduleTable() {
                     No peer data on file for this fee.
                   </div>
                 )}
-                <Link to="/build/benchmark" style={{
-                  display: "inline-block", marginTop: 8, fontSize: 11,
-                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
-                }}>
+                <Link
+                  to="/build/benchmark"
+                  search={{ feeId: r.id }}
+                  style={{
+                    display: "inline-block", marginTop: 8, fontSize: 11,
+                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >
                   View fee benchmark →
                 </Link>
               </div>

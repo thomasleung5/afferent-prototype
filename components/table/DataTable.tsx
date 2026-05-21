@@ -223,7 +223,7 @@ export function DataTable<Row extends DataTableRow>({
 
               const drilldownId = renderDrilldown && r.id ? `drilldown-${r.id}` : undefined;
               return (
-                <div key={r.id ?? i}>
+                <div key={r.id ?? i} data-row-id={r.id}>
                   <div
                     onClick={onRowClick ? () => onRowClick(r) : undefined}
                     onKeyDown={onRowClick ? (e) => {
