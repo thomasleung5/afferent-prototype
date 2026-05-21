@@ -264,13 +264,19 @@ function Matrix({
   const groupRow = (label: string, withTopBorder: boolean) => (
     <tr>
       <td colSpan={1 + columns.length} style={{
-        padding: "8px 16px",
+        padding: 0,
         background: "var(--paper-2)",
         borderTop: withTopBorder ? "1px solid var(--rule)" : undefined,
         borderBottom: "1px solid var(--rule)",
-        fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
-        letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</td>
+      }}>
+        <div style={{
+          position: "sticky", left: 0, zIndex: 3,
+          display: "inline-block",
+          padding: "8px 16px",
+          fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
+          letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase",
+        }}>{label}</div>
+      </td>
     </tr>
   );
 
@@ -474,8 +480,13 @@ function CellTrace({
   const total = colTotal(basisKey, rows);
   const share = total > 0 ? (raw / total) * 100 : 0;
 
-  const valueWithUnit = `${formatCell(raw, basis.fmt)} ${basis.unit}`;
-  const totalWithUnit = `${formatCell(total, basis.fmt)} ${basis.unit}`;
+  // Dollar-formatted values ($720K, $5.81M) already convey their unit;
+  // appending the "$000" basis.unit would render "$720K $000". Suppress
+  // the unit suffix for the "k" format and keep it for everything else
+  // (FTE, txns/yr, sq ft, count, etc.) where it's still informative.
+  const unitSuffix = basis.fmt === "k" ? "" : ` ${basis.unit}`;
+  const valueWithUnit = `${formatCell(raw, basis.fmt)}${unitSuffix}`;
+  const totalWithUnit = `${formatCell(total, basis.fmt)}${unitSuffix}`;
 
   return (
     <TracePanel
@@ -511,9 +522,9 @@ function CellTrace({
 
       <TraceSection title="How this share is calculated">
         <BigFormula>
-          {formatCell(raw, basis.fmt)} {basis.unit}
+          {valueWithUnit}
           {"  ÷  "}
-          {formatCell(total, basis.fmt)} {basis.unit}
+          {totalWithUnit}
           {"  =  "}
           <span style={{ color: "var(--accent)" }}>{share.toFixed(1)}%</span>
         </BigFormula>
@@ -521,7 +532,8 @@ function CellTrace({
           marginTop: 12, fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
         }}>
           {row.name} contributes {formatCell(raw, basis.fmt)} of the{" "}
-          {formatCell(total, basis.fmt)} {basis.unitLong.toLowerCase()} that make
+          {formatCell(total, basis.fmt)}
+          {basis.fmt === "k" ? "" : ` ${basis.unitLong.toLowerCase()}`} that make
           up the <strong>{basis.longName}</strong> basis — a{" "}
           <strong>{share.toFixed(1)}%</strong> share of the citywide denominator.
         </div>
