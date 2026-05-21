@@ -449,10 +449,10 @@ function MatrixRow({
 function TraceHint() {
   return (
     <div style={{
-      background: "var(--paper)", border: "1px dashed var(--rule-strong)",
-      padding: "10px 14px",
-      display: "flex", alignItems: "baseline", gap: 10,
-      fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.5,
+      display: "flex", alignItems: "center", gap: 10,
+      padding: "12px 16px",
+      background: "var(--paper-2)", border: "1px solid var(--rule)",
+      fontSize: 12, color: "var(--ink-3)",
     }}>
       <span className="mono" style={{
         fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",

@@ -2,13 +2,11 @@
 import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { basisForPool } from "@/lib/data/capStepDown";
 import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownGl";
-import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  CollapsibleMetadata, MetadataRow,
+  BigFormula, CollapsibleMetadata, MetadataRow,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -327,30 +325,36 @@ function CenterCellTrace({
   model: GlStepDownModel;
   onClose: () => void;
 }) {
-  const { capPools, allocationBases } = useBuildState();
+  const { capPools } = useBuildState();
   const node = model.nodes.find((n) => n.key === nodeKey);
   if (!node) return null;
 
   const pools = capPools.filter((p) => p.center === center);
   const allocSrc = model.alloc2;
 
-  const contribs = pools
+  const totalToNode = pools.reduce(
+    (a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0),
+    0,
+  );
+  // Per-pool First / Second contributions to this recipient node. The
+  // engine's two-phase step-down produces these — we surface them so the
+  // user can audit which pool delivered which dollars.
+  const perPool = pools
     .map((p) => {
-      const value = allocSrc[p.id]?.[nodeKey] ?? 0;
       const first  = model.firstAllocation[p.id]?.[nodeKey] ?? 0;
       const second = model.secondAllocation[p.id]?.[nodeKey] ?? 0;
-      const { basis } = basisForPool(p, allocationBases);
-      const basisMeta = ALLOCATION_BASES.find((b) => b.key === basis);
-      return {
-        pool: p, value, first, second,
-        basis, basisLongName: basisMeta?.longName ?? basis,
-      };
+      return { id: p.id, pool: p.pool, first, second, total: first + second };
     })
-    .filter((r) => r.value > 0.5)
-    .sort((a, b) => b.value - a.value);
-  const totalToNode = contribs.reduce((a, c) => a + c.value, 0);
+    .filter((r) => r.total > 0.5)
+    .sort((a, b) => b.total - a.total);
+  const firstTotal = perPool.reduce((a, r) => a + r.first, 0);
+  const secondTotal = perPool.reduce((a, r) => a + r.second, 0);
   const centerEligible = pools.reduce((a, p) => a + p.amount, 0);
   const centerShare = centerEligible > 0 ? (totalToNode / centerEligible) * 100 : 0;
+
+  const recipientGl = node.glCode.startsWith("seed:") ? "—" : node.glCode;
+  const breakdownGrid = "minmax(220px, 2fr) 1fr 1fr 1fr";
+  const fmtMoney = (v: number) => v < 0.5 ? "—" : fmt.dollars(v);
 
   return (
     <TracePanel
@@ -360,31 +364,42 @@ function CenterCellTrace({
       onClose={onClose}
     >
       <TraceSection>
-        <SummaryStrip cols={3}>
+        <SummaryStrip cols={4}>
           <TraceStat
-            label="Center allocable cost"
-            value={fmt.dollars(centerEligible)}
-            sub={`${pools.length} pool${pools.length === 1 ? "" : "s"} in ${center}`}
+            label="Center"
+            value={center}
+            sub={`${pools.length} pool${pools.length === 1 ? "" : "s"}`}
+          />
+          <TraceStat
+            label="Recipient"
+            value={node.name}
+            sub={node.role === "indirect" ? "Indirect cost center" : "Direct receiver"}
           />
           <TraceStat
             label="Share of center"
             value={`${centerShare.toFixed(1)}%`}
-            sub={`Reaching ${node.name} after step-down`}
+            sub={`of ${fmt.dollars(centerEligible)} allocable`}
           />
           <TraceStat
             label="Final allocation"
             value={fmt.dollars(totalToNode)}
-            sub={contribs.length > 0
-              ? `Built from ${contribs.length} pool${contribs.length === 1 ? "" : "s"}`
-              : "No contributions"}
             emphasis
           />
         </SummaryStrip>
       </TraceSection>
 
-      <TraceSection title="How this allocation was built">
-        {contribs.length === 0 ? (
+      <TraceSection title="How this allocation is calculated">
+        <BigFormula>
+          {fmt.dollars(firstTotal)}
+          {"  +  "}
+          {fmt.dollars(secondTotal)}
+          {"  =  "}
+          <span style={{ color: "var(--accent)" }}>{fmt.dollars(totalToNode)}</span>
+        </BigFormula>
+
+        {perPool.length === 0 ? (
           <div style={{
+            marginTop: 14,
             padding: "14px 18px",
             background: "var(--paper-2)",
             border: "1px solid var(--rule)",
@@ -394,89 +409,76 @@ function CenterCellTrace({
           </div>
         ) : (
           <div style={{
+            marginTop: 14,
             border: "1px solid var(--rule)",
             background: "var(--paper-2)",
           }}>
             <div style={{
               display: "grid",
-              gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
+              gridTemplateColumns: breakdownGrid,
               gap: 14,
               padding: "10px 16px",
               borderBottom: "1px solid var(--rule)",
               background: "var(--paper)",
             }}>
-              {["Pool", "Basis", "Share of total", ""].map((h, i) => (
+              {["Pool", "First", "Second", "Total"].map((h, i) => (
                 <div key={i} className="mono" style={{
                   fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
                   color: "var(--ink-3)", textTransform: "uppercase",
-                  textAlign: i === 3 ? "right" : "left",
-                }}>{h || "Contribution"}</div>
+                  textAlign: i === 0 ? "left" : "right",
+                }}>{h}</div>
               ))}
             </div>
-            {contribs.map((c, i) => {
-              const pct = totalToNode > 0 ? (c.value / totalToNode) * 100 : 0;
-              return (
-                <div key={c.pool.id} style={{
-                  display: "grid",
-                  gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
-                  gap: 14, alignItems: "center",
-                  padding: "10px 16px",
-                  borderBottom: i < contribs.length - 1 ? "1px solid var(--rule)" : "none",
-                  fontSize: 12.5,
-                }}>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{
-                      fontWeight: 500, color: "var(--ink)",
-                      overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    }}>{c.pool.pool}</div>
-                  </div>
-                  <div style={{ minWidth: 0 }}>
-                    <div style={{ color: "var(--ink-2)", fontSize: 12 }}>{c.basisLongName}</div>
-                    <div className="mono" style={{
-                      fontSize: 10, color: "var(--ink-4)",
-                      letterSpacing: "0.08em", marginTop: 2,
-                    }}>{c.basis}</div>
-                  </div>
-                  <div style={{
-                    height: 6, background: "var(--paper)",
-                    border: "1px solid var(--rule)", overflow: "hidden",
-                  }}>
-                    <div style={{
-                      width: `${pct}%`, height: "100%",
-                      background: "var(--accent)",
-                      transition: "width 240ms ease-out",
-                    }}/>
-                  </div>
-                  <div style={{
-                    textAlign: "right", fontVariantNumeric: "tabular-nums",
-                  }}>
-                    <div className="num" style={{
-                      fontSize: 12.5, fontWeight: 500,
-                    }}>{fmt.dollars(c.value)}</div>
-                    {c.second > 0.5 && (
-                      <div className="mono" style={{
-                        fontSize: 10, color: "var(--ink-4)", marginTop: 2,
-                      }}>{fmt.dollars(c.first)} 1st + {fmt.dollars(c.second)} 2nd</div>
-                    )}
-                  </div>
-                </div>
-              );
-            })}
+            {perPool.map((r, i) => (
+              <div key={r.id} style={{
+                display: "grid",
+                gridTemplateColumns: breakdownGrid,
+                gap: 14, alignItems: "center",
+                padding: "8px 16px",
+                borderBottom: i < perPool.length - 1 ? "1px solid var(--rule)" : "none",
+                fontSize: 12.5,
+              }}>
+                <div style={{
+                  minWidth: 0,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                  color: "var(--ink)", fontWeight: 500,
+                }}>{r.pool}</div>
+                <div className="num" style={{
+                  textAlign: "right",
+                  color: r.first < 0.5 ? "var(--ink-4)" : "var(--ink-2)",
+                  fontVariantNumeric: "tabular-nums",
+                }}>{fmtMoney(r.first)}</div>
+                <div className="num" style={{
+                  textAlign: "right",
+                  color: r.second < 0.5 ? "var(--ink-4)" : "var(--ink-2)",
+                  fontVariantNumeric: "tabular-nums",
+                }}>{fmtMoney(r.second)}</div>
+                <div className="num" style={{
+                  textAlign: "right",
+                  fontVariantNumeric: "tabular-nums",
+                  fontWeight: 600,
+                }}>{fmtMoney(r.total)}</div>
+              </div>
+            ))}
             <div style={{
               display: "grid",
-              gridTemplateColumns: "minmax(220px, 2fr) minmax(160px, 1.4fr) 1fr 100px",
+              gridTemplateColumns: breakdownGrid,
               gap: 14, alignItems: "center",
-              padding: "12px 16px",
+              padding: "10px 16px",
               borderTop: "2px solid var(--ink)",
               background: "var(--paper)",
               fontSize: 13, fontWeight: 500,
             }}>
-              <div>Total to {node.name}</div>
-              <div/>
-              <div/>
+              <div>Total</div>
+              <div className="num" style={{
+                textAlign: "right", fontVariantNumeric: "tabular-nums",
+              }}>{fmt.dollars(firstTotal)}</div>
+              <div className="num" style={{
+                textAlign: "right", fontVariantNumeric: "tabular-nums",
+              }}>{fmt.dollars(secondTotal)}</div>
               <div className="num" style={{
                 textAlign: "right", color: "var(--accent)",
-                fontVariantNumeric: "tabular-nums",
+                fontVariantNumeric: "tabular-nums", fontWeight: 600,
               }}>{fmt.dollars(totalToNode)}</div>
             </div>
           </div>
@@ -488,10 +490,12 @@ function CenterCellTrace({
         <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
         <MetadataRow label="Allocable (center)">{fmt.dollars(centerEligible)}</MetadataRow>
         <MetadataRow label="Recipient node">{node.name}</MetadataRow>
-        <MetadataRow label="Recipient glCode">{node.glCode.startsWith("seed:") ? "—" : node.glCode}</MetadataRow>
+        <MetadataRow label="Recipient glCode">{recipientGl}</MetadataRow>
+        <MetadataRow label="First Allocation">{fmt.dollars(firstTotal)}</MetadataRow>
+        <MetadataRow label="Second Allocation">{fmt.dollars(secondTotal)}</MetadataRow>
         <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToNode)}</MetadataRow>
         <MetadataRow label="Share of center">{centerShare.toFixed(2)}%</MetadataRow>
-        <MetadataRow label="Contributing pools">{contribs.length.toString()}</MetadataRow>
+        <MetadataRow label="Recipient group">{node.role === "indirect" ? "Indirect cost center" : "Direct receiver"}</MetadataRow>
       </CollapsibleMetadata>
     </TracePanel>
   );
