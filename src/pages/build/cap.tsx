@@ -2,7 +2,6 @@ import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
 import { useCapExport } from "@/features/build/useCapExport";
-import { StepDownSequence } from "@/features/build/CapKpiRail";
 import { CapCentersTable } from "@/features/build/CapCentersTable";
 import { CapSummary } from "@/features/build/CapSummary";
 import { CapPoolsTable } from "@/features/build/CapPoolsTable";
@@ -256,12 +255,7 @@ export default function CapPage() {
 
       <CapStepNav current={step} onJump={setStep}/>
 
-      {step === "centers" && (
-        <>
-          <StepDownSequence/>
-          <CapCentersTable/>
-        </>
-      )}
+      {step === "centers" && <CapCentersTable/>}
 
       {step === "pools" && <CapPoolsTable/>}
 

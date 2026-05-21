@@ -151,6 +151,7 @@ interface BuildActions {
     unmappedBases: UnmappedRow[];
   };
   moveCenter: (name: string, direction: "up" | "down") => void;
+  setCapCenterOrder: (order: string[]) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -767,6 +768,18 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           const next = [...base];
           [next[idx], next[swapWith]] = [next[swapWith], next[idx]];
           return { capCenterOrder: next };
+        }),
+
+      /** Replace the step-down sequence wholesale (drag-and-drop reorder).
+       *  Preserves any centers from the pool set that aren't in the passed
+       *  order — they get appended at the end so a stale order can't drop
+       *  a center silently. */
+      setCapCenterOrder: (order) =>
+        set((s) => {
+          const inOrder = new Set(order);
+          const tail = [...new Set(s.capPools.map((p) => p.center))]
+            .filter((c) => !inOrder.has(c));
+          return { capCenterOrder: [...order, ...tail] };
         }),
 
       resetAll: () => {

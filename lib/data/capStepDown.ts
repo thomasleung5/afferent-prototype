@@ -24,9 +24,10 @@ export interface MatrixDept {
   kind: "indirect" | "direct";
 }
 
-/** Step-down order is set by the user via the StepDownSequence card (see
- *  BuildContext.capCenterOrder). The names below are the human-readable
- *  center names that order references; the codes are the matrix dept IDs. */
+/** Step-down order is set by the user by dragging rows in the Cost
+ *  Centers table (see BuildContext.capCenterOrder). The names below are
+ *  the human-readable center names that order references; the codes are
+ *  the matrix dept IDs. */
 export const INDIRECT_DEPTS: MatrixDept[] = [
   { code: "BLDG_USE", name: "Building Use",                       kind: "indirect" },
   { code: "EQUIP",    name: "Equipment Use",                      kind: "indirect" },

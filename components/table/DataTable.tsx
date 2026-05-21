@@ -59,6 +59,11 @@ interface Props<Row extends DataTableRow> {
   renderDrilldown?: (row: Row) => ReactNode;
   /** Reserve a leading column for an open/closed chevron. Requires `renderDrilldown`. */
   drilldownIndicator?: boolean;
+  /** Drag-and-drop row reordering. Indices passed to onReorderRow are
+   *  positions in the currently-displayed (sortedRows) order. Callers
+   *  should default-sort by their sequence column so the displayed
+   *  indices match the underlying sequence. */
+  onReorderRow?: (fromIdx: number, toIdx: number) => void;
 }
 
 function sortValue<Row>(col: Column<Row>, row: Row): unknown {
@@ -87,13 +92,21 @@ export function DataTable<Row extends DataTableRow>({
   emptyState,
   openId, renderDrilldown,
   drilldownIndicator,
+  onReorderRow,
 }: Props<Row>) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
   const [sortDir, setSortDir] = useState<SortDir>(defaultSort?.dir ?? "asc");
+  // Active drag source/target indices for the reorderable mode. Source is
+  // set on dragstart, target tracks the row currently hovered so we can
+  // render a subtle drop indicator without clobbering existing row styles.
+  const [dragSrc, setDragSrc] = useState<number | null>(null);
+  const [dragTgt, setDragTgt] = useState<number | null>(null);
+  const reorderable = !!onReorderRow;
 
   const showChevron = !!drilldownIndicator && !!renderDrilldown;
   const colTracks = cols.map((c) => c.width ?? "1fr").join(" ");
-  const grid = showChevron ? `${colTracks} 36px` : colTracks;
+  const handlePrefix = reorderable ? "28px " : "";
+  const grid = handlePrefix + colTracks + (showChevron ? " 36px" : "");
 
   const sortedRows = useMemo(() => {
     const out = [...rows];
@@ -158,6 +171,7 @@ export function DataTable<Row extends DataTableRow>({
             fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
+            {reorderable && <div aria-hidden="true"/>}
             {cols.map((c) => {
               const k = typeof c.sortKey === "string" ? c.sortKey : c.key;
               const sorted = sortKey === k;
@@ -222,9 +236,39 @@ export function DataTable<Row extends DataTableRow>({
                 ?? bg;
 
               const drilldownId = renderDrilldown && r.id ? `drilldown-${r.id}` : undefined;
+              const isDragging = reorderable && dragSrc === i;
+              const isDropTarget = reorderable && dragTgt === i && dragSrc !== null && dragSrc !== i;
               return (
                 <div key={r.id ?? i} data-row-id={r.id}>
                   <div
+                    draggable={reorderable || undefined}
+                    onDragStart={reorderable ? (e) => {
+                      setDragSrc(i);
+                      e.dataTransfer.effectAllowed = "move";
+                      // Firefox needs some data to actually start the drag.
+                      e.dataTransfer.setData("text/plain", String(i));
+                    } : undefined}
+                    onDragOver={reorderable ? (e) => {
+                      if (dragSrc === null) return;
+                      e.preventDefault();
+                      e.dataTransfer.dropEffect = "move";
+                      if (dragTgt !== i) setDragTgt(i);
+                    } : undefined}
+                    onDragLeave={reorderable ? () => {
+                      if (dragTgt === i) setDragTgt(null);
+                    } : undefined}
+                    onDrop={reorderable ? (e) => {
+                      e.preventDefault();
+                      const from = dragSrc;
+                      setDragSrc(null);
+                      setDragTgt(null);
+                      if (from === null || from === i) return;
+                      onReorderRow?.(from, i);
+                    } : undefined}
+                    onDragEnd={reorderable ? () => {
+                      setDragSrc(null);
+                      setDragTgt(null);
+                    } : undefined}
                     onClick={onRowClick ? () => onRowClick(r) : undefined}
                     onKeyDown={onRowClick ? (e) => {
                       if (e.key === "Enter" || e.key === " ") {
@@ -246,17 +290,34 @@ export function DataTable<Row extends DataTableRow>({
                       display: "grid", gridTemplateColumns: grid, gap: 14,
                       padding: "10px 16px 10px 13px",
                       alignItems: "center",
-                      borderBottom: isOpen
-                        ? "1px solid var(--accent)"
-                        : i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
+                      borderTop: isDropTarget && dragSrc !== null && i < dragSrc
+                        ? "2px solid var(--accent)" : undefined,
+                      borderBottom: isDropTarget && dragSrc !== null && i > dragSrc
+                        ? "2px solid var(--accent)"
+                        : isOpen
+                          ? "1px solid var(--accent)"
+                          : i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
                       background: isOpen ? "var(--paper-2)" : bg,
                       borderLeft: accent,
                       fontSize: 12.5,
                       cursor: onRowClick ? "pointer" : "default",
+                      opacity: isDragging ? 0.45 : 1,
                       transition: "background 80ms",
                       ...(custom?.style ?? {}),
                     }}
                   >
+                    {reorderable && (
+                      <div
+                        title="Drag to reorder"
+                        aria-label="Drag to reorder"
+                        style={{
+                          display: "flex", alignItems: "center", justifyContent: "center",
+                          color: "var(--ink-4)", fontSize: 13, lineHeight: 1,
+                          cursor: "grab", userSelect: "none",
+                          fontFamily: "var(--ff-mono)",
+                        }}
+                      >⋮⋮</div>
+                    )}
                     {cols.map((c) => {
                       const raw = (r as Record<string, unknown>)[c.key];
                       return (

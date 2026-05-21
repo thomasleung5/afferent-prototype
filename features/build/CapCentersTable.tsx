@@ -30,6 +30,7 @@ export function CapCentersTable() {
     capPools, capCenterOrder, capCenterTotals, capCenterDisallowed, capCenterSources,
     capCenterGlCodes,
     addCapCenter, renameCapCenter, updateCenterTotal, updateCenterDisallowed,
+    setCapCenterOrder,
   } = useBuildState();
   const centers = deriveCenters(capPools, capCenterOrder);
   const rows: Row[] = centers.map((c, i) => {
@@ -172,12 +173,29 @@ export function CapCentersTable() {
       <SectionLabel right={`${rows.length} centers`}>
         Cost centers
       </SectionLabel>
+      <div style={{
+        fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.5,
+        marginBottom: 8,
+      }}>
+        Allocation sequence affects downstream cost allocations.
+      </div>
       <DataTable
         cols={cols}
         rows={rows}
         onAdd={addCapCenter}
         addLabel="Add cost center"
-        defaultSort={{ key: "netAllocable", dir: "desc" }}
+        defaultSort={{ key: "idx", dir: "asc" }}
+        onReorderRow={(fromIdx, toIdx) => {
+          // Translate the displayed (sortedRows) positions back into a new
+          // capCenterOrder. With defaultSort=idx asc, the displayed order
+          // matches centers[], so we can splice directly on center names.
+          const order = centers.map((c) => c.name);
+          if (fromIdx < 0 || fromIdx >= order.length) return;
+          if (toIdx < 0 || toIdx >= order.length) return;
+          const [moved] = order.splice(fromIdx, 1);
+          order.splice(toIdx, 0, moved);
+          setCapCenterOrder(order);
+        }}
       />
     </div>
   );
