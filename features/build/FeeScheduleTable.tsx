@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, DrilldownShell, DrilldownColumn, Formula, SectionLabel, SourcePill,
+  CellInput, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -292,9 +292,6 @@ export function FeeScheduleTable() {
                     prefix="$" min={0}
                   />
                 </div>
-                <div>
-                  <SourcePill tone="policy">POLICY · {LIFETIME(r.state)}</SourcePill>
-                </div>
               </div>
             </DrilldownColumn>
 
@@ -308,10 +305,6 @@ export function FeeScheduleTable() {
                 <div style={{ color: "var(--ink-3)" }}>× {r.target}% recovery target</div>
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
                   recommended: <b>{fmt.dollars(r.recommended)}</b>
-                </div>
-                <div style={{ color: "var(--ink-3)", marginTop: 4 }}>
-                  annual: {fmt.dollars(r.recommended)} × {fmt.int(r.volume)} ={" "}
-                  <b style={{ color: "var(--ink-2)" }}>{fmt.dollarsK(r.recommended * r.volume)}</b>
                 </div>
               </div>
               {Math.abs(delta) >= 1 && (
@@ -334,9 +327,6 @@ export function FeeScheduleTable() {
                   </ul>
                 </div>
               )}
-              <div style={{ marginTop: 10 }}>
-                <Formula>unit cost × target%</Formula>
-              </div>
             </DrilldownColumn>
 
             <DrilldownColumn marker="③" title="Confidence & comparators">
@@ -352,10 +342,6 @@ export function FeeScheduleTable() {
                 <ConfReason
                   ok={r.recoveryPct < 200}
                   text={r.recoveryPct < 200 ? `Current fee recovers approximately ${r.recoveryPct.toFixed(0)}% of estimated cost` : "Current fee suspiciously high vs cost — verify"}
-                />
-                <ConfReason
-                  ok={r.unitCost > 50}
-                  text={r.unitCost > 50 ? "Unit cost in normal range" : "Unit cost very low — check hours"}
                 />
                 <div style={{
                   marginTop: 4, fontSize: 11, color: CONF_COLOR[r.confidence], fontWeight: 500,
@@ -398,12 +384,3 @@ export function FeeScheduleTable() {
   );
 }
 
-function LIFETIME(s: FeeState): string {
-  return ({
-    PENDING:  "PENDING REVIEW",
-    REVIEWED: "STAFF REVIEWED",
-    READY:    "READY FOR COUNCIL",
-    ADOPTED:  "ADOPTED",
-    DEFERRED: "DEFERRED",
-  } as Record<FeeState, string>)[s];
-}
