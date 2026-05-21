@@ -312,7 +312,8 @@ export function DataTable<Row extends DataTableRow>({
                         aria-label="Drag to reorder"
                         style={{
                           display: "flex", alignItems: "center", justifyContent: "center",
-                          color: "var(--ink-4)", fontSize: 13, lineHeight: 1,
+                          color: "var(--ink-2)", fontSize: 15, fontWeight: 700,
+                          lineHeight: 1, letterSpacing: "-0.05em",
                           cursor: "grab", userSelect: "none",
                           fontFamily: "var(--ff-mono)",
                         }}

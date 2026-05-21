@@ -107,7 +107,7 @@ export function WorkloadTable() {
       label: "Unit",
       width: "100px",
       sortable: true,
-      render: (r) => <span style={{ fontSize: 12, color: "var(--ink-2)" }}>{r.unit}</span>,
+      render: (r) => <span>{r.unit}</span>,
     },
     {
       key: "prior",
@@ -116,7 +116,7 @@ export function WorkloadTable() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--ink-3)" }}>
+        <span className="num">
           {r.prior?.toLocaleString() ?? "—"}
         </span>
       ),
