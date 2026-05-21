@@ -26,29 +26,6 @@ export function useActiveFiscalYear(): string {
   return useBuildState().activeFiscalYear;
 }
 
-/** Non-React getter for code paths outside the React tree (e.g. export
- *  helpers called from event handlers). Reads the latest store state
- *  imperatively. */
-export function getActiveJurisdiction(): Jurisdiction {
-  const id = useBuildStore.getState().activeJurisdictionId;
-  return getJurisdictionOrDefault(id);
-}
-
-/** Non-React getter for the active fiscal year. */
-export function getActiveFiscalYear(): string {
-  return useBuildStore.getState().activeFiscalYear;
-}
-
-/** Resolve a jurisdiction by id with a typed fallback to the active
- *  one. Use when accepting an optional id from an external source. */
-export function resolveJurisdiction(id: string | undefined): Jurisdiction {
-  if (id) {
-    const found = getJurisdiction(id);
-    if (found) return found;
-  }
-  return getActiveJurisdiction();
-}
-
 /** Atomically switch the active jurisdiction AND swap the demo data
  *  the rest of the app reads from. Two-step:
  *    1. Reset the store to the canonical baseline (the LAH seed via

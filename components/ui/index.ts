@@ -15,5 +15,5 @@ export { NodeEyebrow } from "./NodeEyebrow";
 export { SectionEyebrow } from "./SectionEyebrow";
 export { StatusPill } from "./StatusPill";
 export type { PillKind } from "./StatusPill";
-export { StateChip, ConfReason } from "./StateChip";
+export { StateChip } from "./StateChip";
 export type { FeeState } from "./StateChip";

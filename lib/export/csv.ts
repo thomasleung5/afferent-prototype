@@ -16,7 +16,7 @@ function escapeCell(v: CsvCell): string {
 }
 
 /** Convert one row (an array of cells) to a CSV line. */
-export function csvRow(cells: CsvCell[]): string {
+function csvRow(cells: CsvCell[]): string {
   return cells.map(escapeCell).join(",");
 }
 

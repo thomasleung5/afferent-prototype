@@ -3,13 +3,6 @@
 
 export type DeptCode = "PLAN" | "BLDG" | "ENG";
 
-export interface City {
-  name: string;
-  fiscal: string;
-  preparedBy: string;
-  peers: string[];
-}
-
 interface Department {
   code: DeptCode;
   name: string;

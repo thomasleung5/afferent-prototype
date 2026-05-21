@@ -72,7 +72,7 @@ export const CAP_CENTER_GLCODES: Record<string, string> = {
  *  identity is consistent whether it appears as a pool source or a
  *  pool receiver. Direct codes live in the General Fund operating range
  *  (3xxx), numbered in step-down-receiving order. */
-export const CAP_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
+const CAP_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
   // Indirect — mirror CAP_CENTER_GLCODES
   BLDG_USE: "011-1800",
   EQUIP:    "011-1900",

@@ -95,29 +95,3 @@ export function StateChip({ state, onChange }: Props) {
   );
 }
 
-interface ConfReasonProps {
-  ok: boolean;
-  text: string;
-}
-
-/** Single confidence-check line — green check or amber dash + reason. */
-export function ConfReason({ ok, text }: ConfReasonProps) {
-  return (
-    <div style={{
-      display: "flex", alignItems: "flex-start", gap: 8,
-      fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.5,
-    }}>
-      <span style={{
-        flexShrink: 0,
-        width: 14, height: 14,
-        display: "inline-flex", alignItems: "center", justifyContent: "center",
-        fontSize: 10, fontWeight: 700,
-        background: ok ? "var(--pos-tint)" : "var(--warn-tint)",
-        color: ok ? "var(--pos)" : "var(--warn)",
-        border: `1px solid ${ok ? "var(--pos)" : "var(--warn)"}`,
-        marginTop: 1,
-      }}>{ok ? "✓" : "—"}</span>
-      <span>{text}</span>
-    </div>
-  );
-}
