@@ -67,7 +67,7 @@ const INDIRECT: BasisRow[] = [
     },
   },
   {
-    code: "FAS", name: "Finance & Admin Services", group: "indirect",
+    code: "FAS", name: "Finance & Administrative Services", group: "indirect",
     values: {
       FTE: 4.0, EXPEND: 1218000, EXPEND_X: 1218000,
       PAYROLL: 0, ACCT: 0, AGENDA: 12, PRA: 6, CONTRACT: 0,

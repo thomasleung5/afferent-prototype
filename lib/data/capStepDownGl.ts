@@ -173,9 +173,33 @@ export function buildEngineGraph(args: {
   //    receiver's classification matches PLAN/BLDG/ENG so FBHR can sum by
   //    fee dept; classification is metadata only and never determines a
   //    routing destination.
+  //
+  //    Defensive merge: if a receiver's name matches an indirect center we
+  //    just built with a synth seed:center:* key (because capCenterGlCodes
+  //    didn't list it), promote that center to the receiver's real glCode
+  //    rather than duplicating it as a direct node. This protects against
+  //    imports that bring receivers with real glCodes but don't separately
+  //    populate the center→glCode map.
   for (const r of capReceivers) {
     if (!r.glCode) continue;
-    if (nodeByKey.has(r.glCode)) continue; // already an indirect center
+    if (nodeByKey.has(r.glCode)) continue;
+
+    const seedCenter = nodes.find(
+      (n) => n.role === "indirect" && n.key.startsWith("seed:center:")
+        && (n.name === r.dept || (n.classification && n.classification === r.deptCode)),
+    );
+    if (seedCenter) {
+      const oldKey = seedCenter.key;
+      nodeByKey.delete(oldKey);
+      seedCenter.key = r.glCode;
+      seedCenter.glCode = r.glCode;
+      nodeByKey.set(r.glCode, seedCenter);
+      for (const [name, key] of indirectNodeByCenter) {
+        if (key === oldKey) indirectNodeByCenter.set(name, r.glCode);
+      }
+      continue;
+    }
+
     const isFeeDept = r.deptCode === "PLAN" || r.deptCode === "BLDG" || r.deptCode === "ENG";
     addNode({
       key: r.glCode, glCode: r.glCode, name: r.dept,
@@ -185,20 +209,24 @@ export function buildEngineGraph(args: {
     });
   }
 
-  // 3. Synthetic direct nodes for PLAN/BLDG/ENG when no imported receiver
-  //    covers a fee dept. These exist so the seed CAP state has a stable,
-  //    glCode-keyed receiver for the driver-unit fallback path when no
-  //    BasisUnitRow is imported. They are NOT a deptCode-routing fallback
+  // 3. Synthetic PLAN/BLDG/ENG direct nodes — empty-state fallback only.
+  //    These exist so the prototype has stable, glCode-keyed receivers when
+  //    no CAP import has been loaded yet. As soon as any imported receiver
+  //    shows up in step 2, the imports own the receiver set and we skip
+  //    seed creation entirely. They are NOT a deptCode-routing fallback
   //    for DIRECT pools — DIRECT pools route only via their
   //    DirectAllocationRow (see Phase 1 below).
-  for (const dept of FEE_DEPTS) {
-    const covered = nodes.some((n) => n.role === "direct" && n.feeDept === dept);
-    if (covered) continue;
-    const key = seedDeptKey(dept);
-    addNode({
-      key, glCode: key, name: dept, role: "direct", feeDept: dept,
-      classification: dept,
-    });
+  const anyImportedDirect = nodes.some(
+    (n) => n.role === "direct" && !n.key.startsWith("seed:"),
+  );
+  if (!anyImportedDirect) {
+    for (const dept of FEE_DEPTS) {
+      const key = seedDeptKey(dept);
+      addNode({
+        key, glCode: key, name: dept, role: "direct", feeDept: dept,
+        classification: dept,
+      });
+    }
   }
 
   // 4. Driver matrix — values keyed by node.key (= glCode). DRIVERS values

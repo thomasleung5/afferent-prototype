@@ -806,39 +806,25 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
           state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
         }
-        // Backfill for state persisted before glCode / studyContext
-        // existed, or before the seed glCode map was added. Merge the
-        // canonical seed codes in so any centers that already had user-
-        // assigned codes are preserved.
-        if (!state.capCenterGlCodes) state.capCenterGlCodes = {};
-        for (const [name, glCode] of Object.entries(CAP_CENTER_GLCODES)) {
-          if (!state.capCenterGlCodes[name]) state.capCenterGlCodes[name] = glCode;
+        // Seed CAP slices ONLY when the field is genuinely absent (true
+        // migration from pre-field state). Empty arrays / objects mean the
+        // user explicitly cleared the seed — respect that and don't
+        // re-inject. The earlier "fill in missing entries by id" behavior
+        // would resurrect seed data on every reload after a clear.
+        if (state.capCenterGlCodes == null) {
+          state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
         }
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
-        // Backfill for state persisted before capCenterDisallowed existed.
-        // Default each center to $0 disallowed so existing math is unchanged.
         if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
-
-        // Backfill the new basis-units + direct-allocations slices for
-        // state persisted before the import-shape refactor, or before
-        // these slices were seeded. Merge the canonical seed entries in
-        // (keyed by basisId / poolId) so user-supplied schedules
-        // overlay the seed rather than colliding with it.
-        if (!state.capBasisUnits) state.capBasisUnits = [];
-        const seenBasisIds = new Set(state.capBasisUnits.map((bu) => bu.basisId));
-        for (const bu of CAP_BASIS_UNITS) {
-          if (seenBasisIds.has(bu.basisId)) continue;
-          state.capBasisUnits.push({
+        if (state.capBasisUnits == null) {
+          state.capBasisUnits = CAP_BASIS_UNITS.map((bu) => ({
             ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
-          });
+          }));
         }
-        if (!state.capDirectAllocations) state.capDirectAllocations = [];
-        const seenPoolIds = new Set(state.capDirectAllocations.map((d) => d.poolId));
-        for (const da of CAP_DIRECT_ALLOCATIONS) {
-          if (seenPoolIds.has(da.poolId)) continue;
-          state.capDirectAllocations.push({
+        if (state.capDirectAllocations == null) {
+          state.capDirectAllocations = CAP_DIRECT_ALLOCATIONS.map((da) => ({
             ...da, receivers: da.receivers.map((r) => ({ ...r })),
-          });
+          }));
         }
 
         // Backfill seed imports if the persisted store has an empty log.
