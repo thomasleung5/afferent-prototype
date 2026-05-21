@@ -159,7 +159,7 @@ export function ChangeReviewTable() {
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ color: "var(--ink)" }}>{r.change}</span>
           <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.05em" }}>
-            {r.id} · {r.affected}
+            {r.affected}
           </span>
         </div>
       ),
