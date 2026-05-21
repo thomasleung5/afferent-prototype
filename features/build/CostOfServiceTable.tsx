@@ -157,6 +157,16 @@ export function CostOfServiceTable() {
                 <div style={{ color: "var(--ink-3)", fontSize: 11.5, marginTop: 2 }}>
                   {r.id} · {dept}
                 </div>
+                <Link
+                  to="/build/services"
+                  search={{ serviceId: r.id }}
+                  style={{
+                    display: "inline-block", marginTop: 8, fontSize: 11,
+                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >
+                  View service →
+                </Link>
               </div>
               <div style={{
                 marginTop: 14, padding: "12px 14px",

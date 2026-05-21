@@ -1,5 +1,6 @@
 ﻿
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
@@ -47,6 +48,26 @@ export function ServicesTable() {
     const filtered = applyFilter(allRows, "dept", dept);
     return reviewOnly ? filtered.filter((r) => r.flag) : filtered;
   }, [allRows, dept, reviewOnly]);
+
+  // ?serviceId=... means we were cross-navigated here. Clear filters
+  // that would hide the row, open its drilldown, scroll into view, and
+  // flash briefly. Same pattern as the other cross-nav consumers.
+  const { serviceId } = useSearch({ from: "/build/services" });
+  useEffect(() => {
+    if (!serviceId) return;
+    if (!allRows.some((r) => r.id === serviceId)) return;
+    setDept("ALL");
+    setReviewOnly(false);
+    setOpenId(serviceId);
+    const handle = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(serviceId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("row-flash");
+      window.setTimeout(() => el.classList.remove("row-flash"), 1700);
+    }, 30);
+    return () => window.clearTimeout(handle);
+  }, [serviceId, allRows]);
 
   const flaggedCount = allRows.filter((r) => r.flag).length;
 
