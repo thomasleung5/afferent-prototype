@@ -6,12 +6,13 @@ import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import {
   deriveAnnualChanges, derivePacketSummary, sectionCodeFor,
 } from "@/lib/data/annual";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction } from "@/lib/active";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 
 export default function AnnualPacketPage() {
   const state = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
 
   const exportStaffReport = useCallback(() => {
     const input = {
@@ -61,9 +62,9 @@ export default function AnnualPacketPage() {
         `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
       ]),
     ]);
-    const slug = CITY.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     downloadCsv(csv, `${slug}-annual-staff-report.csv`);
-  }, [state]);
+  }, [state, jurisdiction.name]);
 
   // Council-facing packet opens the existing fee-study print-preview tab.
   // The same /export route renders against the live BuildProvider state, so

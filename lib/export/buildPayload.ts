@@ -12,7 +12,6 @@ import type {
 import type { Domain } from "@/lib/store";
 import type { SourceLineage, UnmappedRow } from "@/lib/parse";
 import { DEPTS } from "@/lib/data/departments";
-import { CITY } from "@/lib/data/city";
 
 interface ExportCover {
   cityName: string;
@@ -145,6 +144,15 @@ export interface ExportInput {
   policyExceptions: PolicyException[];
   pendingReview: Record<Domain, UnmappedRow[]>;
   lineage: Record<string, SourceLineage>;
+  /** Active jurisdiction context — populated by the caller from
+   *  useActiveJurisdiction() / useActiveFiscalYear(). Pure function;
+   *  doesn't touch the React tree or the store directly. */
+  jurisdiction: {
+    name: string;
+    fiscal: string;
+    preparedBy: string;
+    peers: string[];
+  };
   derived: {
     labor: Record<DeptCode, { fte: number; positions: number; productiveHours: number; totalComp: number; directRate: number }>;
     fbhr: Record<DeptCode, {
@@ -218,10 +226,10 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   const fte = positions.reduce((a, p) => a + p.fte, 0);
 
   const cover: ExportCover = {
-    cityName: CITY.name,
-    fiscal: CITY.fiscal,
-    preparedBy: CITY.preparedBy,
-    peers: CITY.peers,
+    cityName: input.jurisdiction.name,
+    fiscal: input.jurisdiction.fiscal,
+    preparedBy: input.jurisdiction.preparedBy,
+    peers: input.jurisdiction.peers,
     generatedAt: new Date().toISOString(),
   };
 
@@ -377,7 +385,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     {
       heading: "Peer Comparison",
       body:
-        "Peer cities used for comparator pricing: " + CITY.peers.join(", ") +
+        "Peer cities used for comparator pricing: " + input.jurisdiction.peers.join(", ") +
         ". Peer medians are sourced from publicly adopted fee schedules as of July 1, 2025. " +
         "Peer fees are listed prices and may understate full cost recovery if a peer subsidizes from general fund.",
     },
@@ -397,13 +405,13 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   ];
 
   const assumptions: { label: string; value: string }[] = [
-    { label: "Fiscal year",        value: CITY.fiscal },
+    { label: "Fiscal year",        value: input.jurisdiction.fiscal },
     { label: "Productive hours/yr (default)", value: "1,720" },
     { label: "Indirect departments", value: "7 step-down centers (Council, City Mgr, Clerk, Finance, Attorney, Insurance, Committees)" },
     { label: "Direct fee depts",   value: ORDER.join(", ") },
     { label: "Recommended rounding", value: "Nearest $5" },
     { label: "Subsidy fund",       value: "General Fund — recovery shortfall is implicitly subsidized when target < 100%" },
-    { label: "Peer cities",        value: CITY.peers.join(", ") },
+    { label: "Peer cities",        value: input.jurisdiction.peers.join(", ") },
     { label: "Operating shared split", value: "Productive-hours share across PLAN / BLDG / ENG" },
   ];
 

@@ -30,6 +30,9 @@ import {
 import {
   DEFAULT_STUDY_CONTEXT, extractStudyContext, type StudyContext,
 } from "@/lib/data/studyContext";
+import {
+  DEFAULT_JURISDICTION_ID, getJurisdiction,
+} from "@/lib/data/jurisdictions";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 
 /* ── Re-exported types ── */
@@ -91,6 +94,20 @@ interface BuildState {
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
+  /** Active demo jurisdiction the UI is bound to. Read via
+   *  useActiveJurisdiction(); switched via setActiveJurisdiction. Defaults
+   *  to "los-altos-hills" — the only jurisdiction with full seed data
+   *  today. Placeholder jurisdictions in lib/data/jurisdictions can be
+   *  selected from the TopBar dropdown but render an empty / coming-
+   *  soon state until seed data is added.
+   *
+   *  Not currently used as a data-namespace key inside this store — the
+   *  prototype keeps a flat data layout because only one jurisdiction
+   *  has data. When a second jurisdiction comes online we'll need to
+   *  shard the data slices by activeJurisdictionId × activeFiscalYear,
+   *  which the active-context layer is set up to enable. */
+  activeJurisdictionId: string;
+  activeFiscalYear: string;
 }
 
 interface BuildActions {
@@ -152,6 +169,13 @@ interface BuildActions {
   };
   moveCenter: (name: string, direction: "up" | "down") => void;
   setCapCenterOrder: (order: string[]) => void;
+  /** Set the active demo jurisdiction. Also resets activeFiscalYear to
+   *  the target jurisdiction's defaultFiscalYear so a switch always
+   *  lands on a valid fiscal year. */
+  setActiveJurisdiction: (id: string) => void;
+  /** Set the active fiscal year. Caller is responsible for passing a
+   *  value that belongs to the current jurisdiction's fiscalYears. */
+  setActiveFiscalYear: (fy: string) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -197,6 +221,9 @@ const initialState = (): BuildState => {
     pendingReview: { ...emptyPending },
     capCenterOrder: defaultCenterOrder(pools),
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
+    activeJurisdictionId: DEFAULT_JURISDICTION_ID,
+    activeFiscalYear:
+      getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
   };
 };
 
@@ -782,6 +809,23 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return { capCenterOrder: [...order, ...tail] };
         }),
 
+      setActiveJurisdiction: (id) =>
+        set((s) => {
+          const next = getJurisdiction(id);
+          if (!next) return s;
+          return {
+            activeJurisdictionId: id,
+            // Reset to the new jurisdiction's default fiscal year if the
+            // currently-active one isn't valid for the target.
+            activeFiscalYear: next.fiscalYears.includes(s.activeFiscalYear)
+              ? s.activeFiscalYear
+              : next.defaultFiscalYear,
+          };
+        }),
+
+      setActiveFiscalYear: (fy) =>
+        set(() => ({ activeFiscalYear: fy })),
+
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -828,6 +872,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
         }
         if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
+        // Backfill active context for state persisted before the
+        // jurisdiction-aware layer landed. Defaults to the LAH demo so
+        // existing sessions continue to land on the same data.
+        if (!state.activeJurisdictionId) {
+          state.activeJurisdictionId = DEFAULT_JURISDICTION_ID;
+        }
+        if (!state.activeFiscalYear) {
+          state.activeFiscalYear =
+            getJurisdiction(state.activeJurisdictionId)?.defaultFiscalYear ?? "FY 2025-26";
+        }
         if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
         if (state.capBasisUnits == null) {
           state.capBasisUnits = CAP_BASIS_UNITS.map((bu) => ({

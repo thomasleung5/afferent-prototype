@@ -1,6 +1,6 @@
 import { Btn, Icon } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
+import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
 import { derivePacketSummary } from "@/lib/data/annual";
 
@@ -20,6 +20,8 @@ const PACKET_SECTIONS = [
 
 export function UpdatePacketView() {
   const state = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
+  const fiscalYear = useActiveFiscalYear();
   const summary = derivePacketSummary({
     imports: state.imports,
     positions: state.positions,
@@ -62,13 +64,13 @@ export function UpdatePacketView() {
           Preview · Annual Fee Update
         </div>
         <div style={{ fontSize: 22, fontWeight: 600, lineHeight: 1.25, letterSpacing: "-0.01em", color: "var(--ink)" }}>
-          {CITY.fiscal} Annual Cost Recovery Update
+          {fiscalYear} Annual Cost Recovery Update
         </div>
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6, marginBottom: 18 }}>
-          {CITY.name} · {CITY.preparedBy.split(" · ")[0]}
+          {jurisdiction.name} · {jurisdiction.preparedBy.split(" · ")[0]}
         </div>
         <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.7 }}>
-          {buildNarrative(summary)}
+          {buildNarrative(summary, fiscalYear)}
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, fontFamily: "var(--ff-ui)" }}>
           <Btn kind="ghost" href="/build/feestudy">Fee schedule</Btn>
@@ -80,13 +82,13 @@ export function UpdatePacketView() {
   );
 }
 
-function buildNarrative(s: ReturnType<typeof derivePacketSummary>): string {
+function buildNarrative(s: ReturnType<typeof derivePacketSummary>, fiscalYear: string): string {
   const intro = s.totalImports > 0
-    ? `The ${CITY.fiscal} update reuses the locked baseline model and incorporates `
+    ? `The ${fiscalYear} update reuses the locked baseline model and incorporates `
       + `${s.totalImports} data import${s.totalImports === 1 ? "" : "s"} across `
       + `${s.domainsRefreshed} of 6 model section${s.domainsRefreshed === 1 ? "" : "s"} `
       + `(last refresh ${s.lastRefresh}). `
-    : `The ${CITY.fiscal} update reuses the locked baseline model. No source files have `
+    : `The ${fiscalYear} update reuses the locked baseline model. No source files have `
       + `been refreshed since the last build — the figures below reflect the seed baseline. `;
 
   const recovery = `Blended development services cost recovery stands at `

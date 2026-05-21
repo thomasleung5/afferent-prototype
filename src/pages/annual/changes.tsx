@@ -4,11 +4,12 @@ import { Btn, Icon, SectionEyebrow } from "@/components/ui";
 import { ChangeReviewTable } from "@/features/annual/ChangeReviewTable";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { deriveAnnualChanges, sectionCodeFor } from "@/lib/data/annual";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
 
 export default function AnnualChangesPage() {
   const state = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
 
   const exportLog = useCallback(() => {
     const changes = deriveAnnualChanges({
@@ -36,9 +37,9 @@ export default function AnnualChangesPage() {
         c.badge,
       ]),
     ]);
-    const slug = CITY.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     downloadCsv(csv, `${slug}-change-log.csv`);
-  }, [state]);
+  }, [state, jurisdiction.name]);
 
   return (
     <Page>

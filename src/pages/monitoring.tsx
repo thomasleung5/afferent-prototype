@@ -13,7 +13,7 @@ import {
   type AlertSeverity,
 } from "@/lib/data/monitoring";
 import { DEPTS } from "@/lib/data/departments";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction } from "@/lib/active";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { useBuildState } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
@@ -43,6 +43,7 @@ type AlertFilter = "ALL" | AlertSeverity;
 export default function RevenueMonitoringPage() {
   const [alertFilter, setAlertFilter] = useState<AlertFilter>("ALL");
   const { derived, policyTargets, imports } = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
   const monitoring = useMemo(
     () => deriveMonitoringData({
       comparisons: derived.comparisons,
@@ -276,9 +277,9 @@ export default function RevenueMonitoringPage() {
         `${a.rationale} · ${a.nextStep} · ${fmt.dollars(a.fiscalImpact)}`,
       ]),
     ]);
-    const slug = CITY.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     downloadCsv(csv, `${slug}-monitoring-brief.csv`);
-  }, [summary, deptHealth, driftDrivers, recoveryAlerts, staffActions]);
+  }, [summary, deptHealth, driftDrivers, recoveryAlerts, staffActions, jurisdiction.name]);
 
   const alertCols: Column<RecoveryAlert>[] = [
     {

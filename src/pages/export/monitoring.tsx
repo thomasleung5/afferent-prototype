@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
 import { Btn, Icon } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction } from "@/lib/active";
+import type { Jurisdiction } from "@/lib/data/jurisdictions";
 import { useBuildState } from "@/lib/store";
 import {
   deriveMonitoringData, type MonitoringData,
@@ -15,6 +16,7 @@ function slugCity(name: string): string {
 
 export default function RevenueMonitoringExportPage() {
   const { derived, policyTargets, imports } = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
   const monitoring = useMemo(
     () => deriveMonitoringData({
       comparisons: derived.comparisons,
@@ -28,8 +30,8 @@ export default function RevenueMonitoringExportPage() {
   return (
     <>
       <PrintStyles/>
-      <Toolbar monitoring={monitoring}/>
-      <Report monitoring={monitoring}/>
+      <Toolbar monitoring={monitoring} jurisdiction={jurisdiction}/>
+      <Report monitoring={monitoring} jurisdiction={jurisdiction}/>
     </>
   );
 }
@@ -83,7 +85,9 @@ function PrintStyles() {
   );
 }
 
-function Toolbar({ monitoring }: { monitoring: MonitoringData }) {
+function Toolbar({
+  monitoring, jurisdiction,
+}: { monitoring: MonitoringData; jurisdiction: Jurisdiction }) {
   const exportCsv = useCallback(() => {
     const { summary, deptHealth, driftDrivers, recoveryAlerts, staffActions } = monitoring;
     const csv = buildCsv([
@@ -123,8 +127,8 @@ function Toolbar({ monitoring }: { monitoring: MonitoringData }) {
         `${a.rationale} · ${a.nextStep} · ${fmt.dollars(a.fiscalImpact)}`,
       ]),
     ]);
-    downloadCsv(csv, `${slugCity(CITY.name)}-monitoring-brief.csv`);
-  }, [monitoring]);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-monitoring-brief.csv`);
+  }, [monitoring, jurisdiction.name]);
 
   return (
     <div className="no-print" style={{
@@ -140,7 +144,7 @@ function Toolbar({ monitoring }: { monitoring: MonitoringData }) {
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>Export · Print preview</div>
         <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {CITY.name} · Revenue monitoring brief
+          {jurisdiction.name} · Revenue monitoring brief
         </div>
       </div>
       <div style={{ flex: 1 }}/>
@@ -166,11 +170,13 @@ function useAutoPrint() {
   }, []);
 }
 
-function Report({ monitoring }: { monitoring: MonitoringData }) {
+function Report({
+  monitoring, jurisdiction,
+}: { monitoring: MonitoringData; jurisdiction: Jurisdiction }) {
   useAutoPrint();
   return (
     <div className="report">
-      <Cover/>
+      <Cover jurisdiction={jurisdiction}/>
       <SummarySection monitoring={monitoring}/>
       <DeptHealthSection monitoring={monitoring}/>
       <DriftDriversSection monitoring={monitoring}/>
@@ -180,14 +186,14 @@ function Report({ monitoring }: { monitoring: MonitoringData }) {
   );
 }
 
-function Cover() {
+function Cover({ jurisdiction }: { jurisdiction: Jurisdiction }) {
   return (
     <section className="section" style={{
       paddingTop: 60, paddingBottom: 32,
       borderBottom: "1px solid var(--rule)",
       marginBottom: 36,
     }}>
-      <div className="eyebrow">{CITY.name}</div>
+      <div className="eyebrow">{jurisdiction.name}</div>
       <div className="title display" style={{ fontSize: 32, marginTop: 6 }}>
         Revenue Monitoring Brief
       </div>

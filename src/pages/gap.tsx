@@ -2,7 +2,7 @@ import { useCallback } from "react";
 import { Page } from "@/components/layout";
 import { Btn, Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
@@ -12,6 +12,7 @@ import { TopFixesTable } from "@/features/revenue-gap/TopFixesTable";
 
 export default function RevenueGapPage() {
   const { derived, services } = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
   const { impact, fbhr, costs, comparisons } = derived;
 
   // Primary revenue gap: target (policy-intended) − current revenue. Clamped
@@ -70,9 +71,9 @@ export default function RevenueGapPage() {
         `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
       ]),
     ]);
-    const slug = CITY.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     downloadCsv(csv, `${slug}-revenue-gap-brief.csv`);
-  }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons]);
+  }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons, jurisdiction.name]);
 
   return (
     <Page>

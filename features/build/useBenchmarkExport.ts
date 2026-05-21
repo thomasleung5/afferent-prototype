@@ -1,7 +1,7 @@
 
 import { useCallback, useMemo } from "react";
 import { useBuildState } from "@/lib/store";
-import { CITY } from "@/lib/data/city";
+import { useActiveJurisdiction, useActiveFiscalYear } from "@/lib/active";
 import { downloadBlob } from "@/lib/export/excel";
 import {
   exportBenchmarkXlsx,
@@ -10,13 +10,14 @@ import {
 } from "@/lib/export/benchmarkExcel";
 
 // Same deterministic jitter the BenchmarkTable + PDF route use so the
-// per-peer columns are consistent everywhere they appear.
+// per-peer columns are consistent everywhere they appear. Peers come
+// from the active jurisdiction.
 const OFFSETS = [-0.18, -0.07, 0.04, 0.12, 0.22];
 
-function peerJitter(id: string, median: number): number[] {
-  if (!median) return CITY.peers.map(() => 0);
+function peerJitter(id: string, median: number, peers: string[]): number[] {
+  if (!median) return peers.map(() => 0);
   const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return CITY.peers.map((_, i) => {
+  return peers.map((_, i) => {
     const off = OFFSETS[(seed + i) % OFFSETS.length];
     return Math.round((median * (1 + off)) / 5) * 5;
   });
@@ -26,11 +27,13 @@ function peerJitter(id: string, median: number): number[] {
  *  route component and the Excel exporter so both stay in sync. */
 export function useBenchmarkPayload(): BenchmarkExportPayload {
   const { services, derived } = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
+  const fiscalYear = useActiveFiscalYear();
   return useMemo<BenchmarkExportPayload>(() => {
     const rows: BenchmarkRow[] = services.map((s) => {
       const fbhr = derived.fbhr[s.dept]?.fbhr ?? 0;
       const cost = s.hours * fbhr;
-      const peerValues = peerJitter(s.id, s.peer);
+      const peerValues = peerJitter(s.id, s.peer, jurisdiction.peers);
       const varianceVsMedian = s.peer > 0 ? ((s.fee - s.peer) / s.peer) * 100 : 0;
       const varianceVsCost = cost > 0 ? ((s.fee - cost) / cost) * 100 : 0;
       return {
@@ -47,15 +50,15 @@ export function useBenchmarkPayload(): BenchmarkExportPayload {
       ? withPeer.reduce((a, r) => a + r.varianceVsMedian, 0) / withPeer.length
       : 0;
     return {
-      cityName: CITY.name,
-      fiscal: CITY.fiscal,
-      preparedBy: CITY.preparedBy,
-      peers: CITY.peers,
+      cityName: jurisdiction.name,
+      fiscal: fiscalYear,
+      preparedBy: jurisdiction.preparedBy,
+      peers: jurisdiction.peers,
       generatedAt: new Date().toISOString(),
       rows,
       summary: { total: rows.length, withPeer: withPeer.length, aboveMedian, inLine, belowMedian, avgVariance },
     };
-  }, [services, derived.fbhr]);
+  }, [services, derived.fbhr, jurisdiction, fiscalYear]);
 }
 
 /** Fee Benchmark export handlers — PDF opens the print route in a new

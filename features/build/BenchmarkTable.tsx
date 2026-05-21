@@ -9,9 +9,9 @@ import {
   DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { CITY } from "@/lib/data/city";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
+import { useActiveJurisdiction } from "@/lib/active";
 
 interface Row {
   id: string;
@@ -32,10 +32,10 @@ interface Row {
 
 const OFFSETS = [-0.18, -0.07, 0.04, 0.12, 0.22];
 
-function peerJitter(id: string, median: number): number[] {
-  if (!median) return CITY.peers.map(() => 0);
+function peerJitter(id: string, median: number, peers: string[]): number[] {
+  if (!median) return peers.map(() => 0);
   const seed = id.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
-  return CITY.peers.map((_, i) => {
+  return peers.map((_, i) => {
     const off = OFFSETS[(seed + i) % OFFSETS.length];
     return Math.round((median * (1 + off)) / 5) * 5;
   });
@@ -50,6 +50,8 @@ function classify(variance: number, hasPeer: boolean): Row["status"] {
 
 export function BenchmarkTable() {
   const { services, derived } = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
+  const peers = jurisdiction.peers;
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
   // ?serviceId=... means we were cross-navigated here from another tab.
@@ -76,7 +78,7 @@ export function BenchmarkTable() {
   const all: Row[] = useMemo(() => services.map((s) => {
     const fbhr = derived.fbhr[s.dept]?.fbhr ?? 0;
     const cost = s.hours * fbhr;
-    const peerValues = peerJitter(s.id, s.peer);
+    const peerValues = peerJitter(s.id, s.peer, peers);
     const nonZeroPeers = peerValues.filter((v) => v > 0);
     const peerMin = nonZeroPeers.length > 0 ? Math.min(...nonZeroPeers) : 0;
     const peerMax = nonZeroPeers.length > 0 ? Math.max(...nonZeroPeers) : 0;
@@ -98,7 +100,7 @@ export function BenchmarkTable() {
       varianceVsCost,
       status: classify(varianceVsMedian, s.peer > 0),
     };
-  }), [services, derived.fbhr]);
+  }), [services, derived.fbhr, peers]);
 
   const rows = useMemo(() => applyFilter(all, "dept", dept), [all, dept]);
 
@@ -206,7 +208,7 @@ export function BenchmarkTable() {
 
   return (
     <div>
-      <SectionLabel right={`${rows.length} fee${rows.length === 1 ? "" : "s"} · ${CITY.peers.length} peer cities`}>
+      <SectionLabel right={`${rows.length} fee${rows.length === 1 ? "" : "s"} · ${peers.length} peer cities`}>
         Adopted fees vs. peer-city medians
       </SectionLabel>
       <DataTable
@@ -218,7 +220,7 @@ export function BenchmarkTable() {
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
         drilldownIndicator
         renderDrilldown={(r) => {
-          const sorted = CITY.peers.slice(0, 5)
+          const sorted = peers.slice(0, 5)
             .map((city, i) => ({ city, value: r.peerValues[i] }))
             .sort((a, b) => b.value - a.value);
           return (
@@ -280,10 +282,10 @@ export function BenchmarkTable() {
               </DrilldownColumn>
 
               <DrilldownColumn marker="③" title="Source &amp; method">
-                <TraceBlock label="Peers">{CITY.peers.join(" · ")}</TraceBlock>
+                <TraceBlock label="Peers">{peers.join(" · ")}</TraceBlock>
                 <TraceBlock label="Survey window">Adopted fees as of Jul 1, 2025 · public schedules</TraceBlock>
                 <TraceBlock label="Method">
-                  Median across {CITY.peers.length} peers; per-city values shown above are stable random samples around the median.
+                  Median across {peers.length} peers; per-city values shown above are stable random samples around the median.
                 </TraceBlock>
                 <TraceBlock label="Caveat">
                   Peer fees are listed prices and may understate full cost recovery

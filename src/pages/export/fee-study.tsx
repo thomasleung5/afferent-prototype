@@ -1,6 +1,7 @@
 ﻿
 import { useEffect, useMemo, useState } from "react";
 import { useBuildState } from "@/lib/store";
+import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import { buildExportPayload, type ExportPayload } from "@/lib/export/buildPayload";
 import { exportFeeStudyXlsx, downloadBlob } from "@/lib/export/excel";
 import { fmt } from "@/lib/format";
@@ -8,6 +9,8 @@ import { Btn, Icon } from "@/components/ui";
 
 export default function FeeStudyExportPage() {
   const state = useBuildState();
+  const jurisdiction = useActiveJurisdiction();
+  const fiscalYear = useActiveFiscalYear();
   const payload = useMemo<ExportPayload>(() => buildExportPayload({
     positions:    state.positions,
     operating:    state.operating,
@@ -19,7 +22,13 @@ export default function FeeStudyExportPage() {
     pendingReview: state.pendingReview,
     lineage:      state.lineage,
     derived:      state.derived,
-  }), [state]);
+    jurisdiction: {
+      name: jurisdiction.name,
+      fiscal: fiscalYear,
+      preparedBy: jurisdiction.preparedBy,
+      peers: jurisdiction.peers,
+    },
+  }), [state, jurisdiction, fiscalYear]);
 
   return (
     <>

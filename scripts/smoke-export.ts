@@ -54,6 +54,12 @@ async function main() {
     },
     lineage: {},
     derived: { labor, fbhr, costs, comparisons, impact },
+    jurisdiction: {
+      name: "Town of Los Altos Hills",
+      fiscal: "FY 2025-26",
+      preparedBy: "Finance Department · NBS Consulting",
+      peers: ["Atherton", "Portola Valley", "Woodside", "Hillsborough", "Monte Sereno"],
+    },
   });
 
   console.log("[payload]", {
