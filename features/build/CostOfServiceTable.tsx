@@ -1,5 +1,6 @@
 ﻿
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
@@ -30,6 +31,26 @@ export function CostOfServiceTable() {
     annual: c.annualCost,
   })), [derived]);
   const rows = useMemo(() => applyFilter(all, "dept", dept), [all, dept]);
+
+  // ?serviceId=... means we were cross-navigated here from another tab.
+  // Drop any dept filter that would hide the row, open its drilldown,
+  // scroll into view, and flash briefly so the user sees where they
+  // landed. Same pattern as BenchmarkTable.
+  const { serviceId } = useSearch({ from: "/build/costs" });
+  useEffect(() => {
+    if (!serviceId) return;
+    if (!all.some((r) => r.id === serviceId)) return;
+    setDept("ALL");
+    setOpenId(serviceId);
+    const handle = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(serviceId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("row-flash");
+      window.setTimeout(() => el.classList.remove("row-flash"), 1700);
+    }, 30);
+    return () => window.clearTimeout(handle);
+  }, [serviceId, all]);
 
   const filters: FilterGroup[] = [{
     id: "dept", label: "Dept",
@@ -249,6 +270,16 @@ export function CostOfServiceTable() {
               <TraceBlock label="Carries into">
                 Drill further on the Overhead Cost Allocation page to see drivers and pass-2 contributions.
               </TraceBlock>
+              <Link
+                to="/build/feestudy"
+                search={{ serviceId: r.id }}
+                style={{
+                  display: "inline-block", marginTop: 10, fontSize: 11,
+                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                }}
+              >
+                View fee schedule →
+              </Link>
             </DrilldownColumn>
           </DrilldownShell>
         );

@@ -1,6 +1,6 @@
 ﻿
-import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
+import { useEffect, useMemo, useState } from "react";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, applyFilter,
   type Column, type FilterGroup,
@@ -41,6 +41,27 @@ export function FeeScheduleTable() {
   const [filter, setFilter] = useState("ALL");
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
+
+  // ?serviceId=... means we were cross-navigated here from Cost of
+  // Service or Fee Benchmark. Clear filters that would hide the row,
+  // open its drilldown, scroll, and flash so the user sees where they
+  // landed. Same pattern used by BenchmarkTable / CostOfServiceTable.
+  const { serviceId } = useSearch({ from: "/build/feestudy" });
+  useEffect(() => {
+    if (!serviceId) return;
+    if (!derived.comparisons.some((c) => c.id === serviceId)) return;
+    setFilter("ALL");
+    setDeptFilter("ALL");
+    setOpenId(serviceId);
+    const handle = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(serviceId)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("row-flash");
+      window.setTimeout(() => el.classList.remove("row-flash"), 1700);
+    }, 30);
+    return () => window.clearTimeout(handle);
+  }, [serviceId, derived.comparisons]);
 
   const stateFor = (id: string): FeeState => stateMap[id] ?? "PENDING";
   const setState = (id: string, st: FeeState) => setStateMap((s) => ({ ...s, [id]: st }));
@@ -321,6 +342,16 @@ export function FeeScheduleTable() {
                   </ul>
                 </div>
               )}
+              <Link
+                to="/build/costs"
+                search={{ serviceId: r.id }}
+                style={{
+                  display: "inline-block", marginTop: 10, fontSize: 11,
+                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                }}
+              >
+                View cost of service →
+              </Link>
             </DrilldownColumn>
 
             <DrilldownColumn marker="③" title="Comparators">
@@ -345,7 +376,7 @@ export function FeeScheduleTable() {
                 )}
                 <Link
                   to="/build/benchmark"
-                  search={{ feeId: r.id }}
+                  search={{ serviceId: r.id }}
                   style={{
                     display: "inline-block", marginTop: 8, fontSize: 11,
                     color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
