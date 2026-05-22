@@ -8,7 +8,8 @@
       "fte": 0.5,
       "salary": 340000,
       "benefits": 122000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-srpln",
@@ -17,7 +18,8 @@
       "fte": 1,
       "salary": 228000,
       "benefits": 85000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-aspln",
@@ -26,7 +28,8 @@
       "fte": 1,
       "salary": 192000,
       "benefits": 70000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pltch",
@@ -35,7 +38,8 @@
       "fte": 0.75,
       "salary": 115000,
       "benefits": 42000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-bofcl",
@@ -44,7 +48,8 @@
       "fte": 1,
       "salary": 310000,
       "benefits": 112000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-plnex",
@@ -53,7 +58,8 @@
       "fte": 1,
       "salary": 255000,
       "benefits": 92000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-binsp",
@@ -62,7 +68,8 @@
       "fte": 2,
       "salary": 215000,
       "benefits": 78000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pmttc",
@@ -71,7 +78,8 @@
       "fte": 1,
       "salary": 148000,
       "benefits": 54000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-ceng",
@@ -80,7 +88,8 @@
       "fte": 0.4,
       "salary": 325000,
       "benefits": 118000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-sreng",
@@ -89,7 +98,8 @@
       "fte": 1,
       "salary": 222000,
       "benefits": 81000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pwins",
@@ -98,7 +108,8 @@
       "fte": 1,
       "salary": 185000,
       "benefits": 67000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-prdir",
@@ -107,7 +118,8 @@
       "fte": 0.4,
       "salary": 268000,
       "benefits": 98000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-prsup",
@@ -116,7 +128,8 @@
       "fte": 1,
       "salary": 152000,
       "benefits": 56000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-prcrd",
@@ -125,7 +138,8 @@
       "fte": 2,
       "salary": 105000,
       "benefits": 38000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-prspc",
@@ -134,7 +148,8 @@
       "fte": 1.5,
       "salary": 72000,
       "benefits": 26000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pdrec",
@@ -143,7 +158,8 @@
       "fte": 0.5,
       "salary": 158000,
       "benefits": 58000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pdrsp",
@@ -152,7 +168,8 @@
       "fte": 1,
       "salary": 98000,
       "benefits": 36000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-pdadm",
@@ -161,7 +178,8 @@
       "fte": 0.4,
       "salary": 235000,
       "benefits": 86000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-fmrsh",
@@ -170,7 +188,8 @@
       "fte": 0.5,
       "salary": 235000,
       "benefits": 86000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-finsp",
@@ -179,7 +198,8 @@
       "fte": 1,
       "salary": 175000,
       "benefits": 64000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     },
     {
       "id": "pos-fprev",
@@ -188,7 +208,8 @@
       "fte": 0.5,
       "salary": 132000,
       "benefits": 48000,
-      "hours": 1680
+      "hours": 1680,
+      "source": "seed"
     }
   ],
   "operating": [
@@ -547,7 +568,8 @@
       "basis": "Budgeted FTE occupying Town Hall",
       "receiving": "Multiple departments",
       "recoverability": "Recoverable where fee-related",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     },
     {
       "id": "cap-cm-leg",
@@ -557,7 +579,8 @@
       "basis": "Agenda item count",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     },
     {
       "id": "cap-cm-twdev",
@@ -567,7 +590,8 @@
       "basis": "Budgeted expenditures",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     },
     {
       "id": "cap-fas-hr",
@@ -577,7 +601,8 @@
       "basis": "Budgeted FTE",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     },
     {
       "id": "cap-fas-acct",
@@ -587,7 +612,8 @@
       "basis": "Accounting transactions",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     },
     {
       "id": "cap-atty",
@@ -597,7 +623,8 @@
       "basis": "Budgeted expenditures",
       "receiving": "Multiple departments",
       "recoverability": "Legal review recommended",
-      "review": "Review"
+      "review": "Review",
+      "source": "seed"
     },
     {
       "id": "cap-ins",
@@ -607,7 +634,8 @@
       "basis": "Budgeted expenditures",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
-      "review": "Reviewed"
+      "review": "Reviewed",
+      "source": "seed"
     }
   ],
   "capCenterGlCodes": {
@@ -634,7 +662,8 @@
       "cost": 0,
       "fee": 4500,
       "peer": 14200,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-fth",
@@ -645,7 +674,8 @@
       "cost": 0,
       "fee": 5200,
       "peer": 17000,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-minor",
@@ -656,7 +686,8 @@
       "cost": 0,
       "fee": 1800,
       "peer": 8500,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-major",
@@ -667,7 +698,8 @@
       "cost": 0,
       "fee": 3200,
       "peer": 9900,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-cup",
@@ -678,7 +710,8 @@
       "cost": 0,
       "fee": 6500,
       "peer": 22000,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-fence",
@@ -689,7 +722,8 @@
       "cost": 0,
       "fee": 580,
       "peer": 1400,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-oak",
@@ -700,7 +734,8 @@
       "cost": 0,
       "fee": 280,
       "peer": 810,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-preap",
@@ -711,7 +746,8 @@
       "cost": 0,
       "fee": 550,
       "peer": 580,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-adu",
@@ -722,7 +758,8 @@
       "cost": 0,
       "fee": 420,
       "peer": 560,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-mod",
@@ -733,7 +770,8 @@
       "cost": 0,
       "fee": 1550,
       "peer": 2500,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "plan-mvar",
@@ -744,7 +782,8 @@
       "cost": 0,
       "fee": 5400,
       "peer": 5400,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-apr",
@@ -755,7 +794,8 @@
       "cost": 0,
       "fee": 380,
       "peer": 530,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-ext",
@@ -766,7 +806,8 @@
       "cost": 0,
       "fee": 210,
       "peer": 360,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-tco",
@@ -777,7 +818,8 @@
       "cost": 0,
       "fee": 520,
       "peer": 360,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-pc",
@@ -788,7 +830,8 @@
       "cost": 0,
       "fee": 320,
       "peer": 1000,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-sfr",
@@ -799,7 +842,8 @@
       "cost": 0,
       "fee": 14500,
       "peer": 14500,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-rem",
@@ -810,7 +854,8 @@
       "cost": 0,
       "fee": 4500,
       "peer": 5300,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-pool",
@@ -821,7 +866,8 @@
       "cost": 0,
       "fee": 2100,
       "peer": 3200,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "bldg-solar",
@@ -832,7 +878,8 @@
       "cost": 0,
       "fee": 475,
       "peer": 420,
-      "target": 80
+      "target": 80,
+      "source": "seed"
     },
     {
       "id": "bldg-mep",
@@ -843,7 +890,8 @@
       "cost": 0,
       "fee": 350,
       "peer": 700,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-bldg",
@@ -854,7 +902,8 @@
       "cost": 0,
       "fee": 0,
       "peer": 1450,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-adu",
@@ -865,7 +914,8 @@
       "cost": 0,
       "fee": 0,
       "peer": 1450,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-erosion",
@@ -876,7 +926,8 @@
       "cost": 0,
       "fee": 235,
       "peer": 660,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-ency",
@@ -887,7 +938,8 @@
       "cost": 0,
       "fee": 360,
       "peer": 845,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-minor",
@@ -898,7 +950,8 @@
       "cost": 0,
       "fee": 0,
       "peer": 1680,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-major",
@@ -909,7 +962,8 @@
       "cost": 0,
       "fee": 0,
       "peer": 3340,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "eng-hourly",
@@ -920,7 +974,8 @@
       "cost": 0,
       "fee": 252,
       "peer": 320,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "pr-recclass",
@@ -931,7 +986,8 @@
       "cost": 0,
       "fee": 85,
       "peer": 110,
-      "target": 30
+      "target": 30,
+      "source": "seed"
     },
     {
       "id": "pr-fieldp",
@@ -942,7 +998,8 @@
       "cost": 0,
       "fee": 95,
       "peer": 140,
-      "target": 30
+      "target": 30,
+      "source": "seed"
     },
     {
       "id": "pr-shelter",
@@ -953,7 +1010,8 @@
       "cost": 0,
       "fee": 65,
       "peer": 95,
-      "target": 30
+      "target": 30,
+      "source": "seed"
     },
     {
       "id": "pr-pool",
@@ -964,7 +1022,8 @@
       "cost": 0,
       "fee": 110,
       "peer": 135,
-      "target": 30
+      "target": 30,
+      "source": "seed"
     },
     {
       "id": "pr-roomrnt",
@@ -975,7 +1034,8 @@
       "cost": 0,
       "fee": 75,
       "peer": 120,
-      "target": 30
+      "target": 30,
+      "source": "seed"
     },
     {
       "id": "pd-alarm",
@@ -986,7 +1046,8 @@
       "cost": 0,
       "fee": 45,
       "peer": 65,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "pd-falsearm",
@@ -997,7 +1058,8 @@
       "cost": 0,
       "fee": 100,
       "peer": 150,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "pd-fprint",
@@ -1008,7 +1070,8 @@
       "cost": 0,
       "fee": 55,
       "peer": 78,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "pd-evt",
@@ -1019,7 +1082,8 @@
       "cost": 0,
       "fee": 425,
       "peer": 680,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "pd-records",
@@ -1030,7 +1094,8 @@
       "cost": 0,
       "fee": 35,
       "peer": 45,
-      "target": 100
+      "target": 100,
+      "source": "seed"
     },
     {
       "id": "fr-inspbiz",
@@ -1041,7 +1106,8 @@
       "cost": 0,
       "fee": 175,
       "peer": 225,
-      "target": 75
+      "target": 75,
+      "source": "seed"
     },
     {
       "id": "fr-planrev",
@@ -1052,7 +1118,8 @@
       "cost": 0,
       "fee": 580,
       "peer": 890,
-      "target": 75
+      "target": 75,
+      "source": "seed"
     },
     {
       "id": "fr-hazmat",
@@ -1063,7 +1130,8 @@
       "cost": 0,
       "fee": 425,
       "peer": 650,
-      "target": 75
+      "target": 75,
+      "source": "seed"
     },
     {
       "id": "fr-occ",
@@ -1074,7 +1142,8 @@
       "cost": 0,
       "fee": 260,
       "peer": 420,
-      "target": 75
+      "target": 75,
+      "source": "seed"
     },
     {
       "id": "fr-special",
@@ -1085,7 +1154,8 @@
       "cost": 0,
       "fee": 195,
       "peer": 315,
-      "target": 75
+      "target": 75,
+      "source": "seed"
     }
   ],
   "workload": [
@@ -1431,37 +1501,43 @@
       "id": "policy-plan",
       "dept": "PLAN",
       "target": 80,
-      "note": "Partial General Fund subsidy — housing policy"
+      "note": "Partial General Fund subsidy — housing policy",
+      "source": "seed"
     },
     {
       "id": "policy-bldg",
       "dept": "BLDG",
       "target": 100,
-      "note": "Full cost recovery"
+      "note": "Full cost recovery",
+      "source": "seed"
     },
     {
       "id": "policy-eng",
       "dept": "ENG",
       "target": 90,
-      "note": "Slight subsidy for infrastructure development"
+      "note": "Slight subsidy for infrastructure development",
+      "source": "seed"
     },
     {
       "id": "policy-parks",
       "dept": "PARKS",
       "target": 30,
-      "note": "Recreation programs heavily subsidized — community benefit policy"
+      "note": "Recreation programs heavily subsidized — community benefit policy",
+      "source": "seed"
     },
     {
       "id": "policy-pd",
       "dept": "PD",
       "target": 100,
-      "note": "Full cost recovery for non-emergency administrative services"
+      "note": "Full cost recovery for non-emergency administrative services",
+      "source": "seed"
     },
     {
       "id": "policy-fire",
       "dept": "FIRE",
       "target": 75,
-      "note": "Partial subsidy on fire-prevention activities"
+      "note": "Partial subsidy on fire-prevention activities",
+      "source": "seed"
     }
   ],
   "policyExceptions": [
@@ -1469,13 +1545,15 @@
       "id": "exc-adu",
       "fee": "ADU Permit",
       "target": 40,
-      "note": "Housing affordability incentive"
+      "note": "Housing affordability incentive",
+      "source": "seed"
     },
     {
       "id": "exc-solar",
       "fee": "Residential Solar / PV Permit",
       "target": 65,
-      "note": "Sustainability policy — reduced from 80%"
+      "note": "Sustainability policy — reduced from 80%",
+      "source": "seed"
     }
   ],
   "lineage": {},

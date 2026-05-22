@@ -14,6 +14,32 @@ import {
   getJurisdiction, getJurisdictionOrDefault, type Jurisdiction,
 } from "@/lib/data/jurisdictions";
 import { useBuildState, useBuildStore } from "@/lib/store";
+import type { SourceTag } from "@/lib/types";
+
+/** Slices whose rows must carry a SourceTag for the Source column to
+ *  render. Mirrors the coercion `onRehydrateStorage` does for state
+ *  persisted before the SourceTag standardization. Seeds applied at
+ *  runtime go through the same coercion so the in-memory state is
+ *  well-formed without waiting for a browser refresh. */
+const SOURCE_TAGGED_SLICES = [
+  "operating", "services", "positions", "workload",
+  "capPools", "policyTargets", "policyExceptions",
+] as const;
+
+function coerceSeedSources(seed: Record<string, unknown>): Record<string, unknown> {
+  const out: Record<string, unknown> = { ...seed };
+  for (const k of SOURCE_TAGGED_SLICES) {
+    const arr = out[k];
+    if (!Array.isArray(arr)) continue;
+    out[k] = arr.map((r) => {
+      if (r && typeof r === "object" && (r as { source?: unknown }).source === undefined) {
+        return { ...r, source: "seed" as SourceTag };
+      }
+      return r;
+    });
+  }
+  return out;
+}
 
 /** React hook: returns the active jurisdiction's full config record. */
 export function useActiveJurisdiction(): Jurisdiction {
@@ -49,7 +75,7 @@ export async function switchJurisdiction(id: string): Promise<void> {
     try {
       const res = await fetch(target.seedFile);
       if (res.ok) {
-        const seedData = await res.json();
+        const seedData = coerceSeedSources(await res.json());
         // Clear CAP center metadata before applying the seed so the
         // LAH baseline keyed by LAH center names ("Finance &
         // Administrative Services" etc.) doesn't bleed through into
