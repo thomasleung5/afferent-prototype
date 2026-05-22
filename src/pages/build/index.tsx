@@ -15,8 +15,7 @@ export default function BuildOverviewPage() {
   function confirmClearAll() {
     const ok = window.confirm(
       `Clear all build data for ${jurisdiction.name}?\n\n`
-      + "This removes every service, position, operating line, CAP pool, "
-      + "workload row, policy target, and import log — including the seed. "
+      + "This empties every input slice — including the seed. "
       + "You can re-seed afterward with Reset edits.",
     );
     if (ok) clearAll();
@@ -25,9 +24,7 @@ export default function BuildOverviewPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Build model"
-        title="Model architecture"
-        subtitle="Inputs → Analysis → Policy → Output."
+        title="Build Model"
         actions={
           <>
             <DemoCityPicker/>
