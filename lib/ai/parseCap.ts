@@ -80,7 +80,7 @@ interface PoolRow {
   confidence: "high" | "low";
 }
 
-export interface AiParseCapResult {
+interface AiParseCapResult {
   ok: boolean;
   centers: CenterRow[];
   bases: BasisRow[];
@@ -118,7 +118,7 @@ export async function aiParseCapPdf(file: File): Promise<AiParseCapResult> {
 // Centers — ExtractionResult<{ name, totalCost }>
 // ---------------------------------------------------------------------------
 
-export interface CapCenterEntity {
+interface CapCenterEntity {
   name: string;
   /** Document's own account code. */
   glCode?: string;

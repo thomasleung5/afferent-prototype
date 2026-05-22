@@ -75,7 +75,7 @@ export interface GlNode {
 
 export type GlDriverMatrix = Record<NodeKey, Partial<Record<BasisKey, number>>>;
 
-export interface GlEngineGraph {
+interface GlEngineGraph {
   nodes: GlNode[];
   drivers: GlDriverMatrix;
   /** centerName → indirect node key. The only resolver the engine needs

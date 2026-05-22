@@ -1104,7 +1104,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
 
 /* ── Derived types ── */
 
-export interface BuildDerived {
+interface BuildDerived {
   labor: Record<DeptCode, DeptLabor>;
   operatingByDept: Record<DeptCode, DeptOperating>;
   fbhr: Record<DeptCode, FBHR>;

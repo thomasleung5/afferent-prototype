@@ -4,7 +4,7 @@
 
 import { downloadBlob } from "./excel";
 
-export type CsvCell = string | number | boolean | null | undefined;
+type CsvCell = string | number | boolean | null | undefined;
 
 /** RFC-4180-style quoting: wrap in double quotes whenever the cell contains
  *  a comma, quote, CR, or LF; escape internal quotes by doubling them. */

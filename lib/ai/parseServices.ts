@@ -12,7 +12,7 @@ interface ServiceRow {
   confidence: "high" | "low";
 }
 
-export interface AiParseServicesResult {
+interface AiParseServicesResult {
   ok: boolean;
   services: ServiceRow[];
   message?: string;

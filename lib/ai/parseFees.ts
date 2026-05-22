@@ -11,7 +11,7 @@ interface FeeRow {
   confidence: "high" | "low";
 }
 
-export interface AiParseFeesResult {
+interface AiParseFeesResult {
   ok: boolean;
   fees: FeeRow[];
   message?: string;

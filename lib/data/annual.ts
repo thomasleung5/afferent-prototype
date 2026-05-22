@@ -69,7 +69,7 @@ export interface RefreshSectionCard {
   href: string;
 }
 
-export interface RefreshSummary {
+interface RefreshSummary {
   totalRows: number;
   totalMapped: number;
   totalReview: number;
@@ -81,7 +81,7 @@ export interface RefreshSummary {
   hasImports: boolean;
 }
 
-export interface RecoveryDelta {
+interface RecoveryDelta {
   currentBlended: number;
   policyTarget: number;
   gapPts: number;
@@ -353,7 +353,7 @@ export function sectionHrefForDomain(domain: Domain): string {
 // Packet page
 // ---------------------------------------------------------------------------
 
-export interface PacketSummary {
+interface PacketSummary {
   totalImports: number;
   domainsRefreshed: number;
   currentRecovery: number;

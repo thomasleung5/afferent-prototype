@@ -18,7 +18,7 @@ import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 // Departments (matrix-only)
 // ---------------------------------------------------------------------------
 
-export interface MatrixDept {
+interface MatrixDept {
   code: MatrixDeptCode;
   name: string;
   kind: "indirect" | "direct";
@@ -99,7 +99,7 @@ export function basisForPool(
 // Drivers (department × basis denominators)
 // ---------------------------------------------------------------------------
 
-export type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
+type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
 
 /** Seed driver values per department × basis — derived from the Allocation
  *  Bases matrix (lib/data/allocationBases.ts) so the Allocation Bases tab

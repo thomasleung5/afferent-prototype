@@ -26,7 +26,7 @@ export const ALLOCATION_BASES = [
 
 export type AllocationBasisKey = (typeof ALLOCATION_BASES)[number]["key"];
 
-export interface BasisRow {
+interface BasisRow {
   code: string;
   name: string;
   group: "indirect" | "direct";

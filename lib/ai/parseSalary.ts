@@ -12,7 +12,7 @@ interface PositionRow {
   confidence: "high" | "low";
 }
 
-export interface AiParseSalaryResult {
+interface AiParseSalaryResult {
   ok: boolean;
   positions: PositionRow[];
   message?: string;

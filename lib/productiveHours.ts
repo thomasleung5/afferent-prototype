@@ -15,7 +15,7 @@ import type { Position, ProductiveHoursBreakdown } from "@/lib/types";
 export type ProductiveHoursDeductionKey =
   | "vacation" | "sick" | "holidays" | "admin" | "training" | "other";
 
-export interface ProductiveHoursDefaults {
+interface ProductiveHoursDefaults {
   grossAnnualHours: number;
   vacation: number;
   sick: number;
@@ -39,7 +39,7 @@ export const DEFAULT_PRODUCTIVE_HOURS: ProductiveHoursDefaults = {
   other: 0,
 };
 
-export interface ProductiveHoursDeduction {
+interface ProductiveHoursDeduction {
   key: ProductiveHoursDeductionKey;
   label: string;
   hours: number;
@@ -49,7 +49,7 @@ export interface ProductiveHoursDeduction {
   fromRow: boolean;
 }
 
-export interface ProductiveHoursResult {
+interface ProductiveHoursResult {
   grossAnnualHours: number;
   deductions: ProductiveHoursDeduction[];
   totalNonproductiveHours: number;

@@ -134,7 +134,7 @@ export interface ExportPayload {
 /* The model state slice + derived values needed to build the payload. We
  * accept a plain object instead of useBuildState() so this stays a pure
  * function (callable from anywhere — server, tests, the print route). */
-export interface ExportInput {
+interface ExportInput {
   positions: Position[];
   operating: OperatingLine[];
   capPools: CapPool[];

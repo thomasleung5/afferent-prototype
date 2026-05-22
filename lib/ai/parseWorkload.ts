@@ -13,7 +13,7 @@ interface WorkloadItem {
   confidence: "high" | "low";
 }
 
-export interface AiParseWorkloadResult {
+interface AiParseWorkloadResult {
   ok: boolean;
   items: WorkloadItem[];
   message?: string;

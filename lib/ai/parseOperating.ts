@@ -13,7 +13,7 @@ interface OperatingRow {
   confidence: "high" | "low";
 }
 
-export interface AiParseOperatingResult {
+interface AiParseOperatingResult {
   ok: boolean;
   operating: OperatingRow[];
   message?: string;

@@ -53,7 +53,7 @@ export interface ReceiverEntry {
   sources: { basisId: string; basisKey: BasisKey; units: number }[];
 }
 
-export interface ReceiverRegistry {
+interface ReceiverRegistry {
   entries: ReceiverEntry[];
 }
 

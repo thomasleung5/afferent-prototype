@@ -2,7 +2,7 @@
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AddRowButton } from "@/components/ui/AddRowButton";
 
-export type SortDir = "asc" | "desc";
+type SortDir = "asc" | "desc";
 type CellAlign = "left" | "right" | "center";
 
 export interface Column<Row> {
@@ -28,7 +28,7 @@ export interface FilterGroup {
   onChange: (v: string) => void;
 }
 
-export interface DataTableRow {
+interface DataTableRow {
   /** Stable identifier — used for selection, drilldown, and React keys. */
   id?: string;
   /** Truthy = highlight as flagged (warm tint, accent border). */
