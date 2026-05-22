@@ -746,8 +746,7 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
           Allocation bases were selected to reasonably approximate the level
           of support or benefit received by each department, division,
           program, or fund. The table below summarizes the allocation basis
-          assigned to each cost pool together with the basis source and the
-          rationale underlying the assignment.
+          assigned to each cost pool together with the basis source.
         </p>
       </div>
       <table>
@@ -757,7 +756,6 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
             <th>Function</th>
             <th>Allocation basis</th>
             <th>Basis source</th>
-            <th>Rationale</th>
           </tr>
         </thead>
         <tbody>
@@ -769,9 +767,6 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
             const source = basisRecord?.source && basisRecord.source.trim()
               ? basisRecord.source
               : "Not available";
-            const rationale = basisRecord?.methodologyNote && basisRecord.methodologyNote.trim()
-              ? basisRecord.methodologyNote
-              : "Not available";
             return (
               <tr key={pl.id}>
                 <td><b>{pl.pool}</b></td>
@@ -780,7 +775,6 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
                   <span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span>
                 </td>
                 <td style={{ color: "var(--ink-2)" }}>{source}</td>
-                <td style={{ color: "var(--ink-2)" }}>{rationale}</td>
               </tr>
             );
           })}
