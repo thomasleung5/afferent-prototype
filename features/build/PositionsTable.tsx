@@ -177,7 +177,7 @@ export function PositionsTable() {
             display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
           }}>
             <CellInput
-              type="number" value={r.hours} step={20} min={0}
+              type="integer" value={r.hours} min={0}
               onChange={(v) => updatePosition(r.id, { hours: Number(v) || 0 })}
               align="right"
             />
@@ -276,7 +276,7 @@ function ProductiveHoursDrilldown({
       <DrilldownColumn marker="②" title="Nonproductive deductions">
         <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px 70px", gap: 10,
+            display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
             padding: "6px 10px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
@@ -285,11 +285,10 @@ function ProductiveHoursDrilldown({
           }}>
             <div>Category</div>
             <div style={{ textAlign: "right" }}>Hours</div>
-            <div style={{ textAlign: "right" }}>Source</div>
           </div>
           {result.deductions.map((d, i) => (
             <div key={d.key} style={{
-              display: "grid", gridTemplateColumns: "1fr 90px 70px", gap: 10,
+              display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
               alignItems: "center",
               padding: "5px 10px",
               borderBottom: i < result.deductions.length - 1 ? "1px solid var(--rule)" : "none",
@@ -301,13 +300,10 @@ function ProductiveHoursDrilldown({
                 onChange={(v) => onChange(d.key, Number(v) || 0)}
                 align="right"
               />
-              <span className="mono" style={{
-                textAlign: "right", fontSize: 10, color: "var(--ink-3)",
-              }}>{d.fromRow ? "row" : "default"}</span>
             </div>
           ))}
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px 70px", gap: 10,
+            display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
             padding: "8px 10px",
             background: "var(--paper-2)",
             borderTop: "1px solid var(--rule)",
@@ -317,7 +313,6 @@ function ProductiveHoursDrilldown({
               Total nonproductive
             </span>
             <b style={{ textAlign: "right" }}>{numberFmt(result.totalNonproductiveHours)}</b>
-            <span/>
           </div>
         </div>
       </DrilldownColumn>
