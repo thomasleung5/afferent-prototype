@@ -12,7 +12,7 @@ import type { DeptCode, Position, ProductiveHoursBreakdown } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 import {
-  calculateProductiveHours, DEFAULT_PRODUCTIVE_HOURS,
+  calculateProductiveHours,
   type ProductiveHoursDeductionKey,
 } from "@/lib/productiveHours";
 
@@ -270,9 +270,6 @@ function ProductiveHoursDrilldown({
             <span style={{ color: "var(--ink-3)" }}>gross annual hours</span>
             <b>{numberFmt(result.grossAnnualHours)}</b>
           </div>
-          <div style={{ fontSize: 11, color: "var(--ink-3)", lineHeight: 1.5, marginTop: 6 }}>
-            40 hours per week × 52 weeks.
-          </div>
         </div>
       </DrilldownColumn>
 
@@ -353,25 +350,6 @@ function ProductiveHoursDrilldown({
             <span>productive %</span>
             <b>{result.productivePercent.toFixed(1)}%</b>
           </div>
-        </div>
-        {row.hours !== result.netProductiveHours && (
-          <div style={{
-            marginTop: 10, padding: "8px 10px",
-            background: "var(--paper-2)", border: "1px dashed var(--rule)",
-            fontSize: 11, color: "var(--ink-3)", lineHeight: 1.5,
-          }}>
-            Position currently records <b>{numberFmt(row.hours)}</b> productive
-            hours, which differs from the deductions above. Editing a deduction
-            will resync the row to the calculated net of{" "}
-            <b>{numberFmt(result.netProductiveHours)}</b>.
-          </div>
-        )}
-        <div style={{
-          marginTop: 10, fontSize: 11, color: "var(--ink-3)", lineHeight: 1.5,
-        }}>
-          Defaults derive from the citywide assumption of{" "}
-          {DEFAULT_PRODUCTIVE_HOURS.grossAnnualHours.toLocaleString()} gross
-          annual hours. Row-level overrides take precedence when set.
         </div>
       </DrilldownColumn>
     </DrilldownShell>
