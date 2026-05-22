@@ -788,7 +788,6 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
             <th>Basis</th>
             <th>Driver key</th>
             <th>Source</th>
-            <th>Methodology note</th>
           </tr>
         </thead>
         <tbody>
@@ -797,7 +796,6 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
               <td><b>{b.name}</b></td>
               <td><span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{b.driverKey}</span></td>
               <td style={{ color: "var(--ink-2)" }}>{b.source && b.source.trim() ? b.source : "Not available"}</td>
-              <td style={{ color: "var(--ink-2)" }}>{b.methodologyNote && b.methodologyNote.trim() ? b.methodologyNote : "Not available"}</td>
             </tr>
           ))}
         </tbody>
