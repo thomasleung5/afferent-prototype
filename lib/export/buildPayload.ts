@@ -246,7 +246,16 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     annualSubsidy: derived.impact.subsidy,
   };
 
-  const deptSummaries: ExportDeptSummary[] = ORDER.map((d) => {
+  // Only emit a section for depts the active jurisdiction actually
+  // models — LAH ships only Planning / Building / Engineering, so the
+  // Parks / PD / Fire entries that exist in the dept registry would
+  // print as empty sections.
+  const activeDepts = ORDER.filter((d) => {
+    const labor = derived.labor[d];
+    return labor.positions > 0 || derived.costs.some((c) => c.dept === d);
+  });
+
+  const deptSummaries: ExportDeptSummary[] = activeDepts.map((d) => {
     const labor = derived.labor[d];
     const f = derived.fbhr[d];
     const deptCosts = derived.costs.filter((c) => c.dept === d);
@@ -408,11 +417,11 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     { label: "Fiscal year",        value: input.jurisdiction.fiscal },
     { label: "Productive hours/yr (default)", value: "1,720" },
     { label: "Indirect departments", value: "7 step-down centers (Council, City Mgr, Clerk, Finance, Attorney, Insurance, Committees)" },
-    { label: "Direct fee depts",   value: ORDER.join(", ") },
+    { label: "Direct fee depts",   value: activeDepts.join(", ") },
     { label: "Recommended rounding", value: "Nearest $5" },
     { label: "Subsidy fund",       value: "General Fund — recovery shortfall is implicitly subsidized when target < 100%" },
     { label: "Peer cities",        value: input.jurisdiction.peers.join(", ") },
-    { label: "Operating shared split", value: `Productive-hours share across ${ORDER.join(" / ")}` },
+    { label: "Operating shared split", value: `Productive-hours share across ${activeDepts.join(" / ")}` },
   ];
 
   return {
