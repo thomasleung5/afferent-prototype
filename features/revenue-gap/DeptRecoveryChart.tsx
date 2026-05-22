@@ -35,9 +35,13 @@ export function DeptRecoveryChart() {
     r.recovery = r.totalCost > 0 ? (r.currentRev / r.totalCost) * 100 : 0;
   }
 
+  // Only render depts modeled in the active jurisdiction — same convention
+  // used by every other dept-rollup view.
+  const activeDepts = ORDER.filter((code) => rollup[code].totalCost > 0);
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {ORDER.filter((code) => rollup[code].totalCost > 0).map((code) => {
+      {activeDepts.map((code) => {
         const dept = DEPTS[code];
         const r = rollup[code];
         return (

@@ -112,7 +112,8 @@ function deriveDeptHealth({ comparisons, policyTargets }: MonitoringInput): Dept
   // Without this filter, jurisdictions like LAH that only model
   // Planning/Building/Engineering would show empty Parks/PD/Fire rows.
   const modeled = new Set(comparisons.map((c) => c.dept));
-  return FEE_DEPTS.filter((d) => modeled.has(d)).map((dept) => {
+  const activeDepts = FEE_DEPTS.filter((d) => modeled.has(d));
+  return activeDepts.map((dept) => {
     const deptRows = comparisons.filter((c) => c.dept === dept);
     const totalCost = deptRows.reduce((a, c) => a + c.annualCost, 0);
     const currentRev = deptRows.reduce((a, c) => a + c.annualRevenue, 0);

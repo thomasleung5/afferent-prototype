@@ -1323,8 +1323,8 @@ function ScheduleRow({
 function FbhrRollup({ payload }: { payload: CapExportPayload }) {
   // Only surface fee depts the jurisdiction actually routes CAP $ to.
   // Hides empty PARKS/PD/FIRE rows on jurisdictions that don't model them.
-  const depts = FEE_DEPTS.filter((d) => (payload.fbhrRollup[d] ?? 0) > 0.5);
-  const total = depts.reduce((a, d) => a + (payload.fbhrRollup[d] ?? 0), 0);
+  const activeDepts = FEE_DEPTS.filter((d) => (payload.fbhrRollup[d] ?? 0) > 0.5);
+  const total = activeDepts.reduce((a, d) => a + (payload.fbhrRollup[d] ?? 0), 0);
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 10</div>
@@ -1345,7 +1345,7 @@ function FbhrRollup({ payload }: { payload: CapExportPayload }) {
           </tr>
         </thead>
         <tbody>
-          {depts.map((d) => {
+          {activeDepts.map((d) => {
             const v = payload.fbhrRollup[d] ?? 0;
             return (
               <tr key={d}>

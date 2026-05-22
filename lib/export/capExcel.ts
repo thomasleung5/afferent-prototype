@@ -396,14 +396,14 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
 
 function buildFbhrRollup(p: CapExportPayload): Cell[][] {
   // Only surface fee depts the jurisdiction actually routes CAP $ to.
-  const depts = FEE_DEPTS.filter((d) => (p.fbhrRollup[d] ?? 0) > 0.5);
+  const activeDepts = FEE_DEPTS.filter((d) => (p.fbhrRollup[d] ?? 0) > 0.5);
   const rows: Cell[][] = [
     [h("Fee Dept"), h("Allocated CAP $"), h("Notes")],
   ];
-  for (const d of depts) {
+  for (const d of activeDepts) {
     rows.push([d, n(p.fbhrRollup[d] ?? 0, "$#,##0"), "Sum of direct-node totals tagged feeDept=" + d]);
   }
-  const total = depts.reduce((a, d) => a + (p.fbhrRollup[d] ?? 0), 0);
+  const total = activeDepts.reduce((a, d) => a + (p.fbhrRollup[d] ?? 0), 0);
   rows.push(["", h("Total"), n(total, "$#,##0")]);
   return rows;
 }
