@@ -10,7 +10,8 @@
     "preview": "vite preview",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
-    "test:cap": "tsx lib/data/__tests__/capStepDownGl.fixture.ts"
+    "test:cap": "tsx lib/data/__tests__/capStepDownGl.fixture.ts",
+    "test:productive-hours": "tsx lib/__tests__/productiveHours.fixture.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

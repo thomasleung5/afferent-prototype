@@ -52,11 +52,26 @@ export interface Position {
   benefits: number;
   /** Productive hours per FTE per year (e.g. 1720). */
   hours: number;
+  /** Optional per-row breakdown of nonproductive-hour assumptions used in
+   *  the productive-hours drilldown. Any field that's undefined falls back
+   *  to the citywide default in lib/productiveHours.ts. The breakdown is
+   *  informational — the authoritative productive-hour value used by
+   *  downstream rate calculations is `hours`. */
+  productiveHoursBreakdown?: ProductiveHoursBreakdown;
   flag?: PositionFlag;
   /** Row provenance — set at creation, not mutated by edits. */
   source: SourceTag;
   /** Filename when source === "imported". */
   sourceFile?: string;
+}
+
+export interface ProductiveHoursBreakdown {
+  vacation?: number;
+  sick?: number;
+  holidays?: number;
+  admin?: number;
+  training?: number;
+  other?: number;
 }
 
 export type OpDept = DeptCode | "SHARED:CDS";
