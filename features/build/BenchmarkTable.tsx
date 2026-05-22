@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, TraceBlock, SectionLabel,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -279,18 +279,6 @@ export function BenchmarkTable() {
                     <span>{r.peerMedian > 0 ? `$${r.peerMedian.toLocaleString()}` : "—"}</span>
                   </div>
                 </div>
-              </DrilldownColumn>
-
-              <DrilldownColumn marker="③" title="Source &amp; method">
-                <TraceBlock label="Peers">{peers.join(" · ")}</TraceBlock>
-                <TraceBlock label="Survey window">Adopted fees as of Jul 1, 2025 · public schedules</TraceBlock>
-                <TraceBlock label="Method">
-                  Median across {peers.length} peers; per-city values shown above are stable random samples around the median.
-                </TraceBlock>
-                <TraceBlock label="Caveat">
-                  Peer fees are listed prices and may understate full cost recovery
-                  if peer cities subsidize from general fund.
-                </TraceBlock>
                 <Link
                   to="/build/feestudy"
                   search={{ serviceId: r.id }}

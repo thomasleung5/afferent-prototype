@@ -4,7 +4,7 @@ import {
   DataTable, type Column,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel, TraceBlock, SourcePill,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -132,12 +132,8 @@ export function RateDerivation() {
         return (
           <DrilldownShell>
             <DrilldownColumn marker="①" title="Direct $/hr · from salary">
-              <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                <div style={{ fontWeight: 500 }}>{r.deptName}</div>
-                <div style={{ color: "var(--ink-3)", fontSize: 11.5, marginTop: 2 }}>{r.dept}</div>
-              </div>
               <div style={{
-                marginTop: 14, padding: "12px 14px",
+                padding: "12px 14px",
                 background: "var(--paper)", border: "1px solid var(--rule)",
                 fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
               }}>
@@ -146,9 +142,6 @@ export function RateDerivation() {
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
                   direct $/hr = <b>${Math.round(f.directRate)}</b>
                 </div>
-              </div>
-              <div style={{ marginTop: 10 }}>
-                <SourcePill tone="salary">FROM DIRECT LABOR</SourcePill>
               </div>
             </DrilldownColumn>
 
@@ -181,31 +174,6 @@ export function RateDerivation() {
                 Operating + overhead cost allocation ={" "}
                 {fmt.dollars(Math.round(f.operatingDollars + f.capDollars))} ÷{" "}
                 {f.productiveHours.toFixed(0)} hrs.
-              </div>
-              <div style={{
-                marginTop: 14, padding: "12px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>direct labor</span>
-                  <b>{fmt.dollars(Math.round(f.directDollars))}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ operating</span>
-                  <b>{fmt.dollars(Math.round(f.operatingDollars))}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ overhead cost allocation</span>
-                  <b>{fmt.dollars(Math.round(f.capDollars))}</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>total cost</span>
-                  <b>{fmt.dollars(Math.round(f.directDollars + f.operatingDollars + f.capDollars))}</b>
-                </div>
               </div>
             </DrilldownColumn>
 
@@ -245,9 +213,6 @@ export function RateDerivation() {
                   <span>{fmt.dollarsK(totalCAP)}</span>
                 </div>
               </div>
-              <TraceBlock label="Carries into">
-                Applied to every service in {r.deptName} via hours × FBHR
-              </TraceBlock>
             </DrilldownColumn>
           </DrilldownShell>
         );

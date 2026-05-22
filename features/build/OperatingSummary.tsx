@@ -108,7 +108,6 @@ export function OperatingSummary() {
           />
           <MetaGrid
             rows={[
-              { label: "Method",  value: "Department-direct lines + shared services allocation by productive-hours share" },
               { label: "Formula", value: (
                 <>
                   <Formula>operating $/hr = operating $ ÷ productive hrs</Formula>
@@ -122,9 +121,12 @@ export function OperatingSummary() {
                   </span>
                 </>
               )},
-              { label: "Routing", value: "Fund-program code (dept-direct) · shared-allocation key (SHARED)" },
-              { label: "Source",  value: "FY 26-27 Budget Book.pdf pp. 142–158 · analyst additions" },
-              { label: "Excluded", value: `${excluded.filter((l) => l.dept === d || l.dept === "SHARED:CDS").length} line(s) — capital outlay, one-time, or pass-through items not in the rate` },
+              ...((() => {
+                const excludedCount = excluded.filter((l) => l.dept === d || l.dept === "SHARED:CDS").length;
+                return excludedCount > 0
+                  ? [{ label: "Excluded", value: `${excludedCount} line(s) — capital outlay, one-time, or pass-through items not in the rate` }]
+                  : [];
+              })()),
             ]}
           />
         </div>

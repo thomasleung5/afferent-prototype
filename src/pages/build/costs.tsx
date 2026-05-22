@@ -5,7 +5,6 @@ import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { RateDerivation } from "@/features/build/RateDerivation";
 import { CostOfServiceTable } from "@/features/build/CostOfServiceTable";
-import { TraceabilityFooter } from "@/features/build/TraceabilityFooter";
 import { useBuildState } from "@/lib/store";
 
 export default function CostOfServicePage() {
@@ -34,8 +33,6 @@ export default function CostOfServicePage() {
       <RateDerivation/>
 
       <CostOfServiceTable/>
-
-      <TraceabilityFooter/>
     </Page>
   );
 }

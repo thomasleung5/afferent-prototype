@@ -7,7 +7,7 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect,
-  DrilldownShell, DrilldownColumn, SectionLabel, SourcePill, TraceBlock,
+  DrilldownShell, DrilldownColumn, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -261,15 +261,6 @@ export function ServicesTable() {
                   <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
                 </div>
               </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="②" title="Basis">
-              <TraceBlock label="Basis">
-                Time-study averaged across recent permits in this dept
-              </TraceBlock>
-              <TraceBlock label="Hours / inst">
-                <span className="num">{r.hours} h</span>
-              </TraceBlock>
             </DrilldownColumn>
           </DrilldownShell>
         );

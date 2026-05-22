@@ -143,31 +143,22 @@ export function CostOfServiceTable() {
           .filter((p) => p.allocated > 0.5)
           .sort((a, b) => b.allocated - a.allocated);
         const totalCAPForDept = allocRows.reduce((a, x) => a + x.allocated, 0);
-        const totalDirect = Math.round(r.hours * f.directRate);
-        const totalOp = Math.round(r.hours * f.operatingRate);
-        const totalCAP = Math.round(r.hours * f.capRate);
         const total = Math.round(r.unitCost);
         const annual = Math.round(r.annual);
 
         return (
           <DrilldownShell>
             <DrilldownColumn marker="①" title="Service · Hours · Rate">
-              <div style={{ fontSize: 13, lineHeight: 1.7 }}>
-                <div style={{ fontWeight: 500 }}>{r.name}</div>
-                <div style={{ color: "var(--ink-3)", fontSize: 11.5, marginTop: 2 }}>
-                  {r.id} · {dept}
-                </div>
-                <Link
-                  to="/build/services"
-                  search={{ serviceId: r.id }}
-                  style={{
-                    display: "inline-block", marginTop: 8, fontSize: 11,
-                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
-                  }}
-                >
-                  View service →
-                </Link>
-              </div>
+              <Link
+                to="/build/services"
+                search={{ serviceId: r.id }}
+                style={{
+                  display: "inline-block", fontSize: 11,
+                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                }}
+              >
+                View service →
+              </Link>
               <div style={{
                 marginTop: 14, padding: "12px 14px",
                 background: "var(--paper)", border: "1px solid var(--rule)",
@@ -209,31 +200,6 @@ export function CostOfServiceTable() {
                 }}>
                   <span>FBHR</span>
                   <b style={{ color: "var(--accent)" }}>${Math.round(f.fbhr)}</b>
-                </div>
-              </div>
-              <div style={{
-                marginTop: 14, padding: "12px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>direct labor</span>
-                  <b>{fmt.dollars(totalDirect)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ operating</span>
-                  <b>{fmt.dollars(totalOp)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ overhead cost allocation</span>
-                  <b>{fmt.dollars(totalCAP)}</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>total cost</span>
-                  <b>{fmt.dollars(totalDirect + totalOp + totalCAP)}</b>
                 </div>
               </div>
             </DrilldownColumn>

@@ -93,7 +93,6 @@ export function LaborSummary() {
 
           <MetaGrid
             rows={[
-              { label: "Method",      value: "Position-level salary + benefits × FTE" },
               { label: "Formula", value: (
                 <>
                   <Formula>direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs</Formula>
@@ -107,9 +106,6 @@ export function LaborSummary() {
                   </span>
                 </>
               )},
-              { label: "Productive hrs", value: "Paid hrs less PTO, holiday, training · 1,720 hrs/FTE citywide default" },
-              { label: "Roster source",  value: "FY 26-27 Salary Table.xlsx · imported Apr 18, 2026" },
-              { label: "Carries into",   value: "Stacks with operating $/hr + CAP $/hr to form FBHR in Cost of Service" },
             ]}
           />
         </div>

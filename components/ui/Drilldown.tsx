@@ -44,25 +44,3 @@ export function DrilldownColumn({ marker, title, children }: ColProps) {
   );
 }
 
-interface TraceProps {
-  label: string;
-  children: ReactNode;
-}
-
-/** Labelled lineage row used inside drilldown columns. */
-export function TraceBlock({ label, children }: TraceProps) {
-  return (
-    <div style={{
-      display: "grid", gridTemplateColumns: "140px 1fr", gap: 14,
-      padding: "8px 0",
-      borderBottom: "1px dashed var(--rule)",
-      fontSize: 12, lineHeight: 1.55,
-    }}>
-      <div className="mono" style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase", paddingTop: 1,
-      }}>{label}</div>
-      <div style={{ color: "var(--ink-2)" }}>{children}</div>
-    </div>
-  );
-}

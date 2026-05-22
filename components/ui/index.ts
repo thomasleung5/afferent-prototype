@@ -10,7 +10,7 @@ export { ExportMenu } from "./ExportMenu";
 export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";
 export { Formula, SourcePill } from "./Formula";
-export { DrilldownShell, DrilldownColumn, TraceBlock } from "./Drilldown";
+export { DrilldownShell, DrilldownColumn } from "./Drilldown";
 export { NodeEyebrow } from "./NodeEyebrow";
 export { SectionEyebrow } from "./SectionEyebrow";
 export { StatusPill } from "./StatusPill";

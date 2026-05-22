@@ -92,8 +92,6 @@ export function CapSummary() {
           />
           <MetaGrid
             rows={[
-              { label: "Method",         value: `Step-down · ${labelOf(d)} is a receiver-only department` },
-              { label: "Allocation basis", value: "Pool-specific drivers — FTE, sq ft, IT seats, payroll $" },
               { label: "Formula", value: (
                 <>
                   <Formula>$/hr = allocated $ ÷ productive hrs</Formula>
@@ -107,8 +105,6 @@ export function CapSummary() {
                   </span>
                 </>
               )},
-              { label: "Pool source",   value: "FY 26-27 Adopted Budget · by cost center" },
-              { label: "Driver source", value: "HRIS (FTE) · Facilities (sq ft) · IT (seats) · Payroll (wages)" },
             ]}
           />
         </div>
