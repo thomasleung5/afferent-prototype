@@ -9,14 +9,14 @@ import { useExport } from "@/features/build/useExport";
 
 export default function BuildOverviewPage() {
   const { resetAll, clearAll } = useBuildState();
-  const { downloadExcel, openPdf } = useExport();
+  const { downloadExcel, pdfHref } = useExport();
   const jurisdiction = useActiveJurisdiction();
 
   function confirmClearAll() {
     const ok = window.confirm(
       `Clear all build data for ${jurisdiction.name}?\n\n`
       + "This empties every input slice — including the seed. "
-      + "You can re-seed afterward with Reset edits.",
+      + "You can re-seed afterward with Reset.",
     );
     if (ok) clearAll();
   }
@@ -29,12 +29,12 @@ export default function BuildOverviewPage() {
           <>
             <DemoCityPicker/>
             <Btn kind="ghost" onClick={resetAll} title={`Discard edits in ${jurisdiction.name} and re-seed`}>
-              Reset edits
+              Reset
             </Btn>
             <Btn kind="ghost" onClick={confirmClearAll} title={`Wipe every input in ${jurisdiction.name}`}>
-              Clear all
+              Clear
             </Btn>
-            <ExportMenu onDownloadExcel={downloadExcel} onOpenPdf={openPdf}/>
+            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
           </>
         }
       />

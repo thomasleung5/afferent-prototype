@@ -233,9 +233,7 @@ export default function RevenueMonitoringPage() {
     [recoveryAlerts, alertFilter],
   );
 
-  const openPdf = useCallback(() => {
-    window.open("/export/monitoring", "_blank");
-  }, []);
+  const pdfHref = "/export/monitoring";
 
   const exportBrief = useCallback(() => {
     const csv = buildCsv([
@@ -345,7 +343,7 @@ export default function RevenueMonitoringPage() {
         subtitle="Cost recovery drift and post-adoption fee actions."
         actions={
           <ExportMenu
-            onOpenPdf={openPdf}
+            pdfHref={pdfHref}
             onDownloadExcel={async () => exportBrief()}
             pdfLabel="Revenue monitoring brief (PDF)"
             pdfSub="Print-formatted, council-ready"

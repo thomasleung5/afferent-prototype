@@ -6,8 +6,7 @@ import { Btn, Icon } from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { basisForPool } from "@/lib/data/capStepDown";
-import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
-import { downloadBlob } from "@/lib/export/excel";
+import type { CapExportPayload } from "@/lib/export/capExcel";
 
 export default function CapAllocationExportPage() {
   const hydrated = useStoreHydrated();
@@ -172,7 +171,6 @@ function PrintStyles() {
 }
 
 function Toolbar({ payload }: { payload: CapExportPayload }) {
-  const [busy, setBusy] = useState(false);
   return (
     <div className="no-print" style={{
       position: "sticky", top: 0, zIndex: 20,
@@ -192,28 +190,11 @@ function Toolbar({ payload }: { payload: CapExportPayload }) {
       </div>
       <div style={{ flex: 1 }}/>
       <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn
-        kind="ghost"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            const blob = await exportCapXlsx(payload);
-            downloadBlob(blob, `${slugCity(payload.cityName)}-cost-allocation-plan.xlsx`);
-          } finally { setBusy(false); }
-        }}
-      >
-        <Icon name="download" size={13}/> {busy ? "Generating…" : "Excel"}
-      </Btn>
       <Btn kind="primary" onClick={() => window.print()}>
         <Icon name="download" size={13}/> Print / Save PDF
       </Btn>
     </div>
   );
-}
-
-function slugCity(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 function useAutoPrint() {

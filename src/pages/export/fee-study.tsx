@@ -5,7 +5,6 @@ import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import {
   buildExportPayload, type ExportPayload,
 } from "@/lib/export/buildPayload";
-import { exportFeeStudyXlsx, downloadBlob } from "@/lib/export/excel";
 import { fmt } from "@/lib/format";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import type { DeptCode } from "@/lib/types";
@@ -163,7 +162,6 @@ function PrintStyles() {
 }
 
 function Toolbar({ payload }: { payload: ExportPayload }) {
-  const [busy, setBusy] = useState(false);
   return (
     <div className="no-print" style={{
       position: "sticky", top: 0, zIndex: 20,
@@ -183,28 +181,11 @@ function Toolbar({ payload }: { payload: ExportPayload }) {
       </div>
       <div style={{ flex: 1 }}/>
       <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn
-        kind="ghost"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            const blob = await exportFeeStudyXlsx(payload);
-            downloadBlob(blob, `${slugCity(payload.cover.cityName)}-fee-study.xlsx`);
-          } finally { setBusy(false); }
-        }}
-      >
-        <Icon name="download" size={13}/> {busy ? "Generating…" : "Excel"}
-      </Btn>
       <Btn kind="primary" onClick={() => window.print()}>
         <Icon name="download" size={13}/> Print / Save PDF
       </Btn>
     </div>
   );
-}
-
-function slugCity(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 /** Auto-fire window.print on first load if the URL has ?print=1. */

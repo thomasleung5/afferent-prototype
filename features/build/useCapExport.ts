@@ -30,11 +30,7 @@ export function useCapExport() {
     downloadBlob(blob, `${city}-cost-allocation-plan.xlsx`);
   }, [buildPayload]);
 
-  const openPdf = useCallback(() => {
-    // noopener/noreferrer omitted intentionally — Safari's "Save as PDF"
-    // produces a 1KB blank file on noopener'd tabs in some versions.
-    window.open("/export/cap-allocation", "_blank");
-  }, []);
+  const pdfHref = "/export/cap-allocation";
 
-  return { downloadExcel, openPdf };
+  return { downloadExcel, pdfHref };
 }

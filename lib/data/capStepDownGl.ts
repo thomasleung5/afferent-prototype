@@ -142,10 +142,18 @@ export function buildEngineGraph(args: {
   capCenterTotals: Record<string, number>;
   capCenterGlCodes: Record<string, string>;
   capReceivers: ReceiverEntry[];
+  /** Fee depts the active jurisdiction actually models (typically derived
+   *  from state.positions / state.services). Scopes the synthetic
+   *  fallback direct nodes (step 3 below) so jurisdictions that don't
+   *  model e.g. PARKS / PD / FIRE don't end up with phantom receivers
+   *  catching CAP allocation via the seed DRIVERS matrix. Omit for the
+   *  legacy behavior (seed every entry in FEE_DEPTS). */
+  modeledFeeDepts?: DeptCode[];
 }): GlEngineGraph {
   const {
     allocationBases, basisUnits, directAllocations,
     capCenterTotals, capCenterGlCodes, capReceivers,
+    modeledFeeDepts,
   } = args;
 
   const nodes: GlNode[] = [];
@@ -181,6 +189,9 @@ export function buildEngineGraph(args: {
   //    rather than duplicating it as a direct node. This protects against
   //    imports that bring receivers with real glCodes but don't separately
   //    populate the center→glCode map.
+  const modeledFeeDeptSet = modeledFeeDepts && modeledFeeDepts.length > 0
+    ? new Set<string>(modeledFeeDepts)
+    : null;
   for (const r of capReceivers) {
     if (!r.glCode) continue;
     if (nodeByKey.has(r.glCode)) continue;
@@ -202,6 +213,17 @@ export function buildEngineGraph(args: {
     }
 
     const isFeeDept = FEE_DEPT_SET.has(r.deptCode);
+    // Skip fee-dept receivers the active jurisdiction doesn't model. The
+    // seed CAP basis schedules (lib/data/cap.ts:CAP_BASIS_UNITS) include
+    // receivers for every fee dept regardless of jurisdiction; without
+    // this filter, jurisdictions that only model PLAN/BLDG/ENG would
+    // route real CAP $ to phantom PARKS/PD/FIRE direct nodes with
+    // imported-looking glCodes (011-3500/011-3600/011-3700). Non-fee
+    // direct receivers (e.g. PW) flow through normally — they don't
+    // affect the fee study.
+    if (isFeeDept && modeledFeeDeptSet && !modeledFeeDeptSet.has(r.deptCode)) {
+      continue;
+    }
     addNode({
       key: r.glCode, glCode: r.glCode, name: r.dept,
       role: "direct",
@@ -221,7 +243,10 @@ export function buildEngineGraph(args: {
     (n) => n.role === "direct" && !n.key.startsWith("seed:"),
   );
   if (!anyImportedDirect) {
-    for (const dept of FEE_DEPTS) {
+    const seedDepts = modeledFeeDepts && modeledFeeDepts.length > 0
+      ? modeledFeeDepts
+      : FEE_DEPTS;
+    for (const dept of seedDepts) {
       const key = seedDeptKey(dept);
       addNode({
         key, glCode: key, name: dept, role: "direct", feeDept: dept,

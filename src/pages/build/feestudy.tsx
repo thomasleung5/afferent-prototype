@@ -11,7 +11,7 @@ import { aiParseFeesPdf, feesToExtractionResult } from "@/lib/ai/parseFees";
 
 export default function FeeSchedulePage() {
   const { derived, services, mergeFeeSchedule } = useBuildState();
-  const { downloadExcel, openPdf } = useExport();
+  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
   const comparisons = derived.comparisons;
 
@@ -79,7 +79,7 @@ export default function FeeSchedulePage() {
             <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
               <Icon name="arrow-up-to-line" size={13}/> Import
             </Btn>
-            <ExportMenu onDownloadExcel={downloadExcel} onOpenPdf={openPdf}/>
+            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
           </>
         }
       />

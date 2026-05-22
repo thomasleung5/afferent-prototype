@@ -72,9 +72,7 @@ export function useBenchmarkExport() {
     downloadBlob(blob, `${city}-fee-benchmark.xlsx`);
   }, [payload]);
 
-  const openPdf = useCallback(() => {
-    window.open("/export/fee-benchmark", "_blank");
-  }, []);
+  const pdfHref = "/export/fee-benchmark";
 
-  return { downloadExcel, openPdf };
+  return { downloadExcel, pdfHref };
 }

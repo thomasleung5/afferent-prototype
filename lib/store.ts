@@ -1047,7 +1047,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             ]),
           );
         }
-        const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual", "carry-forward", "missing"];
+        const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual"];
         const coerce = (v: unknown): SourceTag =>
           typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
         if (Array.isArray(state.services)) {
@@ -1138,6 +1138,16 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     state.allocationBases, state.studyContext,
   );
 
+  // Scope the engine's synthetic fallback direct nodes to the fee depts the
+  // active jurisdiction actually models. Without this, the engine seeds
+  // every entry in FEE_DEPTS and the seed DRIVERS matrix routes real $ to
+  // phantom receivers (e.g. PARKS / PD / FIRE on a Planning/Building/Eng-
+  // only jurisdiction).
+  const modeledFeeDepts: DeptCode[] = Array.from(new Set<DeptCode>([
+    ...state.positions.map((p) => p.dept),
+    ...state.services.map((s) => s.dept),
+  ]));
+
   const graph = buildEngineGraph({
     allocationBases: state.allocationBases,
     basisUnits: state.capBasisUnits,
@@ -1145,6 +1155,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     capCenterTotals: state.capCenterTotals,
     capCenterGlCodes: state.capCenterGlCodes,
     capReceivers,
+    modeledFeeDepts,
   });
 
   const stepDown = computeStepDownGl({

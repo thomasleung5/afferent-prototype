@@ -35,13 +35,11 @@ export function useExport() {
     downloadBlob(blob, `${city}-fee-study.xlsx`);
   }, [state, jurisdiction, fiscalYear]);
 
-  const openPdf = useCallback(() => {
-    // /export/fee-study reads from the same BuildProvider; a same-origin tab
-    // shares the React tree so live state is available there too.
-    // Note: noopener/noreferrer omitted intentionally — Safari's "Save as
-    // PDF" fails (1KB blank PDF) on noopener'd tabs in some versions.
-    window.open("/export/fee-study", "_blank");
-  }, []);
+  // /export/fee-study reads from the same BuildProvider; a same-origin tab
+  // shares the React tree so live state is available there too. Exposed as a
+  // URL (not a window.open callback) so the ExportMenu can render it as a
+  // plain <a target="_blank"> — that pattern isn't subject to pop-up blockers.
+  const pdfHref = "/export/fee-study";
 
-  return { downloadExcel, openPdf };
+  return { downloadExcel, pdfHref };
 }

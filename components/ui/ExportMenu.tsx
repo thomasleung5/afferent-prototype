@@ -6,8 +6,11 @@ import { Icon } from "./Icon";
 interface Props {
   /** Async — generates the Excel Blob and triggers download. */
   onDownloadExcel: () => Promise<void>;
-  /** Sync — opens the print route in a new tab. */
-  onOpenPdf: () => void;
+  /** URL of the print-route page. Rendered as an anchor with target="_blank"
+   *  so the browser treats it as a user-initiated link and doesn't apply
+   *  pop-up blocker heuristics (which would silently swallow a programmatic
+   *  window.open call). */
+  pdfHref: string;
   /** When true, shows a spinning indicator on the Export button. */
   busy?: boolean;
   label?: string;
@@ -21,7 +24,7 @@ interface Props {
 /** Dropdown menu attached to the Export button. Two items: PDF (print-friendly
  *  route) and Excel (xlsx workbook). Closes on outside click + ESC. */
 export function ExportMenu({
-  onDownloadExcel, onOpenPdf, busy = false, label = "Export",
+  onDownloadExcel, pdfHref, busy = false, label = "Export",
   pdfLabel = "Fee study report (PDF)",
   pdfSub = "Council-ready, print-formatted",
   excelLabel = "Excel workbook (.xlsx)",
@@ -52,11 +55,6 @@ export function ExportMenu({
     finally { setWorking(false); }
   };
 
-  const handlePdf = () => {
-    setOpen(false);
-    onOpenPdf();
-  };
-
   return (
     <div ref={wrapRef} style={{ position: "relative" }}>
       <Btn
@@ -78,10 +76,11 @@ export function ExportMenu({
           border: "1px solid var(--rule-strong)",
           boxShadow: "0 10px 24px rgba(15,23,42,0.10)",
         }}>
-          <MenuItem
+          <PdfMenuItem
             label={pdfLabel}
             sub={pdfSub}
-            onClick={handlePdf}
+            href={pdfHref}
+            onSelect={() => setOpen(false)}
           />
           <MenuItem
             label={excelLabel}
@@ -95,6 +94,35 @@ export function ExportMenu({
   );
 }
 
+const ITEM_STYLE = {
+  display: "flex", flexDirection: "column" as const, gap: 2,
+  width: "100%", textAlign: "left" as const,
+  padding: "10px 14px",
+  background: "transparent",
+  cursor: "pointer",
+  textDecoration: "none",
+  color: "inherit",
+};
+
+function PdfMenuItem({
+  label, sub, href, onSelect,
+}: { label: string; sub: string; href: string; onSelect: () => void }) {
+  return (
+    <a
+      href={href}
+      target="_blank"
+      rel="noopener noreferrer"
+      onClick={onSelect}
+      onMouseEnter={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
+      onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+      style={{ ...ITEM_STYLE, border: "none" }}
+    >
+      <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</span>
+    </a>
+  );
+}
+
 function MenuItem({
   label, sub, onClick, divider,
 }: { label: string; sub: string; onClick: () => void; divider?: boolean }) {
@@ -104,11 +132,8 @@ function MenuItem({
       onMouseEnter={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
       style={{
-        display: "flex", flexDirection: "column", gap: 2,
-        width: "100%", textAlign: "left",
-        padding: "10px 14px",
-        background: "transparent", border: "none",
-        cursor: "pointer",
+        ...ITEM_STYLE,
+        border: "none",
         borderTop: divider ? "1px solid var(--rule)" : "none",
       }}
     >

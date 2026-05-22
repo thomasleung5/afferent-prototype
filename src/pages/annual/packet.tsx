@@ -71,7 +71,7 @@ export default function AnnualPacketPage() {
   // The same /export route renders against the live BuildProvider state, so
   // staff can print or save-as-PDF from there.
   const openPacket = useCallback(() => {
-    window.open("/export/fee-study", "_blank");
+    window.open("/export/fee-study", "_blank", "noopener,noreferrer");
   }, []);
 
   return (

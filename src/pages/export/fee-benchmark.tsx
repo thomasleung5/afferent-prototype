@@ -1,15 +1,11 @@
-import { useEffect, useState } from "react";
+import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/format";
 import { Btn, Icon } from "@/components/ui";
 import {
   useBenchmarkPayload,
 } from "@/features/build/useBenchmarkExport";
-import {
-  exportBenchmarkXlsx,
-  type BenchmarkExportPayload,
-} from "@/lib/export/benchmarkExcel";
-import { downloadBlob } from "@/lib/export/excel";
+import type { BenchmarkExportPayload } from "@/lib/export/benchmarkExcel";
 
 type BenchmarkPayload = BenchmarkExportPayload;
 
@@ -23,10 +19,6 @@ export default function FeeBenchmarkExportPage() {
       <Report payload={payload}/>
     </>
   );
-}
-
-function slugCity(name: string): string {
-  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
 }
 
 /** Print stylesheet — mirrors fee-study.tsx so both PDFs render identically. */
@@ -92,7 +84,6 @@ function PrintStyles() {
 }
 
 function Toolbar({ payload }: { payload: BenchmarkPayload }) {
-  const [busy, setBusy] = useState(false);
   return (
     <div className="no-print" style={{
       position: "sticky", top: 0, zIndex: 20,
@@ -112,19 +103,6 @@ function Toolbar({ payload }: { payload: BenchmarkPayload }) {
       </div>
       <div style={{ flex: 1 }}/>
       <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn
-        kind="ghost"
-        disabled={busy}
-        onClick={async () => {
-          setBusy(true);
-          try {
-            const blob = await exportBenchmarkXlsx(payload);
-            downloadBlob(blob, `${slugCity(payload.cityName)}-fee-benchmark.xlsx`);
-          } finally { setBusy(false); }
-        }}
-      >
-        <Icon name="download" size={13}/> {busy ? "Generating…" : "Excel"}
-      </Btn>
       <Btn kind="primary" onClick={() => window.print()}>
         <Icon name="download" size={13}/> Print / Save PDF
       </Btn>

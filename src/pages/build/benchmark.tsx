@@ -9,7 +9,7 @@ import { useBuildState } from "@/lib/store";
 
 export default function FeeBenchmarkPage() {
   const { services } = useBuildState();
-  const { downloadExcel, openPdf } = useBenchmarkExport();
+  const { downloadExcel, pdfHref } = useBenchmarkExport();
 
   // Decision-oriented KPI strip: which fees are materially below peer
   // pricing, how big is the typical gap, what's the worst single gap.
@@ -35,7 +35,7 @@ export default function FeeBenchmarkPage() {
         actions={
           <ExportMenu
             onDownloadExcel={downloadExcel}
-            onOpenPdf={openPdf}
+            pdfHref={pdfHref}
             pdfLabel="Fee benchmark report (PDF)"
             pdfSub="Council-ready, print-formatted"
             excelLabel="Excel workbook (.xlsx)"

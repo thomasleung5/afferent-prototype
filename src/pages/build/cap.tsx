@@ -70,7 +70,7 @@ const CAP_SCHEMA = `{
 
 export default function CapPage() {
   const { mergeCapBundle } = useBuildState();
-  const { downloadExcel, openPdf } = useCapExport();
+  const { downloadExcel, pdfHref } = useCapExport();
   const [step, setStep] = useState<CapStep>("centers");
   const [importerOpen, setImporterOpen] = useState(false);
   // Bases the model returned with driverKey "OTHER" or otherwise un-bindable.
@@ -181,7 +181,7 @@ export default function CapPage() {
             )}
             <ExportMenu
               onDownloadExcel={downloadExcel}
-              onOpenPdf={openPdf}
+              pdfHref={pdfHref}
               pdfLabel="Cost Allocation Plan (PDF)"
               pdfSub="Council-ready, print-formatted"
               excelLabel="Excel workbook (.xlsx)"

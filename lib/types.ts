@@ -15,7 +15,7 @@ export type DepartmentMap = Record<DeptCode, Department>;
 /** Provenance tag for a row's origin. Set once at row creation (seed,
  *  import, or manual add); never mutated by subsequent edits. The display
  *  layer pairs this with an optional `sourceFile` to render a Source pill. */
-export type SourceTag = "seed" | "imported" | "manual" | "carry-forward" | "missing";
+export type SourceTag = "seed" | "imported" | "manual";
 
 export interface Service {
   id: string;

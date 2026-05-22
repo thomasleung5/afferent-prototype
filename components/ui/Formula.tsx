@@ -35,16 +35,12 @@ const SOURCE_TONE: Record<SourceTag, PillTone> = {
   seed: "default",
   imported: "fact",
   manual: "policy",
-  "carry-forward": "default",
-  missing: "default",
 };
 
 const SOURCE_LABEL: Record<SourceTag, string> = {
   seed: "Seed data",
   imported: "Imported",
   manual: "Manual entry",
-  "carry-forward": "Carry-forward",
-  missing: "Missing",
 };
 
 const FILENAME_TRUNCATE = 32;
