@@ -195,7 +195,7 @@ function Cover({ payload }: { payload: ExportPayload }) {
     }}>
       <div className="eyebrow">{payload.cover.cityName}</div>
       <div className="title display" style={{ fontSize: 32, marginTop: 8 }}>
-        Development Services Fee Study
+        User Fee Study
       </div>
       <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 14, lineHeight: 1.5 }}>
         Cost of Service · Cost Recovery Policy · Recommended Fee Schedule
