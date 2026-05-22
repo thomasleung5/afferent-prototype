@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { useBuildState } from "@/lib/store";
+import { useBuildState, useBuildStore } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import { Btn, Icon } from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
@@ -10,11 +10,20 @@ import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
 import { downloadBlob } from "@/lib/export/excel";
 
 export default function CapAllocationExportPage() {
+  const hydrated = useStoreHydrated();
   const state = useBuildState();
 
+  const cityName = "Town of Los Altos Hills";
+  const fiscal = "FY 2025-26";
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `Cost Allocation Plan — ${cityName} — ${fiscal}`;
+    return () => { document.title = prev; };
+  }, [cityName, fiscal]);
+
   const payload = useMemo<CapExportPayload>(() => ({
-    cityName: "Town of Los Altos Hills",
-    fiscal: "FY 2025-26",
+    cityName,
+    fiscal,
     generatedAt: new Date().toISOString(),
     capPools: state.capPools,
     allocationBases: state.allocationBases,
@@ -25,6 +34,15 @@ export default function CapAllocationExportPage() {
     fbhrRollup: capAllocatedFromGl(state.derived.capStepDown),
   }), [state]);
 
+  if (!hydrated) {
+    return (
+      <div style={{
+        padding: 40, fontFamily: "var(--ff-ui)",
+        color: "var(--ink-3)", fontSize: 13,
+      }}>Loading export…</div>
+    );
+  }
+
   return (
     <>
       <PrintStyles/>
@@ -34,23 +52,74 @@ export default function CapAllocationExportPage() {
   );
 }
 
+function useStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(
+    () => useBuildStore.persist?.hasHydrated() ?? true,
+  );
+  useEffect(() => {
+    const unsub = useBuildStore.persist?.onFinishHydration(() => setHydrated(true));
+    if (useBuildStore.persist?.hasHydrated()) setHydrated(true);
+    return () => { unsub?.(); };
+  }, []);
+  return hydrated;
+}
+
 function PrintStyles() {
   return (
     <style>{`
-      @page { size: letter portrait; margin: 0.55in 0.55in 0.7in 0.55in; }
+      @page { size: letter; margin: 0.55in; }
+      html, body { color-scheme: light only; forced-color-adjust: none; }
       @media print {
-        body { background: white !important; }
-        .no-print { display: none !important; }
-        .report { padding: 0 !important; }
-        .section { break-inside: avoid; }
-        .section-break { break-before: page; }
-        .row { break-inside: avoid; }
-        table { break-inside: auto; }
+        html, body {
+          background: white !important;
+          color: #1d2236 !important;
+          color-scheme: light only !important;
+          forced-color-adjust: none !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+        #root { height: auto !important; overflow: visible !important; }
+        .no-print {
+          display: none !important;
+          visibility: hidden !important;
+          position: static !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
+        }
+        .report, .report * {
+          color: #1d2236 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .report {
+          display: block !important;
+          width: auto !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          font-family: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+        }
         thead { display: table-header-group; }
-        tr, td, th { break-inside: avoid; }
-        .center-block { break-before: page; }
-        .center-block:first-of-type { break-before: auto; }
-        .pool-block { break-inside: avoid-page; }
+        tr { page-break-inside: avoid; }
+        .center-block {
+          page-break-before: always;
+          break-before: page;
+        }
+        .center-block:first-of-type {
+          page-break-before: avoid;
+          break-before: avoid;
+        }
+        .pool-block {
+          page-break-before: always;
+          break-before: page;
+        }
       }
       .report {
         max-width: 7.4in;

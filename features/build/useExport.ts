@@ -38,7 +38,9 @@ export function useExport() {
   const openPdf = useCallback(() => {
     // /export/fee-study reads from the same BuildProvider; a same-origin tab
     // shares the React tree so live state is available there too.
-    window.open("/export/fee-study", "_blank", "noopener,noreferrer");
+    // Note: noopener/noreferrer omitted intentionally — Safari's "Save as
+    // PDF" fails (1KB blank PDF) on noopener'd tabs in some versions.
+    window.open("/export/fee-study", "_blank");
   }, []);
 
   return { downloadExcel, openPdf };

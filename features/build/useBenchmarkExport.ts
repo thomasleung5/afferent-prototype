@@ -73,7 +73,7 @@ export function useBenchmarkExport() {
   }, [payload]);
 
   const openPdf = useCallback(() => {
-    window.open("/export/fee-benchmark", "_blank", "noopener,noreferrer");
+    window.open("/export/fee-benchmark", "_blank");
   }, []);
 
   return { downloadExcel, openPdf };

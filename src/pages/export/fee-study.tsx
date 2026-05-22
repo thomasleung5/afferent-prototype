@@ -1,6 +1,6 @@
 
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useBuildState } from "@/lib/store";
+import { useBuildState, useBuildStore } from "@/lib/store";
 import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import {
   buildExportPayload, type ExportPayload,
@@ -12,9 +12,15 @@ import type { DeptCode } from "@/lib/types";
 import { Btn, Icon } from "@/components/ui";
 
 export default function FeeStudyExportPage() {
+  const hydrated = useStoreHydrated();
   const state = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const fiscalYear = useActiveFiscalYear();
+  useEffect(() => {
+    const prev = document.title;
+    document.title = `Fee Study — ${jurisdiction.name} — ${fiscalYear}`;
+    return () => { document.title = prev; };
+  }, [jurisdiction.name, fiscalYear]);
   const payload = useMemo<ExportPayload>(() => buildExportPayload({
     positions:    state.positions,
     operating:    state.operating,
@@ -34,6 +40,15 @@ export default function FeeStudyExportPage() {
     },
   }), [state, jurisdiction, fiscalYear]);
 
+  if (!hydrated) {
+    return (
+      <div style={{
+        padding: 40, fontFamily: "var(--ff-ui)",
+        color: "var(--ink-3)", fontSize: 13,
+      }}>Loading export…</div>
+    );
+  }
+
   return (
     <>
       <PrintStyles/>
@@ -43,21 +58,63 @@ export default function FeeStudyExportPage() {
   );
 }
 
+function useStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(
+    () => useBuildStore.persist?.hasHydrated() ?? true,
+  );
+  useEffect(() => {
+    const unsub = useBuildStore.persist?.onFinishHydration(() => setHydrated(true));
+    if (useBuildStore.persist?.hasHydrated()) setHydrated(true);
+    return () => { unsub?.(); };
+  }, []);
+  return hydrated;
+}
+
 /** Print stylesheet — kept inline so the route is self-contained. */
 function PrintStyles() {
   return (
     <style>{`
-      @page { size: letter portrait; margin: 0.7in 0.7in 0.8in 0.7in; }
+      @page { size: letter; margin: 0.7in; }
+      html, body { color-scheme: light only; forced-color-adjust: none; }
       @media print {
-        body { background: white !important; }
-        .no-print { display: none !important; }
-        .report { padding: 0 !important; }
-        .section { break-inside: avoid; }
-        .section-break { break-before: page; }
-        .row { break-inside: avoid; }
-        table { break-inside: auto; }
+        html, body {
+          background: white !important;
+          color: #1d2236 !important;
+          color-scheme: light only !important;
+          forced-color-adjust: none !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          height: auto !important;
+          min-height: 0 !important;
+          overflow: visible !important;
+        }
+        #root { height: auto !important; overflow: visible !important; }
+        .no-print {
+          display: none !important;
+          visibility: hidden !important;
+          position: static !important;
+          height: 0 !important;
+          width: 0 !important;
+          overflow: hidden !important;
+        }
+        .report, .report * {
+          color: #1d2236 !important;
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
+        .report {
+          display: block !important;
+          width: auto !important;
+          max-width: none !important;
+          margin: 0 !important;
+          padding: 0 !important;
+          background: white !important;
+          font-family: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
+        }
         thead { display: table-header-group; }
-        tr, td, th { break-inside: avoid; }
+        tr { page-break-inside: avoid; }
       }
       .report {
         max-width: 7.4in;

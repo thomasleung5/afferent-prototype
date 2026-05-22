@@ -35,15 +35,19 @@ function PrintStyles() {
     <style>{`
       @page { size: letter portrait; margin: 0.6in 0.6in 0.7in 0.6in; }
       @media print {
-        body { background: white !important; }
+        html, body { background: white !important; }
         .no-print { display: none !important; }
-        .report { padding: 0 !important; }
-        .section { break-inside: avoid; }
-        .section-break { break-before: page; }
-        .row { break-inside: avoid; }
-        table { break-inside: auto; }
+        .report { padding: 0 !important; max-width: none !important; margin: 0 !important; }
+        .section-break { break-before: page; page-break-before: always; }
+        .section-break:first-child { break-before: avoid; page-break-before: avoid; }
+        .row { break-inside: avoid; page-break-inside: avoid; }
+        table { break-inside: auto; page-break-inside: auto; }
         thead { display: table-header-group; }
-        tr, td, th { break-inside: avoid; }
+        tr { break-inside: avoid; page-break-inside: avoid; }
+        .report, .report * {
+          -webkit-print-color-adjust: exact !important;
+          print-color-adjust: exact !important;
+        }
       }
       .report {
         max-width: 7.4in;

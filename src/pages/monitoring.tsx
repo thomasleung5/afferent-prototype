@@ -234,7 +234,7 @@ export default function RevenueMonitoringPage() {
   );
 
   const openPdf = useCallback(() => {
-    window.open("/export/monitoring", "_blank", "noopener,noreferrer");
+    window.open("/export/monitoring", "_blank");
   }, []);
 
   const exportBrief = useCallback(() => {

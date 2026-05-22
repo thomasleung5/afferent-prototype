@@ -31,7 +31,9 @@ export function useCapExport() {
   }, [buildPayload]);
 
   const openPdf = useCallback(() => {
-    window.open("/export/cap-allocation", "_blank", "noopener,noreferrer");
+    // noopener/noreferrer omitted intentionally — Safari's "Save as PDF"
+    // produces a 1KB blank file on noopener'd tabs in some versions.
+    window.open("/export/cap-allocation", "_blank");
   }, []);
 
   return { downloadExcel, openPdf };
