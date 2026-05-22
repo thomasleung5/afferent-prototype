@@ -106,7 +106,13 @@ function deriveSummary({ comparisons, impact, imports }: MonitoringInput): Monit
 }
 
 function deriveDeptHealth({ comparisons, policyTargets }: MonitoringInput): DeptHealth[] {
-  return FEE_DEPTS.map((dept) => {
+  // Only surface fee depts the active jurisdiction actually models. The
+  // comparison set is built from state.services, so a dept with at least
+  // one service maps directly to a dept the jurisdiction operates.
+  // Without this filter, jurisdictions like LAH that only model
+  // Planning/Building/Engineering would show empty Parks/PD/Fire rows.
+  const modeled = new Set(comparisons.map((c) => c.dept));
+  return FEE_DEPTS.filter((d) => modeled.has(d)).map((dept) => {
     const deptRows = comparisons.filter((c) => c.dept === dept);
     const totalCost = deptRows.reduce((a, c) => a + c.annualCost, 0);
     const currentRev = deptRows.reduce((a, c) => a + c.annualRevenue, 0);
