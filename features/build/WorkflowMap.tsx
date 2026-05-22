@@ -14,12 +14,33 @@ const ACTIVE_BORDER = "#1d2236";
 const HOVER_BORDER = "#1d2236";
 const HOVER_SHADOW = "0 2px 8px rgba(29, 34, 54, 0.10)";
 
+interface CardColors {
+  bg: string;
+  border?: string;
+  title: string;
+}
+
 interface Node {
   href: string;
   label: string;
   desc: string;
   metric: string;
+  colors?: CardColors;
 }
+
+// Workflow palette: dark navy → cream → dark gray, signalling the
+// phase transition from cost analysis → policy decision → published
+// output. Inputs row stays neutral so the workflow row reads as the
+// key step in the page.
+const COST_OF_SERVICE_COLORS: CardColors = {
+  bg: "#1d2236", border: "#3a3f53", title: "#ffffff",
+};
+const RECOVERY_POLICY_COLORS: CardColors = {
+  bg: "#ebe8df", border: "#1d2236", title: "#1d2236",
+};
+const FEE_SCHEDULE_COLORS: CardColors = {
+  bg: "#3a3f53", border: "#3a3f53", title: "#ffffff",
+};
 
 function plural(n: number, one: string, many: string) {
   return `${n.toLocaleString()} ${n === 1 ? one : many}`;
@@ -34,6 +55,9 @@ function impactLabel(gap: number): string {
 function Card({ n, titleSize, minHeight }: { n: Node; titleSize: number; minHeight: number }) {
   const [hovered, setHovered] = useState(false);
   const active = useIsActive(n.href);
+  const baseBg = n.colors?.bg ?? "var(--paper)";
+  const baseBorder = n.colors?.border ?? n.colors?.bg ?? "var(--rule-strong)";
+  const titleColor = n.colors?.title ?? "#1d2236";
   return (
     <Link
       to={n.href}
@@ -43,12 +67,12 @@ function Card({ n, titleSize, minHeight }: { n: Node; titleSize: number; minHeig
         display: "flex", flexDirection: "column", gap: 8,
         padding: 14,
         minHeight,
-        background: active ? ACTIVE_BG : "var(--paper)",
-        border: `1px solid ${active ? ACTIVE_BORDER : hovered ? HOVER_BORDER : "var(--rule-strong)"}`,
+        background: active ? ACTIVE_BG : baseBg,
+        border: `1px solid ${active ? ACTIVE_BORDER : hovered ? HOVER_BORDER : baseBorder}`,
         boxShadow: hovered && !active ? HOVER_SHADOW : "none",
         transition: "border-color 120ms, box-shadow 120ms",
         textDecoration: "none",
-        color: active ? "#ffffff" : "#1d2236",
+        color: active ? "#ffffff" : titleColor,
       }}>
       <div style={{
         marginTop: 2,
@@ -123,16 +147,19 @@ export function WorkflowMap() {
       href: "/build/costs", label: "Cost of Service",
       desc: "hours × FBHR × volume",
       metric: plural(derived.comparisons.length, "service costed", "services costed"),
+      colors: COST_OF_SERVICE_COLORS,
     },
     {
       href: "/build/policy", label: "Recovery Policy",
       desc: "target % per service",
       metric: `${Math.round(derived.impact.overallPct)}% target recovery`,
+      colors: RECOVERY_POLICY_COLORS,
     },
     {
       href: "/build/feestudy", label: "Fee Schedule",
       desc: "cost × target",
       metric: impactLabel(derived.impact.recoverableGap),
+      colors: FEE_SCHEDULE_COLORS,
     },
   ];
 
