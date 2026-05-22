@@ -1,5 +1,6 @@
 ﻿
 import { fmt } from "@/lib/format";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
 /** Persistent footer on the Cost of Service page. Affirms that every number
@@ -7,11 +8,10 @@ import { useBuildState } from "@/lib/store";
 export function TraceabilityFooter() {
   const { services, derived, capPools } = useBuildState();
   const totalAnnual = derived.costs.reduce((a, c) => a + c.annualCost, 0);
-  // Live step-down output across the three fee depts. Excludes "OTHER"
-  // (CIP / grant fund) receivers — see derived.capStepDown.directTotals
-  // for the full per-node distribution.
-  const totalAllocated =
-    derived.capAllocated.PLAN + derived.capAllocated.BLDG + derived.capAllocated.ENG;
+  // Live step-down output across the fee depts. Excludes "OTHER" (CIP /
+  // grant fund) receivers — see derived.capStepDown.directTotals for
+  // the full per-node distribution.
+  const totalAllocated = FEE_DEPTS.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
   const unallocated = poolTotal - totalAllocated;
   const balanced = poolTotal === 0 || Math.abs(unallocated) < 1;

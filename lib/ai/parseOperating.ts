@@ -42,7 +42,7 @@ export function operatingToExtractionResult(
 
   rows.forEach((row, i) => {
     const dept = normDept(row.dept);
-    if (!dept) return; // skip rows the model returned with non-PLAN/BLDG/ENG/SHARED:CDS depts
+    if (!dept) return; // skip rows the model returned with depts outside FEE_DEPTS / SHARED:CDS
 
     const lineage = {
       file: fileName,

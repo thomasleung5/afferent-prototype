@@ -1,4 +1,5 @@
 import type { Service, WorkloadRow } from "@/lib/types";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import type {
   ExtractedRow, ExtractionResult, SourceLineage, UnmappedRow,
 } from "@/lib/parse/types";
@@ -43,7 +44,7 @@ function normName(s: string): string {
 
 function normDept(v: string): Service["dept"] | null {
   const s = v.trim().toUpperCase();
-  if (s === "PLAN" || s === "BLDG" || s === "ENG") return s;
+  if ((FEE_DEPTS as readonly string[]).includes(s)) return s as Service["dept"];
   return null;
 }
 

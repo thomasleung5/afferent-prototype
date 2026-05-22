@@ -716,8 +716,7 @@ function ScheduleRow({
 }
 
 function FbhrRollup({ payload }: { payload: CapExportPayload }) {
-  const { PLAN, BLDG, ENG } = payload.fbhrRollup;
-  const total = (PLAN ?? 0) + (BLDG ?? 0) + (ENG ?? 0);
+  const total = FEE_DEPTS.reduce((a, d) => a + (payload.fbhrRollup[d] ?? 0), 0);
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 6</div>

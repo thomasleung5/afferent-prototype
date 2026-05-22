@@ -18,6 +18,7 @@
 import type { AllocationBasis, CapPool } from "../types";
 import type { GlNode, GlStepDownModel } from "../data/capStepDownGl";
 import { basisForPool } from "../data/capStepDown";
+import { FEE_DEPTS } from "../data/departments";
 
 type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
 
@@ -397,10 +398,10 @@ function buildFbhrRollup(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
     [h("Fee Dept"), h("Allocated CAP $"), h("Notes")],
   ];
-  for (const d of ["PLAN", "BLDG", "ENG"]) {
+  for (const d of FEE_DEPTS) {
     rows.push([d, n(p.fbhrRollup[d] ?? 0, "$#,##0"), "Sum of direct-node totals tagged feeDept=" + d]);
   }
-  const total = (p.fbhrRollup.PLAN ?? 0) + (p.fbhrRollup.BLDG ?? 0) + (p.fbhrRollup.ENG ?? 0);
+  const total = FEE_DEPTS.reduce((a, d) => a + (p.fbhrRollup[d] ?? 0), 0);
   rows.push(["", h("Total"), n(total, "$#,##0")]);
   return rows;
 }

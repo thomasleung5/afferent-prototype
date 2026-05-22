@@ -11,7 +11,7 @@ import type {
 } from "@/lib/calc";
 import type { Domain } from "@/lib/store";
 import type { SourceLineage, UnmappedRow } from "@/lib/parse";
-import { DEPTS } from "@/lib/data/departments";
+import { DEPTS, FEE_DEPTS } from "@/lib/data/departments";
 
 interface ExportCover {
   cityName: string;
@@ -166,7 +166,7 @@ export interface ExportInput {
   };
 }
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
+const ORDER: DeptCode[] = FEE_DEPTS;
 
 function priorityFor(impact: number): "high" | "med" | "low" | "none" {
   if (impact > 25000) return "high";
@@ -412,7 +412,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     { label: "Recommended rounding", value: "Nearest $5" },
     { label: "Subsidy fund",       value: "General Fund — recovery shortfall is implicitly subsidized when target < 100%" },
     { label: "Peer cities",        value: input.jurisdiction.peers.join(", ") },
-    { label: "Operating shared split", value: "Productive-hours share across PLAN / BLDG / ENG" },
+    { label: "Operating shared split", value: `Productive-hours share across ${ORDER.join(" / ")}` },
   ];
 
   return {

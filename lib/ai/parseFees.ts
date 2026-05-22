@@ -1,5 +1,6 @@
 import type { Service } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
+import { FEE_DEPTS } from "@/lib/data/departments";
 
 interface FeeRow {
   name: string;
@@ -95,6 +96,6 @@ export function feesToExtractionResult(
 
 function normDept(v: string): Service["dept"] | null {
   const s = v.trim().toUpperCase();
-  if (s === "PLAN" || s === "BLDG" || s === "ENG") return s;
+  if ((FEE_DEPTS as readonly string[]).includes(s)) return s as Service["dept"];
   return null;
 }

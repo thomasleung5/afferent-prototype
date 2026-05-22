@@ -13,9 +13,9 @@ const SERVICES_SCHEMA = `{
   ]
 }`;
 
-/** Compose the post-import summary. The parser drops rows with a dept
- *  outside PLAN/BLDG/ENG silently, so we derive a "skipped" count from
- *  the gap between the model's row count and what survived merge. */
+/** Compose the post-import summary. The parser drops rows whose dept
+ *  isn't in the fee-bearing registry, so we derive a "skipped" count
+ *  from the gap between the model's row count and what survived merge. */
 function formatImportSummary(
   total: number, mapped: number, lowConfidence: number, duplicates: number,
 ): string {

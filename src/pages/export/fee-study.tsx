@@ -7,6 +7,8 @@ import {
 } from "@/lib/export/buildPayload";
 import { exportFeeStudyXlsx, downloadBlob } from "@/lib/export/excel";
 import { fmt } from "@/lib/format";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import type { DeptCode } from "@/lib/types";
 import { Btn, Icon } from "@/components/ui";
 
 export default function FeeStudyExportPage() {
@@ -1171,15 +1173,12 @@ function recoveryTargetSummaryLabel(payload: ExportPayload): string {
 }
 
 function deptDisplayName(code: string): string {
-  switch (code) {
-    case "PLAN":  return "Planning";
-    case "BLDG":  return "Building";
-    case "ENG":   return "Engineering";
-    case "PARKS": return "Parks & Recreation";
-    case "PD":    return "Police Services";
-    case "FIRE":  return "Fire Prevention";
-    default: return code;
-  }
+  // Defer to the registry's short form for known fee depts; pass
+  // through unknown codes unchanged so legacy export rows don't blow
+  // up on the registry lookup.
+  return (FEE_DEPTS as readonly string[]).includes(code)
+    ? deptName(code as DeptCode)
+    : code;
 }
 
 function signed(v: number): string {

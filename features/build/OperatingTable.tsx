@@ -1,14 +1,14 @@
 ﻿
 import { useMemo, useState } from "react";
 import {
-  DataTable,
+  DataTable, deriveDeptFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-import { FEE_DEPTS, deptName } from "@/lib/data/departments";
+import { FEE_DEPTS } from "@/lib/data/departments";
 
 const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
 const CATEGORIES: OpCategory[] = [
@@ -50,19 +50,7 @@ export function OperatingTable() {
     return true;
   }), [operating, deptFilter, categoryFilter, includeFilter]);
 
-  const deptOptions = [
-    { value: "ALL", label: "All", count: operating.length },
-    ...FEE_DEPTS
-      .map((code) => ({
-        value: code,
-        label: deptName(code),
-        count: operating.filter((r) => r.dept === code).length,
-      }))
-      .filter((o) => o.count > 0),
-    ...(operating.some((r) => r.dept === "SHARED:CDS")
-      ? [{ value: "SHARED:CDS", label: "Shared", count: operating.filter((r) => r.dept === "SHARED:CDS").length }]
-      : []),
-  ];
+  const deptOptions = deriveDeptFilter(operating, "dept", { "SHARED:CDS": "Shared" });
 
   const categoryCounts: Record<string, number> = {};
   operating.forEach((r) => { categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1; });
