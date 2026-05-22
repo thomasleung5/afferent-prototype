@@ -169,7 +169,7 @@ export default function RevenueMonitoringPage() {
       width: "minmax(220px, 1.6fr)",
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.driver}</div>
+          <div style={{ fontSize: 13 }}>{r.driver}</div>
           <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
@@ -187,9 +187,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{
-          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
-        }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: 13.5 }}>
           +{fmt.dollarsK(r.annualImpact)} gap
         </span>
       ),
@@ -288,7 +286,7 @@ export default function RevenueMonitoringPage() {
       width: "minmax(280px, 2fr)",
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.alert}</div>
+          <div style={{ fontSize: 13 }}>{r.alert}</div>
           <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
@@ -306,9 +304,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{
-          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
-        }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: 13.5 }}>
           +{fmt.dollarsK(r.impact)}
         </span>
       ),
@@ -430,15 +426,14 @@ export default function RevenueMonitoringPage() {
                 borderBottom: i < staffActions.length - 1 ? "1px solid var(--rule)" : "none",
               }}>
                 <div>
-                  <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{a.title}</div>
+                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{a.title}</div>
                   <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
                 </div>
                 <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
                   {a.rationale}
                 </div>
                 <div className="num" style={{
-                  fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
-                  color: "var(--pos)", textAlign: "right",
+                  fontSize: 13.5, color: "var(--pos)", textAlign: "right",
                 }}>
                   +{fmt.dollarsK(a.fiscalImpact)}/yr
                 </div>

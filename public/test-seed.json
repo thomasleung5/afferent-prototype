@@ -1,140 +1,1519 @@
 {
-  "_note": "City of Maplewood — FY27-28 test scenario. Load via the 'Load test data' button in dev mode. Produces visibly different FBHR, costs, and recovery % than the default seed.",
-
+  "_note": "City of Maplewood — FY27-28 test scenario. Load via the Demo City picker on the Build Model overview. Exercises Planning, Building, Engineering, Parks & Recreation, Police Services, and Fire Prevention as fee-bearing departments.",
   "positions": [
-    { "id": "pos-pdir",   "title": "Planning Director",           "dept": "PLAN", "fte": 0.50, "salary": 340000, "benefits": 122000, "hours": 1680 },
-    { "id": "pos-srpln",  "title": "Senior Planner",              "dept": "PLAN", "fte": 1.00, "salary": 228000, "benefits":  85000, "hours": 1680 },
-    { "id": "pos-aspln",  "title": "Associate Planner",           "dept": "PLAN", "fte": 1.00, "salary": 192000, "benefits":  70000, "hours": 1680 },
-    { "id": "pos-pltch",  "title": "Planning Technician",         "dept": "PLAN", "fte": 0.75, "salary": 115000, "benefits":  42000, "hours": 1680 },
-    { "id": "pos-bofcl",  "title": "Building Official",           "dept": "BLDG", "fte": 1.00, "salary": 310000, "benefits": 112000, "hours": 1680 },
-    { "id": "pos-plnex",  "title": "Plans Examiner",              "dept": "BLDG", "fte": 1.00, "salary": 255000, "benefits":  92000, "hours": 1680 },
-    { "id": "pos-binsp",  "title": "Building Inspector",          "dept": "BLDG", "fte": 2.00, "salary": 215000, "benefits":  78000, "hours": 1680 },
-    { "id": "pos-pmttc",  "title": "Permit Technician",           "dept": "BLDG", "fte": 1.00, "salary": 148000, "benefits":  54000, "hours": 1680 },
-    { "id": "pos-ceng",   "title": "City Engineer",               "dept": "ENG",  "fte": 0.40, "salary": 325000, "benefits": 118000, "hours": 1680 },
-    { "id": "pos-sreng",  "title": "Senior / Associate Engineer", "dept": "ENG",  "fte": 1.00, "salary": 222000, "benefits":  81000, "hours": 1680 },
-    { "id": "pos-pwins",  "title": "Public Works Inspector",      "dept": "ENG",  "fte": 1.00, "salary": 185000, "benefits":  67000, "hours": 1680 }
+    {
+      "id": "pos-pdir",
+      "title": "Planning Director",
+      "dept": "PLAN",
+      "fte": 0.5,
+      "salary": 340000,
+      "benefits": 122000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-srpln",
+      "title": "Senior Planner",
+      "dept": "PLAN",
+      "fte": 1,
+      "salary": 228000,
+      "benefits": 85000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-aspln",
+      "title": "Associate Planner",
+      "dept": "PLAN",
+      "fte": 1,
+      "salary": 192000,
+      "benefits": 70000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pltch",
+      "title": "Planning Technician",
+      "dept": "PLAN",
+      "fte": 0.75,
+      "salary": 115000,
+      "benefits": 42000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-bofcl",
+      "title": "Building Official",
+      "dept": "BLDG",
+      "fte": 1,
+      "salary": 310000,
+      "benefits": 112000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-plnex",
+      "title": "Plans Examiner",
+      "dept": "BLDG",
+      "fte": 1,
+      "salary": 255000,
+      "benefits": 92000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-binsp",
+      "title": "Building Inspector",
+      "dept": "BLDG",
+      "fte": 2,
+      "salary": 215000,
+      "benefits": 78000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pmttc",
+      "title": "Permit Technician",
+      "dept": "BLDG",
+      "fte": 1,
+      "salary": 148000,
+      "benefits": 54000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-ceng",
+      "title": "City Engineer",
+      "dept": "ENG",
+      "fte": 0.4,
+      "salary": 325000,
+      "benefits": 118000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-sreng",
+      "title": "Senior / Associate Engineer",
+      "dept": "ENG",
+      "fte": 1,
+      "salary": 222000,
+      "benefits": 81000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pwins",
+      "title": "Public Works Inspector",
+      "dept": "ENG",
+      "fte": 1,
+      "salary": 185000,
+      "benefits": 67000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-prdir",
+      "title": "Parks & Recreation Director",
+      "dept": "PARKS",
+      "fte": 0.4,
+      "salary": 268000,
+      "benefits": 98000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-prsup",
+      "title": "Recreation Supervisor",
+      "dept": "PARKS",
+      "fte": 1,
+      "salary": 152000,
+      "benefits": 56000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-prcrd",
+      "title": "Recreation Coordinator",
+      "dept": "PARKS",
+      "fte": 2,
+      "salary": 105000,
+      "benefits": 38000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-prspc",
+      "title": "Recreation Specialist",
+      "dept": "PARKS",
+      "fte": 1.5,
+      "salary": 72000,
+      "benefits": 26000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pdrec",
+      "title": "Police Records Supervisor",
+      "dept": "PD",
+      "fte": 0.5,
+      "salary": 158000,
+      "benefits": 58000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pdrsp",
+      "title": "Records Specialist",
+      "dept": "PD",
+      "fte": 1,
+      "salary": 98000,
+      "benefits": 36000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-pdadm",
+      "title": "Police Officer (Admin)",
+      "dept": "PD",
+      "fte": 0.4,
+      "salary": 235000,
+      "benefits": 86000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-fmrsh",
+      "title": "Fire Marshal",
+      "dept": "FIRE",
+      "fte": 0.5,
+      "salary": 235000,
+      "benefits": 86000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-finsp",
+      "title": "Fire Inspector",
+      "dept": "FIRE",
+      "fte": 1,
+      "salary": 175000,
+      "benefits": 64000,
+      "hours": 1680
+    },
+    {
+      "id": "pos-fprev",
+      "title": "Fire Prevention Specialist",
+      "dept": "FIRE",
+      "fte": 0.5,
+      "salary": 132000,
+      "benefits": 48000,
+      "hours": 1680
+    }
   ],
-
   "operating": [
-    { "id": "OP-PL-01", "code": "012-2410", "dept": "PLAN", "category": "Software & subscriptions", "line": "Planning permit system (share)",     "amount": 22000, "source": "FY27 Budget", "include": true },
-    { "id": "OP-PL-02", "code": "012-2410", "dept": "PLAN", "category": "Professional services",    "line": "On-call planning consultants",       "amount": 55000, "source": "FY27 Budget", "include": true },
-    { "id": "OP-PL-03", "code": "012-2410", "dept": "PLAN", "category": "Training & travel",        "line": "APA conference, CEUs",               "amount":  8200, "source": "FY27 Budget", "include": true },
-    { "id": "OP-PL-04", "code": "012-2410", "dept": "PLAN", "category": "Office & supplies",        "line": "Office supplies, printing, postage", "amount":  5100, "source": "FY27 Budget", "include": true },
-    { "id": "OP-PL-05", "code": "012-2410", "dept": "PLAN", "category": "Memberships & dues",       "line": "AICP, APA, ABAG dues",               "amount":  3800, "source": "FY27 Budget", "include": true },
-    { "id": "OP-PL-06", "code": "012-2410", "dept": "PLAN", "category": "Legal noticing",           "line": "Public hearing notices",             "amount": 11000, "source": "FY27 Budget", "include": false, "excludeReason": "Reimbursed by applicant" },
-    { "id": "OP-BD-01", "code": "012-2420", "dept": "BLDG", "category": "Software & subscriptions", "line": "Permit system + ICC code books",     "amount": 26500, "source": "FY27 Budget", "include": true },
-    { "id": "OP-BD-02", "code": "012-2420", "dept": "BLDG", "category": "Professional services",    "line": "3rd-party plan check overflow",      "amount": 95000, "source": "FY27 Budget", "include": true },
-    { "id": "OP-BD-03", "code": "012-2420", "dept": "BLDG", "category": "Vehicles & equipment",     "line": "Inspector vehicle O&M",              "amount": 18400, "source": "FY27 Budget", "include": true },
-    { "id": "OP-BD-04", "code": "012-2420", "dept": "BLDG", "category": "Training & travel",        "line": "ICC certs, CALBO conference",        "amount": 10200, "source": "FY27 Budget", "include": true },
-    { "id": "OP-BD-05", "code": "012-2420", "dept": "BLDG", "category": "Office & supplies",        "line": "Inspection forms, field supplies",   "amount":  6100, "source": "FY27 Budget", "include": true },
-    { "id": "OP-BD-06", "code": "012-2420", "dept": "BLDG", "category": "Memberships & dues",       "line": "ICC, CALBO memberships",             "amount":  2900, "source": "FY27 Budget", "include": true },
-    { "id": "OP-EN-01", "code": "012-3100", "dept": "ENG",  "category": "Software & subscriptions", "line": "GIS, AutoCAD, Bluebeam",             "amount": 19500, "source": "FY27 Budget", "include": true },
-    { "id": "OP-EN-02", "code": "012-3100", "dept": "ENG",  "category": "Professional services",    "line": "On-call traffic + civil review",     "amount": 68000, "source": "FY27 Budget", "include": true },
-    { "id": "OP-EN-03", "code": "012-3100", "dept": "ENG",  "category": "Vehicles & equipment",     "line": "PW inspector vehicle, survey gear",  "amount": 14800, "source": "FY27 Budget", "include": true },
-    { "id": "OP-EN-04", "code": "012-3100", "dept": "ENG",  "category": "Training & travel",        "line": "PE renewals, APWA",                  "amount":  5200, "source": "FY27 Budget", "include": true },
-    { "id": "OP-EN-05", "code": "012-3100", "dept": "ENG",  "category": "Office & supplies",        "line": "Plotter, drafting supplies",         "amount":  3800, "source": "FY27 Budget", "include": true },
-    { "id": "OP-SH-01", "code": "012-9000", "dept": "SHARED:CDS", "category": "Software & subscriptions", "line": "Citywide permit platform",    "amount": 38000, "source": "FY27 Budget", "include": true },
-    { "id": "OP-SH-02", "code": "012-9000", "dept": "SHARED:CDS", "category": "Professional services",    "line": "Shared legal review pool",    "amount": 48000, "source": "FY27 Budget", "include": true }
+    {
+      "id": "OP-PL-01",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Software & subscriptions",
+      "line": "Planning permit system (share)",
+      "amount": 22000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PL-02",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Professional services",
+      "line": "On-call planning consultants",
+      "amount": 55000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PL-03",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Training & travel",
+      "line": "APA conference, CEUs",
+      "amount": 8200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PL-04",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Office & supplies",
+      "line": "Office supplies, printing, postage",
+      "amount": 5100,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PL-05",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Memberships & dues",
+      "line": "AICP, APA, ABAG dues",
+      "amount": 3800,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PL-06",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "category": "Legal noticing",
+      "line": "Public hearing notices",
+      "amount": 11000,
+      "source": "FY27 Budget",
+      "include": false,
+      "excludeReason": "Reimbursed by applicant"
+    },
+    {
+      "id": "OP-BD-01",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Software & subscriptions",
+      "line": "Permit system + ICC code books",
+      "amount": 26500,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-BD-02",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Professional services",
+      "line": "3rd-party plan check overflow",
+      "amount": 95000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-BD-03",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Vehicles & equipment",
+      "line": "Inspector vehicle O&M",
+      "amount": 18400,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-BD-04",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Training & travel",
+      "line": "ICC certs, CALBO conference",
+      "amount": 10200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-BD-05",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Office & supplies",
+      "line": "Inspection forms, field supplies",
+      "amount": 6100,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-BD-06",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "category": "Memberships & dues",
+      "line": "ICC, CALBO memberships",
+      "amount": 2900,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-EN-01",
+      "code": "012-3100",
+      "dept": "ENG",
+      "category": "Software & subscriptions",
+      "line": "GIS, AutoCAD, Bluebeam",
+      "amount": 19500,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-EN-02",
+      "code": "012-3100",
+      "dept": "ENG",
+      "category": "Professional services",
+      "line": "On-call traffic + civil review",
+      "amount": 68000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-EN-03",
+      "code": "012-3100",
+      "dept": "ENG",
+      "category": "Vehicles & equipment",
+      "line": "PW inspector vehicle, survey gear",
+      "amount": 14800,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-EN-04",
+      "code": "012-3100",
+      "dept": "ENG",
+      "category": "Training & travel",
+      "line": "PE renewals, APWA",
+      "amount": 5200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-EN-05",
+      "code": "012-3100",
+      "dept": "ENG",
+      "category": "Office & supplies",
+      "line": "Plotter, drafting supplies",
+      "amount": 3800,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-SH-01",
+      "code": "012-9000",
+      "dept": "SHARED:CDS",
+      "category": "Software & subscriptions",
+      "line": "Citywide permit platform",
+      "amount": 38000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-SH-02",
+      "code": "012-9000",
+      "dept": "SHARED:CDS",
+      "category": "Professional services",
+      "line": "Shared legal review pool",
+      "amount": 48000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PR-01",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "category": "Software & subscriptions",
+      "line": "Recreation registration platform",
+      "amount": 18500,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PR-02",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "category": "Professional services",
+      "line": "Contract instructors",
+      "amount": 84000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PR-03",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "category": "Office & supplies",
+      "line": "Program supplies, equipment",
+      "amount": 14200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PR-04",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "category": "Training & travel",
+      "line": "CPRS conference, CEUs",
+      "amount": 5400,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PR-05",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "category": "Vehicles & equipment",
+      "line": "Field maintenance, transport",
+      "amount": 11800,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PD-01",
+      "code": "012-6100",
+      "dept": "PD",
+      "category": "Software & subscriptions",
+      "line": "Records management system",
+      "amount": 32500,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PD-02",
+      "code": "012-6100",
+      "dept": "PD",
+      "category": "Professional services",
+      "line": "Background check vendor",
+      "amount": 9800,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PD-03",
+      "code": "012-6100",
+      "dept": "PD",
+      "category": "Office & supplies",
+      "line": "Forms, fingerprint supplies",
+      "amount": 4200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-PD-04",
+      "code": "012-6100",
+      "dept": "PD",
+      "category": "Training & travel",
+      "line": "POST certifications",
+      "amount": 7600,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-FR-01",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "category": "Software & subscriptions",
+      "line": "Inspection + plan review platform",
+      "amount": 22400,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-FR-02",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "category": "Professional services",
+      "line": "Third-party plan check overflow",
+      "amount": 28000,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-FR-03",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "category": "Vehicles & equipment",
+      "line": "Inspection vehicles, equipment",
+      "amount": 15600,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-FR-04",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "category": "Training & travel",
+      "line": "CFFP, IFC code training",
+      "amount": 6200,
+      "source": "FY27 Budget",
+      "include": true
+    },
+    {
+      "id": "OP-FR-05",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "category": "Memberships & dues",
+      "line": "IFC, CSFM dues",
+      "amount": 2400,
+      "source": "FY27 Budget",
+      "include": true
+    }
   ],
-
   "capAllocation": {
-    "PLAN": { "dept": "PLAN", "allocated": 485000 },
-    "BLDG": { "dept": "BLDG", "allocated": 620000 },
-    "ENG":  { "dept": "ENG",  "allocated": 230000 }
+    "PLAN": {
+      "dept": "PLAN",
+      "allocated": 485000
+    },
+    "BLDG": {
+      "dept": "BLDG",
+      "allocated": 620000
+    },
+    "ENG": {
+      "dept": "ENG",
+      "allocated": 230000
+    }
   },
-
   "capPools": [
-    { "id": "cap-bldguse-th", "center": "Building Use",  "pool": "Town Hall",              "amount": 140000, "basis": "Budgeted FTE occupying Town Hall",        "receiving": "Multiple departments", "recoverability": "Recoverable where fee-related", "review": "Reviewed" },
-    { "id": "cap-cm-leg",     "center": "City Manager",  "pool": "Council Support",        "amount": 610000, "basis": "Agenda item count",                        "receiving": "Multiple departments", "recoverability": "Partially recoverable",         "review": "Reviewed" },
-    { "id": "cap-cm-twdev",   "center": "City Manager",  "pool": "Town-wide Ops (Dev)",    "amount": 475000, "basis": "Budgeted expenditures",                    "receiving": "Multiple departments", "recoverability": "Partially recoverable",         "review": "Reviewed" },
-    { "id": "cap-fas-hr",     "center": "Finance & Admin", "pool": "Human Resources",      "amount":  82000, "basis": "Budgeted FTE",                             "receiving": "Multiple departments", "recoverability": "Partially recoverable",         "review": "Reviewed" },
-    { "id": "cap-fas-acct",   "center": "Finance & Admin", "pool": "Accounting Support",   "amount": 530000, "basis": "Accounting transactions",                  "receiving": "Multiple departments", "recoverability": "Partially recoverable",         "review": "Reviewed" },
-    { "id": "cap-atty",       "center": "City Attorney", "pool": "Town-wide Support",      "amount": 210000, "basis": "Budgeted expenditures",                    "receiving": "Multiple departments", "recoverability": "Legal review recommended",      "review": "Review"   },
-    { "id": "cap-ins",        "center": "Insurance",     "pool": "Town-wide Liability",    "amount": 445000, "basis": "Budgeted expenditures",                    "receiving": "Multiple departments", "recoverability": "Partially recoverable",         "review": "Reviewed" }
+    {
+      "id": "cap-bldguse-th",
+      "center": "Building Use",
+      "pool": "Town Hall",
+      "amount": 140000,
+      "basis": "Budgeted FTE occupying Town Hall",
+      "receiving": "Multiple departments",
+      "recoverability": "Recoverable where fee-related",
+      "review": "Reviewed"
+    },
+    {
+      "id": "cap-cm-leg",
+      "center": "City Manager",
+      "pool": "Council Support",
+      "amount": 610000,
+      "basis": "Agenda item count",
+      "receiving": "Multiple departments",
+      "recoverability": "Partially recoverable",
+      "review": "Reviewed"
+    },
+    {
+      "id": "cap-cm-twdev",
+      "center": "City Manager",
+      "pool": "Town-wide Ops (Dev)",
+      "amount": 475000,
+      "basis": "Budgeted expenditures",
+      "receiving": "Multiple departments",
+      "recoverability": "Partially recoverable",
+      "review": "Reviewed"
+    },
+    {
+      "id": "cap-fas-hr",
+      "center": "Finance & Admin",
+      "pool": "Human Resources",
+      "amount": 82000,
+      "basis": "Budgeted FTE",
+      "receiving": "Multiple departments",
+      "recoverability": "Partially recoverable",
+      "review": "Reviewed"
+    },
+    {
+      "id": "cap-fas-acct",
+      "center": "Finance & Admin",
+      "pool": "Accounting Support",
+      "amount": 530000,
+      "basis": "Accounting transactions",
+      "receiving": "Multiple departments",
+      "recoverability": "Partially recoverable",
+      "review": "Reviewed"
+    },
+    {
+      "id": "cap-atty",
+      "center": "City Attorney",
+      "pool": "Town-wide Support",
+      "amount": 210000,
+      "basis": "Budgeted expenditures",
+      "receiving": "Multiple departments",
+      "recoverability": "Legal review recommended",
+      "review": "Review"
+    },
+    {
+      "id": "cap-ins",
+      "center": "Insurance",
+      "pool": "Town-wide Liability",
+      "amount": 445000,
+      "basis": "Budgeted expenditures",
+      "receiving": "Multiple departments",
+      "recoverability": "Partially recoverable",
+      "review": "Reviewed"
+    }
   ],
-
-  "services": [
-    { "id": "plan-sdh",   "name": "Site Development Hearing Review",              "dept": "PLAN", "volume": 24,  "hours": 55,   "cost": 0, "fee": 4500,  "peer": 14200, "target": 100 },
-    { "id": "plan-fth",   "name": "Site Development — Fast Track Hearing",        "dept": "PLAN", "volume": 21,  "hours": 65,   "cost": 0, "fee": 5200,  "peer": 17000, "target": 100 },
-    { "id": "plan-minor", "name": "Site Development — Minor Admin Review",        "dept": "PLAN", "volume": 12,  "hours": 33,   "cost": 0, "fee": 1800,  "peer": 8500,  "target": 100 },
-    { "id": "plan-major", "name": "Site Development — Major Admin Review",        "dept": "PLAN", "volume": 5,   "hours": 38,   "cost": 0, "fee": 3200,  "peer": 9900,  "target": 100 },
-    { "id": "plan-cup",   "name": "Conditional Use Permit — Additional/Hearing",  "dept": "PLAN", "volume": 3,   "hours": 85,   "cost": 0, "fee": 6500,  "peer": 22000, "target": 100 },
-    { "id": "plan-fence", "name": "Fence Permit — Administrative",                "dept": "PLAN", "volume": 38,  "hours": 6,    "cost": 0, "fee": 580,   "peer": 1400,  "target": 100 },
-    { "id": "plan-oak",   "name": "Oak Tree Removal",                             "dept": "PLAN", "volume": 40,  "hours": 3.5,  "cost": 0, "fee": 280,   "peer": 810,   "target": 100 },
-    { "id": "plan-preap", "name": "Pre-Application — Formal Meeting",             "dept": "PLAN", "volume": 52,  "hours": 2.5,  "cost": 0, "fee": 550,   "peer": 580,   "target": 100 },
-    { "id": "plan-adu",   "name": "Pre-Application — ADU Formal Meeting",         "dept": "PLAN", "volume": 28,  "hours": 2,    "cost": 0, "fee": 420,   "peer": 560,   "target": 100 },
-    { "id": "plan-mod",   "name": "Permit Modification",                          "dept": "PLAN", "volume": 6,   "hours": 10,   "cost": 0, "fee": 1550,  "peer": 2500,  "target": 100 },
-    { "id": "plan-mvar",  "name": "Minor Variance — Planning Commission",         "dept": "PLAN", "volume": 5,   "hours": 20,   "cost": 0, "fee": 5400,  "peer": 5400,  "target": 100 },
-    { "id": "bldg-apr",   "name": "Additional Plan Review — Minimum Processing",  "dept": "BLDG", "volume": 175, "hours": 1.5,  "cost": 0, "fee": 380,   "peer": 530,   "target": 100 },
-    { "id": "bldg-ext",   "name": "Extension of Building Permit",                 "dept": "BLDG", "volume": 72,  "hours": 1,    "cost": 0, "fee": 210,   "peer": 360,   "target": 100 },
-    { "id": "bldg-tco",   "name": "Temporary Certificate of Occupancy",           "dept": "BLDG", "volume": 14,  "hours": 1,    "cost": 0, "fee": 520,   "peer": 360,   "target": 100 },
-    { "id": "bldg-pc",    "name": "Plan Check Administrative Fee (new)",          "dept": "BLDG", "volume": 130, "hours": 3.5,  "cost": 0, "fee": 320,   "peer": 1000,  "target": 100 },
-    { "id": "bldg-sfr",   "name": "Building Permit — New SFR",                   "dept": "BLDG", "volume": 35,  "hours": 46,   "cost": 0, "fee": 14500, "peer": 14500, "target": 100 },
-    { "id": "bldg-rem",   "name": "Building Permit — Major Remodel",              "dept": "BLDG", "volume": 80,  "hours": 17,   "cost": 0, "fee": 4500,  "peer": 5300,  "target": 100 },
-    { "id": "bldg-pool",  "name": "Swimming Pool / Spa Permit (new)",             "dept": "BLDG", "volume": 22,  "hours": 10,   "cost": 0, "fee": 2100,  "peer": 3200,  "target": 100 },
-    { "id": "bldg-solar", "name": "Residential Solar / PV Permit",               "dept": "BLDG", "volume": 80,  "hours": 1,    "cost": 0, "fee": 475,   "peer": 420,   "target": 80  },
-    { "id": "bldg-mep",   "name": "Stand-Alone MEP Permit",                      "dept": "BLDG", "volume": 100, "hours": 2,    "cost": 0, "fee": 350,   "peer": 700,   "target": 100 },
-    { "id": "eng-bldg",   "name": "Engineering Review of Building Permits",       "dept": "ENG",  "volume": 150, "hours": 4.5,  "cost": 0, "fee": 0,     "peer": 1450,  "target": 100 },
-    { "id": "eng-adu",    "name": "Engineering Review — ADU / SB9",               "dept": "ENG",  "volume": 42,  "hours": 4.5,  "cost": 0, "fee": 0,     "peer": 1450,  "target": 100 },
-    { "id": "eng-erosion","name": "Erosion Control Inspections",                  "dept": "ENG",  "volume": 190, "hours": 2.5,  "cost": 0, "fee": 235,   "peer": 660,   "target": 100 },
-    { "id": "eng-ency",   "name": "Encroachment Permit — Application Fee",       "dept": "ENG",  "volume": 200, "hours": 3,    "cost": 0, "fee": 360,   "peer": 845,   "target": 100 },
-    { "id": "eng-minor",  "name": "Site Development — Minor Engineering Review",  "dept": "ENG",  "volume": 62,  "hours": 5.5,  "cost": 0, "fee": 0,     "peer": 1680,  "target": 100 },
-    { "id": "eng-major",  "name": "Site Development — Major Engineering Review",  "dept": "ENG",  "volume": 14,  "hours": 11,   "cost": 0, "fee": 0,     "peer": 3340,  "target": 100 },
-    { "id": "eng-hourly", "name": "Engineering Blended Hourly Rate",              "dept": "ENG",  "volume": 26,  "hours": 1,    "cost": 0, "fee": 252,   "peer": 320,   "target": 100 }
-  ],
-
-  "workload": [
-    { "id": "plan-sdh",   "prior": 20,  "current": 24,  "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "plan-fth",   "prior": 18,  "current": 21,  "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "plan-minor", "prior": 10,  "current": 12,  "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "plan-major", "prior": 4,   "current": 5,   "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "plan-cup",   "prior": 2,   "current": 3,   "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "plan-fence", "prior": 35,  "current": 38,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "plan-oak",   "prior": 36,  "current": 40,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "plan-preap", "prior": 48,  "current": 52,  "unit": "Meeting",     "source": "imported", "status": "Imported" },
-    { "id": "plan-adu",   "prior": 24,  "current": 28,  "unit": "Meeting",     "source": "imported", "status": "Imported" },
-    { "id": "plan-mod",   "prior": 5,   "current": 6,   "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "plan-mvar",  "prior": 4,   "current": 5,   "unit": "Application", "source": "imported", "status": "Imported" },
-    { "id": "bldg-apr",   "prior": 160, "current": 175, "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-ext",   "prior": 65,  "current": 72,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-tco",   "prior": 12,  "current": 14,  "unit": "Certificate", "source": "imported", "status": "Imported" },
-    { "id": "bldg-pc",    "prior": 120, "current": 130, "unit": "Review",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-sfr",   "prior": 30,  "current": 35,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-rem",   "prior": 75,  "current": 80,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-pool",  "prior": 19,  "current": 22,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-solar", "prior": 72,  "current": 80,  "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "bldg-mep",   "prior": 92,  "current": 100, "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "eng-bldg",   "prior": 138, "current": 150, "unit": "Review",      "source": "imported", "status": "Imported" },
-    { "id": "eng-adu",    "prior": 36,  "current": 42,  "unit": "Review",      "source": "imported", "status": "Imported" },
-    { "id": "eng-erosion","prior": 172, "current": 190, "unit": "Inspection",  "source": "imported", "status": "Imported" },
-    { "id": "eng-ency",   "prior": 185, "current": 200, "unit": "Permit",      "source": "imported", "status": "Imported" },
-    { "id": "eng-minor",  "prior": 55,  "current": 62,  "unit": "Review",      "source": "imported", "status": "Imported" },
-    { "id": "eng-major",  "prior": 12,  "current": 14,  "unit": "Review",      "source": "imported", "status": "Imported" },
-    { "id": "eng-hourly", "prior": 22,  "current": 26,  "unit": "Hour",        "source": "imported", "status": "Imported" }
-  ],
-
-  "policyTargets": [
-    { "id": "policy-plan", "dept": "PLAN", "target": 80,  "note": "Partial General Fund subsidy — housing policy" },
-    { "id": "policy-bldg", "dept": "BLDG", "target": 100, "note": "Full cost recovery" },
-    { "id": "policy-eng",  "dept": "ENG",  "target": 90,  "note": "Slight subsidy for infrastructure development" }
-  ],
-
-  "policyExceptions": [
-    { "id": "exc-adu",      "fee": "ADU Permit",             "target": 40, "note": "Housing affordability incentive" },
-    { "id": "exc-solar",    "fee": "Residential Solar / PV Permit", "target": 65, "note": "Sustainability policy — reduced from 80%" }
-  ],
-
-  "lineage": {},
-  "pendingReview": { "positions": [], "operating": [], "services": [], "fees": [], "workload": [], "cap": [] },
-  "aiSuggestions": { "positions": [], "operating": [], "services": [], "fees": [], "workload": [], "cap": [] },
-  "aiStatus": {
-    "positions": { "running": false },
-    "operating": { "running": false },
-    "services":  { "running": false },
-    "fees":      { "running": false },
-    "workload":  { "running": false },
-    "cap":       { "running": false }
+  "capCenterGlCodes": {
+    "City Manager": "001-1100",
+    "City Attorney": "001-1200",
+    "Finance & Admin": "001-1300",
+    "Insurance": "001-1500",
+    "Building Use": "001-1700"
   },
-  "capCenterOrder": ["Finance & Admin", "City Manager", "Insurance", "City Attorney", "Building Use"],
+  "capCenterOrder": [
+    "Finance & Admin",
+    "City Manager",
+    "Insurance",
+    "City Attorney",
+    "Building Use"
+  ],
+  "services": [
+    {
+      "id": "plan-sdh",
+      "name": "Site Development Hearing Review",
+      "dept": "PLAN",
+      "volume": 24,
+      "hours": 55,
+      "cost": 0,
+      "fee": 4500,
+      "peer": 14200,
+      "target": 100
+    },
+    {
+      "id": "plan-fth",
+      "name": "Site Development — Fast Track Hearing",
+      "dept": "PLAN",
+      "volume": 21,
+      "hours": 65,
+      "cost": 0,
+      "fee": 5200,
+      "peer": 17000,
+      "target": 100
+    },
+    {
+      "id": "plan-minor",
+      "name": "Site Development — Minor Admin Review",
+      "dept": "PLAN",
+      "volume": 12,
+      "hours": 33,
+      "cost": 0,
+      "fee": 1800,
+      "peer": 8500,
+      "target": 100
+    },
+    {
+      "id": "plan-major",
+      "name": "Site Development — Major Admin Review",
+      "dept": "PLAN",
+      "volume": 5,
+      "hours": 38,
+      "cost": 0,
+      "fee": 3200,
+      "peer": 9900,
+      "target": 100
+    },
+    {
+      "id": "plan-cup",
+      "name": "Conditional Use Permit — Additional/Hearing",
+      "dept": "PLAN",
+      "volume": 3,
+      "hours": 85,
+      "cost": 0,
+      "fee": 6500,
+      "peer": 22000,
+      "target": 100
+    },
+    {
+      "id": "plan-fence",
+      "name": "Fence Permit — Administrative",
+      "dept": "PLAN",
+      "volume": 38,
+      "hours": 6,
+      "cost": 0,
+      "fee": 580,
+      "peer": 1400,
+      "target": 100
+    },
+    {
+      "id": "plan-oak",
+      "name": "Oak Tree Removal",
+      "dept": "PLAN",
+      "volume": 40,
+      "hours": 3.5,
+      "cost": 0,
+      "fee": 280,
+      "peer": 810,
+      "target": 100
+    },
+    {
+      "id": "plan-preap",
+      "name": "Pre-Application — Formal Meeting",
+      "dept": "PLAN",
+      "volume": 52,
+      "hours": 2.5,
+      "cost": 0,
+      "fee": 550,
+      "peer": 580,
+      "target": 100
+    },
+    {
+      "id": "plan-adu",
+      "name": "Pre-Application — ADU Formal Meeting",
+      "dept": "PLAN",
+      "volume": 28,
+      "hours": 2,
+      "cost": 0,
+      "fee": 420,
+      "peer": 560,
+      "target": 100
+    },
+    {
+      "id": "plan-mod",
+      "name": "Permit Modification",
+      "dept": "PLAN",
+      "volume": 6,
+      "hours": 10,
+      "cost": 0,
+      "fee": 1550,
+      "peer": 2500,
+      "target": 100
+    },
+    {
+      "id": "plan-mvar",
+      "name": "Minor Variance — Planning Commission",
+      "dept": "PLAN",
+      "volume": 5,
+      "hours": 20,
+      "cost": 0,
+      "fee": 5400,
+      "peer": 5400,
+      "target": 100
+    },
+    {
+      "id": "bldg-apr",
+      "name": "Additional Plan Review — Minimum Processing",
+      "dept": "BLDG",
+      "volume": 175,
+      "hours": 1.5,
+      "cost": 0,
+      "fee": 380,
+      "peer": 530,
+      "target": 100
+    },
+    {
+      "id": "bldg-ext",
+      "name": "Extension of Building Permit",
+      "dept": "BLDG",
+      "volume": 72,
+      "hours": 1,
+      "cost": 0,
+      "fee": 210,
+      "peer": 360,
+      "target": 100
+    },
+    {
+      "id": "bldg-tco",
+      "name": "Temporary Certificate of Occupancy",
+      "dept": "BLDG",
+      "volume": 14,
+      "hours": 1,
+      "cost": 0,
+      "fee": 520,
+      "peer": 360,
+      "target": 100
+    },
+    {
+      "id": "bldg-pc",
+      "name": "Plan Check Administrative Fee (new)",
+      "dept": "BLDG",
+      "volume": 130,
+      "hours": 3.5,
+      "cost": 0,
+      "fee": 320,
+      "peer": 1000,
+      "target": 100
+    },
+    {
+      "id": "bldg-sfr",
+      "name": "Building Permit — New SFR",
+      "dept": "BLDG",
+      "volume": 35,
+      "hours": 46,
+      "cost": 0,
+      "fee": 14500,
+      "peer": 14500,
+      "target": 100
+    },
+    {
+      "id": "bldg-rem",
+      "name": "Building Permit — Major Remodel",
+      "dept": "BLDG",
+      "volume": 80,
+      "hours": 17,
+      "cost": 0,
+      "fee": 4500,
+      "peer": 5300,
+      "target": 100
+    },
+    {
+      "id": "bldg-pool",
+      "name": "Swimming Pool / Spa Permit (new)",
+      "dept": "BLDG",
+      "volume": 22,
+      "hours": 10,
+      "cost": 0,
+      "fee": 2100,
+      "peer": 3200,
+      "target": 100
+    },
+    {
+      "id": "bldg-solar",
+      "name": "Residential Solar / PV Permit",
+      "dept": "BLDG",
+      "volume": 80,
+      "hours": 1,
+      "cost": 0,
+      "fee": 475,
+      "peer": 420,
+      "target": 80
+    },
+    {
+      "id": "bldg-mep",
+      "name": "Stand-Alone MEP Permit",
+      "dept": "BLDG",
+      "volume": 100,
+      "hours": 2,
+      "cost": 0,
+      "fee": 350,
+      "peer": 700,
+      "target": 100
+    },
+    {
+      "id": "eng-bldg",
+      "name": "Engineering Review of Building Permits",
+      "dept": "ENG",
+      "volume": 150,
+      "hours": 4.5,
+      "cost": 0,
+      "fee": 0,
+      "peer": 1450,
+      "target": 100
+    },
+    {
+      "id": "eng-adu",
+      "name": "Engineering Review — ADU / SB9",
+      "dept": "ENG",
+      "volume": 42,
+      "hours": 4.5,
+      "cost": 0,
+      "fee": 0,
+      "peer": 1450,
+      "target": 100
+    },
+    {
+      "id": "eng-erosion",
+      "name": "Erosion Control Inspections",
+      "dept": "ENG",
+      "volume": 190,
+      "hours": 2.5,
+      "cost": 0,
+      "fee": 235,
+      "peer": 660,
+      "target": 100
+    },
+    {
+      "id": "eng-ency",
+      "name": "Encroachment Permit — Application Fee",
+      "dept": "ENG",
+      "volume": 200,
+      "hours": 3,
+      "cost": 0,
+      "fee": 360,
+      "peer": 845,
+      "target": 100
+    },
+    {
+      "id": "eng-minor",
+      "name": "Site Development — Minor Engineering Review",
+      "dept": "ENG",
+      "volume": 62,
+      "hours": 5.5,
+      "cost": 0,
+      "fee": 0,
+      "peer": 1680,
+      "target": 100
+    },
+    {
+      "id": "eng-major",
+      "name": "Site Development — Major Engineering Review",
+      "dept": "ENG",
+      "volume": 14,
+      "hours": 11,
+      "cost": 0,
+      "fee": 0,
+      "peer": 3340,
+      "target": 100
+    },
+    {
+      "id": "eng-hourly",
+      "name": "Engineering Blended Hourly Rate",
+      "dept": "ENG",
+      "volume": 26,
+      "hours": 1,
+      "cost": 0,
+      "fee": 252,
+      "peer": 320,
+      "target": 100
+    },
+    {
+      "id": "pr-recclass",
+      "name": "Recreation Class Registration",
+      "dept": "PARKS",
+      "volume": 1450,
+      "hours": 0.6,
+      "cost": 0,
+      "fee": 85,
+      "peer": 110,
+      "target": 30
+    },
+    {
+      "id": "pr-fieldp",
+      "name": "Athletic Field Use Permit",
+      "dept": "PARKS",
+      "volume": 220,
+      "hours": 1,
+      "cost": 0,
+      "fee": 95,
+      "peer": 140,
+      "target": 30
+    },
+    {
+      "id": "pr-shelter",
+      "name": "Picnic Shelter Rental",
+      "dept": "PARKS",
+      "volume": 380,
+      "hours": 0.5,
+      "cost": 0,
+      "fee": 65,
+      "peer": 95,
+      "target": 30
+    },
+    {
+      "id": "pr-pool",
+      "name": "Aquatics Program Registration",
+      "dept": "PARKS",
+      "volume": 640,
+      "hours": 0.5,
+      "cost": 0,
+      "fee": 110,
+      "peer": 135,
+      "target": 30
+    },
+    {
+      "id": "pr-roomrnt",
+      "name": "Community Room Rental — Hourly",
+      "dept": "PARKS",
+      "volume": 185,
+      "hours": 1.2,
+      "cost": 0,
+      "fee": 75,
+      "peer": 120,
+      "target": 30
+    },
+    {
+      "id": "pd-alarm",
+      "name": "Alarm Permit — Annual",
+      "dept": "PD",
+      "volume": 820,
+      "hours": 0.4,
+      "cost": 0,
+      "fee": 45,
+      "peer": 65,
+      "target": 100
+    },
+    {
+      "id": "pd-falsearm",
+      "name": "False Alarm Fee — Third Occurrence",
+      "dept": "PD",
+      "volume": 140,
+      "hours": 0.8,
+      "cost": 0,
+      "fee": 100,
+      "peer": 150,
+      "target": 100
+    },
+    {
+      "id": "pd-fprint",
+      "name": "Fingerprinting — Live Scan",
+      "dept": "PD",
+      "volume": 580,
+      "hours": 0.4,
+      "cost": 0,
+      "fee": 55,
+      "peer": 78,
+      "target": 100
+    },
+    {
+      "id": "pd-evt",
+      "name": "Special Event — Police Coverage",
+      "dept": "PD",
+      "volume": 85,
+      "hours": 4,
+      "cost": 0,
+      "fee": 425,
+      "peer": 680,
+      "target": 100
+    },
+    {
+      "id": "pd-records",
+      "name": "Police Records Request",
+      "dept": "PD",
+      "volume": 310,
+      "hours": 0.5,
+      "cost": 0,
+      "fee": 35,
+      "peer": 45,
+      "target": 100
+    },
+    {
+      "id": "fr-inspbiz",
+      "name": "Annual Business Fire Inspection",
+      "dept": "FIRE",
+      "volume": 680,
+      "hours": 1,
+      "cost": 0,
+      "fee": 175,
+      "peer": 225,
+      "target": 75
+    },
+    {
+      "id": "fr-planrev",
+      "name": "Fire Plan Review — Commercial",
+      "dept": "FIRE",
+      "volume": 165,
+      "hours": 4.5,
+      "cost": 0,
+      "fee": 580,
+      "peer": 890,
+      "target": 75
+    },
+    {
+      "id": "fr-hazmat",
+      "name": "Hazardous Materials Permit",
+      "dept": "FIRE",
+      "volume": 95,
+      "hours": 3,
+      "cost": 0,
+      "fee": 425,
+      "peer": 650,
+      "target": 75
+    },
+    {
+      "id": "fr-occ",
+      "name": "Place of Assembly Annual Permit",
+      "dept": "FIRE",
+      "volume": 78,
+      "hours": 2,
+      "cost": 0,
+      "fee": 260,
+      "peer": 420,
+      "target": 75
+    },
+    {
+      "id": "fr-special",
+      "name": "Special Event Fire Safety Review",
+      "dept": "FIRE",
+      "volume": 42,
+      "hours": 1.8,
+      "cost": 0,
+      "fee": 195,
+      "peer": 315,
+      "target": 75
+    }
+  ],
+  "workload": [
+    {
+      "id": "plan-sdh",
+      "prior": 20,
+      "current": 24,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-fth",
+      "prior": 18,
+      "current": 21,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-minor",
+      "prior": 10,
+      "current": 12,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-major",
+      "prior": 4,
+      "current": 5,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-cup",
+      "prior": 2,
+      "current": 3,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-fence",
+      "prior": 35,
+      "current": 38,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-oak",
+      "prior": 36,
+      "current": 40,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-preap",
+      "prior": 48,
+      "current": 52,
+      "unit": "Meeting",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-adu",
+      "prior": 24,
+      "current": 28,
+      "unit": "Meeting",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-mod",
+      "prior": 5,
+      "current": 6,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "plan-mvar",
+      "prior": 4,
+      "current": 5,
+      "unit": "Application",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-apr",
+      "prior": 160,
+      "current": 175,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-ext",
+      "prior": 65,
+      "current": 72,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-tco",
+      "prior": 12,
+      "current": 14,
+      "unit": "Certificate",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-pc",
+      "prior": 120,
+      "current": 130,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-sfr",
+      "prior": 30,
+      "current": 35,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-rem",
+      "prior": 75,
+      "current": 80,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-pool",
+      "prior": 19,
+      "current": 22,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-solar",
+      "prior": 72,
+      "current": 80,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "bldg-mep",
+      "prior": 92,
+      "current": 100,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-bldg",
+      "prior": 138,
+      "current": 150,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-adu",
+      "prior": 36,
+      "current": 42,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-erosion",
+      "prior": 172,
+      "current": 190,
+      "unit": "Inspection",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-ency",
+      "prior": 185,
+      "current": 200,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-minor",
+      "prior": 55,
+      "current": 62,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-major",
+      "prior": 12,
+      "current": 14,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "eng-hourly",
+      "prior": 22,
+      "current": 26,
+      "unit": "Hour",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pr-recclass",
+      "prior": 1363,
+      "current": 1450,
+      "unit": "Registration",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pr-fieldp",
+      "prior": 240,
+      "current": 220,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pr-shelter",
+      "prior": 365,
+      "current": 380,
+      "unit": "Rental",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pr-pool",
+      "prior": 582,
+      "current": 640,
+      "unit": "Registration",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pr-roomrnt",
+      "prior": 194,
+      "current": 185,
+      "unit": "Rental",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pd-alarm",
+      "prior": 763,
+      "current": 820,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pd-falsearm",
+      "prior": 150,
+      "current": 140,
+      "unit": "Incident",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pd-fprint",
+      "prior": 551,
+      "current": 580,
+      "unit": "Scan",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pd-evt",
+      "prior": 94,
+      "current": 85,
+      "unit": "Event",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "pd-records",
+      "prior": 301,
+      "current": 310,
+      "unit": "Request",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "fr-inspbiz",
+      "prior": 626,
+      "current": 680,
+      "unit": "Inspection",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "fr-planrev",
+      "prior": 178,
+      "current": 165,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "fr-hazmat",
+      "prior": 91,
+      "current": 95,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "fr-occ",
+      "prior": 81,
+      "current": 78,
+      "unit": "Permit",
+      "source": "imported",
+      "status": "Imported"
+    },
+    {
+      "id": "fr-special",
+      "prior": 39,
+      "current": 42,
+      "unit": "Review",
+      "source": "imported",
+      "status": "Imported"
+    }
+  ],
+  "policyTargets": [
+    {
+      "id": "policy-plan",
+      "dept": "PLAN",
+      "target": 80,
+      "note": "Partial General Fund subsidy — housing policy"
+    },
+    {
+      "id": "policy-bldg",
+      "dept": "BLDG",
+      "target": 100,
+      "note": "Full cost recovery"
+    },
+    {
+      "id": "policy-eng",
+      "dept": "ENG",
+      "target": 90,
+      "note": "Slight subsidy for infrastructure development"
+    },
+    {
+      "id": "policy-parks",
+      "dept": "PARKS",
+      "target": 30,
+      "note": "Recreation programs heavily subsidized — community benefit policy"
+    },
+    {
+      "id": "policy-pd",
+      "dept": "PD",
+      "target": 100,
+      "note": "Full cost recovery for non-emergency administrative services"
+    },
+    {
+      "id": "policy-fire",
+      "dept": "FIRE",
+      "target": 75,
+      "note": "Partial subsidy on fire-prevention activities"
+    }
+  ],
+  "policyExceptions": [
+    {
+      "id": "exc-adu",
+      "fee": "ADU Permit",
+      "target": 40,
+      "note": "Housing affordability incentive"
+    },
+    {
+      "id": "exc-solar",
+      "fee": "Residential Solar / PV Permit",
+      "target": 65,
+      "note": "Sustainability policy — reduced from 80%"
+    }
+  ],
+  "lineage": {},
+  "pendingReview": {
+    "positions": [],
+    "operating": [],
+    "services": [],
+    "fees": [],
+    "workload": [],
+    "cap": []
+  },
+  "aiSuggestions": {
+    "positions": [],
+    "operating": [],
+    "services": [],
+    "fees": [],
+    "workload": [],
+    "cap": []
+  },
+  "aiStatus": {
+    "positions": {
+      "running": false
+    },
+    "operating": {
+      "running": false
+    },
+    "services": {
+      "running": false
+    },
+    "fees": {
+      "running": false
+    },
+    "workload": {
+      "running": false
+    },
+    "cap": {
+      "running": false
+    }
+  },
   "imports": []
 }

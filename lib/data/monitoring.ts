@@ -8,7 +8,7 @@
 import type { DeptCode, PolicyTarget } from "../types";
 import type { FeeComparison, PolicyImpact } from "../calc";
 import type { BuildImportLog } from "../store";
-import { DEPTS } from "./departments";
+import { DEPTS, FEE_DEPTS } from "./departments";
 
 export type Trend = "up" | "down" | "flat";
 export type RecoveryStatus = "below" | "watch" | "on-track";
@@ -76,8 +76,6 @@ interface MonitoringInput {
   policyTargets: PolicyTarget[];
   imports: BuildImportLog[];
 }
-
-const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
 export function deriveMonitoringData(input: MonitoringInput): MonitoringData {
   const summary = deriveSummary(input);

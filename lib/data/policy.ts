@@ -4,6 +4,11 @@ import type { PolicyException, PolicyTarget } from "../types";
  * Recovery targets are policy inputs — anything below 100% is intentionally
  * subsidized by the General Fund. */
 
+/** LAH baseline only includes the three depts that actually have data
+ *  in the seed (Planning, Building, Engineering). Other jurisdictions
+ *  bring their own policy targets via their seedFile snapshot — see
+ *  public/test-seed.json for City of Maplewood which adds PARKS / PD /
+ *  FIRE targets alongside these three. */
 export const POLICY_TARGETS: PolicyTarget[] = [
   { id: "policy-plan", dept: "PLAN", target:  70, note: "General Fund subsidy" },
   { id: "policy-bldg", dept: "BLDG", target: 100, note: "Full cost recovery" },

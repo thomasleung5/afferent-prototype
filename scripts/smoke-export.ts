@@ -18,23 +18,18 @@ import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
 } from "../lib/calc";
 import type { DeptCode } from "../lib/types";
+import { FEE_DEPTS } from "../lib/data/departments";
 
 async function main() {
   // Re-build derived state the way BuildContext does.
   const labor = deptLabor(POSITIONS);
-  const hoursByDept: Record<DeptCode, number> = {
-    PLAN: labor.PLAN.productiveHours,
-    BLDG: labor.BLDG.productiveHours,
-    ENG:  labor.ENG.productiveHours,
-  };
+  const hoursByDept = {} as Record<DeptCode, number>;
+  for (const d of FEE_DEPTS) hoursByDept[d] = labor[d].productiveHours;
   const operatingByDept = deptOperating(OPERATING, hoursByDept);
   // Smoke test runs without the step-down engine — feed deptFBHR a zero
   // CAP allocation so the rest of the pipeline still produces output.
-  const zeroCapAllocated: Record<DeptCode, { dept: DeptCode; allocated: number }> = {
-    PLAN: { dept: "PLAN", allocated: 0 },
-    BLDG: { dept: "BLDG", allocated: 0 },
-    ENG:  { dept: "ENG",  allocated: 0 },
-  };
+  const zeroCapAllocated = {} as Record<DeptCode, { dept: DeptCode; allocated: number }>;
+  for (const d of FEE_DEPTS) zeroCapAllocated[d] = { dept: d, allocated: 0 };
   const fbhr = deptFBHR(labor, operatingByDept, zeroCapAllocated);
   const costs = serviceCosts(SERVICES, fbhr);
   const comparisons = feeComparisons(costs, SERVICES, POLICY_TARGETS, POLICY_EXCEPTIONS);

@@ -2,6 +2,7 @@ import { useCallback } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, SectionEyebrow } from "@/components/ui";
 import { UpdatePacketView } from "@/features/annual/UpdatePacketView";
+import { SaveVersionActions } from "@/features/annual/SaveVersionActions";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import {
   deriveAnnualChanges, derivePacketSummary, sectionCodeFor,
@@ -80,6 +81,7 @@ export default function AnnualPacketPage() {
         title="Annual update packet"
         subtitle="Council outputs assembled from the model run."
         actions={<>
+          <SaveVersionActions/>
           <Btn kind="ghost" onClick={exportStaffReport}>
             <Icon name="download" size={13}/> Export staff report
           </Btn>

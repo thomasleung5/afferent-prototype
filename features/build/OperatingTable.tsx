@@ -8,7 +8,9 @@ import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG", "SHARED:CDS"];
+import { FEE_DEPTS, deptName } from "@/lib/data/departments";
+
+const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
 const CATEGORIES: OpCategory[] = [
   "Software & subscriptions",
   "Professional services",
@@ -49,11 +51,17 @@ export function OperatingTable() {
   }), [operating, deptFilter, categoryFilter, includeFilter]);
 
   const deptOptions = [
-    { value: "ALL",        label: "All",         count: operating.length },
-    { value: "PLAN",       label: "Planning",    count: operating.filter((r) => r.dept === "PLAN").length },
-    { value: "BLDG",       label: "Building",    count: operating.filter((r) => r.dept === "BLDG").length },
-    { value: "ENG",        label: "Engineering", count: operating.filter((r) => r.dept === "ENG").length },
-    { value: "SHARED:CDS", label: "Shared",      count: operating.filter((r) => r.dept === "SHARED:CDS").length },
+    { value: "ALL", label: "All", count: operating.length },
+    ...FEE_DEPTS
+      .map((code) => ({
+        value: code,
+        label: deptName(code),
+        count: operating.filter((r) => r.dept === code).length,
+      }))
+      .filter((o) => o.count > 0),
+    ...(operating.some((r) => r.dept === "SHARED:CDS")
+      ? [{ value: "SHARED:CDS", label: "Shared", count: operating.filter((r) => r.dept === "SHARED:CDS").length }]
+      : []),
   ];
 
   const categoryCounts: Record<string, number> = {};

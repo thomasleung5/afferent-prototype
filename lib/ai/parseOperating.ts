@@ -1,4 +1,5 @@
 import type { OperatingLine, OpCategory, OpDept } from "@/lib/types";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import type { SourceLineage } from "@/lib/parse/types";
 
 interface OperatingRow {
@@ -96,7 +97,7 @@ export function operatingToExtractionResult(
 
 function normDept(v: string): OpDept | null {
   const s = v.trim().toUpperCase();
-  if (s === "PLAN" || s === "BLDG" || s === "ENG") return s;
+  if ((FEE_DEPTS as readonly string[]).includes(s)) return s as OpDept;
   if (s === "SHARED:CDS" || s === "SHARED" || s === "CDS") return "SHARED:CDS";
   return null;
 }

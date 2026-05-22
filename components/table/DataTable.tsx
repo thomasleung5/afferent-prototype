@@ -154,12 +154,15 @@ export function DataTable<Row extends DataTableRow>({
 
       <div style={{ overflowX: minWidth ? "auto" : "visible" }}>
         <div style={{
-          // When minWidth is set, the inner content must size to its
-          // natural content width (max-content) so the middle scroll
-          // container can detect overflow. Without this, `minWidth`
-          // alone leaves the inner block at the parent's width and
-          // the grid rows inside silently squeeze.
-          width: minWidth ? "max-content" : "auto",
+          // When minWidth is set: inner fills the parent on wide
+          // viewports (so the header underline and column tracks span
+          // the full available width), but min-width enforces a floor
+          // — when the parent is narrower than minWidth, the inner is
+          // forced wider than the parent and the overflow-x: auto
+          // wrapper above renders a scrollbar.
+          //
+          // Without minWidth: width: auto is parent-width as usual.
+          width: minWidth ? "100%" : "auto",
           minWidth: minWidth ?? "auto",
         }}>
           {/* Header */}
@@ -460,10 +463,23 @@ function FilterChips({ f }: { f: FilterGroup }) {
 
 // ---------- Filter helpers (re-exported for callers) ----------
 
+import { FEE_DEPTS, deptName } from "@/lib/data/departments";
+import type { DeptCode } from "@/lib/types";
+
+/** Build a department filter from a row set.
+ *
+ *  - Iterates in FEE_DEPTS order (canonical registry order) so chip
+ *    layout is consistent across tables and survives switching demo
+ *    workspaces. Departments with zero matching rows are omitted —
+ *    chip set reflects the data actually present in the active
+ *    jurisdiction.
+ *  - Labels default to the dept registry's display name.
+ *  - The optional `labels` argument overrides individual entries
+ *    (e.g. for non-DeptCode field values like "SHARED:CDS"). */
 export function deriveDeptFilter<Row>(
   rows: Row[],
   field: keyof Row = "dept" as keyof Row,
-  labels: Record<string, string> = { PLAN: "Planning", BLDG: "Building", ENG: "Engineering" },
+  labels: Record<string, string> = {},
 ) {
   const counts: Record<string, number> = {};
   for (const r of rows) {
@@ -471,6 +487,14 @@ export function deriveDeptFilter<Row>(
     if (d) counts[d] = (counts[d] ?? 0) + 1;
   }
   const options: FilterGroup["options"] = [{ value: "ALL", label: "All", count: rows.length }];
+  for (const code of FEE_DEPTS) {
+    const v = counts[code] ?? 0;
+    if (v === 0) continue;
+    options.push({ value: code, label: labels[code] ?? deptName(code as DeptCode), count: v });
+    delete counts[code];
+  }
+  // Any other distinct values (e.g. "SHARED:CDS") append in insertion
+  // order so callers' explicit labels still work.
   for (const [k, v] of Object.entries(counts)) {
     options.push({ value: k, label: labels[k] ?? k, count: v });
   }

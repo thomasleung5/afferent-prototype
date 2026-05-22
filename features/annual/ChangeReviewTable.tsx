@@ -3,6 +3,7 @@ import { Link } from "@tanstack/react-router";
 import { DataTable, type Column, type FilterGroup } from "@/components/table";
 import { StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
+import { FeeChangeExplanations } from "@/features/annual/FeeChangeExplanations";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import {
@@ -290,6 +291,8 @@ export function ChangeReviewTable() {
           )}
         />
       </div>
+
+      <FeeChangeExplanations/>
     </div>
   );
 }

@@ -4,6 +4,7 @@ import { useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import { Btn, Icon } from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import { basisForPool } from "@/lib/data/capStepDown";
 import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
 import { downloadBlob } from "@/lib/export/excel";
@@ -735,7 +736,7 @@ function FbhrRollup({ payload }: { payload: CapExportPayload }) {
           </tr>
         </thead>
         <tbody>
-          {(["PLAN", "BLDG", "ENG"] as const).map((d) => {
+          {FEE_DEPTS.map((d) => {
             const v = payload.fbhrRollup[d] ?? 0;
             return (
               <tr key={d}>

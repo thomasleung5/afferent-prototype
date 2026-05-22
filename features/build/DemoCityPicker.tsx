@@ -31,10 +31,13 @@ export function DemoCityPicker() {
   }, [open]);
 
   async function handleSelect(j: Jurisdiction) {
-    if (!j.dataAvailable || j.id === active.id) {
+    if (!j.dataAvailable) {
       setOpen(false);
       return;
     }
+    // Allow re-selecting the active jurisdiction so the user can force a
+    // reload of the seed (useful when the seed JSON has been updated
+    // out-of-band and the persisted store has stale data).
     setOpen(false);
     setWorking(true);
     try { await switchJurisdiction(j.id); }
@@ -109,10 +112,13 @@ export function DemoCityPicker() {
                     {j.name}
                   </span>
                   {isActive && live && (
-                    <span className="mono" style={{
-                      fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
-                      color: "var(--pos)", textTransform: "uppercase",
-                    }}>Active</span>
+                    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 6 }}>
+                      <span className="mono" style={{
+                        fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
+                        color: "var(--pos)", textTransform: "uppercase",
+                      }}>Active</span>
+                      <span style={{ fontSize: 10, color: "var(--ink-3)" }}>· click to reload</span>
+                    </span>
                   )}
                   {!live && (
                     <span className="mono" style={{

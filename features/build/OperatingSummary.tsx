@@ -3,10 +3,11 @@ import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/compo
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
-const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";
+const ORDER: DeptCode[] = FEE_DEPTS;
+const labelOf = deptName;
 
 /** Per-dept operating rollup with category ledger drilldown. Shared CDS lines
  *  flow in via productive-hours allocation; each dept row expands to show
@@ -18,7 +19,15 @@ export function OperatingSummary() {
   const excluded = operating.filter((l) => !l.include);
   const excludedTotal = excluded.reduce((a, l) => a + l.amount, 0);
 
-  const rows: DeptSummaryRow[] = ORDER.map((d) => {
+  // Only emit a row when the department actually has operating data in
+  // the active jurisdiction. Avoids 3 dead "$0" rows on LAH for the
+  // additional depts that aren't populated there.
+  const activeDepts = ORDER.filter((d) => {
+    const r = byDept[d];
+    return r && (r.total > 0 || operating.some((l) => l.dept === d));
+  });
+
+  const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = byDept[d];
     const direct = operating.filter((l) => l.include && l.dept === d);
     const shared = operating.filter((l) => l.include && l.dept === "SHARED:CDS");

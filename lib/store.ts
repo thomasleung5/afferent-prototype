@@ -8,6 +8,7 @@ import {
   CAP_POOLS,
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import { WORKLOAD } from "@/lib/data/workload";
 import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
@@ -46,6 +47,44 @@ export interface BuildImportLog {
   domain: Domain;
   result: ImportApplyResult;
   at: string;
+}
+
+export type StudyVersionStatus = "draft" | "review" | "published" | "adopted" | "archived";
+
+export interface BuildSnapshot {
+  positions: Position[];
+  operating: OperatingLine[];
+  capPools: CapPool[];
+  capCenterTotals: Record<string, number>;
+  capCenterDisallowed: Record<string, number>;
+  capCenterGlCodes: Record<string, string>;
+  capCenterSources: Record<string, { source: SourceTag; sourceFile?: string }>;
+  studyContext: StudyContext;
+  allocationBases: AllocationBasis[];
+  capBasisUnits: BasisUnitRow[];
+  capDirectAllocations: DirectAllocationRow[];
+  workload: WorkloadRow[];
+  services: Service[];
+  policyTargets: PolicyTarget[];
+  policyExceptions: PolicyException[];
+  lineage: Record<string, SourceLineage>;
+  pendingReview: Record<Domain, UnmappedRow[]>;
+  capCenterOrder: string[];
+  imports: BuildImportLog[];
+  activeJurisdictionId: string;
+  activeFiscalYear: string;
+}
+
+export interface StudyVersion {
+  id: string;
+  versionNumber: number;
+  label: string;
+  status: StudyVersionStatus;
+  createdAt: string;
+  createdBy: string;
+  notes?: string;
+  sourceImportIds: number[];
+  snapshot: BuildSnapshot;
 }
 
 /* ── State & action interfaces ── */
@@ -94,6 +133,8 @@ interface BuildState {
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
+  versions: StudyVersion[];
+  comparisonVersionId: string | null;
   /** Active demo jurisdiction the UI is bound to. Read via
    *  useActiveJurisdiction(); switched via setActiveJurisdiction. Defaults
    *  to "los-altos-hills" — the only jurisdiction with full seed data
@@ -176,6 +217,8 @@ interface BuildActions {
   /** Set the active fiscal year. Caller is responsible for passing a
    *  value that belongs to the current jurisdiction's fiscalYears. */
   setActiveFiscalYear: (fy: string) => void;
+  createVersion: (input?: { label?: string; status?: StudyVersionStatus; notes?: string }) => StudyVersion;
+  setComparisonVersion: (id: string | null) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -195,7 +238,7 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
 
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
-  return {
+  const state: BuildSnapshot = {
     positions: POSITIONS.map((p) => ({ ...p })),
     operating: OPERATING.map((o) => ({ ...o })),
     capPools: pools,
@@ -224,6 +267,22 @@ const initialState = (): BuildState => {
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
+  };
+  const seedVersion: StudyVersion = {
+    id: "version-seed-baseline",
+    versionNumber: 1,
+    label: "Seed baseline",
+    status: "adopted",
+    createdAt: "2026-01-01T00:00:00.000Z",
+    createdBy: "system",
+    notes: "Initial model snapshot for variance explanations.",
+    sourceImportIds: state.imports.map((i) => i.id),
+    snapshot: createBuildSnapshot(state),
+  };
+  return {
+    ...state,
+    versions: [seedVersion],
+    comparisonVersionId: seedVersion.id,
   };
 };
 
@@ -260,6 +319,58 @@ function toApplyResult<T>(
     unmapped: r.stats.unmapped,
     duplicates: r.stats.duplicates,
     warnings,
+  };
+}
+
+function cloneJson<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
+}
+
+export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
+  return cloneJson({
+    positions: state.positions,
+    operating: state.operating,
+    capPools: state.capPools,
+    capCenterTotals: state.capCenterTotals,
+    capCenterDisallowed: state.capCenterDisallowed,
+    capCenterGlCodes: state.capCenterGlCodes,
+    capCenterSources: state.capCenterSources,
+    studyContext: state.studyContext,
+    allocationBases: state.allocationBases,
+    capBasisUnits: state.capBasisUnits,
+    capDirectAllocations: state.capDirectAllocations,
+    workload: state.workload,
+    services: state.services,
+    policyTargets: state.policyTargets,
+    policyExceptions: state.policyExceptions,
+    lineage: state.lineage,
+    pendingReview: state.pendingReview,
+    capCenterOrder: state.capCenterOrder,
+    imports: state.imports,
+    activeJurisdictionId: state.activeJurisdictionId,
+    activeFiscalYear: state.activeFiscalYear,
+  });
+}
+
+function makeStudyVersion(
+  state: BuildSnapshot,
+  input: { label?: string; status?: StudyVersionStatus; notes?: string } = {},
+): StudyVersion {
+  const existing = "versions" in state && Array.isArray((state as BuildState).versions)
+    ? (state as BuildState).versions
+    : [];
+  const versionNumber = existing.length + 1;
+  const createdAt = new Date().toISOString();
+  return {
+    id: `version-${Date.now()}-${versionNumber}`,
+    versionNumber,
+    label: input.label?.trim() || `Version ${versionNumber}`,
+    status: input.status ?? "draft",
+    createdAt,
+    createdBy: "current user",
+    notes: input.notes?.trim() || undefined,
+    sourceImportIds: state.imports.map((i) => i.id),
+    snapshot: createBuildSnapshot(state),
   };
 }
 
@@ -826,6 +937,23 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       setActiveFiscalYear: (fy) =>
         set(() => ({ activeFiscalYear: fy })),
 
+      createVersion: (input) => {
+        let created!: StudyVersion;
+        set((s) => {
+          created = makeStudyVersion(s, input);
+          return {
+            versions: [...s.versions, created],
+            comparisonVersionId: created.id,
+          };
+        });
+        return created;
+      },
+
+      setComparisonVersion: (id) =>
+        set((s) => ({
+          comparisonVersionId: id && s.versions.some((v) => v.id === id) ? id : null,
+        })),
+
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -853,6 +981,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           pendingReview: { ...emptyPending },
           capCenterOrder: [],
           imports: [],
+          versions: [],
+          comparisonVersionId: null,
         });
       },
     }),
@@ -955,6 +1085,18 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             return { ...p, allocationPercent: pct };
           });
         }
+        if (!Array.isArray(state.versions)) {
+          const baseline = makeStudyVersion(state, {
+            label: "Recovered baseline",
+            status: "adopted",
+            notes: "Created from the first locally persisted model after versioning was enabled.",
+          });
+          state.versions = [baseline];
+          state.comparisonVersionId = baseline.id;
+        }
+        if (state.comparisonVersionId && !state.versions.some((v) => v.id === state.comparisonVersionId)) {
+          state.comparisonVersionId = state.versions[0]?.id ?? null;
+        }
       },
     },
   ),
@@ -983,84 +1125,74 @@ export interface BuildDerived {
   capStepDown: GlStepDownModel;
 }
 
+export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
+  const labor = deptLabor(state.positions);
+  const hoursByDept = {} as Record<DeptCode, number>;
+  for (const d of FEE_DEPTS) hoursByDept[d] = labor[d].productiveHours;
+  const operatingByDept = deptOperating(state.operating, hoursByDept);
+
+  // glCode-native CAP engine. Nodes = one indirect node per cost center
+  // plus one direct node per imported PLAN/BLDG/ENG-classified receiver glCode.
+  const { entries: capReceivers } = buildReceiverRegistry(
+    state.capBasisUnits, state.capDirectAllocations,
+    state.allocationBases, state.studyContext,
+  );
+
+  const graph = buildEngineGraph({
+    allocationBases: state.allocationBases,
+    basisUnits: state.capBasisUnits,
+    directAllocations: state.capDirectAllocations,
+    capCenterTotals: state.capCenterTotals,
+    capCenterGlCodes: state.capCenterGlCodes,
+    capReceivers,
+  });
+
+  const stepDown = computeStepDownGl({
+    pools: state.capPools,
+    centerOrder: state.capCenterOrder,
+    bases: state.allocationBases,
+    basisUnits: state.capBasisUnits,
+    directAllocations: state.capDirectAllocations,
+    graph,
+  });
+
+  if (typeof import.meta !== "undefined" && import.meta.env?.DEV
+      && stepDown.diagnostics.length > 0) {
+    for (const d of stepDown.diagnostics) {
+      const key = `${d.poolId}|${d.kind}`;
+      if (!loggedCapDiagnostics.has(key)) {
+        loggedCapDiagnostics.add(key);
+        // eslint-disable-next-line no-console
+        console.warn(`[CAP] ${d.center} · ${d.pool} (${d.kind}): ${d.message}`);
+      }
+    }
+  }
+
+  const capAllocated = capAllocatedFromGl(stepDown);
+  const derivedCapAllocation = {} as Record<DeptCode, CapAllocation>;
+  for (const d of FEE_DEPTS) {
+    derivedCapAllocation[d] = { dept: d, allocated: capAllocated[d] };
+  }
+
+  const fbhr = deptFBHR(labor, operatingByDept, derivedCapAllocation);
+  const costs = serviceCosts(state.services, fbhr);
+  const comparisons = feeComparisons(
+    costs, state.services, state.policyTargets, state.policyExceptions,
+  );
+  const impact = policyImpact(comparisons);
+  return {
+    labor, operatingByDept, fbhr, costs, comparisons, impact,
+    capAllocated, capDrivers: graph.drivers,
+    capStepDown: stepDown,
+  };
+}
+
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */
 
 export function useBuildState() {
   const state = useBuildStore();
 
-  const derived: BuildDerived = useMemo(() => {
-    const labor = deptLabor(state.positions);
-    const hoursByDept: Record<DeptCode, number> = {
-      PLAN: labor.PLAN.productiveHours,
-      BLDG: labor.BLDG.productiveHours,
-      ENG:  labor.ENG.productiveHours,
-    };
-    const operatingByDept = deptOperating(state.operating, hoursByDept);
-
-    // glCode-native CAP engine. Nodes = one indirect node per cost center
-    // (using capCenterGlCodes[center] or a synth seed:center:* key) plus
-    // one direct node per imported PLAN/BLDG/ENG-classified receiver glCode
-    // (or a synth seed:dept:* fallback). FBHR sums each direct node's total
-    // into its feeDept classification — multiple PLAN-classified glCodes
-    // all roll into PLAN's CAP rate.
-    const { entries: capReceivers } = buildReceiverRegistry(
-      state.capBasisUnits, state.capDirectAllocations,
-      state.allocationBases, state.studyContext,
-    );
-
-    const graph = buildEngineGraph({
-      allocationBases: state.allocationBases,
-      basisUnits: state.capBasisUnits,
-      directAllocations: state.capDirectAllocations,
-      capCenterTotals: state.capCenterTotals,
-      capCenterGlCodes: state.capCenterGlCodes,
-      capReceivers,
-    });
-
-    const stepDown = computeStepDownGl({
-      pools: state.capPools,
-      centerOrder: state.capCenterOrder,
-      bases: state.allocationBases,
-      basisUnits: state.capBasisUnits,
-      directAllocations: state.capDirectAllocations,
-      graph,
-    });
-
-    // Dev-mode CAP routing diagnostics: warn once per (poolId, kind) when
-    // the strict-glCode engine drops a pool's eligible $ for lack of a
-    // valid receiver. Helps catch seed/import data that depended on the
-    // old deptCode-based DIRECT fallback that no longer exists.
-    if (typeof import.meta !== "undefined" && import.meta.env?.DEV
-        && stepDown.diagnostics.length > 0) {
-      for (const d of stepDown.diagnostics) {
-        const key = `${d.poolId}|${d.kind}`;
-        if (!loggedCapDiagnostics.has(key)) {
-          loggedCapDiagnostics.add(key);
-          // eslint-disable-next-line no-console
-          console.warn(`[CAP] ${d.center} · ${d.pool} (${d.kind}): ${d.message}`);
-        }
-      }
-    }
-
-    const capAllocated = capAllocatedFromGl(stepDown);
-    const derivedCapAllocation: Record<DeptCode, CapAllocation> = {
-      PLAN: { dept: "PLAN", allocated: capAllocated.PLAN },
-      BLDG: { dept: "BLDG", allocated: capAllocated.BLDG },
-      ENG:  { dept: "ENG",  allocated: capAllocated.ENG  },
-    };
-
-    const fbhr = deptFBHR(labor, operatingByDept, derivedCapAllocation);
-    const costs = serviceCosts(state.services, fbhr);
-    const comparisons = feeComparisons(
-      costs, state.services, state.policyTargets, state.policyExceptions,
-    );
-    const impact = policyImpact(comparisons);
-    return {
-      labor, operatingByDept, fbhr, costs, comparisons, impact,
-      capAllocated, capDrivers: graph.drivers,
-      capStepDown: stepDown,
-    };
-  }, [
+  const derived: BuildDerived = useMemo(() => deriveBuildDerived(state), [
     state.positions, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.capBasisUnits, state.capDirectAllocations,

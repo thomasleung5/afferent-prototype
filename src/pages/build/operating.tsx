@@ -15,9 +15,8 @@ const OPERATING_SCHEMA = `{
   ]
 }`;
 
-/** Build the post-import summary. The extraction's `stats.total` reflects
- *  every row the model returned; rows dropped by the dept normalizer
- *  (non-PLAN/BLDG/ENG/SHARED:CDS) don't survive into mapped or
+/** Build the post-import summary. Rows the dept normalizer can't map to
+ *  a fee-bearing dept (or to SHARED:CDS) don't survive into mapped or
  *  lowConfidence, so we surface that gap as "skipped". */
 function formatImportSummary(
   total: number, mapped: number, lowConfidence: number,

@@ -2,13 +2,16 @@ import type {
   CapAllocation, DeptCode, OperatingLine, Position,
   PolicyException, PolicyTarget, Service,
 } from "./types";
+import { FEE_DEPTS } from "./data/departments";
 
 /* ---------- Build Model derivations ----------
  * The four input nodes (Direct Labor, Operating, Cost Allocation, Workload)
  * roll up into per-dept FBHR, which is then applied to each service in
- * Cost of Service. All functions here are pure. */
-
-const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
+ * Cost of Service. All functions here are pure.
+ *
+ * FEE_DEPTS — the canonical list of fee-bearing departments — lives in
+ * lib/data/departments.ts so the registry stays the single source of
+ * truth and adding a department doesn't require touching this file. */
 
 export interface DeptLabor {
   dept: DeptCode;
@@ -23,11 +26,10 @@ export interface DeptLabor {
 }
 
 export function deptLabor(positions: Position[]): Record<DeptCode, DeptLabor> {
-  const out: Record<DeptCode, DeptLabor> = {
-    PLAN: { dept: "PLAN", fte: 0, positions: 0, totalComp: 0, productiveHours: 0, directRate: 0 },
-    BLDG: { dept: "BLDG", fte: 0, positions: 0, totalComp: 0, productiveHours: 0, directRate: 0 },
-    ENG:  { dept: "ENG",  fte: 0, positions: 0, totalComp: 0, productiveHours: 0, directRate: 0 },
-  };
+  const out = {} as Record<DeptCode, DeptLabor>;
+  for (const d of FEE_DEPTS) {
+    out[d] = { dept: d, fte: 0, positions: 0, totalComp: 0, productiveHours: 0, directRate: 0 };
+  }
   for (const p of positions) {
     const row = out[p.dept];
     // Defensive: imports may carry an unrecognized dept code (e.g. a typo

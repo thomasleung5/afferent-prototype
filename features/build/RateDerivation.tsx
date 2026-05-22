@@ -8,12 +8,13 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { FBHR } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
-const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";
+const ORDER: DeptCode[] = FEE_DEPTS;
+const labelOf = deptName;
 
 interface Row {
   id: DeptCode;
@@ -32,7 +33,10 @@ export function RateDerivation() {
   const stepModel = derived.capStepDown;
   const [openId, setOpenId] = useState<string | undefined>();
 
-  const rows: Row[] = ORDER.map((d) => {
+  // Skip depts that aren't actually modeled in the active jurisdiction
+  // (no positions / no productive hours → no derivable rate).
+  const activeDepts = ORDER.filter((d) => derived.fbhr[d].productiveHours > 0);
+  const rows: Row[] = activeDepts.map((d) => {
     const f = derived.fbhr[d];
     return {
       id: d,

@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
-  DataTable, applyFilter,
+  DataTable, applyFilter, deriveDeptFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
@@ -124,12 +124,7 @@ export function FeeScheduleTable() {
     },
     {
       id: "dept", label: "Dept",
-      options: [
-        { value: "ALL",  label: "All" },
-        { value: "PLAN", label: "Planning" },
-        { value: "BLDG", label: "Building" },
-        { value: "ENG",  label: "Engineering" },
-      ],
+      options: deriveDeptFilter(enriched),
       value: deptFilter,
       onChange: setDeptFilter,
     },
@@ -143,7 +138,7 @@ export function FeeScheduleTable() {
       sortable: true,
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13, fontWeight: 500 }}>{r.name}</div>
+          <div style={{ fontSize: 13 }}>{r.name}</div>
           <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>
             {r.id}
           </div>
@@ -216,7 +211,7 @@ export function FeeScheduleTable() {
       render: (r) => {
         const color = r.annualUplift > 0 ? "var(--pos)" : r.annualUplift < 0 ? "var(--neg)" : "var(--ink-3)";
         return (
-          <span className="num" style={{ color, fontWeight: 600 }}>
+          <span className="num" style={{ color }}>
             {r.annualUplift > 0 ? "+" : ""}{fmt.dollarsK(r.annualUplift)}
           </span>
         );

@@ -3,11 +3,12 @@ import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/compo
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
-const labelOf = (d: DeptCode) => d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";
+const ORDER: DeptCode[] = FEE_DEPTS;
+const labelOf = deptName;
 
 /** Per-dept CAP rollup. Each row expands to a pool ledger + method/formula/source.
  *  Allocated $ is read-only here — it's an output of the step-down engine over
@@ -21,7 +22,11 @@ export function CapSummary() {
   // breakdown (model.alloc2[poolId][deptCode]).
   const model = derived.capStepDown;
 
-  const rows: DeptSummaryRow[] = ORDER.map((d) => {
+  // Only render depts that actually receive CAP allocation in the
+  // active jurisdiction. Other depts get hidden rather than emit a
+  // zero-data row.
+  const activeDepts = ORDER.filter((d) => derived.capAllocated[d] > 0);
+  const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const allocated = derived.capAllocated[d];
     const rate = derived.fbhr[d].capRate;
     const sorted = capPools

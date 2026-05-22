@@ -50,9 +50,18 @@ export async function switchJurisdiction(id: string): Promise<void> {
       const res = await fetch(target.seedFile);
       if (res.ok) {
         const seedData = await res.json();
-        // Partial setState — zustand merges; unspecified fields keep
-        // the baseline value from step 1.
-        useBuildStore.setState(seedData);
+        // Clear CAP center metadata before applying the seed so the
+        // LAH baseline keyed by LAH center names ("Finance &
+        // Administrative Services" etc.) doesn't bleed through into
+        // jurisdictions that use different names ("Finance & Admin").
+        // The seed re-supplies any fields the target needs.
+        useBuildStore.setState({
+          capCenterGlCodes: {},
+          capCenterTotals: {},
+          capCenterDisallowed: {},
+          capCenterSources: {},
+          ...seedData,
+        });
       }
     } catch {
       // Seed fetch failed — leave the baseline in place. The active

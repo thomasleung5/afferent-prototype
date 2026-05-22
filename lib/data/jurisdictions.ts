@@ -60,7 +60,10 @@ export const JURISDICTIONS: Jurisdiction[] = [
     name: "City of Maplewood",
     fiscalYears: ["FY 2027-28"],
     defaultFiscalYear: "FY 2027-28",
-    departments: ["Planning", "Building", "Engineering"],
+    departments: [
+      "Planning", "Building", "Engineering",
+      "Parks & Recreation", "Police Services", "Fire Prevention",
+    ],
     peers: ["Walnut Grove", "Cedar Springs", "Riverton", "Northfield", "Greenbrook"],
     preparedBy: "Finance Department",
     dataAvailable: true,

@@ -12,12 +12,17 @@ import {
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];
+import { FEE_DEPTS } from "@/lib/data/departments";
+
+const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
 
 const ROLE_MIX_BY_DEPT: Record<DeptCode, { role: string; pct: number }[]> = {
-  PLAN: [{ role: "Planner II",        pct: 70 }, { role: "Senior Planner",       pct: 30 }],
-  BLDG: [{ role: "Plans Examiner",    pct: 60 }, { role: "Permit Technician",    pct: 40 }],
-  ENG:  [{ role: "Civil Engineer II", pct: 65 }, { role: "Engineering Technician", pct: 35 }],
+  PLAN:  [{ role: "Planner II",        pct: 70 }, { role: "Senior Planner",       pct: 30 }],
+  BLDG:  [{ role: "Plans Examiner",    pct: 60 }, { role: "Permit Technician",    pct: 40 }],
+  ENG:   [{ role: "Civil Engineer II", pct: 65 }, { role: "Engineering Technician", pct: 35 }],
+  PARKS: [{ role: "Recreation Coordinator", pct: 70 }, { role: "Recreation Supervisor", pct: 30 }],
+  PD:    [{ role: "Records Specialist", pct: 60 }, { role: "Police Officer",          pct: 40 }],
+  FIRE:  [{ role: "Fire Inspector",     pct: 70 }, { role: "Fire Marshal",            pct: 30 }],
 };
 
 interface Row extends Service {

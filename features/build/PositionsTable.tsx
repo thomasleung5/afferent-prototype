@@ -6,9 +6,10 @@ import {
 } from "@/components/table";
 import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui";
 import type { DeptCode, Position } from "@/lib/types";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
-const DEPT_OPTIONS = ["PLAN", "BLDG", "ENG"];
+const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
 
 interface Row extends Omit<Position, "flag"> {
   flag: boolean;

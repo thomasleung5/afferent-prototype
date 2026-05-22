@@ -42,7 +42,8 @@ interface PoolSchedule {
   receivers: { glCode: string; percent: number }[];
 }
 
-const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
+import { FEE_DEPTS } from "./departments";
+const FEE_DEPT_SET = new Set<string>(FEE_DEPTS);
 
 const seedCenterKey = (centerName: string) => `seed:center:${centerName}`;
 /** Stable synth glCode used for PLAN/BLDG/ENG direct nodes when no
@@ -200,7 +201,7 @@ export function buildEngineGraph(args: {
       continue;
     }
 
-    const isFeeDept = r.deptCode === "PLAN" || r.deptCode === "BLDG" || r.deptCode === "ENG";
+    const isFeeDept = FEE_DEPT_SET.has(r.deptCode);
     addNode({
       key: r.glCode, glCode: r.glCode, name: r.dept,
       role: "direct",
@@ -284,7 +285,7 @@ export function buildEngineGraph(args: {
   for (const da of directAllocations) {
     for (const r of da.receivers) {
       if (!r.glCode || nodeByKey.has(r.glCode)) continue;
-      const isFeeDept = r.deptCode === "PLAN" || r.deptCode === "BLDG" || r.deptCode === "ENG";
+      const isFeeDept = FEE_DEPT_SET.has(r.deptCode);
       addNode({
         key: r.glCode, glCode: r.glCode, name: r.dept,
         role: "direct",
@@ -713,7 +714,8 @@ function fmtUSD(n: number): string {
 export function capAllocatedFromGl(
   model: GlStepDownModel,
 ): Record<DeptCode, number> {
-  const out: Record<DeptCode, number> = { PLAN: 0, BLDG: 0, ENG: 0 };
+  const out = {} as Record<DeptCode, number>;
+  for (const d of FEE_DEPTS) out[d] = 0;
   for (const n of model.nodes) {
     if (n.role === "direct" && n.feeDept) {
       out[n.feeDept] += model.directTotals[n.key] ?? 0;

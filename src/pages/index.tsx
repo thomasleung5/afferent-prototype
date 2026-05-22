@@ -6,9 +6,8 @@ import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
 import { AuditTrail } from "@/features/home/AuditTrail";
-import type { DeptCode } from "@/lib/types";
+import { FEE_DEPTS } from "@/lib/data/departments";
 
-const FEE_DEPTS: DeptCode[] = ["PLAN", "BLDG", "ENG"];
 
 export default function HomePage() {
   const { services, positions, capPools, policyTargets, imports, derived } = useBuildState();

@@ -12,6 +12,7 @@ import type {
   CapPool, OperatingLine, Position, Service, WorkloadRow,
 } from "../types";
 import type { BuildImportLog, Domain } from "../store";
+import { deriveBuildDerived, type BuildSnapshot, type StudyVersion } from "../store";
 import type { FeeComparison, PolicyImpact } from "../calc";
 
 type ConfLevel = "High" | "Medium-High" | "Medium" | "Low";
@@ -84,6 +85,27 @@ export interface RecoveryDelta {
   currentBlended: number;
   policyTarget: number;
   gapPts: number;
+}
+
+export interface FeeChangeExplanation {
+  id: string;
+  name: string;
+  dept: string;
+  priorRecommended: number;
+  currentRecommended: number;
+  unitDelta: number;
+  annualDelta: number;
+  hoursEffect: number;
+  directRateEffect: number;
+  operatingRateEffect: number;
+  capRateEffect: number;
+  policyEffect: number;
+  adoptedGap: number;
+  currentHours: number;
+  priorHours: number;
+  currentFbhr: number;
+  priorFbhr: number;
+  primaryDriver: string;
 }
 
 interface AnnualInput {
@@ -216,6 +238,86 @@ export function deriveNetImpact(input: AnnualInput): number {
   // Sum of net adoption uplift across every fee comparison — the same
   // number Fee Schedule's "Net adoption impact" shows.
   return input.comparisons.reduce((a, c) => a + c.annualUplift, 0);
+}
+
+export function deriveFeeChangeExplanations(
+  current: BuildSnapshot,
+  baseline: StudyVersion | null | undefined,
+): FeeChangeExplanation[] {
+  if (!baseline) return [];
+  const priorDerived = deriveBuildDerived(baseline.snapshot);
+  const currentDerived = deriveBuildDerived(current);
+  const priorServices = new Map(baseline.snapshot.services.map((s) => [s.id, s]));
+  const priorComparisons = new Map(priorDerived.comparisons.map((c) => [c.id, c]));
+
+  return currentDerived.comparisons
+    .map((cur): FeeChangeExplanation | null => {
+      const curService = current.services.find((s) => s.id === cur.id);
+      const priorService = priorServices.get(cur.id);
+      const prior = priorComparisons.get(cur.id);
+      if (!curService || !priorService || !prior) return null;
+
+      const priorRate = priorDerived.fbhr[prior.dept];
+      const currentRate = currentDerived.fbhr[cur.dept];
+      if (!priorRate || !currentRate) return null;
+
+      const priorTarget = prior.target / 100;
+      const currentTarget = cur.target / 100;
+      const priorFbhr = priorRate.fbhr;
+      const currentFbhr = currentRate.fbhr;
+
+      const priorRecommended = priorService.hours * priorFbhr * priorTarget;
+      const afterHours = curService.hours * priorFbhr * priorTarget;
+      const afterDirect = curService.hours
+        * (currentRate.directRate + priorRate.operatingRate + priorRate.capRate)
+        * priorTarget;
+      const afterOperating = curService.hours
+        * (currentRate.directRate + currentRate.operatingRate + priorRate.capRate)
+        * priorTarget;
+      const afterCap = curService.hours
+        * (currentRate.directRate + currentRate.operatingRate + currentRate.capRate)
+        * priorTarget;
+      const currentRecommended = curService.hours * currentFbhr * currentTarget;
+
+      const hoursEffect = afterHours - priorRecommended;
+      const directRateEffect = afterDirect - afterHours;
+      const operatingRateEffect = afterOperating - afterDirect;
+      const capRateEffect = afterCap - afterOperating;
+      const policyEffect = currentRecommended - afterCap;
+      const unitDelta = currentRecommended - priorRecommended;
+      const volume = cur.volume || prior.volume || 0;
+
+      const components = [
+        { label: "Service hours", value: hoursEffect },
+        { label: "Direct labor rate", value: directRateEffect },
+        { label: "Operating rate", value: operatingRateEffect },
+        { label: "CAP overhead rate", value: capRateEffect },
+        { label: "Policy target", value: policyEffect },
+      ].sort((a, b) => Math.abs(b.value) - Math.abs(a.value));
+
+      return {
+        id: cur.id,
+        name: cur.name,
+        dept: cur.dept,
+        priorRecommended,
+        currentRecommended,
+        unitDelta,
+        annualDelta: unitDelta * volume,
+        hoursEffect,
+        directRateEffect,
+        operatingRateEffect,
+        capRateEffect,
+        policyEffect,
+        adoptedGap: currentRecommended - cur.fee,
+        currentHours: curService.hours,
+        priorHours: priorService.hours,
+        currentFbhr,
+        priorFbhr,
+        primaryDriver: Math.abs(components[0]?.value ?? 0) >= 0.5 ? components[0].label : "No material change",
+      };
+    })
+    .filter((row): row is FeeChangeExplanation => !!row)
+    .sort((a, b) => Math.abs(b.annualDelta) - Math.abs(a.annualDelta));
 }
 
 function importImpactLabel(r: BuildImportLog["result"]): string {

@@ -3,12 +3,11 @@ import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/compo
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
-
-const labelOf = (d: DeptCode): string =>
-  d === "PLAN" ? "Planning" : d === "BLDG" ? "Building" : "Engineering";
+const ORDER: DeptCode[] = FEE_DEPTS;
+const labelOf = deptName;
 
 /** Per-dept direct labor rollup. Each row expands inline to a position ledger
  *  + method/formula/source metadata grid — the audit trail. */
@@ -21,7 +20,11 @@ export function LaborSummary() {
   const totalFte  = ORDER.reduce((a, d) => a + labor[d].fte, 0);
   const totalPositions = ORDER.reduce((a, d) => a + labor[d].positions, 0);
 
-  const rows: DeptSummaryRow[] = ORDER.map((d) => {
+  // Only show depts with at least one position in the active
+  // jurisdiction. Avoids zero-data rows for depts the current
+  // jurisdiction doesn't model.
+  const activeDepts = ORDER.filter((d) => labor[d].positions > 0);
+  const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = labor[d];
     const directs = positions.filter((p) => p.dept === d);
     const ledger = [...directs]

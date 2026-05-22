@@ -1,10 +1,10 @@
 import type { DeptCode } from "@/lib/types";
-import { DEPTS } from "@/lib/data/departments";
+import { DEPTS, FEE_DEPTS } from "@/lib/data/departments";
 import { RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = ["PLAN", "BLDG", "ENG"];
+const ORDER: DeptCode[] = FEE_DEPTS;
 
 interface Rollup {
   totalCost: number;
@@ -37,7 +37,7 @@ export function DeptRecoveryChart() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      {ORDER.map((code) => {
+      {ORDER.filter((code) => rollup[code].totalCost > 0).map((code) => {
         const dept = DEPTS[code];
         const r = rollup[code];
         return (

@@ -692,9 +692,12 @@ function SummaryOfFindings({ payload }: { payload: ExportPayload }) {
 // ============================================================================
 
 const DEPT_OVERVIEWS: Record<string, string> = {
-  PLAN: "Planning fees support discretionary development review, entitlement processing, environmental review, public hearings, and related administrative activities.",
-  BLDG: "Building fees support permit intake, plan review, inspections, code compliance activities, and permit issuance functions.",
-  ENG:  "Engineering fees support grading review, encroachment permits, improvement plan review, stormwater review, and infrastructure coordination activities.",
+  PLAN:  "Planning fees support discretionary development review, entitlement processing, environmental review, public hearings, and related administrative activities.",
+  BLDG:  "Building fees support permit intake, plan review, inspections, code compliance activities, and permit issuance functions.",
+  ENG:   "Engineering fees support grading review, encroachment permits, improvement plan review, stormwater review, and infrastructure coordination activities.",
+  PARKS: "Parks & Recreation fees support recreation programs, facility rentals, athletic field permits, aquatics, and youth services activities.",
+  PD:    "Police service fees support alarm permits, special-event coverage, fingerprinting, record requests, and other non-emergency administrative activities.",
+  FIRE:  "Fire prevention fees support fire and life-safety inspections, plan review, hazardous materials permits, and related code compliance activities.",
 };
 
 function DepartmentAnalysis({ payload }: { payload: ExportPayload }) {
@@ -824,9 +827,12 @@ function DepartmentSubsection({
 }
 
 const DEPT_DRIVER_NARRATIVE: Record<string, string> = {
-  PLAN: "Planning workload is driven by discretionary review, staff report preparation, public hearing support, environmental review, applicant coordination, and iterative revisions during project entitlement.",
-  BLDG: "Building workload is driven by plan review, inspection volume, code compliance activity, permit issuance, and contractor coordination during construction.",
-  ENG:  "Engineering workload is driven by grading review, stormwater compliance, improvement plan review, infrastructure coordination, and iterative revisions during project implementation.",
+  PLAN:  "Planning workload is driven by discretionary review, staff report preparation, public hearing support, environmental review, applicant coordination, and iterative revisions during project entitlement.",
+  BLDG:  "Building workload is driven by plan review, inspection volume, code compliance activity, permit issuance, and contractor coordination during construction.",
+  ENG:   "Engineering workload is driven by grading review, stormwater compliance, improvement plan review, infrastructure coordination, and iterative revisions during project implementation.",
+  PARKS: "Recreation workload is driven by program registration, facility scheduling, instructor coordination, athletic field permitting, and seasonal program rollout.",
+  PD:    "Police-services workload is driven by alarm permit administration, special-event coordination, fingerprinting and records requests, and the administrative review of non-emergency service requests.",
+  FIRE:  "Fire-prevention workload is driven by life-safety inspections, fire plan review, hazardous-materials permitting, and applicant coordination during construction and occupancy.",
 };
 
 // ============================================================================
@@ -1166,9 +1172,12 @@ function recoveryTargetSummaryLabel(payload: ExportPayload): string {
 
 function deptDisplayName(code: string): string {
   switch (code) {
-    case "PLAN": return "Planning";
-    case "BLDG": return "Building";
-    case "ENG":  return "Engineering";
+    case "PLAN":  return "Planning";
+    case "BLDG":  return "Building";
+    case "ENG":   return "Engineering";
+    case "PARKS": return "Parks & Recreation";
+    case "PD":    return "Police Services";
+    case "FIRE":  return "Fire Prevention";
     default: return code;
   }
 }
