@@ -3,7 +3,7 @@ import { Btn } from "@/components/ui";
 import { switchJurisdiction, useActiveJurisdiction } from "@/lib/active";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/data/jurisdictions";
 
-/** "Load Demo City" affordance on the Build Model overview. Lets the
+/** "Load Demo" affordance on the Build Model overview. Lets the
  *  user swap into a different city workspace without surfacing
  *  jurisdiction switching in the primary chrome — reads as workspace
  *  tooling, not a tenant selector.
@@ -53,7 +53,7 @@ export function DemoCityPicker() {
         aria-expanded={open}
         title="Switch the demo city workspace"
       >
-        {working ? "Loading…" : "Load Demo City"}
+        {working ? "Loading…" : "Load Demo"}
         <span style={{ marginLeft: 4, fontSize: 9, color: "var(--ink-3)" }}>▾</span>
       </Btn>
 
