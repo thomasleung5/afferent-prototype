@@ -3,6 +3,7 @@ import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, SectionEyebrow } from "@/components/ui";
 import { ChangeReviewTable } from "@/features/annual/ChangeReviewTable";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { slugCity } from "@/lib/printing";
 import { deriveAnnualChanges, sectionCodeFor } from "@/lib/data/annual";
 import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
@@ -37,8 +38,7 @@ export default function AnnualChangesPage() {
         c.badge,
       ]),
     ]);
-    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    downloadCsv(csv, `${slug}-change-log.csv`);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-change-log.csv`);
   }, [state, jurisdiction.name]);
 
   return (

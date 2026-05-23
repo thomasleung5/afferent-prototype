@@ -15,6 +15,7 @@ import {
 import { DEPTS } from "@/lib/data/departments";
 import { useActiveJurisdiction } from "@/lib/active";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { slugCity } from "@/lib/printing";
 import { useBuildState } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
 import { useCallback, useMemo, useState } from "react";
@@ -48,10 +49,11 @@ export default function RevenueMonitoringPage() {
     () => deriveMonitoringData({
       comparisons: derived.comparisons,
       impact: derived.impact,
+      deptRollup: derived.deptRollup,
       policyTargets,
       imports,
     }),
-    [derived.comparisons, derived.impact, policyTargets, imports],
+    [derived.comparisons, derived.impact, derived.deptRollup, policyTargets, imports],
   );
   const { summary, deptHealth, driftDrivers, recoveryAlerts, staffActions } = monitoring;
 
@@ -273,8 +275,7 @@ export default function RevenueMonitoringPage() {
         `${a.rationale} · ${a.nextStep} · ${fmt.dollars(a.fiscalImpact)}`,
       ]),
     ]);
-    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    downloadCsv(csv, `${slug}-monitoring-brief.csv`);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-monitoring-brief.csv`);
   }, [summary, deptHealth, driftDrivers, recoveryAlerts, staffActions, jurisdiction.name]);
 
   const alertCols: Column<RecoveryAlert>[] = [

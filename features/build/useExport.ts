@@ -4,6 +4,7 @@ import { useBuildState } from "@/lib/store";
 import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import { buildExportPayload } from "@/lib/export/buildPayload";
 import { exportFeeStudyXlsx, downloadBlob } from "@/lib/export/excel";
+import { slugCity } from "@/lib/printing";
 
 /** Shared Export handlers used by every page that surfaces an ExportMenu. */
 export function useExport() {
@@ -31,7 +32,7 @@ export function useExport() {
       },
     });
     const blob = await exportFeeStudyXlsx(payload);
-    const city = payload.cover.cityName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const city = slugCity(payload.cover.cityName);
     downloadBlob(blob, `${city}-fee-study.xlsx`);
   }, [state, jurisdiction, fiscalYear]);
 

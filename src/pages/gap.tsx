@@ -5,6 +5,7 @@ import { fmt } from "@/lib/format";
 import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { slugCity } from "@/lib/printing";
 import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
 import { DriverBreakdown } from "@/features/revenue-gap/DriverBreakdown";
 import { DeptRecoveryChart } from "@/features/revenue-gap/DeptRecoveryChart";
@@ -71,8 +72,7 @@ export default function RevenueGapPage() {
         `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
       ]),
     ]);
-    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    downloadCsv(csv, `${slug}-revenue-gap-brief.csv`);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-revenue-gap-brief.csv`);
   }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons, jurisdiction.name]);
 
   return (

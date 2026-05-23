@@ -5,7 +5,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect, DrilldownColumn, DrilldownShell,
+  CellInput, CellSelect, DrilldownColumn, DrilldownLabel, DrilldownShell,
   ExpandIndicator, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Position, ProductiveHoursBreakdown } from "@/lib/types";
@@ -278,11 +278,9 @@ function ProductiveHoursDrilldown({
             padding: "6px 10px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
-            fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
-            letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
-            <div>Category</div>
-            <div style={{ textAlign: "right" }}>Hours</div>
+            <DrilldownLabel>Category</DrilldownLabel>
+            <DrilldownLabel align="right">Hours</DrilldownLabel>
           </div>
           {result.deductions.map((d, i) => (
             <div key={d.key} style={{

@@ -4,6 +4,7 @@ import { Btn, Icon, SectionEyebrow } from "@/components/ui";
 import { UpdatePacketView } from "@/features/annual/UpdatePacketView";
 import { SaveVersionActions } from "@/features/annual/SaveVersionActions";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { slugCity } from "@/lib/printing";
 import {
   deriveAnnualChanges, derivePacketSummary, sectionCodeFor,
 } from "@/lib/data/annual";
@@ -63,8 +64,7 @@ export default function AnnualPacketPage() {
         `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
       ]),
     ]);
-    const slug = jurisdiction.name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
-    downloadCsv(csv, `${slug}-annual-staff-report.csv`);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-annual-staff-report.csv`);
   }, [state, jurisdiction.name]);
 
   // Council-facing packet opens the existing fee-study print-preview tab.

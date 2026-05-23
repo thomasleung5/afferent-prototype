@@ -2,6 +2,7 @@
 import { useCallback } from "react";
 import { useBuildState } from "@/lib/store";
 import { downloadBlob } from "@/lib/export/excel";
+import { slugCity } from "@/lib/printing";
 import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
 import { capAllocatedFromGl } from "@/lib/data/capStepDownGl";
 
@@ -26,7 +27,7 @@ export function useCapExport() {
   const downloadExcel = useCallback(async () => {
     const payload = buildPayload();
     const blob = await exportCapXlsx(payload);
-    const city = payload.cityName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const city = slugCity(payload.cityName);
     downloadBlob(blob, `${city}-cost-allocation-plan.xlsx`);
   }, [buildPayload]);
 

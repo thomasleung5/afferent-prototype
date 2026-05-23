@@ -19,28 +19,11 @@ import {
   capBasisUnitsToExtractionResult,
   capPoolsToExtractionResult,
   capDirectAllocationsToExtractionResult,
+  unmappedBasisDetails,
 } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
 
 const SHOW_IMPORT: CapStep[] = ["centers", "pools"];
-
-/** Pull display fields out of an unmapped CAP-basis lineage. The rawCells
- *  shape mirrors what capBasesToExtractionResult writes for OTHER /
- *  unrecognized-driver rows. */
-function unmappedBasisDetails(u: UnmappedRow): {
-  name: string; driverKey: string; source: string; reason: string;
-} {
-  const cells = u.lineage.rawCells ?? {};
-  const fmt = (v: unknown): string => (v == null || v === "" ? "—" : String(v));
-  return {
-    name: fmt(cells.name),
-    driverKey: fmt(cells.driverKey),
-    source: fmt(cells.source),
-    reason:
-      u.reason === "missing-required-field" ? "DIRECT without target"
-      : "driver outside named keys",
-  };
-}
 
 /** Compact "3 centers, 4 bases, 2 schedules, 15 pools, 1 direct alloc"
  *  summary; omits zero sections. */
@@ -168,6 +151,9 @@ export default function CapPage() {
 
   return (
     <Page>
+      {/* In-app uses the operational label "Overhead Cost Allocation".
+        * The published PDF deliverable uses the formal name "Cost
+        * Allocation Plan" — see src/pages/export/cap-allocation.tsx. */}
       <PageHeader
         eyebrow={<NodeEyebrow node="cap"/>}
         title="Overhead Cost Allocation"

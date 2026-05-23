@@ -2,6 +2,12 @@
 
 import { useEffect } from "react";
 
+/** Kebab-case slug for a jurisdiction name, used as the filename prefix
+ *  on export downloads. "Town of Los Altos Hills" → "town-of-los-altos-hills". */
+export function slugCity(name: string): string {
+  return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+}
+
 /** Auto-fire `window.print()` on first paint when the export tab was
  *  opened with `?print=1`. A short delay gives React time to render
  *  hydrated content before the print snapshot is taken. Hand-rolled in

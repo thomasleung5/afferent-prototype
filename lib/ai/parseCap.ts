@@ -566,3 +566,23 @@ function normBasisName(
     ?? SEED_ALLOCATION_BASES.find((b) => loose(b.name) === key)
     ?? null;
 }
+
+/** Pull display fields out of an unmapped CAP-basis lineage. The rawCells
+ *  shape mirrors what capBasesToExtractionResult writes for OTHER /
+ *  unrecognized-driver rows. Surfaced in the CAP page's "unmapped bases"
+ *  banner to help the user fix the underlying schema. */
+export function unmappedBasisDetails(u: UnmappedRow): {
+  name: string; driverKey: string; source: string; reason: string;
+} {
+  const cells = u.lineage.rawCells ?? {};
+  const cellOrDash = (v: unknown): string =>
+    v == null || v === "" ? "—" : String(v);
+  return {
+    name: cellOrDash(cells.name),
+    driverKey: cellOrDash(cells.driverKey),
+    source: cellOrDash(cells.source),
+    reason:
+      u.reason === "missing-required-field" ? "DIRECT without target"
+      : "driver outside named keys",
+  };
+}

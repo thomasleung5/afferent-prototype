@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/format";
-import { Btn, ExportCover, Icon } from "@/components/ui";
+import { Btn, ExportCover, Icon, PrintStyles } from "@/components/ui";
 import {
   useBenchmarkPayload,
 } from "@/features/build/useBenchmarkExport";
@@ -18,68 +18,6 @@ export default function FeeBenchmarkExportPage() {
       <Toolbar payload={payload}/>
       <Report payload={payload}/>
     </>
-  );
-}
-
-/** Print stylesheet — mirrors fee-study.tsx so both PDFs render identically. */
-function PrintStyles() {
-  return (
-    <style>{`
-      @page { size: letter portrait; margin: 0.6in 0.6in 0.7in 0.6in; }
-      @media print {
-        html, body { background: white !important; }
-        .no-print { display: none !important; }
-        .report { padding: 0 !important; max-width: none !important; margin: 0 !important; }
-        .section-break { break-before: page; page-break-before: always; }
-        .section-break:first-child { break-before: avoid; page-break-before: avoid; }
-        .row { break-inside: avoid; page-break-inside: avoid; }
-        table { break-inside: auto; page-break-inside: auto; }
-        thead { display: table-header-group; }
-        tr { break-inside: avoid; page-break-inside: avoid; }
-        .report, .report * {
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-      }
-      .report {
-        max-width: 7.4in;
-        margin: 0 auto;
-        background: white;
-        padding: 32px 32px 48px;
-        color: var(--ink);
-        font-family: var(--ff-ui), "IBM Plex Sans", system-ui, sans-serif;
-      }
-      .report h1, .report h2, .report h3 { letter-spacing: -0.01em; }
-      .report .eyebrow {
-        font-family: var(--ff-mono);
-        font-size: 10px; font-weight: 600;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-      }
-      .report .title { font-size: 24px; font-weight: 600; line-height: 1.15; }
-      .report .h2 { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
-      .report .h3 { font-size: 13px; font-weight: 600; margin: 0 0 6px; }
-      .report .body { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
-      .report table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      .report th, .report td { padding: 6px 8px; text-align: left; vertical-align: top; }
-      .report th {
-        font-family: var(--ff-mono);
-        font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
-        text-transform: uppercase; color: var(--ink-3);
-        border-bottom: 1px solid var(--rule-strong);
-        background: var(--paper-2);
-      }
-      .report td { border-bottom: 1px solid var(--rule); }
-      .report td.num, .report th.num { text-align: right; font-variant-numeric: tabular-nums; }
-      .report .total td {
-        border-top: 1.5px solid var(--ink);
-        border-bottom: none;
-        background: var(--paper-2);
-        font-weight: 600;
-      }
-      .report .mono { font-family: var(--ff-mono); }
-    `}</style>
   );
 }
 

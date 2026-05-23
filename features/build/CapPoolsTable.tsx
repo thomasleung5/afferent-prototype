@@ -1,5 +1,8 @@
 
-import { AddRowButton, AllocationBasisCombobox, CellInput, SectionLabel } from "@/components/ui";
+import {
+  AddRowButton, AllocationBasisCombobox, CellInput,
+  DrilldownLabel, SectionLabel,
+} from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { AllocationBasis, CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -70,13 +73,11 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
             padding: "8px 18px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
-            fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
-            letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
-            <div>Pool</div>
-            <div style={{ textAlign: "right" }}>%</div>
-            <div style={{ textAlign: "right" }}>$</div>
-            <div>Basis</div>
+            <DrilldownLabel>Pool</DrilldownLabel>
+            <DrilldownLabel align="right">%</DrilldownLabel>
+            <DrilldownLabel align="right">$</DrilldownLabel>
+            <DrilldownLabel>Basis</DrilldownLabel>
           </div>
 
           {/* Rows */}

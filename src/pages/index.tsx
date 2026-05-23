@@ -29,13 +29,10 @@ export default function HomePage() {
   // Departments under their policy target — used for the monitoring card's
   // "X departments below policy" support line.
   const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
-    const rows = comparisons.filter((c) => c.dept === d);
-    if (rows.length === 0) return count;
-    const cost = rows.reduce((a, c) => a + c.annualCost, 0);
-    const rev = rows.reduce((a, c) => a + c.annualRevenue, 0);
-    const current = cost > 0 ? (rev / cost) * 100 : 0;
+    const r = derived.deptRollup[d];
+    if (r.totalCost <= 0) return count;
     const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;
-    return current < target ? count + 1 : count;
+    return r.recoveryPct < target ? count + 1 : count;
   }, 0);
 
   // Services missing required inputs — surfaces as the secondary count

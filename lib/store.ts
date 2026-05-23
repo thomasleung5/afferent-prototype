@@ -1104,6 +1104,26 @@ export const useBuildStore = create<BuildState & BuildActions>()(
 
 /* ── Derived types ── */
 
+/** Per-fee-dept aggregation of cost / revenue / policy-target metrics
+ *  derived from FeeComparison rows. Centralizes the loop that monitoring,
+ *  DeptRecoveryChart, and src/pages/index.tsx each used to roll up
+ *  separately. All fields are unrounded; consumers round at display time
+ *  per `lib/format.ts` convention. */
+export interface BuildDeptRollup {
+  /** Σ annualCost across comparisons in this dept. */
+  totalCost: number;
+  /** Σ annualRevenue across comparisons in this dept. */
+  currentRev: number;
+  /** Σ annualCost × (target / 100) — revenue the dept would collect at
+   *  its policy target. */
+  intendedRev: number;
+  /** max(0, intendedRev − currentRev). The General Fund subsidy implied
+   *  by the gap between adopted fees and policy target. */
+  subsidy: number;
+  /** (currentRev / totalCost) × 100, unrounded. 0 when totalCost is 0. */
+  recoveryPct: number;
+}
+
 interface BuildDerived {
   labor: Record<DeptCode, DeptLabor>;
   operatingByDept: Record<DeptCode, DeptOperating>;
@@ -1111,6 +1131,7 @@ interface BuildDerived {
   costs: ServiceCost[];
   comparisons: FeeComparison[];
   impact: PolicyImpact;
+  deptRollup: Record<DeptCode, BuildDeptRollup>;
   /** Per-fee-dept (PLAN/BLDG/ENG) total $ landing on direct nodes after the
    *  step-down closes every indirect center. Each fee dept sums every
    *  direct node whose feeDept classification matches. Flows into deptFBHR
@@ -1191,11 +1212,38 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     costs, state.services, state.policyTargets, state.policyExceptions,
   );
   const impact = policyImpact(comparisons);
+  const deptRollup = buildDeptRollup(comparisons);
   return {
     labor, operatingByDept, fbhr, costs, comparisons, impact,
+    deptRollup,
     capAllocated, capDrivers: graph.drivers,
     capStepDown: stepDown,
   };
+}
+
+/** Build the per-dept rollup from FeeComparison rows. Pre-buckets by
+ *  dept in a single pass instead of three filter+reduce loops per dept;
+ *  result sums match the prior inline computations to within
+ *  floating-point precision. Display values round at the edge per the
+ *  `lib/format.ts` convention. */
+function buildDeptRollup(comparisons: FeeComparison[]): Record<DeptCode, BuildDeptRollup> {
+  const out = {} as Record<DeptCode, BuildDeptRollup>;
+  for (const d of FEE_DEPTS) {
+    out[d] = { totalCost: 0, currentRev: 0, intendedRev: 0, subsidy: 0, recoveryPct: 0 };
+  }
+  for (const c of comparisons) {
+    const r = out[c.dept];
+    if (!r) continue;
+    r.totalCost += c.annualCost;
+    r.currentRev += c.annualRevenue;
+    r.intendedRev += c.annualCost * (c.target / 100);
+  }
+  for (const d of FEE_DEPTS) {
+    const r = out[d];
+    r.subsidy = Math.max(0, r.intendedRev - r.currentRev);
+    r.recoveryPct = r.totalCost > 0 ? (r.currentRev / r.totalCost) * 100 : 0;
+  }
+  return out;
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */

@@ -3,7 +3,7 @@ import { useEffect, useMemo, useState } from "react";
 import { useBuildState, useBuildStore } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import {
-  Btn, ExportCover, ExportTile, ExportTileGrid, Icon,
+  Btn, ExportCover, ExportTile, ExportTileGrid, Icon, PrintStyles,
 } from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
 import { FEE_DEPTS } from "@/lib/data/departments";
@@ -47,7 +47,7 @@ export default function CapAllocationExportPage() {
 
   return (
     <>
-      <PrintStyles/>
+      <PrintStyles pageMargin="0.55in" extraCss={CAP_EXTRA_CSS}/>
       <Toolbar payload={payload}/>
       <Report payload={payload}/>
     </>
@@ -66,112 +66,29 @@ function useStoreHydrated(): boolean {
   return hydrated;
 }
 
-function PrintStyles() {
-  return (
-    <style>{`
-      @page { size: letter; margin: 0.55in; }
-      html, body { color-scheme: light only; forced-color-adjust: none; }
-      @media print {
-        html, body {
-          background: white !important;
-          color: #1d2236 !important;
-          color-scheme: light only !important;
-          forced-color-adjust: none !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          height: auto !important;
-          min-height: 0 !important;
-          overflow: visible !important;
-        }
-        #root { height: auto !important; overflow: visible !important; }
-        .no-print {
-          display: none !important;
-          visibility: hidden !important;
-          position: static !important;
-          height: 0 !important;
-          width: 0 !important;
-          overflow: hidden !important;
-        }
-        .report, .report * {
-          color: #1d2236 !important;
-          -webkit-print-color-adjust: exact !important;
-          print-color-adjust: exact !important;
-        }
-        .report {
-          display: block !important;
-          width: auto !important;
-          max-width: none !important;
-          margin: 0 !important;
-          padding: 0 !important;
-          background: white !important;
-          font-family: "IBM Plex Sans", system-ui, -apple-system, "Helvetica Neue", Arial, sans-serif !important;
-        }
-        thead { display: table-header-group; }
-        tr { page-break-inside: avoid; }
-        .center-block {
-          page-break-before: always;
-          break-before: page;
-        }
-        .center-block:first-of-type {
-          page-break-before: avoid;
-          break-before: avoid;
-        }
-        .pool-block {
-          page-break-before: always;
-          break-before: page;
-        }
-      }
-      .report {
-        max-width: 7.4in;
-        margin: 0 auto;
-        background: white;
-        padding: 32px 32px 48px;
-        color: var(--ink);
-        font-family: var(--ff-ui), "IBM Plex Sans", system-ui, sans-serif;
-      }
-      .report h1, .report h2, .report h3 { letter-spacing: -0.01em; }
-      .report .eyebrow {
-        font-family: var(--ff-mono);
-        font-size: 10px; font-weight: 600;
-        letter-spacing: 0.14em;
-        text-transform: uppercase;
-        color: var(--ink-3);
-      }
-      .report .title { font-size: 24px; font-weight: 600; line-height: 1.15; }
-      .report .h2 { font-size: 16px; font-weight: 600; margin: 0 0 10px; }
-      .report .h3 { font-size: 13px; font-weight: 600; margin: 0 0 6px; }
-      .report .body { font-size: 12.5px; color: var(--ink-2); line-height: 1.55; }
-      .report table { width: 100%; border-collapse: collapse; font-size: 11px; }
-      .report th, .report td { padding: 5px 8px; text-align: left; vertical-align: top; }
-      .report th {
-        font-family: var(--ff-mono);
-        font-size: 9.5px; font-weight: 700; letter-spacing: 0.08em;
-        text-transform: uppercase; color: var(--ink-3);
-        border-bottom: 1px solid var(--rule-strong);
-        background: var(--paper-2);
-      }
-      .report td { border-bottom: 1px solid var(--rule); }
-      .report td.num, .report th.num { text-align: right; font-variant-numeric: tabular-nums; }
-      .report .total td {
-        border-top: 1.5px solid var(--ink);
-        border-bottom: none;
-        background: var(--paper-2);
-        font-weight: 600;
-      }
-      .report .mono { font-family: var(--ff-mono); }
-      .report .dim { color: var(--ink-4); }
-      .report .section-label {
-        font-family: var(--ff-mono);
-        font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
-        color: var(--ink-3); text-transform: uppercase;
-        background: var(--paper-2);
-        padding: 4px 8px;
-      }
-    `}</style>
-  );
-}
+const CAP_EXTRA_CSS = `
+  @media print {
+    .center-block {
+      page-break-before: always;
+      break-before: page;
+    }
+    .center-block:first-of-type {
+      page-break-before: avoid;
+      break-before: avoid;
+    }
+    .pool-block {
+      page-break-before: always;
+      break-before: page;
+    }
+  }
+  .report .section-label {
+    font-family: var(--ff-mono);
+    font-size: 9.5px; font-weight: 700; letter-spacing: 0.14em;
+    color: var(--ink-3); text-transform: uppercase;
+    background: var(--paper-2);
+    padding: 4px 8px;
+  }
+`;
 
 function Toolbar({ payload }: { payload: CapExportPayload }) {
   return (
@@ -230,6 +147,10 @@ function Cover({ payload }: { payload: CapExportPayload }) {
   const totalGross = Object.values(payload.capCenterTotals).reduce((a, v) => a + v, 0);
   const totalDis = Object.values(payload.capCenterDisallowed).reduce((a, v) => a + v, 0);
   const totalNet = Math.max(0, totalGross - totalDis);
+  // Published deliverable uses the formal name "Full Cost Allocation
+  // Plan". The in-app page (src/pages/build/cap.tsx) uses the
+  // operational label "Overhead Cost Allocation" — same artifact,
+  // different audience.
   return (
     <ExportCover
       city={payload.cityName}

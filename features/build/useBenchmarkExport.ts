@@ -3,6 +3,7 @@ import { useCallback, useMemo } from "react";
 import { useBuildState } from "@/lib/store";
 import { useActiveJurisdiction, useActiveFiscalYear } from "@/lib/active";
 import { downloadBlob } from "@/lib/export/excel";
+import { slugCity } from "@/lib/printing";
 import {
   exportBenchmarkXlsx,
   type BenchmarkExportPayload,
@@ -68,7 +69,7 @@ export function useBenchmarkExport() {
 
   const downloadExcel = useCallback(async () => {
     const blob = await exportBenchmarkXlsx(payload);
-    const city = payload.cityName.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
+    const city = slugCity(payload.cityName);
     downloadBlob(blob, `${city}-fee-benchmark.xlsx`);
   }, [payload]);
 

@@ -7,7 +7,7 @@
 
 import type { DeptCode, PolicyTarget } from "../types";
 import type { FeeComparison, PolicyImpact } from "../calc";
-import type { BuildImportLog } from "../store";
+import type { BuildDeptRollup, BuildImportLog } from "../store";
 import { DEPTS, FEE_DEPTS } from "./departments";
 import { fmt } from "../format";
 
@@ -74,6 +74,7 @@ export interface MonitoringData {
 interface MonitoringInput {
   comparisons: FeeComparison[];
   impact: PolicyImpact;
+  deptRollup: Record<DeptCode, BuildDeptRollup>;
   policyTargets: PolicyTarget[];
   imports: BuildImportLog[];
 }
@@ -106,7 +107,7 @@ function deriveSummary({ comparisons, impact, imports }: MonitoringInput): Monit
   };
 }
 
-function deriveDeptHealth({ comparisons, policyTargets }: MonitoringInput): DeptHealth[] {
+function deriveDeptHealth({ comparisons, deptRollup, policyTargets }: MonitoringInput): DeptHealth[] {
   // Only surface fee depts the active jurisdiction actually models. The
   // comparison set is built from state.services, so a dept with at least
   // one service maps directly to a dept the jurisdiction operates.
@@ -115,21 +116,17 @@ function deriveDeptHealth({ comparisons, policyTargets }: MonitoringInput): Dept
   const modeled = new Set(comparisons.map((c) => c.dept));
   const activeDepts = FEE_DEPTS.filter((d) => modeled.has(d));
   return activeDepts.map((dept) => {
-    const deptRows = comparisons.filter((c) => c.dept === dept);
-    const totalCost = deptRows.reduce((a, c) => a + c.annualCost, 0);
-    const currentRev = deptRows.reduce((a, c) => a + c.annualRevenue, 0);
-    const intendedRev = deptRows.reduce((a, c) => a + c.annualCost * (c.target / 100), 0);
-    const current = totalCost > 0 ? Math.round((currentRev / totalCost) * 100) : 0;
+    const r = deptRollup[dept];
+    const current = Math.round(r.recoveryPct);
     const policyTarget = policyTargets.find((t) => t.dept === dept)?.target
-      ?? (totalCost > 0 ? Math.round((intendedRev / totalCost) * 100) : 100);
+      ?? (r.totalCost > 0 ? Math.round((r.intendedRev / r.totalCost) * 100) : 100);
     const drift = current - policyTarget;
-    const subsidy = Math.max(0, intendedRev - currentRev);
     return {
       dept,
       target: policyTarget,
       current,
       drift,
-      subsidy: Math.round(subsidy),
+      subsidy: Math.round(r.subsidy),
       trend: trendFromDrift(drift),
       status: statusFromDrift(drift),
     };

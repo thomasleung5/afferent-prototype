@@ -7,7 +7,8 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect,
-  DrilldownShell, DrilldownColumn, ExpandIndicator, SectionLabel, SourcePill,
+  DrilldownColumn, DrilldownLabel, DrilldownShell,
+  ExpandIndicator, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -207,12 +208,10 @@ export function ServicesTable() {
                   padding: "6px 10px",
                   background: "var(--paper-2)",
                   borderBottom: "1px solid var(--rule)",
-                  fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 600,
-                  letterSpacing: "0.1em", color: "var(--ink-3)", textTransform: "uppercase",
                 }}>
-                  <div>Role</div>
-                  <div style={{ textAlign: "right" }}>%</div>
-                  <div style={{ textAlign: "right" }}>Hours</div>
+                  <DrilldownLabel>Role</DrilldownLabel>
+                  <DrilldownLabel align="right">%</DrilldownLabel>
+                  <DrilldownLabel align="right">Hours</DrilldownLabel>
                 </div>
                 {mix.map((m, i) => (
                   <div key={m.role} style={{
