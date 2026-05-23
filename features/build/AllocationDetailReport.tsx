@@ -69,7 +69,7 @@ export function AllocationDetailReport() {
     return (
       <div style={{
         background: "var(--paper)", border: "1px solid var(--rule)",
-        padding: 22, fontSize: 13, color: "var(--ink-3)",
+        padding: 22, fontSize: "var(--fs-ui)", color: "var(--ink-3)",
       }}>
         No cost pools imported. Add or import pools to see allocation detail.
       </div>
@@ -164,11 +164,11 @@ export function AllocationDetailReport() {
           background: "var(--paper)", border: "1px solid var(--rule)",
         }}>
           <div style={{
-            display: "grid", gridTemplateColumns: COL, gap: 10,
+            display: "grid", gridTemplateColumns: COL, gap: 12,
             padding: "10px 18px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule-strong)",
-            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+            fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <div>Source</div>
@@ -191,7 +191,7 @@ export function AllocationDetailReport() {
               background: "var(--paper-2)",
               borderTop: "1px solid var(--rule)",
               borderBottom: "1px solid var(--rule)",
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+              fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Incoming Costs</div>
           )}
@@ -304,7 +304,7 @@ export function AllocationDetailReport() {
           background: "var(--paper)", border: "1px solid var(--rule)",
         }}>
           <div style={{
-            display: "flex", gap: 18,
+            display: "flex", gap: 16,
             padding: "10px 14px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
@@ -356,7 +356,7 @@ function CostsRow({
     <div className={emphasis ? undefined : "tbl-row-hover-grid"} style={{
       display: "grid",
       gridTemplateColumns: "minmax(220px, 1.8fr) 120px 120px 120px",
-      gap: 10,
+      gap: 12,
       padding: emphasis ? "10px 18px" : "6px 18px",
       borderTop: divider === "top" ? "2px solid var(--ink)"
         : divider === "double" ? "2px solid var(--ink)"
@@ -376,14 +376,14 @@ function CostsRow({
       }}>
         {glCode && (
           <span className="mono" style={{
-            fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+            fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
             letterSpacing: "0.02em",
           }}>{glCode}</span>
         )}
         {label}
         {isSelf && (
           <span className="mono" style={{
-            fontSize: 10, color: "var(--ink-4)", marginLeft: 8,
+            fontSize: "var(--t-l9)", color: "var(--ink-4)", marginLeft: 8,
             letterSpacing: "0.08em", textTransform: "uppercase",
             fontWeight: 600,
           }}>self</span>
@@ -440,7 +440,7 @@ function PoolPicker({
                 borderTop: i > 0 ? "1px solid var(--rule)" : "none",
                 cursor: "pointer",
                 fontFamily: "var(--ff-ui)",
-                fontSize: 12.5,
+                fontSize: "var(--t-l7)",
                 textAlign: "left",
                 fontWeight: selected ? 600 : 400,
               }}
@@ -448,7 +448,7 @@ function PoolPicker({
             >
               <span className="mono" style={{
                 color: gl ? "var(--ink-2)" : "var(--ink-4)",
-                fontSize: 11, letterSpacing: "0.02em",
+                fontSize: "var(--t-l8)", letterSpacing: "0.02em",
               }}>{gl ?? "—"}</span>
               <span style={{
                 color: "var(--ink-2)",
@@ -482,11 +482,11 @@ const COL_GRID = "minmax(220px, 1.6fr) 80px 90px 100px 100px 120px 120px 120px";
 function ColumnHeaders() {
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 10,
+      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
       padding: "10px 14px",
       background: "var(--paper-2)",
       borderBottom: "1px solid var(--rule-strong)",
-      fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+      fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
       letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
     }}>
       <div>Budget Unit</div>
@@ -508,7 +508,7 @@ function SectionHeader({ label }: { label: string }) {
       background: "var(--paper-2)",
       borderBottom: "1px solid var(--rule)",
       borderTop: "1px solid var(--rule)",
-      fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+      fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
       color: "var(--ink-3)", textTransform: "uppercase",
     }}>{label}</div>
   );
@@ -534,17 +534,17 @@ function DetailRow({ row }: { row: Row }) {
     v <= 0 ? "—" : `${v.toFixed(3)}%`;
   return (
     <div className="tbl-row-hover-grid" style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 10,
+      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
       padding: "6px 14px",
       borderBottom: "1px solid var(--rule)",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 12.5,
+      fontSize: "var(--t-l7)",
       alignItems: "baseline",
     }}>
       <div style={{ fontFamily: "var(--ff-ui)", color: "var(--ink-2)", minWidth: 0 }}>
         <span className="mono" style={{
-          color: "var(--ink-3)", fontSize: 10.5,
+          color: "var(--ink-3)", fontSize: "var(--t-l4)",
           letterSpacing: "0.02em", marginRight: 6,
         }}>
           {row.node.glCode.startsWith("seed:") ? "—" : row.node.glCode}
@@ -591,17 +591,17 @@ function TotalRow({
 }) {
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 10,
+      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
       padding: "10px 14px",
       background: "var(--paper)",
       borderTop: "2px solid var(--ink)",
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 12.5, fontWeight: 600,
+      fontSize: "var(--t-l7)", fontWeight: 600,
     }}>
       <div className="mono" style={{
         fontFamily: "var(--ff-mono)",
-        fontSize: 10.5, letterSpacing: "0.1em",
+        fontSize: "var(--t-l4)", letterSpacing: "0.1em",
         textTransform: "uppercase", color: "var(--ink-2)",
       }}>Total</div>
       <div className="num" style={{ textAlign: "right" }}>

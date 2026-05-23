@@ -104,7 +104,7 @@ export default function WorkloadPage() {
           summary={(
             <>
               {unmapped.length} row{unmapped.length === 1 ? "" : "s"} could not be matched to the catalog. Add the service to
-              {" "}<code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>lib/data/services.ts</code>{" "}
+              {" "}<code style={{ fontFamily: "var(--ff-mono)", fontSize: "var(--t-l8)" }}>lib/data/services.ts</code>{" "}
               and re-import, or skip.
             </>
           )}
@@ -124,7 +124,7 @@ export default function WorkloadPage() {
               >
                 <span style={{ color: "var(--ink)" }}>{d.name}</span>
                 <span className="mono" style={{
-                  fontSize: 10.5, color: "var(--ink-3)",
+                  fontSize: "var(--t-l4)", color: "var(--ink-3)",
                   letterSpacing: "0.06em",
                 }}>{d.dept}</span>
                 <span className="num" style={{
@@ -135,7 +135,7 @@ export default function WorkloadPage() {
                   textAlign: "right", color: "var(--ink-2)",
                   fontVariantNumeric: "tabular-nums",
                 }}>{d.current}</span>
-                <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
+                <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{d.reason}</span>
                 <ImportReviewAction
                   align="right"
                   onClick={() => setUnmapped((prev) => prev.filter((_, j) => j !== i))}

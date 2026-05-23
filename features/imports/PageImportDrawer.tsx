@@ -114,7 +114,7 @@ export function PageImportDrawer({
       subtitle={helper}
       width={640}
     >
-      <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+      <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
         {onAiPdfImport && (
           <ActionPanel
             tone={aiPdfPrimary ? "primary" : "secondary"}
@@ -149,7 +149,7 @@ export function PageImportDrawer({
             onClick={runPaste}
             helper={
               pasteHelper ?? (pasteExample
-                ? (<>Paste structured output shaped like <code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>{pasteExample}</code>.</>)
+                ? (<>Paste structured output shaped like <code style={{ fontFamily: "var(--ff-mono)", fontSize: "var(--t-l8)" }}>{pasteExample}</code>.</>)
                 : undefined)
             }
             schema={pasteSchema}
@@ -172,7 +172,7 @@ export function PageImportDrawer({
 
       <div style={{
         position: "sticky", bottom: 0,
-        marginTop: 18,
+        marginTop: 16,
         padding: "12px 0",
         borderTop: "1px solid var(--rule)",
         background: "var(--paper)",
@@ -187,12 +187,12 @@ export function PageImportDrawer({
 function OrDivider() {
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10,
+      display: "flex", alignItems: "center", gap: 12,
       color: "var(--ink-3)",
     }}>
       <span style={{ flex: 1, height: 1, background: "var(--rule)" }}/>
       <span className="mono" style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.14em",
         textTransform: "uppercase",
       }}>or</span>
       <span style={{ flex: 1, height: 1, background: "var(--rule)" }}/>
@@ -257,19 +257,19 @@ function ActionPanel({
           background: "var(--paper)",
           border: "1px solid var(--rule)",
           fontFamily: "var(--ff-mono)",
-          fontSize: 11, lineHeight: 1.55,
+          fontSize: "var(--t-l8)", lineHeight: 1.55,
           color: "var(--ink-2)",
           whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>{schema}</pre>
       )}
       {(loading || status) && (
         <div style={{
-          display: "flex", alignItems: "baseline", gap: 10,
+          display: "flex", alignItems: "baseline", gap: 12,
           paddingTop: 4,
           borderTop: "1px dashed var(--rule)",
         }}>
           <span className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>{label}</span>
           <span style={{

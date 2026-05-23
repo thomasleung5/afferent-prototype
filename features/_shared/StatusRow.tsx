@@ -39,7 +39,7 @@ export function StatusRow({ items }: Props) {
           }}>
             {label && (
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                 color: "var(--ink-3)", textTransform: "uppercase",
               }}>{label}</div>
             )}

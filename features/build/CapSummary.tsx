@@ -57,7 +57,7 @@ export function CapSummary() {
         ) : <span style={{ color: "var(--ink-3)" }}>—</span>,
       },
       drilldown: (
-        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
           <Ledger
             cols={[
               { key: "pool",  label: "Pool",  width: "1fr" },
@@ -72,7 +72,7 @@ export function CapSummary() {
                 key: p.poolId,
                 cells: {
                   pool:  <span style={{ color: "var(--ink-2)" }}>{pool?.pool ?? p.poolId}</span>,
-                  basis: <span className="mono" style={{ color: "var(--ink-3)", fontSize: 11 }}>{pool?.basis ?? "—"}</span>,
+                  basis: <span className="mono" style={{ color: "var(--ink-3)", fontSize: "var(--t-l8)" }}>{pool?.basis ?? "—"}</span>,
                   share: <span className="num" style={{ color: "var(--ink-3)" }}>{pct}%</span>,
                   alloc: <span className="num" style={{ fontWeight: 600 }}>{fmt.dollars(p.allocated)}</span>,
                 },
@@ -82,7 +82,7 @@ export function CapSummary() {
               pool: (
                 <span style={{
                   color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: 10,
+                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
                 }}>Total to {labelOf(d)}</span>
               ),
               basis: "",
@@ -130,7 +130,7 @@ export function CapSummary() {
         dept: (
           <span style={{
             color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: 11,
+            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
           }}>Allocated to fee depts</span>
         ),
         alloc: fmt.dollarsK(totalAllocated),

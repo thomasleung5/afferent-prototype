@@ -57,12 +57,12 @@ export function Drawer({
           padding: "16px 22px",
           borderBottom: "1px solid var(--rule)",
           background: "var(--paper-2)",
-          display: "flex", alignItems: "flex-start", gap: 14,
+          display: "flex", alignItems: "flex-start", gap: 12,
         }}>
           <div style={{ flex: 1, minWidth: 0 }}>
             {eyebrow && (
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.14em",
                 color: "var(--ink-3)", textTransform: "uppercase",
               }}>{eyebrow}</div>
             )}

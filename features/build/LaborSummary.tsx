@@ -58,7 +58,7 @@ export function LaborSummary() {
         total: fmt.dollarsK(r.totalComp),
       },
       drilldown: (
-        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
           <Ledger
             cols={[
               { key: "title", label: "Position",       width: "1fr" },
@@ -82,7 +82,7 @@ export function LaborSummary() {
               title: (
                 <span style={{
                   color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: 10,
+                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
                 }}>Total to {labelOf(d)}</span>
               ),
               fte:   <span className="num">{r.fte.toFixed(1)}</span>,
@@ -131,7 +131,7 @@ export function LaborSummary() {
         dept: (
           <span style={{
             color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: 11,
+            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
           }}>Total</span>
         ),
         positions: (

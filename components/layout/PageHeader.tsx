@@ -17,7 +17,7 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: Props) {
         {eyebrow && (
           <div className="mono" style={{
             marginBottom: 8,
-            fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em",
+            fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.14em",
             textTransform: "uppercase", color: "var(--ink-3)",
           }}>{eyebrow}</div>
         )}
@@ -25,7 +25,7 @@ export function PageHeader({ eyebrow, title, subtitle, actions }: Props) {
           fontSize: 28, fontWeight: 600, letterSpacing: "-0.018em", lineHeight: 1.15,
         }}>{title}</div>
         {subtitle && (
-          <div style={{ marginTop: 10, fontSize: 14, color: "var(--ink-3)", lineHeight: 1.5, maxWidth: 720 }}>
+          <div style={{ marginTop: 12, fontSize: 14, color: "var(--ink-3)", lineHeight: 1.5, maxWidth: 720 }}>
             {subtitle}
           </div>
         )}

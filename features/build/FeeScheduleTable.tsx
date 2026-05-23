@@ -138,8 +138,8 @@ export function FeeScheduleTable() {
       sortable: true,
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13 }}>{r.name}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>
+          <div style={{ fontSize: "var(--fs-ui)" }}>{r.name}</div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
             {r.id}
           </div>
         </div>
@@ -271,13 +271,13 @@ export function FeeScheduleTable() {
           return (
             <DrilldownShell>
             <DrilldownColumn marker="①" title="Policy">
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                 <div>
                   <div className="mono" style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                     color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                   }}>Recovery target</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
                     <input
                       type="range"
                       min={0} max={100} step={5}
@@ -286,13 +286,13 @@ export function FeeScheduleTable() {
                       style={{ flex: 1, accentColor: "var(--accent)" }}
                     />
                     <span className="num" style={{
-                      fontSize: 13, fontWeight: 600, minWidth: 42, textAlign: "right",
+                      fontSize: "var(--fs-ui)", fontWeight: 600, minWidth: 42, textAlign: "right",
                     }}>{r.target}%</span>
                   </div>
                 </div>
                 <div>
                   <div className="mono" style={{
-                    fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                     color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                   }}>Current fee</div>
                   <CellInput
@@ -324,7 +324,7 @@ export function FeeScheduleTable() {
                 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
                     <span className="mono" style={{
-                      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+                      fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.1em",
                       color: delta > 0 ? "var(--warn)" : "var(--pos)",
                       textTransform: "uppercase",
                     }}>Why this {delta > 0 ? "increase" : "decrease"}</span>
@@ -341,7 +341,7 @@ export function FeeScheduleTable() {
                 to="/build/costs"
                 search={{ serviceId: r.id }}
                 style={{
-                  display: "inline-block", marginTop: 10, fontSize: 11,
+                  display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
                   color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                 }}
               >
@@ -352,11 +352,11 @@ export function FeeScheduleTable() {
             <DrilldownColumn marker="③" title="Comparators">
               <div>
                 <div className="mono" style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
+                  fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.1em",
                   color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                 }}>Peer median</div>
                 {svc.peer > 0 ? (
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+                  <div style={{ display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap" }}>
                     <span className="num" style={{ fontSize: 14, fontWeight: 600 }}>
                       {fmt.dollars(svc.peer)}
                     </span>
@@ -365,7 +365,7 @@ export function FeeScheduleTable() {
                     </span>
                   </div>
                 ) : (
-                  <div style={{ fontSize: 11, color: "var(--ink-3)" }}>
+                  <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
                     No peer data on file for this fee.
                   </div>
                 )}
@@ -373,7 +373,7 @@ export function FeeScheduleTable() {
                   to="/build/benchmark"
                   search={{ serviceId: r.id }}
                   style={{
-                    display: "inline-block", marginTop: 8, fontSize: 11,
+                    display: "inline-block", marginTop: 8, fontSize: "var(--t-l8)",
                     color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                   }}
                 >

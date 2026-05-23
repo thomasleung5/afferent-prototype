@@ -15,7 +15,7 @@ interface Props {
 export function DrilldownLabel({ children, align = "left", style }: Props) {
   return (
     <div className="mono" style={{
-      fontSize: 10,
+      fontSize: "var(--t-l9)",
       fontWeight: 600,
       letterSpacing: "0.1em",
       color: "var(--ink-3)",

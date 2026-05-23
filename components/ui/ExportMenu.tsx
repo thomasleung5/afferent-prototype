@@ -117,8 +117,8 @@ function PdfMenuItem({
       onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
       style={{ ...ITEM_STYLE, border: "none" }}
     >
-      <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</span>
+      <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{sub}</span>
     </a>
   );
 }
@@ -137,8 +137,8 @@ function MenuItem({
         borderTop: divider ? "1px solid var(--rule)" : "none",
       }}
     >
-      <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>{label}</span>
-      <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{sub}</span>
+      <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500 }}>{label}</span>
+      <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{sub}</span>
     </button>
   );
 }

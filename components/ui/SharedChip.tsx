@@ -8,7 +8,7 @@ export function SharedChip() {
       padding: "2px 6px",
       border: "1px dashed var(--rule-strong)",
       background: "var(--paper-2)",
-      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em",
+      fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.04em",
       color: "var(--ink-2)",
     }}>SHARED</span>
   );

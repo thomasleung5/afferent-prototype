@@ -60,7 +60,7 @@ export function RateDerivation() {
       render: (r) => (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <DeptChip code={r.dept}/>
-          <span style={{ fontSize: 13, fontWeight: 500 }}>{r.deptName}</span>
+          <span style={{ fontSize: "var(--fs-ui)", fontWeight: 500 }}>{r.deptName}</span>
         </div>
       ),
     },
@@ -96,7 +96,7 @@ export function RateDerivation() {
       sortable: true,
       render: (r) => (
         <span className="num" style={{ color: "var(--accent)" }}>
-          ${Math.round(r.fbhrTotal)}<span style={{ fontSize: 11, color: "var(--ink-3)" }}>/hr</span>
+          ${Math.round(r.fbhrTotal)}<span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>/hr</span>
         </span>
       ),
     },
@@ -186,7 +186,7 @@ export function RateDerivation() {
                   const pool = capPools.find((p) => p.id === ar.poolId);
                   return (
                     <div key={ar.poolId} style={{
-                      display: "flex", justifyContent: "space-between", gap: 10,
+                      display: "flex", justifyContent: "space-between", gap: 12,
                       padding: "7px 12px",
                       borderBottom: i < Math.min(allocRows.length, 6) - 1 ? "1px solid var(--rule)" : "none",
                       alignItems: "baseline",
@@ -200,7 +200,7 @@ export function RateDerivation() {
                   );
                 })}
                 {allocRows.length > 6 && (
-                  <div style={{ padding: "7px 12px", color: "var(--ink-4)", fontSize: 10.5 }}>
+                  <div style={{ padding: "7px 12px", color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
                     + {allocRows.length - 6} smaller pools
                   </div>
                 )}

@@ -273,7 +273,7 @@ function Matrix({
           position: "sticky", left: 0, zIndex: 3,
           display: "inline-block",
           padding: "8px 16px",
-          fontFamily: "var(--ff-mono)", fontSize: 10, fontWeight: 700,
+          fontFamily: "var(--ff-mono)", fontSize: "var(--t-l9)", fontWeight: 700,
           letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase",
         }}>{label}</div>
       </td>
@@ -306,7 +306,7 @@ function Matrix({
               <th style={{
                 ...stickyLeftBand,
                 borderBottom: "1px solid var(--rule-strong)",
-                fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                 letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
               }}>Cost Center</th>
               {columns.map((b) => (
@@ -315,7 +315,7 @@ function Matrix({
                   background: "var(--paper-2)",
                   borderBottom: "1px solid var(--rule-strong)",
                   textAlign: "right",
-                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                   letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
                 }}>{b.label}</th>
               ))}
@@ -341,7 +341,7 @@ function Matrix({
               <td className="mono" style={{
                 ...stickyLeftBand,
                 borderTop: "2px solid var(--ink)",
-                fontSize: 10.5, fontWeight: 600, letterSpacing: "0.1em",
+                fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.1em",
                 textTransform: "uppercase", color: "var(--ink-2)",
               }}>Total</td>
               {columns.map((b) => {
@@ -351,7 +351,7 @@ function Matrix({
                     padding: cellPad,
                     background: "var(--paper-2)",
                     borderTop: "2px solid var(--ink)",
-                    textAlign: "right", fontSize: 12.5, fontWeight: 600,
+                    textAlign: "right", fontSize: "var(--t-l7)", fontWeight: 600,
                     fontFamily: "var(--ff-mono)",
                   }}>{formatCell(t, b.fmt)}</td>
                 );
@@ -361,7 +361,7 @@ function Matrix({
               <td style={{
                 ...stickyLeftBand,
                 borderTop: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 10,
+                fontFamily: "var(--ff-mono)", fontSize: "var(--t-l9)",
                 letterSpacing: "0.1em", color: "var(--ink-3)",
                 textTransform: "uppercase",
               }}>Unit</td>
@@ -371,7 +371,7 @@ function Matrix({
                   background: "var(--paper-2)",
                   borderTop: "1px solid var(--rule)",
                   textAlign: "right",
-                  fontFamily: "var(--ff-mono)", fontSize: 10, color: "var(--ink-3)",
+                  fontFamily: "var(--ff-mono)", fontSize: "var(--t-l9)", color: "var(--ink-3)",
                 }}>{b.unit}</td>
               ))}
             </tr>
@@ -396,11 +396,11 @@ function MatrixRow({
       <td style={{
         ...stickyLeftBody,
         borderBottom: "1px solid var(--rule)",
-        fontFamily: "var(--ff-ui)", fontSize: 13, color: "var(--ink)",
+        fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)", color: "var(--ink)",
       }}>
         {caption && (
           <span className="mono" style={{
-            fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+            fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
             letterSpacing: "0.02em", fontWeight: 400,
           }}>{caption}</span>
         )}
@@ -424,7 +424,7 @@ function MatrixRow({
               style={{
                 display: "block", width: "100%",
                 textAlign: "right", padding: "7px 10px",
-                fontSize: 12.5,
+                fontSize: "var(--t-l7)",
                 fontFamily: "var(--ff-mono)",
                 fontVariantNumeric: "tabular-nums",
                 color: empty ? "var(--ink-4)" : "var(--ink)",
@@ -449,13 +449,13 @@ function MatrixRow({
 function TraceHint() {
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10,
+      display: "flex", alignItems: "center", gap: 12,
       padding: "12px 16px",
       background: "var(--paper-2)", border: "1px solid var(--rule)",
       fontSize: 12, color: "var(--ink-3)",
     }}>
       <span className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
       <span>Click any non-empty cell to see how it's calculated.</span>

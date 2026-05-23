@@ -28,9 +28,9 @@ const TONE_COLOR: Record<Tone, string> = {
 /** "Decision screen" header: question → headline answer → supporting stats → actions. */
 export function AnswerHeader({ question, answer, tone = "info", sub, stats, actions }: Props) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div className="mono" style={{
-        fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em",
+        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
         textTransform: "uppercase", color: "var(--ink-3)",
       }}>{question}</div>
 
@@ -45,7 +45,7 @@ export function AnswerHeader({ question, answer, tone = "info", sub, stats, acti
             color: TONE_COLOR[tone],
           }}>{answer}</div>
           {sub && (
-            <div style={{ fontSize: 13, color: "var(--ink-3)", maxWidth: 640, lineHeight: 1.5 }}>
+            <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-3)", maxWidth: 640, lineHeight: 1.5 }}>
               {sub}
             </div>
           )}
@@ -64,7 +64,7 @@ export function AnswerHeader({ question, answer, tone = "info", sub, stats, acti
             borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
           }}>
             <div className="mono" style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "var(--ink-3)",
             }}>{s.label}</div>
             <div className="display num" style={{

@@ -15,18 +15,18 @@ export function DeptRecoveryChart() {
   const activeDepts = ORDER.filter((code) => rollup[code].totalCost > 0);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {activeDepts.map((code) => {
         const dept = DEPTS[code];
         const r = rollup[code];
         return (
           <div key={code} style={{
             display: "grid", gridTemplateColumns: "150px 1fr 110px",
-            gap: 14, alignItems: "center",
+            gap: 12, alignItems: "center",
           }}>
             <div>
-              <div style={{ fontSize: 13, fontWeight: 500, color: "var(--ink)" }}>{dept.name.replace(" Administration", "")}</div>
-              <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)" }}>{code}</div>
+              <div style={{ fontSize: "var(--fs-ui)", fontWeight: 500, color: "var(--ink)" }}>{dept.name.replace(" Administration", "")}</div>
+              <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-3)" }}>{code}</div>
             </div>
             <RecoveryMeter pct={r.recoveryPct} width={240}/>
             <div className="num" style={{

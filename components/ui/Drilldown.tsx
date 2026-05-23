@@ -32,9 +32,9 @@ export function DrilldownColumn({ marker, title, children }: ColProps) {
   return (
     <div>
       <div className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-3)", textTransform: "uppercase",
-        marginBottom: 10,
+        marginBottom: 12,
       }}>
         {marker && <span style={{ marginRight: 6 }}>{marker}</span>}
         {title}

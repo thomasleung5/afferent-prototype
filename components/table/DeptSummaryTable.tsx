@@ -47,7 +47,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
           )}
           {focus && (
             <div className="mono" style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>{focus}</div>
           )}
@@ -59,7 +59,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
         padding: "9px 16px",
         borderBottom: "1px solid var(--rule)",
         background: "var(--paper-2)",
-        fontSize: 11, fontWeight: 600, letterSpacing: "0.04em",
+        fontSize: "var(--t-l8)", fontWeight: 600, letterSpacing: "0.04em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         {cols.map((c) => (
@@ -88,7 +88,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
                 display: "grid", gridTemplateColumns: colTpl, columnGap: 28,
                 padding: "12px 16px", alignItems: "center",
                 cursor: canExpand ? "pointer" : "default",
-                fontSize: 13,
+                fontSize: "var(--fs-ui)",
                 background: isOpen ? "var(--paper-2)" : "transparent",
                 transition: "background 80ms",
               }}
@@ -122,7 +122,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
         <div style={{
           display: "grid", gridTemplateColumns: colTpl, columnGap: 28,
           padding: "12px 16px", alignItems: "center",
-          fontSize: 13, fontWeight: 600,
+          fontSize: "var(--fs-ui)", fontWeight: 600,
           borderTop: "1px solid var(--rule-strong)",
           background: "var(--paper-2)",
         }}>
@@ -168,7 +168,7 @@ export function Ledger({ cols, rows, total }: LedgerProps) {
         padding: "8px 12px", borderBottom: "1px solid var(--rule)",
         background: "var(--paper-2)",
         display: "grid", gridTemplateColumns: grid, gap: 12,
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.08em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.08em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         {cols.map((c) => (
@@ -225,7 +225,7 @@ export function MetaGrid({ rows }: MetaGridProps) {
       {rows.map((r, i) => (
         <div key={i} style={{ display: "contents" }}>
           <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
             color: "var(--ink-3)", textTransform: "uppercase", paddingTop: 2,
           }}>{r.label}</div>
           <div style={{ color: "var(--ink-2)" }}>{r.value}</div>

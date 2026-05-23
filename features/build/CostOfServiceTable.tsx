@@ -66,8 +66,8 @@ export function CostOfServiceTable() {
       sortable: true,
       render: (r) => (
         <div>
-          <div style={{ fontSize: 12.5 }}>{r.name}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 2 }}>{r.id}</div>
+          <div style={{ fontSize: "var(--t-l7)" }}>{r.name}</div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>{r.id}</div>
         </div>
       ),
     },
@@ -153,14 +153,14 @@ export function CostOfServiceTable() {
                 to="/build/services"
                 search={{ serviceId: r.id }}
                 style={{
-                  display: "inline-block", fontSize: 11,
+                  display: "inline-block", fontSize: "var(--t-l8)",
                   color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                 }}
               >
                 View service →
               </Link>
               <div style={{
-                marginTop: 14, padding: "12px 14px",
+                marginTop: 12, padding: "12px 14px",
                 background: "var(--paper)", border: "1px solid var(--rule)",
                 fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
               }}>
@@ -213,7 +213,7 @@ export function CostOfServiceTable() {
                   const pool = capPools.find((p) => p.id === ar.poolId);
                   return (
                     <div key={ar.poolId} style={{
-                      display: "flex", justifyContent: "space-between", gap: 10,
+                      display: "flex", justifyContent: "space-between", gap: 12,
                       padding: "7px 12px",
                       borderBottom: i < Math.min(allocRows.length, 6) - 1 ? "1px solid var(--rule)" : "none",
                       alignItems: "baseline",
@@ -227,7 +227,7 @@ export function CostOfServiceTable() {
                   );
                 })}
                 {allocRows.length > 6 && (
-                  <div style={{ padding: "7px 12px", color: "var(--ink-4)", fontSize: 10.5 }}>
+                  <div style={{ padding: "7px 12px", color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
                     + {allocRows.length - 6} smaller pools
                   </div>
                 )}
@@ -244,7 +244,7 @@ export function CostOfServiceTable() {
                 to="/build/feestudy"
                 search={{ serviceId: r.id }}
                 style={{
-                  display: "inline-block", marginTop: 10, fontSize: 11,
+                  display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
                   color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                 }}
               >

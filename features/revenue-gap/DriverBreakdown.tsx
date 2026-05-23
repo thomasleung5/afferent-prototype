@@ -38,8 +38,8 @@ export function DriverBreakdown({ direct, operating, cap }: Props) {
         {rows.map((r) => (
           <div key={r.label} style={{
             display: "grid", gridTemplateColumns: "12px 1fr auto auto",
-            gap: 10, alignItems: "center",
-            fontSize: 12.5,
+            gap: 12, alignItems: "center",
+            fontSize: "var(--t-l7)",
           }}>
             <span style={{ width: 12, height: 12, background: r.color, display: "inline-block" }}/>
             <span style={{ color: "var(--ink-2)" }}>{r.label}</span>

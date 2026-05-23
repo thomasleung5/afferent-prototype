@@ -72,10 +72,10 @@ export default function HomePage() {
       {/* Document header */}
       <div style={{
         borderBottom: "1px solid var(--rule)",
-        paddingBottom: 18, marginBottom: -4,
+        paddingBottom: 16, marginBottom: -4,
       }}>
         <div className="mono" style={{
-          fontSize: 10.5, fontWeight: 600, letterSpacing: "0.14em",
+          fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.14em",
           textTransform: "uppercase", color: "var(--ink-3)",
         }}>{jurisdiction.name}</div>
         <div className="display" style={{
@@ -93,7 +93,7 @@ export default function HomePage() {
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
           <div className="mono" style={{
-            fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em",
+            fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
             textTransform: "uppercase", color: "var(--ink-3)",
           }}>Overall cost recovery</div>
           <div className="display" style={{
@@ -105,7 +105,7 @@ export default function HomePage() {
               under-recovery at {recovery.toFixed(0)}%
             </span>
           </div>
-          <div style={{ fontSize: 13, color: "var(--ink-3)" }}>
+          <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-3)" }}>
             See Revenue Gap for recovery drivers, shortfalls, and source traceability.
           </div>
         </div>
@@ -171,14 +171,14 @@ export default function HomePage() {
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
           <div className="mono" style={{
-            fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em",
+            fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
             textTransform: "uppercase", color: "var(--ink-3)",
           }}>Recurring workflow</div>
           <div className="display" style={{
             fontSize: 24, fontWeight: 600, letterSpacing: "-0.018em", lineHeight: 1.15,
           }}>Annual update</div>
           <div style={{
-            fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55, textWrap: "pretty",
+            fontSize: "var(--fs-ui)", color: "var(--ink-2)", lineHeight: 1.55, textWrap: "pretty",
             maxWidth: 420,
           }}>
             Refresh annual inputs, review recovery impacts, and generate the adoption packet.
@@ -195,7 +195,7 @@ export default function HomePage() {
           ].map((s) => (
             <div key={s.l}>
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{
@@ -211,7 +211,7 @@ export default function HomePage() {
           background: "var(--charcoal)",
           color: "white",
           border: "1px solid var(--charcoal)",
-          fontSize: 13, fontWeight: 500,
+          fontSize: "var(--fs-ui)", fontWeight: 500,
           whiteSpace: "nowrap",
         }}>
           Run annual update <Icon name="arrow-right" size={13}/>

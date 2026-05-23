@@ -65,7 +65,7 @@ function Card({ n, titleSize, minHeight }: { n: Node; titleSize: number; minHeig
       onMouseLeave={() => setHovered(false)}
       style={{
         display: "flex", flexDirection: "column", gap: 8,
-        padding: 14,
+        padding: 12,
         minHeight,
         background: active ? ACTIVE_BG : baseBg,
         border: `1px solid ${active ? ACTIVE_BORDER : hovered ? HOVER_BORDER : baseBorder}`,
@@ -82,14 +82,14 @@ function Card({ n, titleSize, minHeight }: { n: Node; titleSize: number; minHeig
       }}>{n.label}</div>
       <div style={{
         fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-        fontSize: 10.5,
+        fontSize: "var(--t-l4)",
         lineHeight: 1.45, letterSpacing: "0.02em",
         opacity: 0.62,
       }}>{n.desc}</div>
       <div style={{
         marginTop: "auto", paddingTop: 8,
         fontFamily: '"IBM Plex Mono", ui-monospace, monospace',
-        fontSize: 10, fontWeight: 500,
+        fontSize: "var(--t-l9)", fontWeight: 500,
         lineHeight: 1.3, letterSpacing: "0.04em",
         opacity: 0.42,
       }}>{n.metric}</div>
@@ -168,7 +168,7 @@ export function WorkflowMap() {
       <SectionLabel>Inputs</SectionLabel>
 
       <div style={{
-        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 10,
+        display: "grid", gridTemplateColumns: "repeat(5, 1fr)", gap: 12,
         marginBottom: 16,
       }}>
         {inputs.map((n) => <Card key={n.href} n={n} titleSize={17} minHeight={168}/>)}

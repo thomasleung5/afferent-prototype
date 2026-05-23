@@ -216,11 +216,11 @@ export default function CapPage() {
               >
                 <span style={{ color: "var(--ink)" }}>{d.name}</span>
                 <span className="mono" style={{
-                  fontSize: 10.5, color: "var(--ink-3)",
+                  fontSize: "var(--t-l4)", color: "var(--ink-3)",
                   letterSpacing: "0.06em",
                 }}>{d.driverKey}</span>
                 <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{d.source}</span>
-                <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
+                <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{d.reason}</span>
                 <ImportReviewAction
                   align="right"
                   onClick={() => setUnmappedBases((prev) => prev.filter((_, j) => j !== i))}

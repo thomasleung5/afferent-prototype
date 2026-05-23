@@ -107,7 +107,7 @@ export function ServicesTable() {
             value={r.name}
             onChange={(v) => updateService(r.id, { name: String(v) })}
           />
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.04em", paddingLeft: 6 }}>
+          <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", letterSpacing: "0.04em", paddingLeft: 6 }}>
             {r.id}
           </span>
         </div>
@@ -232,7 +232,7 @@ export function ServicesTable() {
                     alignItems: "baseline",
                   }}>
                     <span className="mono" style={{
-                      fontSize: 10, letterSpacing: "0.06em",
+                      fontSize: "var(--t-l9)", letterSpacing: "0.06em",
                       color: "var(--ink-3)", textTransform: "uppercase",
                     }}>Total</span>
                     <span className="num" style={{

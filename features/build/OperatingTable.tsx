@@ -94,7 +94,7 @@ export function OperatingTable() {
             />
           </div>
           {!r.include && r.excludeReason && (
-            <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2, fontStyle: "italic", paddingLeft: 6 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2, fontStyle: "italic", paddingLeft: 6 }}>
               Excluded: {r.excludeReason}
             </div>
           )}

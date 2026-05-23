@@ -29,12 +29,12 @@ export function RefreshImportGrid() {
       }}>
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
           <div className="mono" style={{
-            fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             Refresh source files
           </div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-3)", whiteSpace: "nowrap" }}>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
             Last refresh: <span style={{ color: "var(--ink-2)" }}>{summary.lastRefresh}</span>
             {summary.hasImports
               ? <>
@@ -46,10 +46,10 @@ export function RefreshImportGrid() {
               : <> {" · "}Seed baseline · upload sources to refresh</>}
           </div>
         </div>
-        <div style={{ fontSize: 12.5, color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
+        <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
           Upload current-year exports for staffing, operating, workload, fee schedules, benchmark fees, and CAP inputs.
         </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 10 }}>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
           {[
             "Budget export",
             "Staffing / FTE",
@@ -60,7 +60,7 @@ export function RefreshImportGrid() {
             "Benchmark fees",
           ].map((label) => (
             <span key={label} className="mono" style={{
-              fontSize: 10.5, color: "var(--ink-2)",
+              fontSize: "var(--t-l4)", color: "var(--ink-2)",
               padding: "2px 8px",
               border: "1px solid var(--rule)",
               background: "var(--paper-2)",
@@ -76,7 +76,7 @@ export function RefreshImportGrid() {
           Imports by model section
         </SectionLabel>
 
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 14 }}>
+        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
           {cards.map((c) => <SectionCard key={c.domain} card={c}/>)}
         </div>
       </div>
@@ -88,23 +88,23 @@ function SectionCard({ card }: { card: RefreshSectionCard }) {
   const pct = card.rows > 0 ? Math.round((card.mapped / card.rows) * 100) : 0;
   const showSeed = !card.hasImports;
   return (
-    <div style={{ background: "var(--paper)", border: "1px solid var(--rule)", padding: 20 }}>
+    <div style={{ background: "var(--paper)", border: "1px solid var(--rule)", padding: 22 }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
         <div>
           <div className="mono" style={{
-            fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+            fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>{card.section}</div>
           <div className="display" style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{card.name}</div>
         </div>
         <span className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.04em",
+          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.04em",
           padding: "2px 7px", border: "1px solid var(--rule)",
           background: "var(--paper-2)", color: "var(--ink-2)",
         }}>{showSeed ? "Seed" : card.conf}</span>
       </div>
 
-      <div style={{ marginTop: 14 }}>
+      <div style={{ marginTop: 12 }}>
         <div style={{ height: 6, background: "var(--rule)", overflow: "hidden" }}>
           <div style={{
             height: "100%",
@@ -116,7 +116,7 @@ function SectionCard({ card }: { card: RefreshSectionCard }) {
         </div>
       </div>
 
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 14 }}>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12, marginTop: 12 }}>
         {showSeed
           ? [
               { label: "In model",   value: card.seedCount.toLocaleString(), color: "var(--ink)" },
@@ -131,10 +131,10 @@ function SectionCard({ card }: { card: RefreshSectionCard }) {
       </div>
 
       <div style={{
-        marginTop: 14, paddingTop: 12, borderTop: "1px solid var(--rule)",
+        marginTop: 12, paddingTop: 12, borderTop: "1px solid var(--rule)",
         display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
       }}>
-        <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)" }}>
+        <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
           {showSeed
             ? "Never refreshed · using seed baseline"
             : `Last refreshed ${formatStamp(card.lastImport!)} · ${card.importCount} import${card.importCount === 1 ? "" : "s"}`}
@@ -151,7 +151,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
   return (
     <div>
       <div className="mono" style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</div>
       <div className="num" style={{ fontSize: 14, fontWeight: 500, marginTop: 4, color }}>

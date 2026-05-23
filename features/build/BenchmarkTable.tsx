@@ -118,8 +118,8 @@ export function BenchmarkTable() {
       sortable: true,
       render: (r) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <span style={{ fontSize: 13, color: "var(--ink)" }}>{r.name}</span>
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)" }}>{r.id}</span>
+          <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)" }}>{r.name}</span>
+          <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>{r.id}</span>
         </div>
       ),
     },
@@ -263,7 +263,7 @@ export function BenchmarkTable() {
                   {sorted.map((p, i) => (
                     <div key={p.city} style={{
                       display: "flex", justifyContent: "space-between",
-                      gap: 10, padding: "7px 12px",
+                      gap: 12, padding: "7px 12px",
                       borderBottom: i < sorted.length - 1 ? "1px solid var(--rule)" : "none",
                     }}>
                       <span style={{ color: "var(--ink-2)" }}>{p.city}</span>
@@ -283,7 +283,7 @@ export function BenchmarkTable() {
                   to="/build/feestudy"
                   search={{ serviceId: r.id }}
                   style={{
-                    display: "inline-block", marginTop: 10, fontSize: 11,
+                    display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
                     color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                   }}
                 >
@@ -327,7 +327,7 @@ function StatusChip({ status }: { status: Row["status"] }) {
   return (
     <span className="mono" style={{
       display: "inline-block",
-      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em",
+      fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.06em",
       color: STATUS_COLOR[status],
       padding: "2px 6px",
       background: "var(--paper-2)",

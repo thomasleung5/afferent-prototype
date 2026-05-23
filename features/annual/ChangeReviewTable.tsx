@@ -50,7 +50,7 @@ function DecisionControl({ status, onSet }: { status: DecisionStatus; onSet: (s:
         const on = status === o.k;
         return (
           <button key={o.k} onClick={() => onSet(on ? undefined : o.k)} style={{
-            padding: "4px 9px", fontSize: 11, fontWeight: 500,
+            padding: "4px 9px", fontSize: "var(--t-l8)", fontWeight: 500,
             color: on ? "var(--ink)" : "var(--ink-3)",
             background: on ? "var(--paper-2)" : "transparent",
             borderRight: i < opts.length - 1 ? "1px solid var(--rule)" : "none",
@@ -159,7 +159,7 @@ export function ChangeReviewTable() {
       render: (r) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span style={{ color: "var(--ink)" }}>{r.change}</span>
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.05em" }}>
+          <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", letterSpacing: "0.05em" }}>
             {r.affected}
           </span>
         </div>
@@ -269,15 +269,15 @@ export function ChangeReviewTable() {
           renderDrilldown={(r) => (
             <DrilldownShell>
               <DrilldownColumn marker="①" title="Change detail">
-                <div style={{ fontSize: 13, lineHeight: 1.7 }}>
+                <div style={{ fontSize: "var(--fs-ui)", lineHeight: 1.7 }}>
                   <div style={{ fontWeight: 500 }}>{r.change}</div>
                   <div style={{ fontSize: 12, color: "var(--ink-3)", marginTop: 4 }}>Affects: {r.affected}</div>
                 </div>
               </DrilldownColumn>
 
               <DrilldownColumn marker="②" title="Recommended action">
-                <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-                  <div style={{ fontSize: 13, lineHeight: 1.6, color: "var(--ink-2)" }}>{r.action}</div>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+                  <div style={{ fontSize: "var(--fs-ui)", lineHeight: 1.6, color: "var(--ink-2)" }}>{r.action}</div>
                   <StatusPill kind={statusKindFor(r.badge)}>{r.badge}</StatusPill>
                   {r.domain && (
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any

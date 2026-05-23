@@ -46,11 +46,11 @@ export function CapStepNav({ current, onJump }: Props) {
             }}
           >
             <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: 12.5, fontWeight: 600, marginBottom: 3 }}>
+              <div style={{ fontSize: "var(--t-l7)", fontWeight: 600, marginBottom: 3 }}>
                 {s.label}
               </div>
               <div style={{
-                fontSize: 10.5, lineHeight: 1.35,
+                fontSize: "var(--t-l4)", lineHeight: 1.35,
                 color: active ? "rgba(255,255,255,0.65)" : "var(--ink-3)",
               }}>{s.hint}</div>
             </div>

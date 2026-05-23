@@ -59,7 +59,7 @@ export function SubsectionNav({ items }: Props) {
               </div>
               {it.hint && (
                 <div style={{
-                  fontSize: 10, lineHeight: 1.35,
+                  fontSize: "var(--t-l9)", lineHeight: 1.35,
                   color: active ? "rgba(255,255,255,0.65)" : "var(--ink-3)",
                 }}>{it.hint}</div>
               )}

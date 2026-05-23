@@ -41,13 +41,13 @@ export function TracePanel({ eyebrow, from, to, onClose, children }: PanelProps)
       boxShadow: "0 1px 0 rgba(0,0,0,0.02)",
     }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 14,
+        display: "flex", alignItems: "center", gap: 12,
         padding: "14px 22px",
         borderBottom: "1px solid var(--rule)",
         background: "var(--accent-tint)",
       }}>
         <div className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
           color: "var(--accent)", textTransform: "uppercase",
           whiteSpace: "nowrap",
         }}>{eyebrow}</div>
@@ -93,7 +93,7 @@ export function TraceSection({ title, children }: SectionProps) {
     }}>
       {title && (
         <div className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
           color: "var(--ink-3)", textTransform: "uppercase",
           marginBottom: 16,
         }}>{title}</div>
@@ -133,7 +133,7 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
   return (
     <div style={{ minWidth: 0 }}>
       <div className="mono" style={{
-        fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.14em",
         color: "var(--ink-3)", textTransform: "uppercase",
         marginBottom: 8,
       }}>{label}</div>
@@ -164,7 +164,7 @@ export function BigFormula({ children }: { children: ReactNode }) {
     <div style={{
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 13, fontWeight: 500,
+      fontSize: "var(--fs-ui)", fontWeight: 500,
       color: "var(--ink)",
       lineHeight: 1.55,
       padding: "12px 16px",
@@ -202,13 +202,13 @@ export function CollapsibleMetadata({
         aria-expanded={open}
         style={{
           all: "unset", cursor: "pointer",
-          display: "inline-flex", alignItems: "center", gap: 10,
+          display: "inline-flex", alignItems: "center", gap: 12,
           color: "var(--ink-3)",
         }}
       >
         <span aria-hidden="true"><ExpandIndicator open={open}/></span>
         <span className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
           textTransform: "uppercase",
         }}>
           {open ? `Hide ${title.toLowerCase()}` : `View ${title.toLowerCase()}`}
@@ -216,7 +216,7 @@ export function CollapsibleMetadata({
       </button>
       {open && (
         <div style={{
-          marginTop: 14,
+          marginTop: 12,
           display: "grid",
           gridTemplateColumns: "minmax(150px, auto) 1fr",
           rowGap: 8, columnGap: 22,

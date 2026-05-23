@@ -151,7 +151,7 @@ export function AllocationMatrixByCenter() {
                 <th style={{
                   ...stickyLeftBand,
                   borderBottom: "1px solid var(--rule-strong)",
-                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                   letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
                 }}>Cost Center</th>
                 {cols.map((n) => (
@@ -162,7 +162,7 @@ export function AllocationMatrixByCenter() {
                     textAlign: "right",
                     verticalAlign: "bottom",
                     color: "var(--ink-2)",
-                    fontFamily: "var(--ff-ui)", fontSize: 11, fontWeight: 500,
+                    fontFamily: "var(--ff-ui)", fontSize: "var(--t-l8)", fontWeight: 500,
                     letterSpacing: 0, textTransform: "none", lineHeight: 1.3,
                     overflow: "hidden",
                   }}>
@@ -170,7 +170,7 @@ export function AllocationMatrixByCenter() {
                       overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     }}>{n.name}</div>
                     <div className="mono" style={{
-                      fontSize: 10, color: "var(--ink-4)", letterSpacing: "0.04em",
+                      fontSize: "var(--t-l9)", color: "var(--ink-4)", letterSpacing: "0.04em",
                       textTransform: "uppercase", marginTop: 2,
                     }}>{n.glCode.startsWith("seed:") ? "—" : n.glCode}</div>
                   </th>
@@ -178,7 +178,7 @@ export function AllocationMatrixByCenter() {
                 <th style={{
                   ...stickyRightBand,
                   borderBottom: "1px solid var(--rule-strong)",
-                  fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+                  fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                   letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
                 }}>Row total</th>
               </tr>
@@ -195,12 +195,12 @@ export function AllocationMatrixByCenter() {
                     <td style={{
                       ...stickyLeftBody,
                       borderBottom: rowBorder,
-                      fontFamily: "var(--ff-ui)", fontSize: 13, lineHeight: 1.3,
+                      fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)", lineHeight: 1.3,
                       fontWeight: 500, color: "var(--ink)",
                     }}>
                       {glCodeByCenter.get(center) && (
                         <span className="mono" style={{
-                          fontSize: 10.5, color: "var(--ink-3)", marginRight: 6,
+                          fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
                           letterSpacing: "0.02em", fontWeight: 400,
                         }}>{glCodeByCenter.get(center)}</span>
                       )}
@@ -224,7 +224,7 @@ export function AllocationMatrixByCenter() {
                             style={{
                               display: "block", width: "100%",
                               textAlign: "right", padding: "7px 10px",
-                              fontSize: 12.5,
+                              fontSize: "var(--t-l7)",
                               fontFamily: "var(--ff-mono)",
                               fontVariantNumeric: "tabular-nums",
                               color: zero ? "var(--ink-4)" : "var(--ink)",
@@ -243,7 +243,7 @@ export function AllocationMatrixByCenter() {
                       ...stickyRightBody,
                       borderBottom: rowBorder,
                       fontFamily: "var(--ff-mono)",
-                      fontSize: 12.5, color: "var(--ink)",
+                      fontSize: "var(--t-l7)", color: "var(--ink)",
                     }}>{fmt.dollarsK(rt)}</td>
                   </tr>
                 );
@@ -254,7 +254,7 @@ export function AllocationMatrixByCenter() {
                 <td className="mono" style={{
                   ...stickyLeftBand,
                   borderTop: "2px solid var(--ink)",
-                  fontSize: 10.5, fontWeight: 700, letterSpacing: "0.1em",
+                  fontSize: "var(--t-l4)", fontWeight: 700, letterSpacing: "0.1em",
                   textTransform: "uppercase", color: "var(--ink-3)",
                 }}>Column total</td>
                 {cols.map((n) => {
@@ -265,7 +265,7 @@ export function AllocationMatrixByCenter() {
                       padding: cellPad,
                       background: "var(--paper-2)",
                       borderTop: "2px solid var(--ink)",
-                      textAlign: "right", fontSize: 12.5,
+                      textAlign: "right", fontSize: "var(--t-l7)",
                       fontFamily: "var(--ff-mono)",
                       color: zero ? "var(--ink-4)" : "var(--ink)",
                     }}>{zero ? "—" : fmt.dollarsK(t)}</td>
@@ -275,7 +275,7 @@ export function AllocationMatrixByCenter() {
                   ...stickyRightBand,
                   borderTop: "2px solid var(--ink)",
                   fontFamily: "var(--ff-mono)",
-                  fontSize: 13, color: "var(--ink)", fontWeight: 600,
+                  fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 600,
                 }}>{fmt.dollarsK(grandTotal)}</td>
               </tr>
             </tfoot>
@@ -304,13 +304,13 @@ export function AllocationMatrixByCenter() {
 function TraceHint() {
   return (
     <div style={{
-      display: "flex", alignItems: "center", gap: 10,
+      display: "flex", alignItems: "center", gap: 12,
       padding: "12px 16px",
       background: "var(--paper-2)", border: "1px solid var(--rule)",
       fontSize: 12, color: "var(--ink-3)",
     }}>
       <span className="mono" style={{
-        fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
+        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>Trace</span>
       <span>Click any non-zero cell to see how it's calculated.</span>
@@ -399,31 +399,31 @@ function CenterCellTrace({
 
         {perPool.length === 0 ? (
           <div style={{
-            marginTop: 14,
+            marginTop: 12,
             padding: "14px 18px",
             background: "var(--paper-2)",
             border: "1px solid var(--rule)",
-            fontSize: 12.5, color: "var(--ink-3)",
+            fontSize: "var(--t-l7)", color: "var(--ink-3)",
           }}>
             No pool from <strong>{center}</strong> contributes to <strong>{node.name}</strong>.
           </div>
         ) : (
           <div style={{
-            marginTop: 14,
+            marginTop: 12,
             border: "1px solid var(--rule)",
             background: "var(--paper-2)",
           }}>
             <div style={{
               display: "grid",
               gridTemplateColumns: breakdownGrid,
-              gap: 14,
+              gap: 12,
               padding: "10px 16px",
               borderBottom: "1px solid var(--rule)",
               background: "var(--paper)",
             }}>
               {["Pool", "First", "Second", "Total"].map((h, i) => (
                 <div key={i} className="mono" style={{
-                  fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+                  fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
                   color: "var(--ink-3)", textTransform: "uppercase",
                   textAlign: i === 0 ? "left" : "right",
                 }}>{h}</div>
@@ -433,10 +433,10 @@ function CenterCellTrace({
               <div key={r.id} style={{
                 display: "grid",
                 gridTemplateColumns: breakdownGrid,
-                gap: 14, alignItems: "center",
+                gap: 12, alignItems: "center",
                 padding: "8px 16px",
                 borderBottom: i < perPool.length - 1 ? "1px solid var(--rule)" : "none",
-                fontSize: 12.5,
+                fontSize: "var(--t-l7)",
               }}>
                 <div style={{
                   minWidth: 0,
@@ -463,11 +463,11 @@ function CenterCellTrace({
             <div style={{
               display: "grid",
               gridTemplateColumns: breakdownGrid,
-              gap: 14, alignItems: "center",
+              gap: 12, alignItems: "center",
               padding: "10px 16px",
               borderTop: "2px solid var(--ink)",
               background: "var(--paper)",
-              fontSize: 13, fontWeight: 500,
+              fontSize: "var(--fs-ui)", fontWeight: 500,
             }}>
               <div>Total</div>
               <div className="num" style={{

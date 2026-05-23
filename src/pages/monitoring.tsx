@@ -78,7 +78,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <DeptChip code={r.dept}/>
-          <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>
+          <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500 }}>
             {DEPTS[r.dept].name.replace(" Administration", "")}
           </span>
         </div>
@@ -113,7 +113,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <span className="num" style={{
           color: r.drift < 0 ? "var(--neg)" : r.drift > 0 ? "var(--pos)" : "var(--ink-3)",
-          fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em",
+          fontSize: "var(--fs-ui)", fontWeight: 600, letterSpacing: "-0.005em",
         }}>
           {r.drift > 0 ? "+" : ""}{r.drift} pts
         </span>
@@ -127,7 +127,7 @@ export default function RevenueMonitoringPage() {
       sortable: true,
       render: (r) => (
         <span className="num" style={{
-          color: "var(--neg)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em",
+          color: "var(--neg)", fontSize: "var(--fs-ui)", fontWeight: 600, letterSpacing: "-0.005em",
         }}>
           {fmt.dollarsK(r.subsidy)}/yr
         </span>
@@ -171,8 +171,8 @@ export default function RevenueMonitoringPage() {
       width: "minmax(220px, 1.6fr)",
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13 }}>{r.driver}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
+          <div style={{ fontSize: "var(--fs-ui)" }}>{r.driver}</div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
     },
@@ -180,7 +180,7 @@ export default function RevenueMonitoringPage() {
       key: "area",
       label: "Affected area",
       width: "minmax(140px, 1fr)",
-      render: (r) => <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{r.area}</span>,
+      render: (r) => <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>{r.area}</span>,
     },
     {
       key: "annualImpact",
@@ -189,7 +189,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontSize: 13 }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: "var(--fs-ui)" }}>
           +{fmt.dollarsK(r.annualImpact)} gap
         </span>
       ),
@@ -198,7 +198,7 @@ export default function RevenueMonitoringPage() {
       key: "evidence",
       label: "Evidence",
       width: "minmax(220px, 1.6fr)",
-      render: (r) => <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{r.evidence}</span>,
+      render: (r) => <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>{r.evidence}</span>,
     },
     {
       key: "action",
@@ -285,8 +285,8 @@ export default function RevenueMonitoringPage() {
       width: "minmax(280px, 2fr)",
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13 }}>{r.alert}</div>
-          <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
+          <div style={{ fontSize: "var(--fs-ui)" }}>{r.alert}</div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 3 }}>{r.id}</div>
         </div>
       ),
     },
@@ -303,7 +303,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontSize: 13 }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: "var(--fs-ui)" }}>
           +{fmt.dollarsK(r.impact)}
         </span>
       ),
@@ -312,13 +312,13 @@ export default function RevenueMonitoringPage() {
       key: "trigger",
       label: "Trigger",
       width: "minmax(180px, 1.3fr)",
-      render: (r) => <span style={{ fontSize: 12.5, color: "var(--ink-2)" }}>{r.trigger}</span>,
+      render: (r) => <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>{r.trigger}</span>,
     },
     {
       key: "action",
       label: "Recommended action",
       width: "minmax(200px, 1.4fr)",
-      render: (r) => <span style={{ fontSize: 12.5 }}>{r.action}</span>,
+      render: (r) => <span style={{ fontSize: "var(--t-l7)" }}>{r.action}</span>,
     },
     {
       key: "status",
@@ -425,14 +425,14 @@ export default function RevenueMonitoringPage() {
                 borderBottom: i < staffActions.length - 1 ? "1px solid var(--rule)" : "none",
               }}>
                 <div>
-                  <div style={{ fontSize: 13, color: "var(--ink)" }}>{a.title}</div>
-                  <div className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
+                  <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink)" }}>{a.title}</div>
+                  <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 3 }}>{a.id}</div>
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.5 }}>
+                <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", lineHeight: 1.5 }}>
                   {a.rationale}
                 </div>
                 <div className="num" style={{
-                  fontSize: 13, color: "var(--pos)", textAlign: "right",
+                  fontSize: "var(--fs-ui)", color: "var(--pos)", textAlign: "right",
                 }}>
                   +{fmt.dollarsK(a.fiscalImpact)}/yr
                 </div>

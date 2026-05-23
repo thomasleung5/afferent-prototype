@@ -71,10 +71,10 @@ export function DemoCityPicker() {
             background: "var(--paper-2)",
           }}>
             <div className="mono" style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+              fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Demo workspaces</div>
-            <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2 }}>
               Each city loads its own seeded model.
             </div>
           </div>
@@ -108,7 +108,7 @@ export function DemoCityPicker() {
                 <div style={{
                   display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8,
                 }}>
-                  <span style={{ fontSize: 13, color: "var(--ink)", fontWeight: 500 }}>
+                  <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500 }}>
                     {j.name}
                   </span>
                   {isActive && live && (
@@ -117,7 +117,7 @@ export function DemoCityPicker() {
                         fontSize: 9, fontWeight: 700, letterSpacing: "0.1em",
                         color: "var(--pos)", textTransform: "uppercase",
                       }}>Active</span>
-                      <span style={{ fontSize: 10, color: "var(--ink-3)" }}>· click to reload</span>
+                      <span style={{ fontSize: "var(--t-l9)", color: "var(--ink-3)" }}>· click to reload</span>
                     </span>
                   )}
                   {!live && (
@@ -127,7 +127,7 @@ export function DemoCityPicker() {
                     }}>Coming soon</span>
                   )}
                 </div>
-                <span style={{ fontSize: 11, color: "var(--ink-3)" }}>
+                <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
                   {j.defaultFiscalYear} · {j.departments.join(" · ")}
                 </span>
               </button>

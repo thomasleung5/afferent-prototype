@@ -19,7 +19,7 @@ export function StatusPill({ kind = "info", children }: Props) {
   return (
     <span style={{
       display: "inline-flex", alignItems: "center", gap: 5,
-      fontSize: 11, fontWeight: 500,
+      fontSize: "var(--t-l8)", fontWeight: 500,
       padding: "2px 8px", border: `1px solid ${p.dot}`,
       background: p.bg, color: p.fg,
       borderRadius: 999,

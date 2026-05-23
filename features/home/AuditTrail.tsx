@@ -30,7 +30,7 @@ export function AuditTrail() {
   return (
     <div style={{
       background: "var(--paper)", border: "1px solid var(--rule)",
-      padding: 20,
+      padding: 22,
     }}>
       <SectionLabel right={`${rows.length} import${rows.length === 1 ? "" : "s"}`}>
         Recent imports
@@ -39,7 +39,7 @@ export function AuditTrail() {
       {rows.length === 0 ? (
         <div style={{
           padding: "16px 0 4px",
-          fontSize: 12.5, color: "var(--ink-3)", lineHeight: 1.55,
+          fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.55,
         }}>
           Imports will appear here after you upload source files (PDFs or
           pasted LLM JSON) from any Build page.
@@ -57,16 +57,16 @@ export function AuditTrail() {
                 borderBottom: i < rows.length - 1 ? "1px dashed var(--rule)" : "none",
                 alignItems: "baseline",
               }}>
-                <div className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>
+                <div className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
                   {formatImportedAt(entry.at)}
                 </div>
-                <div style={{ fontSize: 12.5, color: "var(--ink-2)" }}>
+                <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>
                   {DOMAIN_LABEL[entry.domain] ?? entry.domain}
                 </div>
                 <div
                   title={r.fileName}
                   style={{
-                    fontSize: 12.5, color: "var(--ink-2)",
+                    fontSize: "var(--t-l7)", color: "var(--ink-2)",
                     overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
                     minWidth: 0,
                   }}
@@ -74,7 +74,7 @@ export function AuditTrail() {
                   {r.fileName}
                 </div>
                 <div className="mono num" style={{
-                  fontSize: 11, fontWeight: 600,
+                  fontSize: "var(--t-l8)", fontWeight: 600,
                   color: "var(--ink-2)", textAlign: "right",
                   padding: "2px 6px",
                   background: "var(--paper-2)", border: "1px solid var(--rule)",
@@ -86,7 +86,7 @@ export function AuditTrail() {
             );
           })}
           <div className="mono" style={{
-            marginTop: 10, fontSize: 10, fontWeight: 600,
+            marginTop: 12, fontSize: "var(--t-l9)", fontWeight: 600,
             color: "var(--ink-3)", letterSpacing: "0.1em", textTransform: "uppercase",
           }}>
             mapped / for review / unmapped / duplicates

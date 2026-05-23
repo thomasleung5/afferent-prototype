@@ -18,7 +18,7 @@ export function CellSelect({ value, onChange, options, width, align = "left" }: 
 
   const style: CSSProperties = {
     padding: "3px 4px",
-    fontSize: 12.5, fontFamily: "var(--ff-ui)",
+    fontSize: "var(--t-l7)", fontFamily: "var(--ff-ui)",
     border: focused ? "1px solid var(--accent)" : "1px solid transparent",
     background: focused ? "var(--paper)" : "transparent",
     width: width ?? "100%",

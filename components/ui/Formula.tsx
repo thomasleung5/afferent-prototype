@@ -89,7 +89,7 @@ export function SourcePill({ children, tone, source, sourceFile }: SourcePillPro
     <span className="mono" title={titleAttr} style={{
       display: "inline-flex", alignItems: "center",
       padding: "2px 6px",
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
       color: p.fg, background: p.bg, border: `1px solid ${p.bd}`,
       whiteSpace: "nowrap", maxWidth: "100%",
       overflow: "hidden", textOverflow: "ellipsis",

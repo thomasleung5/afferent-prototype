@@ -128,12 +128,12 @@ export function AllocationBasisCombobox({
         onFocus={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
         onBlur={(e) => { e.currentTarget.style.background = "transparent"; }}
       >
-        <div style={{ fontSize: 12.5, color: "var(--ink-2)", lineHeight: 1.4 }}>
+        <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", lineHeight: 1.4 }}>
           {selected?.name ?? fallbackText ?? <span style={{ color: "var(--ink-4)" }}>Select basis…</span>}
         </div>
         {selected?.source && (
           <div className="mono" style={{
-            fontSize: 10, color: "var(--ink-4)", lineHeight: 1.3, marginTop: 1,
+            fontSize: "var(--t-l9)", color: "var(--ink-4)", lineHeight: 1.3, marginTop: 1,
           }}>{selected.source}</div>
         )}
       </button>
@@ -191,11 +191,11 @@ export function AllocationBasisCombobox({
                         boxSizing: "border-box",
                       }}
                     >
-                      <div style={{ fontSize: 12.5, color: "var(--ink)", lineHeight: 1.3 }}>
+                      <div style={{ fontSize: "var(--t-l7)", color: "var(--ink)", lineHeight: 1.3 }}>
                         {b.name}
                       </div>
                       <div className="mono" style={{
-                        fontSize: 10, color: "var(--ink-4)", marginTop: 1, lineHeight: 1.3,
+                        fontSize: "var(--t-l9)", color: "var(--ink-4)", marginTop: 1, lineHeight: 1.3,
                       }}>{b.source}</div>
                     </button>
                   );
@@ -224,7 +224,7 @@ export function AllocationBasisCombobox({
           {mode === "create" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                 color: "var(--ink-3)", textTransform: "uppercase",
               }}>New allocation basis</div>
 
@@ -312,7 +312,7 @@ function CreateField({ label, required, children }: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <div className="mono" style={{
-        fontSize: 10, color: "var(--ink-3)", letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: "var(--t-l9)", color: "var(--ink-3)", letterSpacing: "0.08em", textTransform: "uppercase",
       }}>
         {label}{required && <span style={{ color: "var(--accent)" }}> *</span>}
       </div>

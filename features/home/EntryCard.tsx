@@ -44,7 +44,7 @@ export function EntryCard({
       textDecoration: "none",
     }}>
       <div className="mono" style={{
-        fontSize: 10.5, fontWeight: 600, letterSpacing: "0.12em",
+        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
         textTransform: "uppercase",
         color: accent ? navyDim : "var(--ink-3)",
       }}>{eyebrow}</div>
@@ -54,20 +54,20 @@ export function EntryCard({
       }}>{title}</div>
 
       <div style={{
-        fontSize: 13,
+        fontSize: "var(--fs-ui)",
         color: accent ? navySub : "var(--ink-2)",
         lineHeight: 1.55, textWrap: "pretty", maxWidth: 480,
       }}>{desc}</div>
 
       {checklist && (
         <div style={{
-          display: "grid", gridTemplateColumns: `repeat(${checklist.length}, 1fr)`, gap: 10,
-          marginTop: 4, paddingTop: 14, borderTop: "1px solid var(--rule)",
+          display: "grid", gridTemplateColumns: `repeat(${checklist.length}, 1fr)`, gap: 12,
+          marginTop: 4, paddingTop: 12, borderTop: "1px solid var(--rule)",
         }}>
           {checklist.map((c, i) => (
             <div key={i}>
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{c.l}</div>
               <div className="num display" style={{
@@ -84,13 +84,13 @@ export function EntryCard({
           display: "grid",
           gridTemplateColumns: stats.length === 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
           gap: 12,
-          marginTop: 4, paddingTop: 14,
+          marginTop: 4, paddingTop: 12,
           borderTop: `1px solid ${accent ? navyLine : "var(--rule)"}`,
         }}>
           {stats.map((s, i) => (
             <div key={i}>
               <div className="mono" style={{
-                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase",
                 color: accent ? navyDim : "var(--ink-3)",
               }}>{s.l}</div>
@@ -134,7 +134,7 @@ export function EntryCard({
           background: accent ? "white" : charcoal,
           color: accent ? navy : "white",
           border: accent ? "none" : `1px solid ${charcoal}`,
-          fontSize: 13, fontWeight: 500,
+          fontSize: "var(--fs-ui)", fontWeight: 500,
         }}>
           {cta} <Icon name="arrow-right" size={13}/>
         </div>

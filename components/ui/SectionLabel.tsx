@@ -14,7 +14,7 @@ export function SectionLabel({ children, right }: Props) {
       marginBottom: 12,
     }}>
       <div className="mono" style={{
-        fontSize: 10.5, fontWeight: 600, letterSpacing: "0.1em",
+        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-2)", textTransform: "uppercase",
       }}>
         {children}

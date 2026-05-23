@@ -168,11 +168,11 @@ export function DataTable<Row extends DataTableRow>({
         }}>
           {/* Header */}
           <div style={{
-            display: "grid", gridTemplateColumns: grid, gap: 14,
+            display: "grid", gridTemplateColumns: grid, gap: 12,
             padding: "10px 16px",
             borderBottom: "1px solid var(--rule-strong)",
             background: "var(--paper-2)",
-            fontFamily: "var(--ff-mono)", fontSize: 10.5, fontWeight: 600,
+            fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             {reorderable && <div aria-hidden="true"/>}
@@ -222,7 +222,7 @@ export function DataTable<Row extends DataTableRow>({
           {sortedRows.length === 0 ? (
             <div style={{
               padding: "32px 16px", textAlign: "center",
-              fontSize: 12.5, color: "var(--ink-3)",
+              fontSize: "var(--t-l7)", color: "var(--ink-3)",
             }}>
               {emptyState ?? "No rows match the current filters."}
             </div>
@@ -291,7 +291,7 @@ export function DataTable<Row extends DataTableRow>({
                     aria-expanded={renderDrilldown ? isOpen : undefined}
                     aria-controls={isOpen ? drilldownId : undefined}
                     style={{
-                      display: "grid", gridTemplateColumns: grid, gap: 14,
+                      display: "grid", gridTemplateColumns: grid, gap: 12,
                       padding: "10px 16px 10px 13px",
                       alignItems: "center",
                       borderTop: isDropTarget && dragSrc !== null && i < dragSrc
@@ -303,7 +303,7 @@ export function DataTable<Row extends DataTableRow>({
                           : i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
                       background: isOpen ? "var(--paper-2)" : bg,
                       borderLeft: accent,
-                      fontSize: 12.5,
+                      fontSize: "var(--t-l7)",
                       cursor: onRowClick ? "pointer" : "default",
                       opacity: isDragging ? 0.45 : 1,
                       transition: "background 80ms",
@@ -385,7 +385,7 @@ export function DataTable<Row extends DataTableRow>({
 function SortCaret({ dir }: { dir: SortDir | null }) {
   if (!dir) return <span style={{ display: "inline-block", marginLeft: 4, opacity: 0.25, fontSize: 9 }}>▴▾</span>;
   return (
-    <span style={{ display: "inline-block", marginLeft: 4, color: "var(--accent)", fontSize: 10, fontWeight: 700 }}>
+    <span style={{ display: "inline-block", marginLeft: 4, color: "var(--accent)", fontSize: "var(--t-l9)", fontWeight: 700 }}>
       {dir === "asc" ? "▴" : "▾"}
     </span>
   );
@@ -400,7 +400,7 @@ function Toolbar({
 }) {
   return (
     <div style={{
-      display: "flex", alignItems: "center", flexWrap: "wrap", gap: 14,
+      display: "flex", alignItems: "center", flexWrap: "wrap", gap: 12,
       padding: "12px 16px",
       background: "var(--paper)",
       borderBottom: "1px solid var(--rule)",
@@ -421,7 +421,7 @@ function FilterChips({ f }: { f: FilterGroup }) {
     <div style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       {f.label && (
         <span className="mono" style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase", marginRight: 2,
         }}>{f.label}</span>
       )}
@@ -445,7 +445,7 @@ function FilterChips({ f }: { f: FilterGroup }) {
               {o.count != null && (
                 <span style={{
                   marginLeft: 6, opacity: active ? 0.7 : 0.55,
-                  fontSize: 10.5, fontWeight: 500,
+                  fontSize: "var(--t-l4)", fontWeight: 500,
                 }}>{o.count}</span>
               )}
             </button>

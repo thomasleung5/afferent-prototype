@@ -67,7 +67,7 @@ export function OperatingSummary() {
         ) : <span style={{ color: "var(--ink-3)" }}>—</span>,
       },
       drilldown: (
-        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 14 }}>
+        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
           <Ledger
             cols={[
               { key: "label", label: "Category", width: "1fr" },
@@ -84,7 +84,7 @@ export function OperatingSummary() {
                     <span style={{ color: "var(--ink-2)" }}>
                       {l.cat}
                       {l.shared && (
-                        <span style={{ color: "var(--ink-3)", marginLeft: 6, fontSize: 10.5 }}>· allocated</span>
+                        <span style={{ color: "var(--ink-3)", marginLeft: 6, fontSize: "var(--t-l4)" }}>· allocated</span>
                       )}
                     </span>
                   ),
@@ -98,7 +98,7 @@ export function OperatingSummary() {
               label: (
                 <span style={{
                   color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: 10,
+                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
                 }}>Total to {labelOf(d)}</span>
               ),
               lines: <span className="num">{direct.length + (r.shared > 0 ? shared.length : 0)}</span>,
@@ -151,7 +151,7 @@ export function OperatingSummary() {
         dept: (
           <span style={{
             color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: 11,
+            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
           }}>Total</span>
         ),
         opCost: fmt.dollarsK(includedTotal),

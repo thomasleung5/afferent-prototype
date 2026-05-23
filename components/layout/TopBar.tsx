@@ -33,10 +33,10 @@ export function TopBar() {
       position: "sticky", top: 0, zIndex: 10,
     }}>
       <div style={{
-        display: "flex", alignItems: "center", gap: 20,
+        display: "flex", alignItems: "center", gap: 22,
         padding: "10px 28px", height: 52,
       }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
           <svg width="20" height="20" viewBox="0 0 22 22" fill="none">
             <rect x="1" y="1" width="20" height="20" stroke="var(--ink)" strokeWidth="1.5"/>
             <path d="M6 15 L11 5 L16 15" stroke="var(--ink)" strokeWidth="1.5" fill="none"/>
@@ -56,7 +56,7 @@ export function TopBar() {
           width: 28, height: 28,
           border: "1px solid var(--rule-strong)",
           display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: 10.5, fontWeight: 600,
+          fontSize: "var(--t-l4)", fontWeight: 600,
           background: "var(--paper-2)",
         }}>MR</div>
       </div>
@@ -73,7 +73,7 @@ export function TopBar() {
             <Link key={n.href} to={n.href} style={{
               padding: "0 14px",
               display: "inline-flex", alignItems: "center",
-              fontSize: 12.5, fontWeight: 500,
+              fontSize: "var(--t-l7)", fontWeight: 500,
               color: on ? "var(--ink)" : "var(--ink-3)",
               borderBottom: on ? "2px solid var(--ink)" : "2px solid transparent",
               marginBottom: -1,
@@ -97,12 +97,12 @@ function WorkspaceContext() {
   const fiscalYear = useActiveFiscalYear();
   return (
     <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div style={{ fontSize: 12.5, fontWeight: 500 }}>{jurisdiction.name}</div>
+      <div style={{ fontSize: "var(--t-l7)", fontWeight: 500 }}>{jurisdiction.name}</div>
       <span className="mono" style={{
         padding: "3px 7px",
         border: "1px solid var(--rule)",
         background: "var(--paper-2)",
-        fontSize: 10.5,
+        fontSize: "var(--t-l4)",
         color: "var(--ink-3)",
       }}>{fiscalYear}</span>
     </div>

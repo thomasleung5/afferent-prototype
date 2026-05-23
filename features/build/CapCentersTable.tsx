@@ -68,7 +68,7 @@ export function CapCentersTable() {
       width: "44px",
       sortable: true,
       render: (r) => (
-        <span className="mono" style={{ fontSize: 11, color: "var(--ink-3)" }}>
+        <span className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
           {r.idx.toString().padStart(2, "0")}
         </span>
       ),

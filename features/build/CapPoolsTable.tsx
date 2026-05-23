@@ -13,7 +13,7 @@ export function CapPoolsTable() {
   const centers = deriveCenters(capPools, capCenterOrder);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 18 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {centers.map((c) => {
         const pools = capPools.filter((p) => p.center === c.name);
         return (
@@ -69,7 +69,7 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
           <div style={{
             display: "grid",
             gridTemplateColumns: GRID,
-            gap: 14,
+            gap: 12,
             padding: "8px 18px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
@@ -100,14 +100,14 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
           <div style={{
             display: "grid",
             gridTemplateColumns: GRID,
-            gap: 14,
+            gap: 12,
             padding: "9px 18px",
             borderTop: "2px solid var(--ink)",
             background: "var(--paper-2)",
             fontSize: 12, fontWeight: 600,
           }}>
             <div className="mono" style={{
-              fontSize: 10, letterSpacing: "0.1em",
+              fontSize: "var(--t-l9)", letterSpacing: "0.1em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Total</div>
             <div
@@ -155,12 +155,12 @@ function PoolRow({ pool, centerTotal, isLast, bases, onUpdate, onCreateBasis }: 
     <div style={{
       display: "grid",
       gridTemplateColumns: GRID,
-      gap: 14,
+      gap: 12,
       padding: "10px 18px",
       alignItems: "baseline",
       borderBottom: !isLast ? "1px solid var(--rule)" : "none",
       background: "var(--paper)",
-      fontSize: 12.5,
+      fontSize: "var(--t-l7)",
     }}>
       <CellInput
         value={pool.pool}

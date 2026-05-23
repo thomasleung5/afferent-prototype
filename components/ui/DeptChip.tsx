@@ -8,7 +8,7 @@ export function DeptChip({ code }: Props) {
   return (
     <span className="mono" style={{
       display: "inline-block",
-      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.06em",
+      fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.06em",
       color: "var(--ink-2)",
       padding: "2px 6px",
       background: "var(--paper-2)",

@@ -25,7 +25,7 @@ const compareSelectStyle: React.CSSProperties = {
   background: "var(--paper)",
   color: "var(--ink)",
   fontFamily: "inherit",
-  fontSize: 12.5,
+  fontSize: "var(--t-l7)",
   padding: "5px 26px 5px 10px",
   minWidth: 240,
   // Caret rendered via background image so we don't introduce a new
@@ -71,7 +71,7 @@ export function FeeChangeExplanations() {
       render: (r) => (
         <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
           <span>{r.name}</span>
-          <span className="mono" style={{ fontSize: 10.5, color: "var(--ink-4)", letterSpacing: "0.05em" }}>
+          <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", letterSpacing: "0.05em" }}>
             {r.primaryDriver}
           </span>
         </div>
@@ -163,11 +163,11 @@ export function FeeChangeExplanations() {
       ]}/>
 
       <SectionLabel right={
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 14 }}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 12 }}>
           <span>{rows.length} material change{rows.length === 1 ? "" : "s"}</span>
           <label style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             <span className="mono" style={{
-              fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
               textTransform: "uppercase", color: "var(--ink-3)",
             }}>Compare to</span>
             <select

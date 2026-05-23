@@ -101,7 +101,7 @@ export function PositionsTable() {
             onChange={(v) => updatePosition(r.id, { title: String(v) })}
           />
           {r.warning && (
-            <div style={{ fontSize: 11, color: "var(--warn)", paddingLeft: 6, marginTop: 2 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--warn)", paddingLeft: 6, marginTop: 2 }}>
               ⚠ {r.warning === "title-changed"
                 ? "Title changed since prior study"
                 : "Missing productive hours"}
@@ -254,7 +254,7 @@ function ProductiveHoursDrilldown({
       <DrilldownColumn marker="②" title="Nonproductive deductions">
         <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
+            display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
             padding: "8px 12px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
@@ -264,7 +264,7 @@ function ProductiveHoursDrilldown({
           </div>
           {result.deductions.map((d, i) => (
             <div key={d.key} style={{
-              display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
+              display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
               alignItems: "baseline",
               padding: "7px 12px",
               borderBottom: i < result.deductions.length - 1 ? "1px solid var(--rule)" : "none",
@@ -280,14 +280,14 @@ function ProductiveHoursDrilldown({
             </div>
           ))}
           <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
+            display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
             padding: "8px 12px",
             background: "var(--paper-2)",
             borderTop: "1px solid var(--rule-strong)",
             fontSize: 12, fontWeight: 600,
             alignItems: "baseline",
           }}>
-            <span style={{ color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 10 }}>
+            <span style={{ color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "var(--t-l9)" }}>
               Total nonproductive
             </span>
             <span className="num" style={{ textAlign: "right" }}>{fmt.int(result.totalNonproductiveHours)}</span>

@@ -17,7 +17,7 @@ const base: CSSProperties = {
   gap: 6,
   height: 30,
   padding: "0 12px",
-  fontSize: 12.5,
+  fontSize: "var(--t-l7)",
   fontWeight: 500,
   border: "1px solid var(--rule-strong)",
   background: "var(--paper)",

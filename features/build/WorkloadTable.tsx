@@ -81,14 +81,14 @@ export function WorkloadTable() {
       sortable: true,
       render: (r) => (
         <div>
-          <div style={{ fontSize: 13 }}>{r.name}</div>
+          <div style={{ fontSize: "var(--fs-ui)" }}>{r.name}</div>
           {r.warning === "missing-current-volume" && (
-            <div style={{ fontSize: 11, color: "var(--warn)", marginTop: 2 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--warn)", marginTop: 2 }}>
               ⚠ No current-year volume — enter manually or use prior
             </div>
           )}
           {r.warning === "carry-forward" && (
-            <div style={{ fontSize: 11, color: "var(--accent)", marginTop: 2 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--accent)", marginTop: 2 }}>
               Reused from prior study — confirm
             </div>
           )}

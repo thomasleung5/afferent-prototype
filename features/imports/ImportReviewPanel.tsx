@@ -17,12 +17,12 @@ export function ImportReviewPanel({
     }}>
       <div style={{
         padding: "10px 16px",
-        display: "flex", alignItems: "baseline", gap: 10,
+        display: "flex", alignItems: "baseline", gap: 12,
         borderBottom: children ? "1px solid var(--rule)" : "none",
         background: "var(--paper-2)",
       }}>
         <span className="mono" style={{
-          fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>
           {label}
@@ -57,7 +57,7 @@ export function ImportReviewRow({ columns, isLast, children }: RowProps) {
       gridTemplateColumns: columns,
       gap: 12, alignItems: "baseline",
       padding: "8px 16px",
-      fontSize: 12.5,
+      fontSize: "var(--t-l7)",
       borderBottom: isLast ? "none" : "1px solid var(--rule)",
     }}>
       {children}
@@ -82,7 +82,7 @@ export function ImportReviewAction({
       style={{
         all: "unset",
         cursor: "pointer",
-        fontSize: 11,
+        fontSize: "var(--t-l8)",
         color: tone === "default" ? "var(--ink-2)" : "var(--ink-3)",
         padding: "2px 8px",
         justifySelf: align === "right" ? "end" : "start",
