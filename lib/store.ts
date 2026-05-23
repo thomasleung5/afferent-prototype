@@ -36,6 +36,10 @@ import {
   DEFAULT_JURISDICTION_ID, getJurisdiction,
 } from "@/lib/data/jurisdictions";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
+import { createBuildSnapshot, makeStudyVersion } from "./storeSnapshot";
+import { migratePersistedState } from "./storeMigration";
+
+export { createBuildSnapshot } from "./storeSnapshot";
 
 /* ── Re-exported types ── */
 
@@ -90,7 +94,7 @@ export interface StudyVersion {
 
 /* ── State & action interfaces ── */
 
-interface BuildState {
+export interface BuildState {
   positions: Position[];
   operating: OperatingLine[];
   capPools: CapPool[];
@@ -320,58 +324,6 @@ function toApplyResult<T>(
     unmapped: r.stats.unmapped,
     duplicates: r.stats.duplicates,
     warnings,
-  };
-}
-
-function cloneJson<T>(value: T): T {
-  return JSON.parse(JSON.stringify(value)) as T;
-}
-
-export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
-  return cloneJson({
-    positions: state.positions,
-    operating: state.operating,
-    capPools: state.capPools,
-    capCenterTotals: state.capCenterTotals,
-    capCenterDisallowed: state.capCenterDisallowed,
-    capCenterGlCodes: state.capCenterGlCodes,
-    capCenterSources: state.capCenterSources,
-    studyContext: state.studyContext,
-    allocationBases: state.allocationBases,
-    capBasisUnits: state.capBasisUnits,
-    capDirectAllocations: state.capDirectAllocations,
-    workload: state.workload,
-    services: state.services,
-    policyTargets: state.policyTargets,
-    policyExceptions: state.policyExceptions,
-    lineage: state.lineage,
-    pendingReview: state.pendingReview,
-    capCenterOrder: state.capCenterOrder,
-    imports: state.imports,
-    activeJurisdictionId: state.activeJurisdictionId,
-    activeFiscalYear: state.activeFiscalYear,
-  });
-}
-
-function makeStudyVersion(
-  state: BuildSnapshot,
-  input: { label?: string; status?: StudyVersionStatus; notes?: string } = {},
-): StudyVersion {
-  const existing = "versions" in state && Array.isArray((state as BuildState).versions)
-    ? (state as BuildState).versions
-    : [];
-  const versionNumber = existing.length + 1;
-  const createdAt = new Date().toISOString();
-  return {
-    id: `version-${Date.now()}-${versionNumber}`,
-    versionNumber,
-    label: input.label?.trim() || `Version ${versionNumber}`,
-    status: input.status ?? "draft",
-    createdAt,
-    createdBy: "current user",
-    notes: input.notes?.trim() || undefined,
-    sourceImportIds: state.imports.map((i) => i.id),
-    snapshot: createBuildSnapshot(state),
   };
 }
 
@@ -991,113 +943,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       name: STORAGE_KEY,
       onRehydrateStorage: () => (state) => {
         if (!state) return;
-        if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
-          state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
-        }
-        // Seed CAP slices ONLY when the field is genuinely absent (true
-        // migration from pre-field state). Empty arrays / objects mean the
-        // user explicitly cleared the seed — respect that and don't
-        // re-inject. The earlier "fill in missing entries by id" behavior
-        // would resurrect seed data on every reload after a clear.
-        if (state.capCenterGlCodes == null) {
-          state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
-        }
-        if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
-        // Backfill active context for state persisted before the
-        // jurisdiction-aware layer landed. Defaults to the LAH demo so
-        // existing sessions continue to land on the same data.
-        if (!state.activeJurisdictionId) {
-          state.activeJurisdictionId = DEFAULT_JURISDICTION_ID;
-        }
-        if (!state.activeFiscalYear) {
-          state.activeFiscalYear =
-            getJurisdiction(state.activeJurisdictionId)?.defaultFiscalYear ?? "FY 2025-26";
-        }
-        if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
-        if (state.capBasisUnits == null) {
-          state.capBasisUnits = CAP_BASIS_UNITS.map((bu) => ({
-            ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
-          }));
-        }
-        if (state.capDirectAllocations == null) {
-          state.capDirectAllocations = CAP_DIRECT_ALLOCATIONS.map((da) => ({
-            ...da, receivers: da.receivers.map((r) => ({ ...r })),
-          }));
-        }
-
-        // Backfill seed imports if the persisted store has an empty log.
-        // The Annual Update tab needs at least one import to render the
-        // Refresh cards / Change queue / Packet narrative; new users get
-        // these from initialState(), but earlier sessions stored [].
-        if (!state.imports || state.imports.length === 0) {
-          state.imports = IMPORTS.map((e) => ({
-            ...e, result: { ...e.result, warnings: [...e.result.warnings] },
-          }));
-        }
-
-        // Backfill for state persisted before the SourceTag standardization:
-        //   - capCenterSources didn't exist: synthesize "seed" for every
-        //     existing center name so the new Source column renders something.
-        //   - Service / Position / OperatingLine were missing `source`, or in
-        //     the OperatingLine case carried a free-form GL string. Coerce
-        //     anything outside the SourceTag union to "seed".
-        if (!state.capCenterSources) {
-          state.capCenterSources = Object.fromEntries(
-            Object.keys(state.capCenterTotals ?? {}).map((name) => [
-              name, { source: "seed" as SourceTag },
-            ]),
-          );
-        }
-        const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual"];
-        const coerce = (v: unknown): SourceTag =>
-          typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
-        if (Array.isArray(state.services)) {
-          state.services = state.services.map((s) => ({ ...s, source: coerce(s.source) }));
-        }
-        if (Array.isArray(state.positions)) {
-          state.positions = state.positions.map((p) => ({ ...p, source: coerce(p.source) }));
-        }
-        if (Array.isArray(state.operating)) {
-          state.operating = state.operating.map((o) => ({ ...o, source: coerce(o.source) }));
-        }
-        if (Array.isArray(state.workload)) {
-          state.workload = state.workload.map((w) => ({ ...w, source: coerce(w.source) }));
-        }
-        // Backfill for state persisted before allocationBases existed.
-        // Without this, basisForPool(pool, undefined) crashes the matrix.
-        if (!state.allocationBases || state.allocationBases.length === 0) {
-          state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
-        }
-        // Backfill capCenterTotals + allocationPercent for state persisted
-        // before the % column became editable. Derive totals from Σ amount
-        // per center; derive each pool's % from amount/centerTotal.
-        if (state.capPools) {
-          if (!state.capCenterTotals || Object.keys(state.capCenterTotals).length === 0) {
-            const totals: Record<string, number> = {};
-            for (const p of state.capPools) {
-              totals[p.center] = (totals[p.center] ?? 0) + (p.amount ?? 0);
-            }
-            state.capCenterTotals = totals;
-          }
-          state.capPools = state.capPools.map((p) => {
-            if (typeof p.allocationPercent === "number") return p;
-            const total = state.capCenterTotals[p.center] ?? 0;
-            const pct = total > 0 ? (p.amount / total) * 100 : 0;
-            return { ...p, allocationPercent: pct };
-          });
-        }
-        if (!Array.isArray(state.versions)) {
-          const baseline = makeStudyVersion(state, {
-            label: "Recovered baseline",
-            status: "adopted",
-            notes: "Created from the first locally persisted model after versioning was enabled.",
-          });
-          state.versions = [baseline];
-          state.comparisonVersionId = baseline.id;
-        }
-        if (state.comparisonVersionId && !state.versions.some((v) => v.id === state.comparisonVersionId)) {
-          state.comparisonVersionId = state.versions[0]?.id ?? null;
-        }
+        migratePersistedState(state);
       },
     },
   ),

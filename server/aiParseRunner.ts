@@ -150,8 +150,11 @@ export async function runPdfParser(
  *  out `[rowsKey]`. If that fails (Anthropic truncated mid-array
  *  because we hit max_tokens), scan for every brace-balanced object
  *  containing the anchor field and parse each individually. Returns
- *  null only when zero rows could be recovered. */
-function parseRowsOrRecover(jsonText: string, spec: ParserSpec): unknown[] | null {
+ *  null only when zero rows could be recovered.
+ *
+ *  Exported for fixture testing — server runtime callers only use it
+ *  via `runPdfParser`. */
+export function parseRowsOrRecover(jsonText: string, spec: ParserSpec): unknown[] | null {
   try {
     const parsed = JSON.parse(jsonText) as Record<string, unknown>;
     const rows = parsed[spec.rowsKey];

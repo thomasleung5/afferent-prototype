@@ -5,12 +5,17 @@ import { StatusPill, DrilldownShell, DrilldownColumn, SectionLabel } from "@/com
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { FeeChangeExplanations } from "@/features/annual/FeeChangeExplanations";
 import { fmt } from "@/lib/format";
-import { useBuildState } from "@/lib/store";
+import { useBuildState, type Domain } from "@/lib/store";
 import {
   deriveAnnualChanges, deriveRecoveryDelta, deriveNetImpact,
   sectionCodeFor, sectionLabelForDomain, sectionHrefForDomain,
   type AnnualChange,
 } from "@/lib/data/annual";
+
+const KNOWN_DOMAINS = new Set<string>([
+  "positions", "operating", "services", "fees", "workload", "cap",
+]);
+const asDomain = (s: string): Domain | null => (KNOWN_DOMAINS.has(s) ? (s as Domain) : null);
 
 type DecisionStatus = "accepted" | "deferred" | "rejected" | undefined;
 type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
@@ -279,12 +284,15 @@ export function ChangeReviewTable() {
                 <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
                   <div style={{ fontSize: "var(--fs-ui)", lineHeight: 1.6, color: "var(--ink-2)" }}>{r.action}</div>
                   <StatusPill kind={statusKindFor(r.badge)}>{r.badge}</StatusPill>
-                  {r.domain && (
-                    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    <Link to={sectionHrefForDomain(r.domain as any) as any} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
-                      Open {sectionLabelForDomain(r.domain as Parameters<typeof sectionLabelForDomain>[0])} section →
-                    </Link>
-                  )}
+                  {(() => {
+                    const d = r.domain ? asDomain(r.domain) : null;
+                    if (!d) return null;
+                    return (
+                      <Link to={sectionHrefForDomain(d)} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                        Open {sectionLabelForDomain(d)} section →
+                      </Link>
+                    );
+                  })()}
                 </div>
               </DrilldownColumn>
             </DrilldownShell>
