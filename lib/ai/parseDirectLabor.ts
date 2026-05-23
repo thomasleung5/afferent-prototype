@@ -12,25 +12,25 @@ interface PositionRow {
   confidence: "high" | "low";
 }
 
-interface AiParseSalaryResult {
+interface AiParseDirectLaborResult {
   ok: boolean;
   positions: PositionRow[];
   message?: string;
 }
 
-export async function aiParseSalaryPdf(file: File): Promise<AiParseSalaryResult> {
+export async function aiParseDirectLaborPdf(file: File): Promise<AiParseDirectLaborResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-salary", { method: "POST", body: form });
+  const res = await fetch("/api/ai/parse-direct-labor", { method: "POST", body: form });
   if (!res.ok && res.status !== 502) {
     const text = await res.text().catch(() => "");
     return { ok: false, positions: [], message: text || `HTTP ${res.status}` };
   }
-  const body = await res.json() as AiParseSalaryResult;
+  const body = await res.json() as AiParseDirectLaborResult;
   return body;
 }
 
-export function salaryToExtractionResult(
+export function directLaborToExtractionResult(
   rows: PositionRow[],
   fileName: string,
 ) {
@@ -80,7 +80,7 @@ export function salaryToExtractionResult(
       lowConfidence: lowConfidence.length,
       unmapped: 0,
       duplicates: 0,
-      detected: "Salary roster (AI parsed)",
+      detected: "Direct labor roster (AI parsed)",
     },
   };
 }

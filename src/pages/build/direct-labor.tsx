@@ -10,9 +10,12 @@ import {
   createJsonImportHandler, createPdfImportHandler,
 } from "@/features/imports/importRunners";
 import { useBuildActions } from "@/lib/store";
-import { aiParseSalaryPdf, salaryToExtractionResult } from "@/lib/ai/parseSalary";
+import {
+  aiParseDirectLaborPdf,
+  directLaborToExtractionResult,
+} from "@/lib/ai/parseDirectLabor";
 
-type SalaryRows = Parameters<typeof salaryToExtractionResult>[0];
+type DirectLaborRows = Parameters<typeof directLaborToExtractionResult>[0];
 
 const POSITIONS_SCHEMA = `{
   positions: [
@@ -39,8 +42,8 @@ export default function DirectLaborPage() {
   }));
   const [importerOpen, setImporterOpen] = useState(false);
 
-  const apply = (rows: SalaryRows, source: string) => {
-    const extraction = salaryToExtractionResult(rows, source);
+  const apply = (rows: DirectLaborRows, source: string) => {
+    const extraction = directLaborToExtractionResult(rows, source);
     const applied = mergePositions(extraction, source);
     return formatImportSummary(
       extraction.stats.total, applied.mapped, applied.lowConfidence,
@@ -48,13 +51,13 @@ export default function DirectLaborPage() {
   };
 
   const uploadPdfToClaude = createPdfImportHandler({
-    parsePdf: aiParseSalaryPdf,
+    parsePdf: aiParseDirectLaborPdf,
     apply: (parsed, fileName) => apply(parsed.positions, fileName),
   });
 
   const pasteJson = createJsonImportHandler({
     rootKey: "positions",
-    apply: (rows, source) => apply(rows as SalaryRows, source),
+    apply: (rows, source) => apply(rows as DirectLaborRows, source),
   });
 
   return (
