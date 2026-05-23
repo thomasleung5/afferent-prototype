@@ -245,7 +245,7 @@ function ActionPanel({
           {icon === "sparkles" && <Icon name="sparkles" size={13}/>} {buttonText}
         </Btn>
         {helper && (
-          <span style={{ fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.5 }}>
+          <span style={{ fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
             {helper}
           </span>
         )}

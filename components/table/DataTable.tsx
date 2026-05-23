@@ -434,7 +434,7 @@ function FilterChips({ f }: { f: FilterGroup }) {
               onClick={() => f.onChange(o.value)}
               style={{
                 padding: "4px 10px",
-                fontSize: 11.5, fontWeight: active ? 600 : 500,
+                fontSize: 12, fontWeight: active ? 600 : 500,
                 color: active ? "var(--paper)" : "var(--ink-2)",
                 background: active ? "var(--ink)" : "transparent",
                 borderLeft: i > 0 ? "1px solid var(--rule)" : "none",

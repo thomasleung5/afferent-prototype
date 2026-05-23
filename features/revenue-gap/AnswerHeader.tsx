@@ -72,7 +72,7 @@ export function AnswerHeader({ question, answer, tone = "info", sub, stats, acti
               color: TONE_COLOR[s.tone ?? "info"],
               letterSpacing: "-0.015em",
             }}>{s.value}</div>
-            {s.sub && <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{s.sub}</div>}
+            {s.sub && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{s.sub}</div>}
           </div>
         ))}
       </div>

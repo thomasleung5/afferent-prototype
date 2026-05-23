@@ -36,7 +36,7 @@ export function UpdatePacketView() {
   return (
     <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 20, alignItems: "flex-start" }}>
       <div style={{ background: "var(--paper)", border: "1px solid var(--rule)", padding: 22 }}>
-        <div className="mono" style={{ fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 14 }}>
+        <div className="mono" style={{ fontSize: 10, fontWeight: 700, letterSpacing: "0.12em", color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 14 }}>
           Packet sections
         </div>
         {PACKET_SECTIONS.map((s, i) => (
@@ -69,7 +69,7 @@ export function UpdatePacketView() {
         <div style={{ fontSize: 13, color: "var(--ink-3)", marginTop: 6, marginBottom: 18 }}>
           {jurisdiction.name} · {jurisdiction.preparedBy.split(" · ")[0]}
         </div>
-        <div style={{ fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.7 }}>
+        <div style={{ fontSize: 13, color: "var(--ink-2)", lineHeight: 1.7 }}>
           {buildNarrative(summary, fiscalYear)}
         </div>
         <div style={{ marginTop: 18, display: "flex", gap: 8, fontFamily: "var(--ff-ui)" }}>

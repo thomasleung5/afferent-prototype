@@ -54,7 +54,7 @@ export function EntryCard({
       }}>{title}</div>
 
       <div style={{
-        fontSize: 13.5,
+        fontSize: 13,
         color: accent ? navySub : "var(--ink-2)",
         lineHeight: 1.55, textWrap: "pretty", maxWidth: 480,
       }}>{desc}</div>
@@ -67,7 +67,7 @@ export function EntryCard({
           {checklist.map((c, i) => (
             <div key={i}>
               <div className="mono" style={{
-                fontSize: 9.5, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{c.l}</div>
               <div className="num display" style={{
@@ -90,7 +90,7 @@ export function EntryCard({
           {stats.map((s, i) => (
             <div key={i}>
               <div className="mono" style={{
-                fontSize: 9.5, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase",
                 color: accent ? navyDim : "var(--ink-3)",
               }}>{s.l}</div>
@@ -104,7 +104,7 @@ export function EntryCard({
 
       {support && (
         <div style={{
-          fontSize: 11.5,
+          fontSize: 12,
           color: accent ? navySub : "var(--ink-3)",
           lineHeight: 1.5,
         }}>{support}</div>
@@ -115,7 +115,7 @@ export function EntryCard({
           <div style={{ marginBottom: 12 }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              fontSize: 11.5, color: accent ? navySub : "var(--ink-3)", marginBottom: 6,
+              fontSize: 12, color: accent ? navySub : "var(--ink-3)", marginBottom: 6,
             }}>
               <span>{progressLabel}</span>
               <span className="num">{progress}%</span>

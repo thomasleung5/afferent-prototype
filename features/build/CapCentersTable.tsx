@@ -79,7 +79,7 @@ export function CapCentersTable() {
       width: "110px",
       sortable: true,
       render: (r) => (
-        <span className="mono" style={{ fontSize: 11.5, color: "var(--ink-2)" }}>
+        <span className="mono" style={{ fontSize: 12, color: "var(--ink-2)" }}>
           {r.code}
         </span>
       ),
@@ -165,7 +165,7 @@ export function CapCentersTable() {
         Cost centers
       </SectionLabel>
       <div style={{
-        fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.5,
+        fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5,
         marginBottom: 8,
       }}>
         Allocation sequence affects downstream cost allocations.

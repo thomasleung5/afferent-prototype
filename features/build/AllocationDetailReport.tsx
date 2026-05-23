@@ -308,7 +308,7 @@ export function AllocationDetailReport() {
             padding: "10px 14px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
-            fontSize: 11.5, color: "var(--ink-3)",
+            fontSize: 12, color: "var(--ink-3)",
           }}>
             <span title={`This pool claims ${pool.allocationPercent.toFixed(2)}% of ${pool.center}'s total budget`}>
               Pool share of center: <span className="num" style={{
@@ -383,7 +383,7 @@ function CostsRow({
         {label}
         {isSelf && (
           <span className="mono" style={{
-            fontSize: 9.5, color: "var(--ink-4)", marginLeft: 8,
+            fontSize: 10, color: "var(--ink-4)", marginLeft: 8,
             letterSpacing: "0.08em", textTransform: "uppercase",
             fontWeight: 600,
           }}>self</span>

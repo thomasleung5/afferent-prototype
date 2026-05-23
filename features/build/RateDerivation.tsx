@@ -170,7 +170,7 @@ export function RateDerivation() {
                   <b style={{ color: "var(--accent)" }}>${Math.round(f.fbhr)}</b>
                 </div>
               </div>
-              <div style={{ marginTop: 12, fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.55 }}>
+              <div style={{ marginTop: 12, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.55 }}>
                 Operating + overhead cost allocation ={" "}
                 {fmt.dollars(Math.round(f.operatingDollars + f.capDollars))} ÷{" "}
                 {f.productiveHours.toFixed(0)} hrs.
@@ -180,7 +180,7 @@ export function RateDerivation() {
             <DrilldownColumn marker="③" title="Overhead cost allocation pools feeding this rate">
               <div style={{
                 background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
+                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.5,
               }}>
                 {allocRows.slice(0, 6).map((ar, i) => {
                   const pool = capPools.find((p) => p.id === ar.poolId);

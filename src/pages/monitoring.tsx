@@ -113,7 +113,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => (
         <span className="num" style={{
           color: r.drift < 0 ? "var(--neg)" : r.drift > 0 ? "var(--pos)" : "var(--ink-3)",
-          fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+          fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em",
         }}>
           {r.drift > 0 ? "+" : ""}{r.drift} pts
         </span>
@@ -127,7 +127,7 @@ export default function RevenueMonitoringPage() {
       sortable: true,
       render: (r) => (
         <span className="num" style={{
-          color: "var(--neg)", fontSize: 13.5, fontWeight: 600, letterSpacing: "-0.005em",
+          color: "var(--neg)", fontSize: 13, fontWeight: 600, letterSpacing: "-0.005em",
         }}>
           {fmt.dollarsK(r.subsidy)}/yr
         </span>
@@ -141,7 +141,7 @@ export default function RevenueMonitoringPage() {
       render: (r) => {
         const t = TREND_GLYPH[r.trend];
         return (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 11.5, color: "var(--ink-3)" }}>
+          <span style={{ display: "inline-flex", alignItems: "center", gap: 6, fontSize: 12, color: "var(--ink-3)" }}>
             <span style={{ color: t.color, fontSize: 9 }}>{t.glyph}</span>
             {t.label}
           </span>
@@ -189,7 +189,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontSize: 13.5 }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: 13 }}>
           +{fmt.dollarsK(r.annualImpact)} gap
         </span>
       ),
@@ -303,7 +303,7 @@ export default function RevenueMonitoringPage() {
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--neg)", fontSize: 13.5 }}>
+        <span className="num" style={{ color: "var(--neg)", fontSize: 13 }}>
           +{fmt.dollarsK(r.impact)}
         </span>
       ),
@@ -432,7 +432,7 @@ export default function RevenueMonitoringPage() {
                   {a.rationale}
                 </div>
                 <div className="num" style={{
-                  fontSize: 13.5, color: "var(--pos)", textAlign: "right",
+                  fontSize: 13, color: "var(--pos)", textAlign: "right",
                 }}>
                   +{fmt.dollarsK(a.fiscalImpact)}/yr
                 </div>

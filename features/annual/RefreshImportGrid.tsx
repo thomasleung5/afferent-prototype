@@ -92,7 +92,7 @@ function SectionCard({ card }: { card: RefreshSectionCard }) {
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 4 }}>
         <div>
           <div className="mono" style={{
-            fontSize: 9.5, fontWeight: 700, letterSpacing: "0.12em",
+            fontSize: 10, fontWeight: 700, letterSpacing: "0.12em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>{card.section}</div>
           <div className="display" style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{card.name}</div>
@@ -151,7 +151,7 @@ function Stat({ label, value, color }: { label: string; value: string; color: st
   return (
     <div>
       <div className="mono" style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</div>
       <div className="num" style={{ fontSize: 14, fontWeight: 500, marginTop: 4, color }}>

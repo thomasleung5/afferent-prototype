@@ -71,7 +71,7 @@ export function DemoCityPicker() {
             background: "var(--paper-2)",
           }}>
             <div className="mono" style={{
-              fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Demo workspaces</div>
             <div style={{ fontSize: 11, color: "var(--ink-3)", marginTop: 2 }}>

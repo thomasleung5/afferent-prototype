@@ -27,7 +27,7 @@ export function ImportReviewPanel({
         }}>
           {label}
         </span>
-        <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+        <span style={{ fontSize: 12, color: "var(--ink-3)" }}>
           {summary}
         </span>
         {actions && (

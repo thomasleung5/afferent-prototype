@@ -281,7 +281,7 @@ export function ChangeReviewTable() {
                   <StatusPill kind={statusKindFor(r.badge)}>{r.badge}</StatusPill>
                   {r.domain && (
                     // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                    <Link to={sectionHrefForDomain(r.domain as any) as any} style={{ fontSize: 11.5, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
+                    <Link to={sectionHrefForDomain(r.domain as any) as any} style={{ fontSize: 12, color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3 }}>
                       Open {sectionLabelForDomain(r.domain as Parameters<typeof sectionLabelForDomain>[0])} section →
                     </Link>
                   )}

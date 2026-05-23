@@ -86,7 +86,7 @@ export function AuditTrail() {
             );
           })}
           <div className="mono" style={{
-            marginTop: 10, fontSize: 9.5, fontWeight: 600,
+            marginTop: 10, fontSize: 10, fontWeight: 600,
             color: "var(--ink-3)", letterSpacing: "0.1em", textTransform: "uppercase",
           }}>
             mapped / for review / unmapped / duplicates

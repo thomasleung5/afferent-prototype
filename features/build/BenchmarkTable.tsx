@@ -258,7 +258,7 @@ export function BenchmarkTable() {
               <DrilldownColumn marker="②" title="Peer cities">
                 <div style={{
                   background: "var(--paper)", border: "1px solid var(--rule)",
-                  fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
+                  fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.5,
                 }}>
                   {sorted.map((p, i) => (
                     <div key={p.city} style={{

@@ -19,7 +19,7 @@ export function SectionLabel({ children, right }: Props) {
       }}>
         {children}
       </div>
-      {right && <div style={{ fontSize: 11.5, color: "var(--ink-3)" }}>{right}</div>}
+      {right && <div style={{ fontSize: 12, color: "var(--ink-3)" }}>{right}</div>}
     </div>
   );
 }

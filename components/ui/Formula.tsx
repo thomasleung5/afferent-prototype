@@ -9,7 +9,7 @@ interface Props {
 export function Formula({ children }: Props) {
   return (
     <span className="mono" style={{
-      fontSize: 11.5, color: "var(--ink-2)",
+      fontSize: 12, color: "var(--ink-2)",
       background: "var(--paper)",
       padding: "2px 6px",
       border: "1px solid var(--rule)",
@@ -89,7 +89,7 @@ export function SourcePill({ children, tone, source, sourceFile }: SourcePillPro
     <span className="mono" title={titleAttr} style={{
       display: "inline-flex", alignItems: "center",
       padding: "2px 6px",
-      fontSize: 9.5, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
+      fontSize: 10, fontWeight: 600, letterSpacing: "0.06em", textTransform: "uppercase",
       color: p.fg, background: p.bg, border: `1px solid ${p.bd}`,
       whiteSpace: "nowrap", maxWidth: "100%",
       overflow: "hidden", textOverflow: "ellipsis",

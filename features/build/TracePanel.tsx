@@ -133,7 +133,7 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
   return (
     <div style={{ minWidth: 0 }}>
       <div className="mono" style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.14em",
+        fontSize: 10, fontWeight: 600, letterSpacing: "0.14em",
         color: "var(--ink-3)", textTransform: "uppercase",
         marginBottom: 8,
       }}>{label}</div>
@@ -147,7 +147,7 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
       }}>{value}</div>
       {sub && (
         <div style={{
-          fontSize: 11.5, color: "var(--ink-3)",
+          fontSize: 12, color: "var(--ink-3)",
           marginTop: 6, lineHeight: 1.4,
         }}>{sub}</div>
       )}
@@ -164,7 +164,7 @@ export function BigFormula({ children }: { children: ReactNode }) {
     <div style={{
       fontFamily: "var(--ff-mono)",
       fontVariantNumeric: "tabular-nums",
-      fontSize: 13.5, fontWeight: 500,
+      fontSize: 13, fontWeight: 500,
       color: "var(--ink)",
       lineHeight: 1.55,
       padding: "12px 16px",
@@ -232,9 +232,9 @@ export function CollapsibleMetadata({
 export function MetadataRow({ label, children }: { label: string; children: ReactNode }) {
   return (
     <>
-      <div style={{ color: "var(--ink-3)", fontSize: 11.5 }}>{label}</div>
+      <div style={{ color: "var(--ink-3)", fontSize: 12 }}>{label}</div>
       <div className="mono" style={{
-        color: "var(--ink-2)", fontSize: 11.5,
+        color: "var(--ink-2)", fontSize: 12,
         fontVariantNumeric: "tabular-nums",
         wordBreak: "break-word",
       }}>{children}</div>

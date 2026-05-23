@@ -169,7 +169,7 @@ export function AllocationBasisCombobox({
               />
               <div style={{ maxHeight: 240, overflowY: "auto" }}>
                 {filtered.length === 0 && (
-                  <div style={{ padding: "10px 12px", fontSize: 11.5, color: "var(--ink-3)" }}>
+                  <div style={{ padding: "10px 12px", fontSize: 12, color: "var(--ink-3)" }}>
                     No matches.
                   </div>
                 )}
@@ -224,7 +224,7 @@ export function AllocationBasisCombobox({
           {mode === "create" && (
             <div style={{ padding: "10px 12px", display: "flex", flexDirection: "column", gap: 8 }}>
               <div className="mono" style={{
-                fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
                 color: "var(--ink-3)", textTransform: "uppercase",
               }}>New allocation basis</div>
 
@@ -265,7 +265,7 @@ export function AllocationBasisCombobox({
                   onClick={() => setMode("list")}
                   style={{
                     padding: "4px 10px",
-                    fontSize: 11.5, color: "var(--ink-3)",
+                    fontSize: 12, color: "var(--ink-3)",
                     background: "transparent", border: "1px solid var(--rule)",
                     cursor: "pointer", borderRadius: 0,
                   }}
@@ -276,7 +276,7 @@ export function AllocationBasisCombobox({
                   disabled={!newName.trim() || !newSource.trim()}
                   style={{
                     padding: "4px 10px",
-                    fontSize: 11.5, fontWeight: 500,
+                    fontSize: 12, fontWeight: 500,
                     color: newName.trim() && newSource.trim() ? "var(--accent)" : "var(--ink-4)",
                     background: "var(--paper)",
                     border: `1px dashed ${newName.trim() && newSource.trim() ? "var(--accent)" : "var(--rule-strong)"}`,
@@ -312,7 +312,7 @@ function CreateField({ label, required, children }: {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
       <div className="mono" style={{
-        fontSize: 9.5, color: "var(--ink-3)", letterSpacing: "0.08em", textTransform: "uppercase",
+        fontSize: 10, color: "var(--ink-3)", letterSpacing: "0.08em", textTransform: "uppercase",
       }}>
         {label}{required && <span style={{ color: "var(--accent)" }}> *</span>}
       </div>

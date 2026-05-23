@@ -320,11 +320,11 @@ export function FeeScheduleTable() {
               {Math.abs(delta) >= 1 && (
                 <div style={{
                   marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--rule)",
-                  fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.55,
+                  fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
                 }}>
                   <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
                     <span className="mono" style={{
-                      fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
+                      fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                       color: delta > 0 ? "var(--warn)" : "var(--pos)",
                       textTransform: "uppercase",
                     }}>Why this {delta > 0 ? "increase" : "decrease"}</span>
@@ -352,7 +352,7 @@ export function FeeScheduleTable() {
             <DrilldownColumn marker="③" title="Comparators">
               <div>
                 <div className="mono" style={{
-                  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.1em",
+                  fontSize: 10, fontWeight: 700, letterSpacing: "0.1em",
                   color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                 }}>Peer median</div>
                 {svc.peer > 0 ? (
@@ -360,7 +360,7 @@ export function FeeScheduleTable() {
                     <span className="num" style={{ fontSize: 14, fontWeight: 600 }}>
                       {fmt.dollars(svc.peer)}
                     </span>
-                    <span className="num" style={{ fontSize: 11.5, color: peerColor, fontWeight: 500 }}>
+                    <span className="num" style={{ fontSize: 12, color: peerColor, fontWeight: 500 }}>
                       {peerVariance > 0 ? "+" : ""}{Math.round(peerVariance)}% {peerLabel}
                     </span>
                   </div>

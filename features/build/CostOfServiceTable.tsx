@@ -207,7 +207,7 @@ export function CostOfServiceTable() {
             <DrilldownColumn marker="③" title="Overhead cost allocation pools feeding this rate">
               <div style={{
                 background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 11.5, lineHeight: 1.5,
+                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.5,
               }}>
                 {allocRows.slice(0, 6).map((ar, i) => {
                   const pool = capPools.find((p) => p.id === ar.poolId);

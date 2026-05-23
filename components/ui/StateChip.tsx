@@ -58,7 +58,7 @@ export function StateChip({ state, onChange }: Props) {
           background: "var(--paper)",
           border: `1px solid ${tone.bd}`,
           color: tone.fg,
-          fontSize: 11.5, fontFamily: "var(--ff-ui)", fontWeight: 500,
+          fontSize: 12, fontFamily: "var(--ff-ui)", fontWeight: 500,
           cursor: "pointer",
           borderRadius: 0,
         }}

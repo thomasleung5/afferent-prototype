@@ -423,7 +423,7 @@ function CenterCellTrace({
             }}>
               {["Pool", "First", "Second", "Total"].map((h, i) => (
                 <div key={i} className="mono" style={{
-                  fontSize: 9.5, fontWeight: 700, letterSpacing: "0.14em",
+                  fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
                   color: "var(--ink-3)", textTransform: "uppercase",
                   textAlign: i === 0 ? "left" : "right",
                 }}>{h}</div>

@@ -178,7 +178,7 @@ export default function HomePage() {
             fontSize: 24, fontWeight: 600, letterSpacing: "-0.018em", lineHeight: 1.15,
           }}>Annual update</div>
           <div style={{
-            fontSize: 13.5, color: "var(--ink-2)", lineHeight: 1.55, textWrap: "pretty",
+            fontSize: 13, color: "var(--ink-2)", lineHeight: 1.55, textWrap: "pretty",
             maxWidth: 420,
           }}>
             Refresh annual inputs, review recovery impacts, and generate the adoption packet.
@@ -195,7 +195,7 @@ export default function HomePage() {
           ].map((s) => (
             <div key={s.l}>
               <div className="mono" style={{
-                fontSize: 9.5, fontWeight: 600, letterSpacing: "0.12em",
+                fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase", color: "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{

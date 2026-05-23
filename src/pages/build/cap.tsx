@@ -219,7 +219,7 @@ export default function CapPage() {
                   fontSize: 10.5, color: "var(--ink-3)",
                   letterSpacing: "0.06em",
                 }}>{d.driverKey}</span>
-                <span style={{ color: "var(--ink-2)", fontSize: 11.5 }}>{d.source}</span>
+                <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{d.source}</span>
                 <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
                 <ImportReviewAction
                   align="right"
