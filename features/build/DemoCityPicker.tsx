@@ -63,7 +63,7 @@ export function DemoCityPicker() {
           width: 280,
           background: "var(--paper)",
           border: "1px solid var(--rule-strong)",
-          boxShadow: "0 10px 24px rgba(15,23,42,0.10)",
+          boxShadow: "0 10px 24px rgba(29,34,54,0.10)",
         }}>
           <div style={{
             padding: "8px 14px 6px",

@@ -29,7 +29,7 @@ const base: CSSProperties = {
 
 const variants: Record<BtnKind, CSSProperties> = {
   ghost: base,
-  primary: { ...base, background: "var(--navy)", color: "white", borderColor: "var(--navy)" },
+  primary: { ...base, background: "var(--accent)", color: "white", borderColor: "var(--accent)" },
   subtle: { ...base, background: "transparent", borderColor: "transparent", color: "var(--ink-2)" },
 };
 

@@ -9,9 +9,11 @@ function useIsActive(href: string) {
   return pathname === href || pathname.startsWith(href + "/");
 }
 
-const ACTIVE_BG = "#1d2236";
-const ACTIVE_BORDER = "#1d2236";
-const HOVER_BORDER = "#1d2236";
+const ACTIVE_BG = "var(--accent)";
+const ACTIVE_BORDER = "var(--accent)";
+const HOVER_BORDER = "var(--accent)";
+// Shadow uses the accent color (rgb 29,34,54 = #1d2236) at low opacity;
+// kept as raw rgba because there's no shared elevation token yet.
 const HOVER_SHADOW = "0 2px 8px rgba(29, 34, 54, 0.10)";
 
 interface CardColors {
@@ -33,13 +35,13 @@ interface Node {
 // output. Inputs row stays neutral so the workflow row reads as the
 // key step in the page.
 const COST_OF_SERVICE_COLORS: CardColors = {
-  bg: "#1d2236", border: "#3a3f53", title: "#ffffff",
+  bg: "var(--accent)", border: "var(--ink-2)", title: "#ffffff",
 };
 const RECOVERY_POLICY_COLORS: CardColors = {
-  bg: "#ebe8df", border: "#1d2236", title: "#1d2236",
+  bg: "var(--accent-tint)", border: "var(--accent)", title: "var(--ink)",
 };
 const FEE_SCHEDULE_COLORS: CardColors = {
-  bg: "#3a3f53", border: "#3a3f53", title: "#ffffff",
+  bg: "var(--ink-2)", border: "var(--ink-2)", title: "#ffffff",
 };
 
 function plural(n: number, one: string, many: string) {
@@ -57,7 +59,7 @@ function Card({ n, titleSize, minHeight }: { n: Node; titleSize: number; minHeig
   const active = useIsActive(n.href);
   const baseBg = n.colors?.bg ?? "var(--paper)";
   const baseBorder = n.colors?.border ?? n.colors?.bg ?? "var(--rule-strong)";
-  const titleColor = n.colors?.title ?? "#1d2236";
+  const titleColor = n.colors?.title ?? "var(--ink)";
   return (
     <Link
       to={n.href}
@@ -101,8 +103,8 @@ function FlowArrow() {
   return (
     <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
       <svg width="22" height="10" viewBox="0 0 22 10" fill="none" aria-hidden="true">
-        <path d="M0 5 H20" stroke="#a8a6ab" strokeWidth="1.5" strokeLinecap="round"/>
-        <path d="M16 1 L20 5 L16 9" stroke="#a8a6ab" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
+        <path d="M0 5 H20" stroke="var(--ink-4)" strokeWidth="1.5" strokeLinecap="round"/>
+        <path d="M16 1 L20 5 L16 9" stroke="var(--ink-4)" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" fill="none"/>
       </svg>
     </div>
   );

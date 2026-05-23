@@ -208,9 +208,9 @@ export default function HomePage() {
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           padding: "9px 16px",
-          background: "var(--charcoal)",
+          background: "var(--ink)",
           color: "white",
-          border: "1px solid var(--charcoal)",
+          border: "1px solid var(--ink)",
           fontSize: "var(--fs-ui)", fontWeight: 500,
           whiteSpace: "nowrap",
         }}>

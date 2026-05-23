@@ -39,7 +39,7 @@ export function Drawer({
       onClick={onClose}
       style={{
         position: "fixed", inset: 0, zIndex: 80,
-        background: "rgba(20,20,30,0.32)",
+        background: "rgba(29,34,54,0.32)",
         display: "flex", justifyContent: "flex-end",
       }}
     >

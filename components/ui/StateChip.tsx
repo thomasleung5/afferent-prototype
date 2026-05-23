@@ -71,7 +71,7 @@ export function StateChip({ state, onChange }: Props) {
           position: "absolute", top: "calc(100% + 4px)", right: 0, zIndex: 20,
           background: "var(--paper)",
           border: "1px solid var(--rule-strong)",
-          boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
+          boxShadow: "0 6px 18px rgba(29,34,54,0.08)",
           minWidth: 180,
         }}>
           {opts.map((o, i) => (

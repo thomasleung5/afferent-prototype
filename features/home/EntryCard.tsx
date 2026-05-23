@@ -18,7 +18,7 @@ interface Props {
   support?: string;
 }
 
-/** Two-card workflow branch on the Home screen. `accent` flips the card to navy. */
+/** Two-card workflow branch on the Home screen. `accent` flips the card to darkBg. */
 export function EntryCard({
   eyebrow, title, desc,
   progress, progressLabel,
@@ -26,18 +26,19 @@ export function EntryCard({
   accent = false,
   checklist, stats, support,
 }: Props) {
-  const navy = "var(--navy)";
-  const navyLine = "var(--navy-line)";
-  const navySub = "var(--navy-sub)";
-  const navyDim = "var(--navy-dim)";
-  const charcoal = "var(--charcoal)";
+  // Inverted "accent" variant renders a dark card; these reference the
+  // tokens used for text/dividers on a dark background.
+  const darkBg = "var(--accent)";
+  const darkBorder = "var(--ink-2)";
+  const dimOnDark = "var(--ink-4)";
+  const softOnDark = "var(--ink-on-dark)";
 
   return (
     <Link to={href} style={{
       textAlign: "left",
-      background: accent ? navy : "var(--paper)",
+      background: accent ? darkBg : "var(--paper)",
       color: accent ? "white" : "var(--ink)",
-      border: accent ? `1px solid ${navy}` : "1px solid var(--rule)",
+      border: accent ? `1px solid ${darkBg}` : "1px solid var(--rule)",
       padding: "26px 26px 22px",
       display: "flex", flexDirection: "column", gap: 12,
       minHeight: 240,
@@ -46,7 +47,7 @@ export function EntryCard({
       <div className="mono" style={{
         fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
         textTransform: "uppercase",
-        color: accent ? navyDim : "var(--ink-3)",
+        color: accent ? dimOnDark : "var(--ink-3)",
       }}>{eyebrow}</div>
 
       <div className="display" style={{
@@ -55,7 +56,7 @@ export function EntryCard({
 
       <div style={{
         fontSize: "var(--fs-ui)",
-        color: accent ? navySub : "var(--ink-2)",
+        color: accent ? softOnDark : "var(--ink-2)",
         lineHeight: 1.55, textWrap: "pretty", maxWidth: 480,
       }}>{desc}</div>
 
@@ -85,14 +86,14 @@ export function EntryCard({
           gridTemplateColumns: stats.length === 4 ? "repeat(2, 1fr)" : "repeat(3, 1fr)",
           gap: 12,
           marginTop: 4, paddingTop: 12,
-          borderTop: `1px solid ${accent ? navyLine : "var(--rule)"}`,
+          borderTop: `1px solid ${accent ? darkBorder : "var(--rule)"}`,
         }}>
           {stats.map((s, i) => (
             <div key={i}>
               <div className="mono" style={{
                 fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                 textTransform: "uppercase",
-                color: accent ? navyDim : "var(--ink-3)",
+                color: accent ? dimOnDark : "var(--ink-3)",
               }}>{s.l}</div>
               <div className="num display" style={{
                 fontSize: 26, fontWeight: 600, marginTop: 6, letterSpacing: "-0.02em",
@@ -105,7 +106,7 @@ export function EntryCard({
       {support && (
         <div style={{
           fontSize: 12,
-          color: accent ? navySub : "var(--ink-3)",
+          color: accent ? softOnDark : "var(--ink-3)",
           lineHeight: 1.5,
         }}>{support}</div>
       )}
@@ -115,12 +116,12 @@ export function EntryCard({
           <div style={{ marginBottom: 12 }}>
             <div style={{
               display: "flex", justifyContent: "space-between",
-              fontSize: 12, color: accent ? navySub : "var(--ink-3)", marginBottom: 6,
+              fontSize: 12, color: accent ? softOnDark : "var(--ink-3)", marginBottom: 6,
             }}>
               <span>{progressLabel}</span>
               <span className="num">{progress}%</span>
             </div>
-            <div style={{ height: 4, background: accent ? navyLine : "var(--paper-3)" }}>
+            <div style={{ height: 4, background: accent ? darkBorder : "var(--paper-3)" }}>
               <div style={{
                 height: "100%", width: `${progress}%`,
                 background: accent ? "white" : "var(--accent)",
@@ -131,9 +132,9 @@ export function EntryCard({
         <div style={{
           display: "inline-flex", alignItems: "center", gap: 8,
           padding: "9px 16px",
-          background: accent ? "white" : charcoal,
-          color: accent ? navy : "white",
-          border: accent ? "none" : `1px solid ${charcoal}`,
+          background: accent ? "white" : "var(--ink)",
+          color: accent ? darkBg : "white",
+          border: accent ? "none" : `1px solid ${"var(--ink)"}`,
           fontSize: "var(--fs-ui)", fontWeight: 500,
         }}>
           {cta} <Icon name="arrow-right" size={13}/>

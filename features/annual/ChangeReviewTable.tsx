@@ -261,7 +261,7 @@ export function ChangeReviewTable() {
           }
           getRowStyle={(r) => {
             const dec = decisions[r.id];
-            if (dec === "accepted") return { bg: "oklch(98% 0.015 155)" };
+            if (dec === "accepted") return { bg: "var(--pos-tint)" };
             if (dec === "deferred") return { bg: "var(--paper-2)", style: { opacity: 0.65 } };
             if (dec === "rejected") return { bg: "var(--paper-2)" };
             return null;

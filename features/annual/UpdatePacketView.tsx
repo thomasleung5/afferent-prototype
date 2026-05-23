@@ -55,7 +55,7 @@ export function UpdatePacketView() {
         ))}
       </div>
 
-      <div style={{ background: "oklch(98% 0.005 75)", border: "1px solid var(--rule)", padding: 28, fontFamily: "Georgia, serif" }}>
+      <div style={{ background: "var(--paper)", border: "1px solid var(--rule)", padding: 28, fontFamily: "Georgia, serif" }}>
         <div className="mono" style={{
           fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
           textTransform: "uppercase", color: "var(--ink-3)", marginBottom: 12,

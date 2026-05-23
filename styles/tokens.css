@@ -11,23 +11,22 @@
   --rule:        #d8d4cc;
   --rule-strong: #bfbab0;
 
-  /* Ink — one authoritative navy. */
+  /* Ink — single authoritative navy ladder. Use --ink* for ALL text and
+   * icon colors on light surfaces; --accent for primary brand fills
+   * (buttons, active states) — currently the same hex as --ink, kept as
+   * its own token so a future palette change can shift accent without
+   * shifting every body-text site. */
   --ink:         #1d2236;
   --ink-2:       #3a3f53;
   --ink-3:       #6f6e74;
   --ink-4:       #a8a6ab;
-
-  /* Accent collapsed to navy. */
   --accent:      #1d2236;
-  --accent-2:    #1d2236;
   --accent-tint: #ebe8df;
 
-  /* Brand semantic — one navy. Charcoal aliased. */
-  --navy:        #1d2236;
-  --navy-line:   #3a3f53;
-  --navy-sub:    #c8c5bd;
-  --navy-dim:    #a8a6ab;
-  --charcoal:    #1d2236;
+  /* The one ink value that lives outside the on-light ladder: soft text
+   * for use on a dark (accent / ink-filled) background. Used by the
+   * inverted EntryCard "accent" variant. */
+  --ink-on-dark: #c8c5bd;
 
   /* Signal — muted, never SaaS-bright. */
   --neg:         #8a3a36;

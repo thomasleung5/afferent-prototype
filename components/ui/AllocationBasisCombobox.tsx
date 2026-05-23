@@ -145,7 +145,7 @@ export function AllocationBasisCombobox({
           minWidth: 280, maxWidth: 360,
           background: "var(--paper)",
           border: "1px solid var(--rule-strong)",
-          boxShadow: "0 6px 18px rgba(15,23,42,0.08)",
+          boxShadow: "0 6px 18px rgba(29,34,54,0.08)",
         }}>
           {mode === "list" && (
             <>
