@@ -5,6 +5,18 @@ import type { SourceLineage } from "@/lib/parse/types";
 interface OperatingRow {
   code?: string;
   dept: string;
+  /** Raw department / division / program name as written in the source
+   *  document, preserved verbatim for audit trace. The normalized
+   *  `dept` is what the engine uses; `sourceDept` is what reviewers
+   *  see to confirm the model's mapping. */
+  sourceDept?: string;
+  /** Fiscal year the amount belongs to, e.g. "FY 2025-26". Omitted by
+   *  the model when not clear in the document. */
+  fiscalYear?: string;
+  /** Basis of the amount column when the document distinguishes
+   *  multiple bases (Actual / Adopted / Proposed / Amended / Estimated
+   *  / Budgeted). Omitted when ambiguous. */
+  amountType?: "adopted" | "proposed" | "amended" | "actual" | "estimated" | "budgeted";
   category: string;
   line: string;
   amount: number;
