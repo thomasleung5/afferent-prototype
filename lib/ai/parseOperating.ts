@@ -75,6 +75,7 @@ export function operatingToExtractionResult(
       id: `op-ai-${Date.now()}-${i}`,
       code: row.code?.trim() || "—",
       dept,
+      ...(row.sourceDept?.trim() ? { sourceDept: row.sourceDept.trim() } : {}),
       category: normCategory(row.category),
       line: row.line,
       amount: row.amount ?? 0,

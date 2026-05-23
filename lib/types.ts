@@ -91,6 +91,12 @@ export interface OperatingLine {
   id: string;
   code: string;
   dept: OpDept;
+  /** Raw department / division / program name as written in the source
+   *  document, preserved for audit trace. Populated by the AI parser;
+   *  null on seed / manual rows. The normalized `dept` is what the
+   *  engine uses — `sourceDept` is what reviewers see to confirm the
+   *  model's mapping. */
+  sourceDept?: string;
   category: OpCategory;
   line: string;
   amount: number;

@@ -119,6 +119,25 @@ export function OperatingTable() {
       ),
     },
     {
+      key: "sourceDept",
+      label: "Source Dept",
+      width: "140px",
+      sortable: true,
+      sortKey: (r) => r.sourceDept ?? "",
+      render: (r) => (
+        <div
+          title={r.sourceDept ?? ""}
+          style={{
+            opacity: r.include ? 1 : 0.45,
+            color: r.sourceDept ? "var(--ink-2)" : "var(--ink-4)",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {r.sourceDept ?? "—"}
+        </div>
+      ),
+    },
+    {
       key: "category",
       label: "Category",
       width: "170px",
