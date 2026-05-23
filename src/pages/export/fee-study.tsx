@@ -8,7 +8,10 @@ import {
 import { fmt } from "@/lib/format";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import type { DeptCode } from "@/lib/types";
-import { Btn, Icon } from "@/components/ui";
+import {
+  Btn, ExportCover, ExportTile, ExportTileGrid, Icon,
+} from "@/components/ui";
+import { useAutoPrint } from "@/lib/printing";
 
 export default function FeeStudyExportPage() {
   const hydrated = useStoreHydrated();
@@ -189,17 +192,6 @@ function Toolbar({ payload }: { payload: ExportPayload }) {
 }
 
 /** Auto-fire window.print on first load if the URL has ?print=1. */
-function useAutoPrint() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("print") === "1") {
-      const t = setTimeout(() => window.print(), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
-}
-
 function Report({ payload }: { payload: ExportPayload }) {
   useAutoPrint();
   return (
@@ -229,40 +221,20 @@ function Report({ payload }: { payload: ExportPayload }) {
 
 function Cover({ payload }: { payload: ExportPayload }) {
   return (
-    <section className="section section-break" style={{
-      paddingTop: 80, paddingBottom: 48,
-      borderBottom: "1px solid var(--rule)",
-      marginBottom: 48,
-    }}>
-      <div className="eyebrow">{payload.cover.cityName}</div>
-      <div className="title display" style={{ fontSize: 32, marginTop: 8 }}>
-        User Fee Study
-      </div>
-      <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 14, lineHeight: 1.5 }}>
-        Cost of Service · Cost Recovery Policy · Recommended Fee Schedule
-      </div>
-
-      <div style={{
-        marginTop: 48,
-        display: "grid", gridTemplateColumns: "140px 1fr",
-        gap: "8px 16px", fontSize: 12.5,
-      }}>
-        <Label>Fiscal year</Label>
-        <Value>{payload.cover.fiscal}</Value>
-        <Label>Prepared by</Label>
-        <Value>Finance Department · Afferent</Value>
-        <Label>Peer cities</Label>
-        <Value>
-          {payload.cover.peers.length > 0 ? payload.cover.peers.join(" · ") : "—"}
-        </Value>
-        <Label>Generated</Label>
-        <Value>
-          {new Date(payload.cover.generatedAt).toLocaleDateString(undefined, {
+    <ExportCover
+      city={payload.cover.cityName}
+      title="User Fee Study"
+      subtitle="Cost of Service · Cost Recovery Policy · Recommended Fee Schedule"
+      fields={[
+        { label: "Fiscal year",  value: payload.cover.fiscal },
+        { label: "Prepared by",  value: "Finance Department · Afferent" },
+        { label: "Peer cities",  value: payload.cover.peers.length > 0
+            ? payload.cover.peers.join(" · ") : "—" },
+        { label: "Generated",    value: new Date(payload.cover.generatedAt).toLocaleDateString(undefined, {
             month: "long", day: "numeric", year: "numeric",
-          })}
-        </Value>
-      </div>
-    </section>
+          }) },
+      ]}
+    />
   );
 }
 
@@ -370,23 +342,19 @@ function ExecutiveSummary({ payload }: { payload: ExportPayload }) {
         </p>
       </div>
 
-      <div style={{
-        marginTop: 22,
-        display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 0,
-        border: "1px solid var(--rule)",
-      }}>
-        <Tile label="Services modeled" value={s.services.toString()}/>
-        <Tile label="FTE" value={s.fte.toFixed(1)}/>
-        <Tile label="Current recovery"
+      <ExportTileGrid columns={4}>
+        <ExportTile label="Services modeled" value={s.services.toString()}/>
+        <ExportTile label="FTE" value={s.fte.toFixed(1)}/>
+        <ExportTile label="Current recovery"
               value={`${s.recoveryPct.toFixed(0)}%`}
               tone={s.recoveryPct >= 80 ? "pos" : s.recoveryPct >= 50 ? "warn" : "neg"}/>
-        <Tile label="Annual gap" value={fmt.dollarsK(s.recoveryGap)} tone="neg" last/>
-        <Tile label="Policy-intended recovery"
+        <ExportTile label="Annual gap" value={fmt.dollarsK(s.recoveryGap)} tone="neg" last/>
+        <ExportTile label="Policy-intended recovery"
               value={`${s.intendedRecoveryPct.toFixed(0)}%`}/>
-        <Tile label="Annual subsidy" value={fmt.dollarsK(s.annualSubsidy)} tone="warn"/>
-        <Tile label="Potential uplift" value={fmt.dollarsK(s.potentialUplift)} tone="pos"/>
-        <Tile label="Total annual cost" value={fmt.dollarsK(s.totalCost)} last/>
-      </div>
+        <ExportTile label="Annual subsidy" value={fmt.dollarsK(s.annualSubsidy)} tone="warn"/>
+        <ExportTile label="Potential uplift" value={fmt.dollarsK(s.potentialUplift)} tone="pos"/>
+        <ExportTile label="Total annual cost" value={fmt.dollarsK(s.totalCost)} last/>
+      </ExportTileGrid>
     </section>
   );
 }
@@ -2117,41 +2085,4 @@ function peerOutlierCommentary(payload: ExportPayload): string[] {
 // Small helpers
 // ============================================================================
 
-function Tile({
-  label, value, tone, last,
-}: { label: string; value: string; tone?: "pos" | "neg" | "warn"; last?: boolean }) {
-  const color =
-    tone === "pos" ? "var(--pos)" :
-    tone === "neg" ? "var(--neg)" :
-    tone === "warn" ? "var(--warn)" :
-    "var(--ink)";
-  return (
-    <div style={{
-      padding: "12px 14px",
-      borderRight: last ? "none" : "1px solid var(--rule)",
-      borderBottom: "1px solid var(--rule)",
-      display: "flex", flexDirection: "column", gap: 4,
-    }}>
-      <div className="mono" style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
-      <div className="num" style={{
-        fontSize: 20, fontWeight: 600, color, letterSpacing: "-0.01em",
-      }}>{value}</div>
-    </div>
-  );
-}
 
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <div className="mono" style={{
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-    }}>{children}</div>
-  );
-}
-
-function Value({ children }: { children: ReactNode }) {
-  return <div style={{ color: "var(--ink-2)" }}>{children}</div>;
-}

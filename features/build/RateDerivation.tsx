@@ -106,7 +106,7 @@ export function RateDerivation() {
       width: "110px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num">{Math.round(r.productiveHours).toLocaleString()}</span>,
+      render: (r) => <span className="num">{fmt.int(r.productiveHours)}</span>,
     },
   ];
 

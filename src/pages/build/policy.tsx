@@ -28,19 +28,15 @@ export default function RecoveryPolicyPage() {
         { label: "Total gap",           value: `${fmt.dollarsK(impact.totalCost - impact.currentRevenue)}/yr`, tone: "neg" },
       ]}/>
 
-      <div style={{ paddingTop: 8 }}>
-        <SectionLabel right={`${policyTargets.length} departments`}>
-          Department targets
-        </SectionLabel>
-        <DepartmentTargets/>
-      </div>
+      <SectionLabel right={`${policyTargets.length} departments`}>
+        Department targets
+      </SectionLabel>
+      <DepartmentTargets/>
 
-      <div style={{ paddingTop: 8 }}>
-        <SectionLabel right={`${policyExceptions.length} exceptions`}>
-          Fee exceptions
-        </SectionLabel>
-        <PolicyExceptions/>
-      </div>
+      <SectionLabel right={`${policyExceptions.length} exceptions`}>
+        Fee exceptions
+      </SectionLabel>
+      <PolicyExceptions/>
     </Page>
   );
 }

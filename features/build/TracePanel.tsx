@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Icon } from "@/components/ui";
+import { ExpandIndicator, Icon } from "@/components/ui";
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Unified explainability shell for every CAP "cell trace" panel.
@@ -206,13 +206,7 @@ export function CollapsibleMetadata({
           color: "var(--ink-3)",
         }}
       >
-        <span aria-hidden="true" style={{
-          display: "inline-block",
-          transform: open ? "rotate(90deg)" : "none",
-          transition: "transform 120ms",
-          fontFamily: "var(--ff-mono)", fontSize: 9, lineHeight: 1,
-          color: "var(--ink-3)",
-        }}>▶</span>
+        <span aria-hidden="true"><ExpandIndicator open={open}/></span>
         <span className="mono" style={{
           fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
           textTransform: "uppercase",

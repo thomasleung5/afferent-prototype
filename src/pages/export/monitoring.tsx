@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Btn, Icon } from "@/components/ui";
+import { Btn, ExportCover, Icon } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useActiveJurisdiction } from "@/lib/active";
 import type { Jurisdiction } from "@/lib/data/jurisdictions";
@@ -9,6 +9,7 @@ import {
   deriveMonitoringData, type MonitoringData,
 } from "@/lib/data/monitoring";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { useAutoPrint } from "@/lib/printing";
 
 function slugCity(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
@@ -163,17 +164,6 @@ function Toolbar({
   );
 }
 
-function useAutoPrint() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("print") === "1") {
-      const t = setTimeout(() => window.print(), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
-}
-
 function Report({
   monitoring, jurisdiction,
 }: { monitoring: MonitoringData; jurisdiction: Jurisdiction }) {
@@ -192,28 +182,14 @@ function Report({
 
 function Cover({ jurisdiction }: { jurisdiction: Jurisdiction }) {
   return (
-    <section className="section" style={{
-      paddingTop: 60, paddingBottom: 32,
-      borderBottom: "1px solid var(--rule)",
-      marginBottom: 36,
-    }}>
-      <div className="eyebrow">{jurisdiction.name}</div>
-      <div className="title display" style={{ fontSize: 32, marginTop: 6 }}>
-        Revenue Monitoring Brief
-      </div>
-      <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 12 }}>
-        Cost recovery drift and post-adoption fee actions.
-      </div>
-
-      <div style={{
-        marginTop: 36,
-        display: "grid", gridTemplateColumns: "140px 1fr",
-        gap: "6px 16px", fontSize: 12.5,
-      }}>
-        <Label>Generated</Label>
-        <Value>{new Date().toLocaleString()}</Value>
-      </div>
-    </section>
+    <ExportCover
+      city={jurisdiction.name}
+      title="Revenue Monitoring Brief"
+      subtitle="Cost recovery drift and post-adoption fee actions."
+      fields={[
+        { label: "Generated", value: new Date().toLocaleString() },
+      ]}
+    />
   );
 }
 
@@ -406,15 +382,3 @@ function Tile({
   );
 }
 
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <div className="mono" style={{
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-    }}>{children}</div>
-  );
-}
-
-function Value({ children }: { children: ReactNode }) {
-  return <div style={{ color: "var(--ink-2)" }}>{children}</div>;
-}

@@ -112,7 +112,7 @@ export function OperatingSummary() {
                 <>
                   <Formula>operating $/hr = operating $ ÷ productive hrs</Formula>
                   <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(r.total)} ÷ {Math.round(derived.fbhr[d].productiveHours).toLocaleString()} hrs
+                    = {fmt.dollarsK(r.total)} ÷ {fmt.int(derived.fbhr[d].productiveHours)} hrs
                     {r.rate > 0 && (
                       <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
                         = ${Math.round(r.rate)}/hr

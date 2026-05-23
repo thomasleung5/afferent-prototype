@@ -2,11 +2,14 @@
 import { useEffect, useMemo, useState } from "react";
 import { useBuildState, useBuildStore } from "@/lib/store";
 import { fmt } from "@/lib/format";
-import { Btn, Icon } from "@/components/ui";
+import {
+  Btn, ExportCover, ExportTile, ExportTileGrid, Icon,
+} from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { basisForPool } from "@/lib/data/capStepDown";
 import type { CapExportPayload } from "@/lib/export/capExcel";
+import { useAutoPrint } from "@/lib/printing";
 
 export default function CapAllocationExportPage() {
   const hydrated = useStoreHydrated();
@@ -197,16 +200,6 @@ function Toolbar({ payload }: { payload: CapExportPayload }) {
   );
 }
 
-function useAutoPrint() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("print") === "1") {
-      const t = setTimeout(() => window.print(), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
-}
 
 function Report({ payload }: { payload: CapExportPayload }) {
   useAutoPrint();
@@ -238,31 +231,18 @@ function Cover({ payload }: { payload: CapExportPayload }) {
   const totalDis = Object.values(payload.capCenterDisallowed).reduce((a, v) => a + v, 0);
   const totalNet = Math.max(0, totalGross - totalDis);
   return (
-    <section className="section" style={{
-      paddingTop: 56, paddingBottom: 28,
-      borderBottom: "1px solid var(--rule)",
-      marginBottom: 32,
-    }}>
-      <div className="eyebrow">{payload.cityName}</div>
-      <div className="title display" style={{ fontSize: 30, marginTop: 6 }}>
-        Full Cost Allocation Plan
-      </div>
-      <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 10 }}>
-        Indirect support service allocation via double-step-down methodology
-      </div>
-
-      <div style={{
-        marginTop: 30,
-        display: "grid", gridTemplateColumns: "150px 1fr",
-        gap: "6px 16px", fontSize: 12.5,
-      }}>
-        <Label>Fiscal year</Label>            <Value>{payload.fiscal}</Value>
-        <Label>Net allocable</Label>          <Value>{fmt.dollars(totalNet)}</Value>
-        <Label>Indirect cost centers</Label>  <Value>{payload.capCenterOrder.length}</Value>
-        <Label>Cost pools</Label>             <Value>{payload.capPools.length}</Value>
-        <Label>Generated</Label>              <Value>{new Date(payload.generatedAt).toLocaleString()}</Value>
-      </div>
-    </section>
+    <ExportCover
+      city={payload.cityName}
+      title="Full Cost Allocation Plan"
+      subtitle="Indirect support service allocation via double-step-down methodology"
+      fields={[
+        { label: "Fiscal year",            value: payload.fiscal },
+        { label: "Net allocable",          value: fmt.dollars(totalNet) },
+        { label: "Indirect cost centers",  value: payload.capCenterOrder.length },
+        { label: "Cost pools",             value: payload.capPools.length },
+        { label: "Generated",              value: new Date(payload.generatedAt).toLocaleString() },
+      ]}
+    />
   );
 }
 
@@ -375,30 +355,28 @@ function ExecutiveSummary({ payload }: { payload: CapExportPayload }) {
       </div>
 
       <h3 className="h3" style={{ marginTop: 18 }}>Plan at a glance</h3>
-      <div style={{
-        marginTop: 8,
-        display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 0,
-        border: "1px solid var(--rule)",
-      }}>
-        <Tile label="Total Allocable Cost" value={fmt.dollars(totalNet)}/>
-        <Tile label="Cost Pools" value={String(payload.capPools.length)}/>
-        <Tile label="Receiving Departments" value={String(directNodes.length)} last/>
-        <Tile label="Allocation Bases" value={String(payload.allocationBases.length)}/>
-        <Tile
+      <ExportTileGrid columns={3} marginTop={8}>
+        <ExportTile size="compact" label="Total Allocable Cost" value={fmt.dollars(totalNet)}/>
+        <ExportTile size="compact" label="Cost Pools" value={String(payload.capPools.length)}/>
+        <ExportTile size="compact" label="Receiving Departments" value={String(directNodes.length)} last/>
+        <ExportTile size="compact" label="Allocation Bases" value={String(payload.allocationBases.length)}/>
+        <ExportTile
+          size="compact"
           label="Largest Support Function"
           value={largestProvider ? largestProvider[0] : "Not available"}
           sub={largestProvider ? fmt.dollars(largestProvider[1]) : undefined}
         />
-        <Tile
+        <ExportTile
+          size="compact"
           label="Largest Receiver"
           value={largestReceiver ? largestReceiver.name : "Not available"}
           sub={largestReceiver ? fmt.dollars(largestReceiver.amount) : undefined}
           last
         />
-        <Tile label="Indirect Cost Centers" value={String(indirectNodes.length)}/>
-        <Tile label="Gross Expenses" value={fmt.dollars(totalGross)}/>
-        <Tile label="Disallowed" value={totalDis > 0 ? fmt.dollars(totalDis) : "—"} last/>
-      </div>
+        <ExportTile size="compact" label="Indirect Cost Centers" value={String(indirectNodes.length)}/>
+        <ExportTile size="compact" label="Gross Expenses" value={fmt.dollars(totalGross)}/>
+        <ExportTile size="compact" label="Disallowed" value={totalDis > 0 ? fmt.dollars(totalDis) : "—"} last/>
+      </ExportTileGrid>
 
       <div className="body" style={{
         marginTop: 16, paddingTop: 10,
@@ -1340,7 +1318,7 @@ function FbhrRollup({ payload }: { payload: CapExportPayload }) {
         <thead>
           <tr>
             <th>Fee Department</th>
-            <th className="num">Allocated CAP $</th>
+            <th className="num">Allocated overhead $</th>
             <th className="num">% of total</th>
           </tr>
         </thead>
@@ -1820,34 +1798,6 @@ function AppendixE() {
 // Small helpers
 // ============================================================================
 
-function Tile({
-  label, value, sub, last,
-}: { label: string; value: string; sub?: string; last?: boolean }) {
-  return (
-    <div style={{
-      padding: "12px 14px",
-      borderRight: last ? "none" : "1px solid var(--rule)",
-      borderBottom: "1px solid var(--rule)",
-      display: "flex", flexDirection: "column", gap: 4,
-    }}>
-      <div className="mono" style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
-      <div style={{
-        fontSize: 15, fontWeight: 600, color: "var(--ink)",
-        letterSpacing: "-0.01em", lineHeight: 1.2,
-      }}>{value}</div>
-      {sub && (
-        <div className="num" style={{
-          fontSize: 11, color: "var(--ink-3)", marginTop: 2,
-          fontFamily: "var(--ff-mono)",
-        }}>{sub}</div>
-      )}
-    </div>
-  );
-}
-
 function computeProviderOutgoing(payload: CapExportPayload): Map<string, number> {
   const out = new Map<string, number>();
   for (const pl of payload.capPools) {
@@ -1879,15 +1829,3 @@ function stepIndexMap(payload: CapExportPayload): Map<string, number> {
   return m;
 }
 
-function Label({ children }: { children: React.ReactNode }) {
-  return (
-    <div className="mono" style={{
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-    }}>{children}</div>
-  );
-}
-
-function Value({ children }: { children: React.ReactNode }) {
-  return <div style={{ color: "var(--ink-2)" }}>{children}</div>;
-}

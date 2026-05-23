@@ -4,7 +4,9 @@ import {
   DataTable, deriveDeptFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
-import { CellInput, CellSelect, SectionLabel, SourcePill } from "@/components/ui";
+import {
+  CellInput, CellSelect, SectionLabel, SharedChip, SourcePill,
+} from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -22,19 +24,6 @@ const CATEGORIES: OpCategory[] = [
   "Capital outlay",
   "Other",
 ];
-
-function SharedChip() {
-  return (
-    <span className="mono" style={{
-      display: "inline-block",
-      padding: "2px 6px",
-      border: "1px dashed var(--rule-strong)",
-      background: "var(--paper-2)",
-      fontSize: 10.5, fontWeight: 600, letterSpacing: "0.04em",
-      color: "var(--ink-2)",
-    }}>SHARED</span>
-  );
-}
 
 export function OperatingTable() {
   const { operating, updateOperating, addOperatingLine } = useBuildState();

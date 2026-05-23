@@ -54,7 +54,7 @@ export function LaborSummary() {
           </span>
         ),
         avgRate: r.directRate > 0 ? `$${Math.round(r.directRate)}` : "—",
-        hrs: Math.round(r.productiveHours).toLocaleString(),
+        hrs: fmt.int(r.productiveHours),
         total: fmt.dollarsK(r.totalComp),
       },
       drilldown: (
@@ -97,7 +97,7 @@ export function LaborSummary() {
                 <>
                   <Formula>direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs</Formula>
                   <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(r.totalComp)} ÷ {Math.round(r.productiveHours).toLocaleString()} hrs
+                    = {fmt.dollarsK(r.totalComp)} ÷ {fmt.int(r.productiveHours)} hrs
                     {r.directRate > 0 && (
                       <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
                         = ${Math.round(r.directRate)}/hr
@@ -143,7 +143,7 @@ export function LaborSummary() {
           </span>
         ),
         avgRate: "—",
-        hrs: Math.round(totalHrs).toLocaleString(),
+        hrs: fmt.int(totalHrs),
         total: fmt.dollarsK(totalComp),
       }}
       />

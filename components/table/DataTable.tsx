@@ -1,6 +1,7 @@
 
 import { useMemo, useState, type CSSProperties, type ReactNode } from "react";
 import { AddRowButton } from "@/components/ui/AddRowButton";
+import { ExpandIndicator } from "@/components/ui/ExpandIndicator";
 
 type SortDir = "asc" | "desc";
 type CellAlign = "left" | "right" | "center";
@@ -342,13 +343,7 @@ export function DataTable<Row extends DataTableRow>({
                       <div style={{
                         display: "flex", alignItems: "center", justifyContent: "center",
                       }}>
-                        <span style={{
-                          display: "inline-block", fontSize: 9,
-                          color: isOpen ? "var(--accent)" : "var(--ink-3)",
-                          transform: isOpen ? "rotate(90deg)" : "none",
-                          transition: "transform 100ms",
-                          fontFamily: "var(--ff-mono)", lineHeight: 1,
-                        }}>▶</span>
+                        <ExpandIndicator open={isOpen}/>
                       </div>
                     )}
                   </div>

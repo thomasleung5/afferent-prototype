@@ -9,6 +9,7 @@ import type { DeptCode, PolicyTarget } from "../types";
 import type { FeeComparison, PolicyImpact } from "../calc";
 import type { BuildImportLog } from "../store";
 import { DEPTS, FEE_DEPTS } from "./departments";
+import { fmt } from "../format";
 
 export type Trend = "up" | "down" | "flat";
 export type RecoveryStatus = "below" | "watch" | "on-track";
@@ -236,7 +237,7 @@ function deriveStaffActions(
       id: "SA-ANNUAL",
       title: "Queue annual update",
       rationale: `${recoveryAlerts.length} alerts open · `
-        + `${Math.round(Math.max(0, impact.recoverableGap)).toLocaleString()} closeable gap`,
+        + `${fmt.int(Math.max(0, impact.recoverableGap))} closeable gap`,
       fiscalImpact: Math.round(Math.max(0, impact.recoverableGap)),
       nextStep: "Start Annual Update",
       nextHref: "/annual",

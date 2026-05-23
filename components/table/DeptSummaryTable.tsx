@@ -1,5 +1,6 @@
 
 import { useState, type ReactNode } from "react";
+import { ExpandIndicator } from "@/components/ui/ExpandIndicator";
 
 interface DeptSummaryCol {
   key: string;
@@ -101,14 +102,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
                 }}>{r.cells[c.key]}</div>
               ))}
               <div style={{ display: "flex", alignItems: "center", justifyContent: "center" }}>
-                {canExpand && (
-                  <span style={{
-                    display: "inline-block", fontSize: 9, color: "var(--ink-3)",
-                    transform: isOpen ? "rotate(90deg)" : "none",
-                    transition: "transform 100ms",
-                    fontFamily: "var(--ff-mono)", lineHeight: 1,
-                  }}>▶</span>
-                )}
+                {canExpand && <ExpandIndicator open={isOpen}/>}
               </div>
             </div>
             {canExpand && isOpen && (

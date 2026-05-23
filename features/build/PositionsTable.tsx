@@ -6,11 +6,12 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect, DrilldownColumn, DrilldownShell,
-  SectionLabel, SourcePill,
+  ExpandIndicator, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Position, ProductiveHoursBreakdown } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
+import { fmt } from "@/lib/format";
 import {
   calculateProductiveHours,
   type ProductiveHoursDeductionKey,
@@ -192,12 +193,10 @@ export function PositionsTable() {
               style={{
                 cursor: "pointer", userSelect: "none",
                 background: "transparent", border: "none", padding: "0 4px",
-                color: isOpen ? "var(--accent)" : "var(--ink-3)",
-                fontFamily: "var(--ff-mono)", fontSize: 10, lineHeight: 1,
-                transform: isOpen ? "rotate(90deg)" : "none",
-                transition: "transform 100ms",
               }}
-            >▶</button>
+            >
+              <ExpandIndicator open={isOpen}/>
+            </button>
           </div>
         );
       },
@@ -257,7 +256,6 @@ function ProductiveHoursDrilldown({
   onChange: (key: ProductiveHoursDeductionKey, value: number) => void;
 }) {
   const result = calculateProductiveHours(row);
-  const numberFmt = (n: number) => Math.round(n).toLocaleString("en-US");
   return (
     <DrilldownShell>
       <DrilldownColumn marker="①" title="Starting hours">
@@ -268,7 +266,7 @@ function ProductiveHoursDrilldown({
         }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--ink-3)" }}>gross annual hours</span>
-            <b>{numberFmt(result.grossAnnualHours)}</b>
+            <b>{fmt.int(result.grossAnnualHours)}</b>
           </div>
         </div>
       </DrilldownColumn>
@@ -312,7 +310,7 @@ function ProductiveHoursDrilldown({
             <span style={{ color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 10 }}>
               Total nonproductive
             </span>
-            <b style={{ textAlign: "right" }}>{numberFmt(result.totalNonproductiveHours)}</b>
+            <b style={{ textAlign: "right" }}>{fmt.int(result.totalNonproductiveHours)}</b>
           </div>
         </div>
       </DrilldownColumn>
@@ -325,18 +323,18 @@ function ProductiveHoursDrilldown({
         }}>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--ink-3)" }}>gross</span>
-            <b>{numberFmt(result.grossAnnualHours)}</b>
+            <b>{fmt.int(result.grossAnnualHours)}</b>
           </div>
           <div style={{ display: "flex", justifyContent: "space-between" }}>
             <span style={{ color: "var(--ink-3)" }}>− nonproductive</span>
-            <b>{numberFmt(result.totalNonproductiveHours)}</b>
+            <b>{fmt.int(result.totalNonproductiveHours)}</b>
           </div>
           <div style={{
             borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
             display: "flex", justifyContent: "space-between",
           }}>
             <span>net productive hrs</span>
-            <b style={{ color: "var(--accent)" }}>{numberFmt(result.netProductiveHours)}</b>
+            <b style={{ color: "var(--accent)" }}>{fmt.int(result.netProductiveHours)}</b>
           </div>
           <div style={{
             display: "flex", justifyContent: "space-between",

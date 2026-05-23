@@ -16,4 +16,11 @@ export const fmt = {
     if (n == null) return "—";
     return Math.round(n).toLocaleString();
   },
+  /** Comma-separated number with up to `decimals` fractional digits.
+   *  For non-currency, non-integer values (driver units, hour balances,
+   *  basis denominators). Trailing zeros are trimmed. */
+  units(n: number | null | undefined, decimals = 2): string {
+    if (n == null) return "—";
+    return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
+  },
 };

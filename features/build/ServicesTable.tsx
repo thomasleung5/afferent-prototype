@@ -7,7 +7,7 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect,
-  DrilldownShell, DrilldownColumn, SectionLabel, SourcePill,
+  DrilldownShell, DrilldownColumn, ExpandIndicator, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -165,13 +165,7 @@ export function ServicesTable() {
             }}
           >
             <span>{mix.length} roles</span>
-            <span style={{
-              display: "inline-block", fontSize: 9,
-              color: isOpen ? "var(--accent)" : "var(--ink-3)",
-              transform: isOpen ? "rotate(90deg)" : "none",
-              transition: "transform 100ms",
-              fontFamily: "var(--ff-mono)", lineHeight: 1,
-            }}>▶</span>
+            <ExpandIndicator open={isOpen}/>
           </div>
         );
       },

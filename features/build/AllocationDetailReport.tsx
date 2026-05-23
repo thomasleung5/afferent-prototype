@@ -529,7 +529,7 @@ function DetailRow({ row }: { row: Row }) {
   const dim = (v: number) => v < 0.5;
   const fmtMoney = (v: number) => dim(v) ? "—" : fmt.dollars(v);
   const fmtUnits = (v: number | undefined) =>
-    v == null ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+    v == null ? "—" : fmt.units(v);
   const fmtPct = (v: number) =>
     v <= 0 ? "—" : `${v.toFixed(3)}%`;
   return (
@@ -605,7 +605,7 @@ function TotalRow({
         textTransform: "uppercase", color: "var(--ink-2)",
       }}>Total</div>
       <div className="num" style={{ textAlign: "right" }}>
-        {totals.units.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        {fmt.units(totals.units)}
       </div>
       <div className="num" style={{ textAlign: "right" }}>
         {totals.percent.toFixed(3)}%

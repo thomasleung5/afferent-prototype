@@ -1,11 +1,11 @@
-import { useEffect } from "react";
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/format";
-import { Btn, Icon } from "@/components/ui";
+import { Btn, ExportCover, Icon } from "@/components/ui";
 import {
   useBenchmarkPayload,
 } from "@/features/build/useBenchmarkExport";
 import type { BenchmarkExportPayload } from "@/lib/export/benchmarkExcel";
+import { useAutoPrint } from "@/lib/printing";
 
 type BenchmarkPayload = BenchmarkExportPayload;
 
@@ -110,18 +110,6 @@ function Toolbar({ payload }: { payload: BenchmarkPayload }) {
   );
 }
 
-/** Auto-fire window.print on first load if the URL has ?print=1. */
-function useAutoPrint() {
-  useEffect(() => {
-    if (typeof window === "undefined") return;
-    const params = new URLSearchParams(window.location.search);
-    if (params.get("print") === "1") {
-      const t = setTimeout(() => window.print(), 600);
-      return () => clearTimeout(t);
-    }
-  }, []);
-}
-
 function Report({ payload }: { payload: BenchmarkPayload }) {
   useAutoPrint();
   return (
@@ -136,30 +124,17 @@ function Report({ payload }: { payload: BenchmarkPayload }) {
 
 function Cover({ payload }: { payload: BenchmarkPayload }) {
   return (
-    <section className="section" style={{
-      paddingTop: 60, paddingBottom: 32,
-      borderBottom: "1px solid var(--rule)",
-      marginBottom: 36,
-    }}>
-      <div className="eyebrow">{payload.cityName}</div>
-      <div className="title display" style={{ fontSize: 32, marginTop: 6 }}>
-        Fee Benchmark Database
-      </div>
-      <div style={{ fontSize: 14, color: "var(--ink-2)", marginTop: 12 }}>
-        Adopted fees in peer cities · variance vs. peer median &amp; calculated cost
-      </div>
-
-      <div style={{
-        marginTop: 36,
-        display: "grid", gridTemplateColumns: "140px 1fr",
-        gap: "6px 16px", fontSize: 12.5,
-      }}>
-        <Label>Fiscal year</Label>   <Value>{payload.fiscal}</Value>
-        <Label>Prepared by</Label>   <Value>{payload.preparedBy}</Value>
-        <Label>Peer cities</Label>   <Value>{payload.peers.join(" · ")}</Value>
-        <Label>Generated</Label>     <Value>{new Date(payload.generatedAt).toLocaleString()}</Value>
-      </div>
-    </section>
+    <ExportCover
+      city={payload.cityName}
+      title="Fee Benchmark Database"
+      subtitle="Adopted fees in peer cities · variance vs. peer median & calculated cost"
+      fields={[
+        { label: "Fiscal year",  value: payload.fiscal },
+        { label: "Prepared by",  value: payload.preparedBy },
+        { label: "Peer cities",  value: payload.peers.join(" · ") },
+        { label: "Generated",    value: new Date(payload.generatedAt).toLocaleString() },
+      ]}
+    />
   );
 }
 
@@ -315,15 +290,3 @@ function Tile({
   );
 }
 
-function Label({ children }: { children: ReactNode }) {
-  return (
-    <div className="mono" style={{
-      fontSize: 10, fontWeight: 600, letterSpacing: "0.1em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-    }}>{children}</div>
-  );
-}
-
-function Value({ children }: { children: ReactNode }) {
-  return <div style={{ color: "var(--ink-2)" }}>{children}</div>;
-}
