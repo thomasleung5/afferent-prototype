@@ -52,7 +52,7 @@ src/
 
 server/                    # Hono API on :8787 (proxied as /api from Vite)
   index.ts                 # Hono entry + route registration
-  aiExtract.ts             # shared Claude PDF extraction helper
+  aiParseRunner.ts         # shared Anthropic PDF parse helper
   aiParse{Services,Salary,Operating,Cap,Workload,Fees}.ts
 
 components/

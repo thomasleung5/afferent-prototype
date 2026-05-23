@@ -68,7 +68,7 @@ export default function AnnualPacketPage() {
   }, [state, jurisdiction.name]);
 
   // Council-facing packet opens the existing fee-study print-preview tab.
-  // The same /export route renders against the live BuildProvider state, so
+  // The same /export route renders against the live Zustand build state, so
   // staff can print or save-as-PDF from there.
   const openPacket = useCallback(() => {
     window.open("/export/fee-study", "_blank", "noopener,noreferrer");
