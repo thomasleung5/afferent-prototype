@@ -27,7 +27,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
 };
 
 const DOMAIN_HREF: Record<Domain, string> = {
-  positions: "/build/salary",
+  positions: "/build/direct-labor",
   operating: "/build/operating",
   services:  "/build/services",
   fees:      "/build/feestudy",

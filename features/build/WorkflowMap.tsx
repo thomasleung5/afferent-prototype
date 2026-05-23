@@ -123,7 +123,7 @@ export function WorkflowMap() {
       metric: plural(services.length, "service", "services"),
     },
     {
-      href: "/build/salary", label: "Direct Labor",
+      href: "/build/direct-labor", label: "Direct Labor",
       desc: "(salary + benefits) ÷ productive hours",
       metric: plural(positions.length, "position", "positions"),
     },

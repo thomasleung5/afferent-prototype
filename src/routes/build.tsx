@@ -7,12 +7,12 @@ const ITEMS: SubNavItem[] = [
   // Cost Inputs collapses Direct Labor, Operating, and Overhead Cost
   // Allocation into a single primary entry. The page itself renders a
   // card-style SubsectionNav so the user can hop between the three
-  // sub-views. Deep links to the original routes still work; this entry
+  // sub-views. Deep links to the cost input routes still work; this entry
   // highlights for any of them via matchPrefixes.
   {
-    href: "/build/salary",
+    href: "/build/direct-labor",
     label: "Cost Inputs",
-    matchPrefixes: ["/build/salary", "/build/operating", "/build/cap"],
+    matchPrefixes: ["/build/direct-labor", "/build/operating", "/build/cap"],
   },
   { href: "/build/workload",  label: "Workload" },
   { href: "/build/costs",     label: "Cost of Service" },

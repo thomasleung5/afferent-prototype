@@ -7,7 +7,7 @@ export interface SubNavItem {
   prefix?: string;
   /** Additional path prefixes that also count as active. Useful when one
    *  nav entry stands in for several routes (e.g. a "Cost Inputs" entry
-   *  that highlights for /build/salary, /build/operating, /build/cap). */
+   *  that highlights for /build/direct-labor, /build/operating, /build/cap). */
   matchPrefixes?: string[];
 }
 
