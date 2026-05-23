@@ -8,7 +8,7 @@ import type { BasisKey } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  BigFormula, CollapsibleMetadata, MetadataRow,
+  BigFormula,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -530,14 +530,6 @@ function CellTrace({
         </BigFormula>
       </TraceSection>
 
-      <CollapsibleMetadata title="Basis metadata">
-        <MetadataRow label="Basis code">{basis.label}</MetadataRow>
-        <MetadataRow label="Long name">{basis.longName}</MetadataRow>
-        <MetadataRow label="Unit">{basis.unitLong} ({basis.unit})</MetadataRow>
-        <MetadataRow label="Source">{basis.note}</MetadataRow>
-        {row.glCode && <MetadataRow label="glCode">{row.glCode}</MetadataRow>}
-        <MetadataRow label="Node group">{row.group === "indirect" ? "Indirect cost center" : "Direct receiver"}</MetadataRow>
-      </CollapsibleMetadata>
     </TracePanel>
   );
 }

@@ -1,18 +1,16 @@
-import { useState, type ReactNode } from "react";
-import { ExpandIndicator, Icon } from "@/components/ui";
+import type { ReactNode } from "react";
+import { Icon } from "@/components/ui";
 
 /* ──────────────────────────────────────────────────────────────────────────
  * Unified explainability shell for every CAP "cell trace" panel.
  *
  * The three CAP screens (Allocation Bases, Pool Allocations, Allocation
- * Matrix) all open a drilldown when the user clicks a cell. To make those
- * explanations feel like one auditable system rather than three separate
- * spreadsheet probes, every trace composes the same four sections in order:
+ * Matrix) all open a drilldown when the user clicks a cell. Every trace
+ * composes the same three sections in order:
  *
  *   1. Summary       — what is being allocated, where it goes, the result
  *   2. Logic         — the actual formula or vertical flow that produced it
  *   3. Distribution  — visual share / ranked context against peers
- *   4. Metadata      — auditor-facing fields, hidden until clicked
  *
  * Visual language: lots of whitespace, big numbers for outcomes, monospace
  * only for math, accent color reserved for the final/answer value.
@@ -47,7 +45,7 @@ export function TracePanel({ eyebrow, from, to, onClose, children }: PanelProps)
         background: "var(--accent-tint)",
       }}>
         <div className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
           color: "var(--accent)", textTransform: "uppercase",
           whiteSpace: "nowrap",
         }}>{eyebrow}</div>
@@ -93,7 +91,7 @@ export function TraceSection({ title, children }: SectionProps) {
     }}>
       {title && (
         <div className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
           color: "var(--ink-3)", textTransform: "uppercase",
           marginBottom: 16,
         }}>{title}</div>
@@ -133,16 +131,15 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
   return (
     <div style={{ minWidth: 0 }}>
       <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.14em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
         color: "var(--ink-3)", textTransform: "uppercase",
         marginBottom: 8,
       }}>{label}</div>
-      <div style={{
+      <div className="num" style={{
         fontSize: 14,
         fontWeight: 500,
         color: emphasis ? "var(--accent)" : "var(--ink)",
         lineHeight: 1.3,
-        fontVariantNumeric: "tabular-nums",
         wordBreak: "break-word",
       }}>{value}</div>
       {sub && (
@@ -161,10 +158,8 @@ export function TraceStat({ label, value, sub, emphasis }: StatProps) {
 
 export function BigFormula({ children }: { children: ReactNode }) {
   return (
-    <div style={{
-      fontFamily: "var(--ff-mono)",
-      fontVariantNumeric: "tabular-nums",
-      fontSize: "var(--fs-ui)", fontWeight: 500,
+    <div className="mono" style={{
+      fontSize: "var(--fs-ui)",
       color: "var(--ink)",
       lineHeight: 1.55,
       padding: "12px 16px",
@@ -174,70 +169,3 @@ export function BigFormula({ children }: { children: ReactNode }) {
   );
 }
 
-// ============================================================================
-// Metadata — collapsible auditor detail
-// ============================================================================
-
-interface MetadataProps {
-  title?: string;
-  defaultOpen?: boolean;
-  children: ReactNode;
-}
-
-export function CollapsibleMetadata({
-  title = "Allocation metadata",
-  defaultOpen = false,
-  children,
-}: MetadataProps) {
-  const [open, setOpen] = useState(defaultOpen);
-  return (
-    <section style={{
-      padding: "16px 26px 20px",
-      borderTop: "1px solid var(--rule)",
-      background: "var(--paper-2)",
-    }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        aria-expanded={open}
-        style={{
-          all: "unset", cursor: "pointer",
-          display: "inline-flex", alignItems: "center", gap: 12,
-          color: "var(--ink-3)",
-        }}
-      >
-        <span aria-hidden="true"><ExpandIndicator open={open}/></span>
-        <span className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
-          textTransform: "uppercase",
-        }}>
-          {open ? `Hide ${title.toLowerCase()}` : `View ${title.toLowerCase()}`}
-        </span>
-      </button>
-      {open && (
-        <div style={{
-          marginTop: 12,
-          display: "grid",
-          gridTemplateColumns: "minmax(150px, auto) 1fr",
-          rowGap: 8, columnGap: 22,
-          fontSize: 12,
-        }}>
-          {children}
-        </div>
-      )}
-    </section>
-  );
-}
-
-export function MetadataRow({ label, children }: { label: string; children: ReactNode }) {
-  return (
-    <>
-      <div style={{ color: "var(--ink-3)", fontSize: 12 }}>{label}</div>
-      <div className="mono" style={{
-        color: "var(--ink-2)", fontSize: 12,
-        fontVariantNumeric: "tabular-nums",
-        wordBreak: "break-word",
-      }}>{children}</div>
-    </>
-  );
-}

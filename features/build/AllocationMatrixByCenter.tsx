@@ -6,7 +6,7 @@ import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownGl"
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  BigFormula, CollapsibleMetadata, MetadataRow,
+  BigFormula,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -423,7 +423,7 @@ function CenterCellTrace({
             }}>
               {["Pool", "First", "Second", "Total"].map((h, i) => (
                 <div key={i} className="mono" style={{
-                  fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.14em",
+                  fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
                   color: "var(--ink-3)", textTransform: "uppercase",
                   textAlign: i === 0 ? "left" : "right",
                 }}>{h}</div>
@@ -446,16 +446,13 @@ function CenterCellTrace({
                 <div className="num" style={{
                   textAlign: "right",
                   color: r.first < 0.5 ? "var(--ink-4)" : "var(--ink-2)",
-                  fontVariantNumeric: "tabular-nums",
                 }}>{fmtMoney(r.first)}</div>
                 <div className="num" style={{
                   textAlign: "right",
                   color: r.second < 0.5 ? "var(--ink-4)" : "var(--ink-2)",
-                  fontVariantNumeric: "tabular-nums",
                 }}>{fmtMoney(r.second)}</div>
                 <div className="num" style={{
                   textAlign: "right",
-                  fontVariantNumeric: "tabular-nums",
                   fontWeight: 600,
                 }}>{fmtMoney(r.total)}</div>
               </div>
@@ -470,33 +467,17 @@ function CenterCellTrace({
               fontSize: "var(--fs-ui)", fontWeight: 500,
             }}>
               <div>Total</div>
-              <div className="num" style={{
-                textAlign: "right", fontVariantNumeric: "tabular-nums",
-              }}>{fmt.dollars(firstTotal)}</div>
-              <div className="num" style={{
-                textAlign: "right", fontVariantNumeric: "tabular-nums",
-              }}>{fmt.dollars(secondTotal)}</div>
+              <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(firstTotal)}</div>
+              <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(secondTotal)}</div>
               <div className="num" style={{
                 textAlign: "right", color: "var(--accent)",
-                fontVariantNumeric: "tabular-nums", fontWeight: 600,
+                fontWeight: 600,
               }}>{fmt.dollars(totalToNode)}</div>
             </div>
           </div>
         )}
       </TraceSection>
 
-      <CollapsibleMetadata title="Allocation metadata">
-        <MetadataRow label="Center">{center}</MetadataRow>
-        <MetadataRow label="Pools in center">{pools.length.toString()}</MetadataRow>
-        <MetadataRow label="Allocable (center)">{fmt.dollars(centerEligible)}</MetadataRow>
-        <MetadataRow label="Recipient node">{node.name}</MetadataRow>
-        <MetadataRow label="Recipient glCode">{recipientGl}</MetadataRow>
-        <MetadataRow label="First Allocation">{fmt.dollars(firstTotal)}</MetadataRow>
-        <MetadataRow label="Second Allocation">{fmt.dollars(secondTotal)}</MetadataRow>
-        <MetadataRow label="Allocation to recipient">{fmt.dollars(totalToNode)}</MetadataRow>
-        <MetadataRow label="Share of center">{centerShare.toFixed(2)}%</MetadataRow>
-        <MetadataRow label="Recipient group">{node.role === "indirect" ? "Indirect cost center" : "Direct receiver"}</MetadataRow>
-      </CollapsibleMetadata>
     </TracePanel>
   );
 }
