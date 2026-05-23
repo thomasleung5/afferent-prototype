@@ -275,7 +275,7 @@ function ProductiveHoursDrilldown({
         <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
           <div style={{
             display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
-            padding: "6px 10px",
+            padding: "8px 12px",
             background: "var(--paper-2)",
             borderBottom: "1px solid var(--rule)",
           }}>
@@ -285,8 +285,8 @@ function ProductiveHoursDrilldown({
           {result.deductions.map((d, i) => (
             <div key={d.key} style={{
               display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
-              alignItems: "center",
-              padding: "5px 10px",
+              alignItems: "baseline",
+              padding: "7px 12px",
               borderBottom: i < result.deductions.length - 1 ? "1px solid var(--rule)" : "none",
               fontSize: 12,
             }}>
@@ -295,20 +295,22 @@ function ProductiveHoursDrilldown({
                 type="number" value={d.hours} step={4} min={0}
                 onChange={(v) => onChange(d.key, Number(v) || 0)}
                 align="right"
+                fontSize={12}
               />
             </div>
           ))}
           <div style={{
             display: "grid", gridTemplateColumns: "1fr 90px", gap: 10,
-            padding: "8px 10px",
+            padding: "8px 12px",
             background: "var(--paper-2)",
-            borderTop: "1px solid var(--rule)",
-            fontSize: 12, fontFamily: "var(--ff-mono)",
+            borderTop: "1px solid var(--rule-strong)",
+            fontSize: 12, fontWeight: 600,
+            alignItems: "baseline",
           }}>
             <span style={{ color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: 10 }}>
               Total nonproductive
             </span>
-            <b style={{ textAlign: "right" }}>{fmt.int(result.totalNonproductiveHours)}</b>
+            <span className="num" style={{ textAlign: "right" }}>{fmt.int(result.totalNonproductiveHours)}</span>
           </div>
         </div>
       </DrilldownColumn>

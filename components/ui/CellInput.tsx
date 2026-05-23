@@ -21,6 +21,7 @@ interface Props {
   min?: number;
   max?: number;
   placeholder?: string;
+  fontSize?: number;
 }
 
 /** Format a number as US currency without decimal places. Matches
@@ -49,6 +50,7 @@ export function CellInput({
   dim = false,
   step, min, max,
   placeholder,
+  fontSize = 12.5,
 }: Props) {
   const formatted = type === "currency" || type === "integer";
   const initialDraft = (() => {
@@ -77,6 +79,7 @@ export function CellInput({
     }
   }, [value, focused, formatted]);
 
+  const affixFontSize = fontSize === 12.5 ? 11 : fontSize;
   const wrapStyle: CSSProperties = {
     display: "inline-flex", alignItems: "center", gap: 2,
     padding: "3px 6px",
@@ -94,7 +97,7 @@ export function CellInput({
       onMouseEnter={(e) => { if (!focused) e.currentTarget.style.background = "var(--paper-2)"; }}
       onMouseLeave={(e) => { if (!focused) e.currentTarget.style.background = "transparent"; }}
     >
-      {prefix && <span style={{ color: "var(--ink-3)", fontSize: 11, fontFamily: "var(--ff-mono)" }}>{prefix}</span>}
+      {prefix && <span style={{ color: "var(--ink-3)", fontSize: affixFontSize, fontFamily: "var(--ff-mono)" }}>{prefix}</span>}
       <input
         type={inputHtmlType}
         inputMode={formatted ? "decimal" : undefined}
@@ -154,12 +157,12 @@ export function CellInput({
         style={{
           width: "100%",
           background: "transparent", border: 0, outline: "none",
-          textAlign: align, fontSize: 12.5,
+          textAlign: align, fontSize,
           color: dim ? "var(--ink-3)" : "var(--ink)",
           fontFamily: "inherit", padding: 0,
         }}
       />
-      {suffix && <span style={{ color: "var(--ink-3)", fontSize: 11, fontFamily: "var(--ff-mono)" }}>{suffix}</span>}
+      {suffix && <span style={{ color: "var(--ink-3)", fontSize: affixFontSize, fontFamily: "var(--ff-mono)" }}>{suffix}</span>}
     </span>
   );
 }

@@ -205,7 +205,7 @@ export function ServicesTable() {
                 <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
                   <div style={{
                     display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                    padding: "6px 10px",
+                    padding: "8px 12px",
                     background: "var(--paper-2)",
                     borderBottom: "1px solid var(--rule)",
                   }}>
@@ -216,9 +216,9 @@ export function ServicesTable() {
                   {mix.map((m, i) => (
                     <div key={m.role} style={{
                       display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                      padding: "5px 10px",
+                      padding: "7px 12px",
                       borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
-                      fontSize: 12.5, alignItems: "center",
+                      fontSize: 12, alignItems: "baseline",
                     }}>
                       <span style={{ color: "var(--ink-2)" }}>{m.role}</span>
                       <span style={{ textAlign: "right" }}>
@@ -228,23 +228,24 @@ export function ServicesTable() {
                           onChange={(v) => setPct(r, m.role, Number(v) || 0)}
                           step={5} min={0} max={100}
                           align="right" suffix="%"
+                          fontSize={12}
                         />
                       </span>
-                      <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
+                      <span className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
                         {((r.hours * m.pct) / 100).toFixed(1)} h
                       </span>
                     </div>
                   ))}
                   <div style={{
                     display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                    padding: "6px 10px",
+                    padding: "8px 12px",
                     background: "var(--paper-2)",
-                    borderTop: "2px solid var(--ink)",
-                    fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700,
+                    borderTop: "1px solid var(--rule-strong)",
+                    fontSize: 12, fontWeight: 600,
                     alignItems: "baseline",
                   }}>
                     <span className="mono" style={{
-                      fontSize: 10, letterSpacing: "0.1em",
+                      fontSize: 10, letterSpacing: "0.06em",
                       color: "var(--ink-3)", textTransform: "uppercase",
                     }}>Total</span>
                     <span className="num" style={{
