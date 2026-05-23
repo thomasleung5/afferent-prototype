@@ -1,6 +1,6 @@
 
 import { DataTable, type Column } from "@/components/table";
-import { CellInput, Icon } from "@/components/ui";
+import { CellInput, Icon, SectionLabel } from "@/components/ui";
 import type { PolicyException } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -78,12 +78,17 @@ export function PolicyExceptions() {
   ];
 
   return (
-    <DataTable
-      cols={cols}
-      rows={policyExceptions}
-      onAdd={addPolicyException}
-      addLabel="Add fee exception"
-      emptyState="No exceptions yet. Department targets apply to every fee."
-    />
+    <div>
+      <SectionLabel right={`${policyExceptions.length} exceptions`}>
+        Fee exceptions
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={policyExceptions}
+        onAdd={addPolicyException}
+        addLabel="Add fee exception"
+        emptyState="No exceptions yet. Department targets apply to every fee."
+      />
+    </div>
   );
 }

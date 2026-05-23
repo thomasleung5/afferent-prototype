@@ -1,6 +1,6 @@
 
 import { DataTable, type Column } from "@/components/table";
-import { CellInput, DeptChip } from "@/components/ui";
+import { CellInput, DeptChip, SectionLabel } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
 import type { PolicyTarget } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -79,10 +79,15 @@ export function DepartmentTargets() {
   ];
 
   return (
-    <DataTable
-      cols={cols}
-      rows={policyTargets}
-      defaultSort={{ key: "dept", dir: "asc" }}
-    />
+    <div>
+      <SectionLabel right={`${policyTargets.length} departments`}>
+        Department targets
+      </SectionLabel>
+      <DataTable
+        cols={cols}
+        rows={policyTargets}
+        defaultSort={{ key: "dept", dir: "asc" }}
+      />
+    </div>
   );
 }

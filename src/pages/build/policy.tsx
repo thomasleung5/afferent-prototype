@@ -1,6 +1,6 @@
 ﻿
 import { Page, PageHeader } from "@/components/layout";
-import { NodeEyebrow, SectionLabel } from "@/components/ui";
+import { NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { DepartmentTargets } from "@/features/build/DepartmentTargets";
@@ -28,14 +28,7 @@ export default function RecoveryPolicyPage() {
         { label: "Total gap",           value: `${fmt.dollarsK(impact.totalCost - impact.currentRevenue)}/yr`, tone: "neg" },
       ]}/>
 
-      <SectionLabel right={`${policyTargets.length} departments`}>
-        Department targets
-      </SectionLabel>
       <DepartmentTargets/>
-
-      <SectionLabel right={`${policyExceptions.length} exceptions`}>
-        Fee exceptions
-      </SectionLabel>
       <PolicyExceptions/>
     </Page>
   );
