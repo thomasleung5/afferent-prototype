@@ -1,6 +1,7 @@
 /* Shared print helpers for the /export print-preview routes. */
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
+import { useBuildStore } from "@/lib/store";
 
 /** Kebab-case slug for a jurisdiction name, used as the filename prefix
  *  on export downloads. "Town of Los Altos Hills" → "town-of-los-altos-hills". */
@@ -22,4 +23,19 @@ export function useAutoPrint() {
       return () => clearTimeout(t);
     }
   }, []);
+}
+
+/** Returns true once the Zustand persist middleware has rehydrated from
+ *  localStorage. Used to gate render on the export print-preview tabs
+ *  so window.print() can't snapshot an empty store. */
+export function useStoreHydrated(): boolean {
+  const [hydrated, setHydrated] = useState(
+    () => useBuildStore.persist?.hasHydrated() ?? true,
+  );
+  useEffect(() => {
+    const unsub = useBuildStore.persist?.onFinishHydration(() => setHydrated(true));
+    if (useBuildStore.persist?.hasHydrated()) setHydrated(true);
+    return () => { unsub?.(); };
+  }, []);
+  return hydrated;
 }

@@ -1,6 +1,6 @@
 import type { ReactNode } from "react";
 import { fmt } from "@/lib/format";
-import { Btn, ExportCover, Icon, PrintStyles } from "@/components/ui";
+import { ExportCover, ExportToolbar, PrintStyles } from "@/components/ui";
 import {
   useBenchmarkPayload,
 } from "@/features/build/useBenchmarkExport";
@@ -23,28 +23,9 @@ export default function FeeBenchmarkExportPage() {
 
 function Toolbar({ payload }: { payload: BenchmarkPayload }) {
   return (
-    <div className="no-print" style={{
-      position: "sticky", top: 0, zIndex: 20,
-      background: "var(--paper)",
-      borderBottom: "1px solid var(--rule)",
-      padding: "10px 24px",
-      display: "flex", alignItems: "center", gap: 12,
-    }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Export · Print preview</div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {payload.cityName} · {payload.fiscal} fee benchmark
-        </div>
-      </div>
-      <div style={{ flex: 1 }}/>
-      <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn kind="primary" onClick={() => window.print()}>
-        <Icon name="download" size={13}/> Print / Save PDF
-      </Btn>
-    </div>
+    <ExportToolbar
+      subtitle={`${payload.cityName} · ${payload.fiscal} fee benchmark`}
+    />
   );
 }
 

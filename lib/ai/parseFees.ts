@@ -1,6 +1,7 @@
 import type { Service } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
+import { newServiceId } from "./serviceId";
 
 interface FeeRow {
   name: string;
@@ -59,7 +60,7 @@ export function feesToExtractionResult(
     const entity: Service = existingSvc
       ? { ...existingSvc, fee: row.fee, peer: row.peer ?? existingSvc.peer, target: row.target ?? existingSvc.target }
       : {
-          id: `svc-ai-${i}`,
+          id: newServiceId(dept, row.name),
           name: row.name,
           dept,
           fee: row.fee,

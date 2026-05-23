@@ -1,6 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const MODEL = "claude-sonnet-4-6";
+import { runPdfParser } from "./aiParseRunner";
 
 const SYSTEM = `You are extracting non-labor operating expenditure line items from a municipal budget document. The document may be a budget book, an ERP/GL export, a fund-detail report, or a department appendix inside a larger fee study — only the line-item rows matter.
 
@@ -44,104 +42,11 @@ Rules:
 - Use the exact line description as written in the document
 - Return only the JSON object, nothing else`;
 
-interface OperatingRow {
-  code?: string;
-  dept: string;
-  category: string;
-  line: string;
-  amount: number;
-  include?: boolean;
-  excludeReason?: string;
-  confidence: "high" | "low";
-}
-
-interface ParseOperatingResponse {
-  ok: boolean;
-  operating?: OperatingRow[];
-  message?: string;
-}
-
-function json(body: ParseOperatingResponse, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
-}
-
 export async function handleAiParseOperating(req: Request): Promise<Response> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return json({
-      ok: false,
-      message: "AI parsing is not configured. Set ANTHROPIC_API_KEY in .env.local to enable it.",
-    }, { status: 503 });
-  }
-
-  let pdfBase64: string;
-  let fileName: string;
-  let fileSizeKb: number;
-  try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
-    fileName = file.name;
-    fileSizeKb = Math.round(file.size / 1024);
-    const buf = await file.arrayBuffer();
-    pdfBase64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
-  }
-
-  console.log(`[ai-parse-operating] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
-  const t0 = Date.now();
-
-  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{
-        role: "user",
-        content: [{
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-        }],
-      }],
-    });
-
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-    const text = response.content.find((c) => c.type === "text")?.text ?? "";
-    console.log(`[ai-parse-operating] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error(`[ai-parse-operating] No JSON in response. Raw: ${text.slice(0, 300)}`);
-      return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
-    }
-
-    let operating: OperatingRow[];
-    try {
-      const parsed = JSON.parse(jsonMatch[0]) as { operating?: OperatingRow[] };
-      if (!Array.isArray(parsed.operating)) throw new Error("no operating array");
-      operating = parsed.operating;
-    } catch {
-      const partialMatches = jsonMatch[0].matchAll(/\{[^{}]*"line"\s*:[^{}]*\}/g);
-      operating = [];
-      for (const m of partialMatches) {
-        try { operating.push(JSON.parse(m[0]) as OperatingRow); } catch { /* skip malformed */ }
-      }
-      if (operating.length === 0) {
-        return json({ ok: false, message: "Response was truncated and no complete operating rows could be recovered. Try a shorter document." }, { status: 502 });
-      }
-      console.warn(`[ai-parse-operating] Response truncated — recovered ${operating.length} partial rows`);
-    }
-
-    console.log(`[ai-parse-operating] Parsed ${operating.length} operating rows from ${fileName}`);
-    return json({ ok: true, operating });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown model error.";
-    console.error(`[ai-parse-operating] Error: ${message}`);
-    return json({ ok: false, message }, { status: 502 });
-  }
+  return runPdfParser(req, {
+    tag: "ai-parse-operating",
+    rowsKey: "operating",
+    rowAnchor: "line",
+    rowNoun: "operating",
+  }, () => SYSTEM);
 }

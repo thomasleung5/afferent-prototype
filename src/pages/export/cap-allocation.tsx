@@ -1,15 +1,15 @@
 
-import { useEffect, useMemo, useState } from "react";
-import { useBuildState, useBuildStore } from "@/lib/store";
+import { useEffect, useMemo } from "react";
+import { useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import {
-  Btn, ExportCover, ExportTile, ExportTileGrid, Icon, PrintStyles,
+  ExportCover, ExportTile, ExportTileGrid, ExportToolbar, PrintStyles,
 } from "@/components/ui";
 import { capAllocatedFromGl, type GlNode, type GlStepDownModel } from "@/lib/data/capStepDownGl";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { basisForPool } from "@/lib/data/capStepDown";
 import type { CapExportPayload } from "@/lib/export/capExcel";
-import { useAutoPrint } from "@/lib/printing";
+import { useAutoPrint, useStoreHydrated } from "@/lib/printing";
 
 export default function CapAllocationExportPage() {
   const hydrated = useStoreHydrated();
@@ -54,18 +54,6 @@ export default function CapAllocationExportPage() {
   );
 }
 
-function useStoreHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(
-    () => useBuildStore.persist?.hasHydrated() ?? true,
-  );
-  useEffect(() => {
-    const unsub = useBuildStore.persist?.onFinishHydration(() => setHydrated(true));
-    if (useBuildStore.persist?.hasHydrated()) setHydrated(true);
-    return () => { unsub?.(); };
-  }, []);
-  return hydrated;
-}
-
 const CAP_EXTRA_CSS = `
   @media print {
     .center-block {
@@ -92,28 +80,9 @@ const CAP_EXTRA_CSS = `
 
 function Toolbar({ payload }: { payload: CapExportPayload }) {
   return (
-    <div className="no-print" style={{
-      position: "sticky", top: 0, zIndex: 20,
-      background: "var(--paper)",
-      borderBottom: "1px solid var(--rule)",
-      padding: "10px 24px",
-      display: "flex", alignItems: "center", gap: 12,
-    }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Export · Print preview</div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {payload.cityName} · {payload.fiscal} cost allocation plan
-        </div>
-      </div>
-      <div style={{ flex: 1 }}/>
-      <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn kind="primary" onClick={() => window.print()}>
-        <Icon name="download" size={13}/> Print / Save PDF
-      </Btn>
-    </div>
+    <ExportToolbar
+      subtitle={`${payload.cityName} · ${payload.fiscal} cost allocation plan`}
+    />
   );
 }
 

@@ -4,11 +4,14 @@ import { Btn, ExportMenu } from "@/components/ui";
 import { DemoCityPicker } from "@/features/build/DemoCityPicker";
 import { WorkflowMap } from "@/features/build/WorkflowMap";
 import { useActiveJurisdiction } from "@/lib/active";
-import { useBuildState } from "@/lib/store";
+import { useBuildActions } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 
 export default function BuildOverviewPage() {
-  const { resetAll, clearAll } = useBuildState();
+  const { resetAll, clearAll } = useBuildActions((s) => ({
+    resetAll: s.resetAll,
+    clearAll: s.clearAll,
+  }));
   const { downloadExcel, pdfHref } = useExport();
   const jurisdiction = useActiveJurisdiction();
 

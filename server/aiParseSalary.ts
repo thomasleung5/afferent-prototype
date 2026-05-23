@@ -1,6 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const MODEL = "claude-sonnet-4-6";
+import { runPdfParser } from "./aiParseRunner";
 
 const SYSTEM = `You are extracting staff positions from a municipal document. The document may be a standalone salary roster, a personnel budget appendix inside a larger fee study, or an annual report — only the position-level data matters.
 
@@ -31,103 +29,11 @@ Rules:
 - Use the exact position title as written in the document
 - Return only the JSON object, nothing else`;
 
-interface PositionRow {
-  title: string;
-  dept: string;
-  fte: number;
-  salary: number;
-  benefits: number;
-  hours: number;
-  confidence: "high" | "low";
-}
-
-interface ParseSalaryResponse {
-  ok: boolean;
-  positions?: PositionRow[];
-  message?: string;
-}
-
-function json(body: ParseSalaryResponse, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
-}
-
 export async function handleAiParseSalary(req: Request): Promise<Response> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return json({
-      ok: false,
-      message: "AI parsing is not configured. Set ANTHROPIC_API_KEY in .env.local to enable it.",
-    }, { status: 503 });
-  }
-
-  let pdfBase64: string;
-  let fileName: string;
-  let fileSizeKb: number;
-  try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
-    fileName = file.name;
-    fileSizeKb = Math.round(file.size / 1024);
-    const buf = await file.arrayBuffer();
-    pdfBase64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
-  }
-
-  console.log(`[ai-parse-salary] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
-  const t0 = Date.now();
-
-  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{
-        role: "user",
-        content: [{
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-        }],
-      }],
-    });
-
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-    const text = response.content.find((c) => c.type === "text")?.text ?? "";
-    console.log(`[ai-parse-salary] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error(`[ai-parse-salary] No JSON in response. Raw: ${text.slice(0, 300)}`);
-      return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
-    }
-
-    let positions: PositionRow[];
-    try {
-      const parsed = JSON.parse(jsonMatch[0]) as { positions?: PositionRow[] };
-      if (!Array.isArray(parsed.positions)) throw new Error("no positions array");
-      positions = parsed.positions;
-    } catch {
-      const partialMatches = jsonMatch[0].matchAll(/\{[^{}]*"title"\s*:[^{}]*\}/g);
-      positions = [];
-      for (const m of partialMatches) {
-        try { positions.push(JSON.parse(m[0]) as PositionRow); } catch { /* skip malformed */ }
-      }
-      if (positions.length === 0) {
-        return json({ ok: false, message: "Response was truncated and no complete position rows could be recovered. Try a shorter document." }, { status: 502 });
-      }
-      console.warn(`[ai-parse-salary] Response truncated — recovered ${positions.length} partial rows`);
-    }
-
-    console.log(`[ai-parse-salary] Parsed ${positions.length} position rows from ${fileName}`);
-    return json({ ok: true, positions });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown model error.";
-    console.error(`[ai-parse-salary] Error: ${message}`);
-    return json({ ok: false, message }, { status: 502 });
-  }
+  return runPdfParser(req, {
+    tag: "ai-parse-salary",
+    rowsKey: "positions",
+    rowAnchor: "title",
+    rowNoun: "position",
+  }, () => SYSTEM);
 }

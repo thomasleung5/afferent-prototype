@@ -1,6 +1,6 @@
 
-import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { useBuildState, useBuildStore } from "@/lib/store";
+import { useEffect, useMemo, type ReactNode } from "react";
+import { useBuildState } from "@/lib/store";
 import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import {
   buildExportPayload, type ExportPayload,
@@ -9,9 +9,9 @@ import { fmt } from "@/lib/format";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import type { DeptCode } from "@/lib/types";
 import {
-  Btn, ExportCover, ExportTile, ExportTileGrid, Icon, PrintStyles,
+  ExportCover, ExportTile, ExportTileGrid, ExportToolbar, PrintStyles,
 } from "@/components/ui";
-import { useAutoPrint } from "@/lib/printing";
+import { useAutoPrint, useStoreHydrated } from "@/lib/printing";
 
 export default function FeeStudyExportPage() {
   const hydrated = useStoreHydrated();
@@ -60,43 +60,11 @@ export default function FeeStudyExportPage() {
   );
 }
 
-function useStoreHydrated(): boolean {
-  const [hydrated, setHydrated] = useState(
-    () => useBuildStore.persist?.hasHydrated() ?? true,
-  );
-  useEffect(() => {
-    const unsub = useBuildStore.persist?.onFinishHydration(() => setHydrated(true));
-    if (useBuildStore.persist?.hasHydrated()) setHydrated(true);
-    return () => { unsub?.(); };
-  }, []);
-  return hydrated;
-}
-
-
 function Toolbar({ payload }: { payload: ExportPayload }) {
   return (
-    <div className="no-print" style={{
-      position: "sticky", top: 0, zIndex: 20,
-      background: "var(--paper)",
-      borderBottom: "1px solid var(--rule)",
-      padding: "10px 24px",
-      display: "flex", alignItems: "center", gap: 12,
-    }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Export · Print preview</div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {payload.cover.cityName} · {payload.cover.fiscal} fee study
-        </div>
-      </div>
-      <div style={{ flex: 1 }}/>
-      <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn kind="primary" onClick={() => window.print()}>
-        <Icon name="download" size={13}/> Print / Save PDF
-      </Btn>
-    </div>
+    <ExportToolbar
+      subtitle={`${payload.cover.cityName} · ${payload.cover.fiscal} fee study`}
+    />
   );
 }
 

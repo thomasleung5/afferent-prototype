@@ -1,6 +1,4 @@
-import Anthropic from "@anthropic-ai/sdk";
-
-const MODEL = "claude-sonnet-4-6";
+import { runPdfParser } from "./aiParseRunner";
 
 const SYSTEM = `You are extracting service-volume / workload counts from a municipal document. The document may be an annual report, a permit-volume table, an application-count summary, a year-over-year activity table, or a workload appendix inside a fee study — only the rows that COUNT units of service activity matter.
 
@@ -31,102 +29,11 @@ Rules:
 - SKIP narrative-style rows (single sentences without a tabular count) and rows that describe a service without giving a count
 - Return only the JSON object, nothing else`;
 
-interface WorkloadItem {
-  name: string;
-  dept: string;
-  prior?: number | null;
-  current?: number | null;
-  unit?: string;
-  confidence: "high" | "low";
-}
-
-interface ParseWorkloadResponse {
-  ok: boolean;
-  items?: WorkloadItem[];
-  message?: string;
-}
-
-function json(body: ParseWorkloadResponse, init?: ResponseInit): Response {
-  return new Response(JSON.stringify(body), {
-    ...init,
-    headers: { "content-type": "application/json", ...(init?.headers ?? {}) },
-  });
-}
-
 export async function handleAiParseWorkload(req: Request): Promise<Response> {
-  const apiKey = process.env.ANTHROPIC_API_KEY;
-  if (!apiKey) {
-    return json({
-      ok: false,
-      message: "AI parsing is not configured. Set ANTHROPIC_API_KEY in .env.local to enable it.",
-    }, { status: 503 });
-  }
-
-  let pdfBase64: string;
-  let fileName: string;
-  let fileSizeKb: number;
-  try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
-    fileName = file.name;
-    fileSizeKb = Math.round(file.size / 1024);
-    const buf = await file.arrayBuffer();
-    pdfBase64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
-  }
-
-  console.log(`[ai-parse-workload] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
-  const t0 = Date.now();
-
-  const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
-  try {
-    const response = await client.messages.create({
-      model: MODEL,
-      max_tokens: 8192,
-      system: SYSTEM,
-      messages: [{
-        role: "user",
-        content: [{
-          type: "document",
-          source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
-        }],
-      }],
-    });
-
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
-    const text = response.content.find((c) => c.type === "text")?.text ?? "";
-    console.log(`[ai-parse-workload] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
-
-    const jsonMatch = text.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) {
-      console.error(`[ai-parse-workload] No JSON in response. Raw: ${text.slice(0, 300)}`);
-      return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
-    }
-
-    let items: WorkloadItem[];
-    try {
-      const parsed = JSON.parse(jsonMatch[0]) as { items?: WorkloadItem[] };
-      if (!Array.isArray(parsed.items)) throw new Error("no items array");
-      items = parsed.items;
-    } catch {
-      const partialMatches = jsonMatch[0].matchAll(/\{[^{}]*"name"\s*:[^{}]*\}/g);
-      items = [];
-      for (const m of partialMatches) {
-        try { items.push(JSON.parse(m[0]) as WorkloadItem); } catch { /* skip malformed */ }
-      }
-      if (items.length === 0) {
-        return json({ ok: false, message: "Response was truncated and no complete workload rows could be recovered. Try a shorter document." }, { status: 502 });
-      }
-      console.warn(`[ai-parse-workload] Response truncated — recovered ${items.length} partial rows`);
-    }
-
-    console.log(`[ai-parse-workload] Parsed ${items.length} workload rows from ${fileName}`);
-    return json({ ok: true, items });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown model error.";
-    console.error(`[ai-parse-workload] Error: ${message}`);
-    return json({ ok: false, message }, { status: 502 });
-  }
+  return runPdfParser(req, {
+    tag: "ai-parse-workload",
+    rowsKey: "items",
+    rowAnchor: "name",
+    rowNoun: "workload",
+  }, () => SYSTEM);
 }

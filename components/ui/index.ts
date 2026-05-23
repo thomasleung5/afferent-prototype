@@ -20,6 +20,7 @@ export type { FeeState } from "./StateChip";
 export { SharedChip } from "./SharedChip";
 export { ExpandIndicator } from "./ExpandIndicator";
 export { ExportCover } from "./ExportCover";
+export { ExportToolbar } from "./ExportToolbar";
 export { ExportTile, ExportTileGrid } from "./ExportTileGrid";
 export { PrintStyles } from "./PrintStyles";
 export { DrilldownLabel } from "./DrilldownLabel";

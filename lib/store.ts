@@ -1,6 +1,7 @@
 import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import { useShallow } from "zustand/react/shallow";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
 import {
@@ -1244,6 +1245,34 @@ function buildDeptRollup(comparisons: FeeComparison[]): Record<DeptCode, BuildDe
     r.recoveryPct = r.totalCost > 0 ? (r.currentRev / r.totalCost) * 100 : 0;
   }
   return out;
+}
+
+/* ── Focused selector hooks ──
+ *
+ * `useBuildState()` below subscribes to the entire store and recomputes
+ * the full derived object every render. Pages that only need a slice
+ * (or only need action functions) should use the focused hooks here
+ * instead — they re-render only when the selected projection changes.
+ *
+ * Migrate consumers opportunistically; do not rewrite everything at
+ * once. Both API surfaces are stable.
+ */
+
+/** Subscribe to a narrow projection of the store with shallow-equality
+ *  re-render gating. Use for components that read only a few slices
+ *  (e.g. `useBuildSlice(s => ({ services: s.services }))`). */
+export function useBuildSlice<T>(selector: (s: BuildState & BuildActions) => T): T {
+  return useBuildStore(useShallow(selector));
+}
+
+/** Subscribe to action functions only. The selector is expected to
+ *  return an object of action references; since those references are
+ *  stable across renders, the consumer effectively never re-renders.
+ *  Use for components that mutate state without reading it. */
+export function useBuildActions<T extends Record<string, unknown>>(
+  selector: (s: BuildState & BuildActions) => T,
+): T {
+  return useBuildStore(useShallow(selector));
 }
 
 /* ── Drop-in hook — identical return shape to the old BuildContext ── */

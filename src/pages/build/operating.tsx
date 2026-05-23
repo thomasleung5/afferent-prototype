@@ -9,7 +9,7 @@ import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
   createJsonImportHandler, createPdfImportHandler,
 } from "@/features/imports/importRunners";
-import { useBuildState } from "@/lib/store";
+import { useBuildActions } from "@/lib/store";
 import { aiParseOperatingPdf, operatingToExtractionResult } from "@/lib/ai/parseOperating";
 
 type OperatingRows = Parameters<typeof operatingToExtractionResult>[0];
@@ -34,7 +34,9 @@ function formatImportSummary(
 }
 
 export default function OperatingPage() {
-  const { mergeOperating } = useBuildState();
+  const { mergeOperating } = useBuildActions((s) => ({
+    mergeOperating: s.mergeOperating,
+  }));
   const [importerOpen, setImporterOpen] = useState(false);
 
   const apply = (rows: OperatingRows, source: string) => {

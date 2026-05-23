@@ -1,6 +1,8 @@
 import { useCallback, useEffect, useMemo } from "react";
 import type { ReactNode } from "react";
-import { Btn, ExportCover, Icon, PrintStyles } from "@/components/ui";
+import {
+  Btn, ExportCover, ExportToolbar, Icon, PrintStyles,
+} from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useActiveJurisdiction } from "@/lib/active";
 import type { Jurisdiction } from "@/lib/data/jurisdictions";
@@ -80,31 +82,14 @@ function Toolbar({
   }, [monitoring, jurisdiction.name]);
 
   return (
-    <div className="no-print" style={{
-      position: "sticky", top: 0, zIndex: 20,
-      background: "var(--paper)",
-      borderBottom: "1px solid var(--rule)",
-      padding: "10px 24px",
-      display: "flex", alignItems: "center", gap: 12,
-    }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <div className="mono" style={{
-          fontSize: 10, fontWeight: 600, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>Export · Print preview</div>
-        <div style={{ fontSize: 13, fontWeight: 600 }}>
-          {jurisdiction.name} · Revenue monitoring brief
-        </div>
-      </div>
-      <div style={{ flex: 1 }}/>
-      <Btn kind="ghost" onClick={() => window.close()}>Close</Btn>
-      <Btn kind="ghost" onClick={exportCsv}>
-        <Icon name="download" size={13}/> CSV
-      </Btn>
-      <Btn kind="primary" onClick={() => window.print()}>
-        <Icon name="download" size={13}/> Print / Save PDF
-      </Btn>
-    </div>
+    <ExportToolbar
+      subtitle={`${jurisdiction.name} · Revenue monitoring brief`}
+      extraActions={(
+        <Btn kind="ghost" onClick={exportCsv}>
+          <Icon name="download" size={13}/> CSV
+        </Btn>
+      )}
+    />
   );
 }
 

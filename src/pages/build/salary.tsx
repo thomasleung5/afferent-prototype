@@ -9,7 +9,7 @@ import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
   createJsonImportHandler, createPdfImportHandler,
 } from "@/features/imports/importRunners";
-import { useBuildState } from "@/lib/store";
+import { useBuildActions } from "@/lib/store";
 import { aiParseSalaryPdf, salaryToExtractionResult } from "@/lib/ai/parseSalary";
 
 type SalaryRows = Parameters<typeof salaryToExtractionResult>[0];
@@ -34,7 +34,9 @@ function formatImportSummary(
 }
 
 export default function DirectLaborPage() {
-  const { mergePositions } = useBuildState();
+  const { mergePositions } = useBuildActions((s) => ({
+    mergePositions: s.mergePositions,
+  }));
   const [importerOpen, setImporterOpen] = useState(false);
 
   const apply = (rows: SalaryRows, source: string) => {
