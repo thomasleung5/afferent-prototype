@@ -8,7 +8,7 @@ import {
 import {
   CellInput, CellSelect,
   DrilldownColumn, DrilldownLabel, DrilldownShell,
-  ExpandIndicator, SectionLabel, SourcePill,
+  SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -150,26 +150,11 @@ export function ServicesTable() {
       align: "right",
       sortable: true,
       sortKey: (r) => getMix(r).length,
-      render: (r) => {
-        const mix = getMix(r);
-        const isOpen = openId === r.id;
-        return (
-          <div
-            onClick={(e) => {
-              e.stopPropagation();
-              setOpenId(isOpen ? undefined : r.id);
-            }}
-            style={{
-              display: "inline-flex", alignItems: "center", gap: 6,
-              fontSize: 12.5, color: "var(--ink-2)",
-              cursor: "pointer", userSelect: "none",
-            }}
-          >
-            <span>{mix.length} roles</span>
-            <ExpandIndicator open={isOpen}/>
-          </div>
-        );
-      },
+      render: (r) => (
+        <span style={{ color: "var(--ink-2)" }}>
+          {getMix(r).length} roles
+        </span>
+      ),
     },
     {
       key: "source",
@@ -196,6 +181,8 @@ export function ServicesTable() {
         defaultSort={{ key: "name", dir: "asc" }}
         stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
         openId={openId}
+        onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+        drilldownIndicator
         renderDrilldown={(r) => {
           const mix = getMix(r);
           const totalPct = mix.reduce((a, m) => a + m.pct, 0);

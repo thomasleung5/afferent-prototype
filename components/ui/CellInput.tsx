@@ -94,6 +94,7 @@ export function CellInput({
   return (
     <span
       style={wrapStyle}
+      onClick={(e) => e.stopPropagation()}
       onMouseEnter={(e) => { if (!focused) e.currentTarget.style.background = "var(--paper-2)"; }}
       onMouseLeave={(e) => { if (!focused) e.currentTarget.style.background = "transparent"; }}
     >

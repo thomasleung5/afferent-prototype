@@ -31,6 +31,7 @@ export function CellSelect({ value, onChange, options, width, align = "left" }: 
     <select
       value={value}
       onChange={(e) => onChange(e.target.value)}
+      onClick={(e) => e.stopPropagation()}
       onFocus={() => setFocused(true)}
       onBlur={() => setFocused(false)}
       style={style}

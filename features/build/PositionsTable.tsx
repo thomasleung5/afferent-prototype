@@ -6,7 +6,7 @@ import {
 } from "@/components/table";
 import {
   CellInput, CellSelect, DrilldownColumn, DrilldownLabel, DrilldownShell,
-  ExpandIndicator, SectionLabel, SourcePill,
+  SectionLabel, SourcePill,
 } from "@/components/ui";
 import type { DeptCode, Position, ProductiveHoursBreakdown } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
@@ -171,35 +171,13 @@ export function PositionsTable() {
       width: "140px",
       align: "right",
       sortable: true,
-      render: (r) => {
-        const isOpen = openId === r.id;
-        return (
-          <div style={{
-            display: "flex", alignItems: "center", justifyContent: "flex-end", gap: 4,
-          }}>
-            <CellInput
-              type="integer" value={r.hours} min={0}
-              onChange={(v) => updatePosition(r.id, { hours: Number(v) || 0 })}
-              align="right"
-            />
-            <button
-              type="button"
-              aria-label={isOpen ? "Hide productive-hours breakdown" : "Show productive-hours breakdown"}
-              aria-expanded={isOpen}
-              onClick={(e) => {
-                e.stopPropagation();
-                setOpenId(isOpen ? undefined : r.id);
-              }}
-              style={{
-                cursor: "pointer", userSelect: "none",
-                background: "transparent", border: "none", padding: "0 4px",
-              }}
-            >
-              <ExpandIndicator open={isOpen}/>
-            </button>
-          </div>
-        );
-      },
+      render: (r) => (
+        <CellInput
+          type="integer" value={r.hours} min={0}
+          onChange={(v) => updatePosition(r.id, { hours: Number(v) || 0 })}
+          align="right"
+        />
+      ),
     },
     {
       key: "hourly",
@@ -238,6 +216,8 @@ export function PositionsTable() {
         defaultSort={{ key: "title", dir: "asc" }}
         stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
         openId={openId}
+        onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+        drilldownIndicator
         renderDrilldown={(r) => (
           <ProductiveHoursDrilldown
             row={r}
