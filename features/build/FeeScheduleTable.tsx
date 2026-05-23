@@ -239,37 +239,37 @@ export function FeeScheduleTable() {
         Fee decision queue
       </SectionLabel>
       <DataTable
-      cols={cols}
-      rows={sorted}
-      filters={filters}
-      openId={openId}
-      onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
-      drilldownIndicator
-      renderDrilldown={(r) => {
-        const svc = services.find((s) => s.id === r.id);
-        if (!svc) return null;
-        const delta = r.recommended - r.fee;
-        const deltaPct = r.fee > 0 ? (delta / r.fee) * 100 : 100;
-        const fbhr = derived.fbhr[r.dept as DeptCode]?.fbhr ?? 0;
-        const peerVariance = svc.peer > 0 ? ((r.fee - svc.peer) / svc.peer) * 100 : 0;
-        const peerLabel =
-          peerVariance >  5 ? "above median"
-        : peerVariance < -5 ? "below median"
-        :                     "near median";
-        const peerColor =
-          peerVariance >  5 ? "var(--neg)"
-        : peerVariance < -5 ? "var(--warn)"
-        :                     "var(--pos)";
+        cols={cols}
+        rows={sorted}
+        filters={filters}
+        openId={openId}
+        onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+        drilldownIndicator
+        renderDrilldown={(r) => {
+          const svc = services.find((s) => s.id === r.id);
+          if (!svc) return null;
+          const delta = r.recommended - r.fee;
+          const deltaPct = r.fee > 0 ? (delta / r.fee) * 100 : 100;
+          const fbhr = derived.fbhr[r.dept as DeptCode]?.fbhr ?? 0;
+          const peerVariance = svc.peer > 0 ? ((r.fee - svc.peer) / svc.peer) * 100 : 0;
+          const peerLabel =
+            peerVariance >  5 ? "above median"
+          : peerVariance < -5 ? "below median"
+          :                     "near median";
+          const peerColor =
+            peerVariance >  5 ? "var(--neg)"
+          : peerVariance < -5 ? "var(--warn)"
+          :                     "var(--pos)";
 
-        const reasons: string[] = [];
-        if (r.target < 100) reasons.push(`policy target set to ${r.target}% (vs 100% full cost)`);
-        if (r.recoveryPct < 50 && r.fee > 0) reasons.push(`current fee was recovering only ${r.recoveryPct.toFixed(0)}% of cost`);
-        if (r.fee === 0) reasons.push("no fee currently charged for this service");
-        if (r.dept === "BLDG" && Math.abs(deltaPct) > 30) reasons.push(`BLDG FBHR is now ${fmt.dollars(fbhr)}/hr after CAP allocation`);
-        if (reasons.length === 0) reasons.push(`hours per unit (${svc.hours}) × FBHR (${fmt.dollars(fbhr)}) yields a different cost basis`);
+          const reasons: string[] = [];
+          if (r.target < 100) reasons.push(`policy target set to ${r.target}% (vs 100% full cost)`);
+          if (r.recoveryPct < 50 && r.fee > 0) reasons.push(`current fee was recovering only ${r.recoveryPct.toFixed(0)}% of cost`);
+          if (r.fee === 0) reasons.push("no fee currently charged for this service");
+          if (r.dept === "BLDG" && Math.abs(deltaPct) > 30) reasons.push(`BLDG FBHR is now ${fmt.dollars(fbhr)}/hr after CAP allocation`);
+          if (reasons.length === 0) reasons.push(`hours per unit (${svc.hours}) × FBHR (${fmt.dollars(fbhr)}) yields a different cost basis`);
 
-        return (
-          <DrilldownShell>
+          return (
+            <DrilldownShell>
             <DrilldownColumn marker="①" title="Policy">
               <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
                 <div>
@@ -388,4 +388,3 @@ export function FeeScheduleTable() {
     </div>
   );
 }
-

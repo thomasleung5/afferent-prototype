@@ -11,7 +11,15 @@ import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationDetailReport } from "@/features/build/AllocationDetailReport";
 import { AllocationMatrixByCenter } from "@/features/build/AllocationMatrixByCenter";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  ImportReviewAction,
+  ImportReviewPanel,
+  ImportReviewRow,
+} from "@/features/imports/ImportReviewPanel";
 import { useBuildState } from "@/lib/store";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import {
   aiParseCapPdf,
   capCentersToExtractionResult,
@@ -23,7 +31,23 @@ import {
 } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
 
+type CapCenterRows = Parameters<typeof capCentersToExtractionResult>[0];
+type CapBaseRows = Parameters<typeof capBasesToExtractionResult>[0];
+type CapBasisUnitRows = Parameters<typeof capBasisUnitsToExtractionResult>[0];
+type CapPoolRows = Parameters<typeof capPoolsToExtractionResult>[0];
+type CapDirectAllocationRows = Parameters<typeof capDirectAllocationsToExtractionResult>[0];
+
+interface CapImportSections {
+  centers: CapCenterRows;
+  bases: CapBaseRows;
+  basisUnits: CapBasisUnitRows;
+  pools: CapPoolRows;
+  directAllocations: CapDirectAllocationRows;
+}
+
 const SHOW_IMPORT: CapStep[] = ["centers", "pools"];
+
+const arrLen = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
 
 /** Compact "3 centers, 4 bases, 2 schedules, 15 pools, 1 direct alloc"
  *  summary; omits zero sections. */
@@ -77,77 +101,64 @@ export default function CapPage() {
     return `${counts} imported (${parts.join(", ")}).`;
   }
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    setUnmappedBases([]);
-    try {
-      const result = await aiParseCapPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
-      const pools = capPoolsToExtractionResult(result.pools, file.name);
-      const bundle = {
-        centers: capCentersToExtractionResult(result.centers, file.name),
-        bases:   capBasesToExtractionResult(result.bases, file.name),
-        basisUnits: capBasisUnitsToExtractionResult(result.basisUnits, file.name),
-        pools,
-        directAllocations: capDirectAllocationsToExtractionResult(
-          result.directAllocations, pools, file.name,
-        ),
-      };
-      const applied = mergeCapBundle(bundle, file.name);
-      setUnmappedBases(applied.unmappedBases);
-      return { ok: true, message: buildStatusMessage(applied) };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF import failed.",
-      };
-    }
-  }
+  // CAP imports are multi-section: centers / bases / basisUnits / pools /
+  // directAllocations. PDF builds all five from one parser result;
+  // clipboard JSON treats each section as optional but requires at least
+  // one. Both paths share this bundle-building step.
+  const applySections = (sections: CapImportSections, source: string) => {
+    const pools = capPoolsToExtractionResult(sections.pools, source);
+    const bundle = {
+      centers: capCentersToExtractionResult(sections.centers, source),
+      bases:   capBasesToExtractionResult(sections.bases, source),
+      basisUnits: capBasisUnitsToExtractionResult(sections.basisUnits, source),
+      pools,
+      directAllocations: capDirectAllocationsToExtractionResult(
+        sections.directAllocations, pools, source,
+      ),
+    };
+    const applied = mergeCapBundle(bundle, source);
+    setUnmappedBases(applied.unmappedBases);
+    return buildStatusMessage(applied);
+  };
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    setUnmappedBases([]);
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as {
-        centers?: unknown[]; bases?: unknown[]; basisUnits?: unknown[];
-        pools?: unknown[]; directAllocations?: unknown[];
-      };
-      const centers = Array.isArray(parsed.centers) ? parsed.centers : [];
-      const bases   = Array.isArray(parsed.bases)   ? parsed.bases   : [];
-      const basisUnits = Array.isArray(parsed.basisUnits) ? parsed.basisUnits : [];
-      const pools   = Array.isArray(parsed.pools)   ? parsed.pools   : [];
-      const directAllocations = Array.isArray(parsed.directAllocations)
-        ? parsed.directAllocations : [];
-      const total = centers.length + bases.length + basisUnits.length
-        + pools.length + directAllocations.length;
+  const resetUnmappedBases = () => setUnmappedBases([]);
+
+  const uploadPdfToClaude = createPdfImportHandler({
+    parsePdf: aiParseCapPdf,
+    apply: (parsed, fileName) => applySections({
+      centers: parsed.centers,
+      bases: parsed.bases,
+      basisUnits: parsed.basisUnits,
+      pools: parsed.pools,
+      directAllocations: parsed.directAllocations,
+    }, fileName),
+    onStart: resetUnmappedBases,
+  });
+
+  const pasteJson = createJsonImportHandler({
+    onStart: resetUnmappedBases,
+    // No single rootKey — every section is optional but at least one
+    // must be non-empty.
+    validate: (parsed) => {
+      const total =
+        arrLen(parsed.centers) + arrLen(parsed.bases) + arrLen(parsed.basisUnits)
+        + arrLen(parsed.pools) + arrLen(parsed.directAllocations);
       if (total === 0) {
         throw new Error('Expected { centers?, bases?, basisUnits?, pools?, directAllocations? } with at least one section.');
       }
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const poolsResult = capPoolsToExtractionResult(pools as any, "clipboard");
-      const bundle = {
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        centers: capCentersToExtractionResult(centers as any, "clipboard"),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        bases:   capBasesToExtractionResult(bases as any,   "clipboard"),
-        // eslint-disable-next-line @typescript-eslint/no-explicit-any
-        basisUnits: capBasisUnitsToExtractionResult(basisUnits as any, "clipboard"),
-        pools: poolsResult,
-        directAllocations: capDirectAllocationsToExtractionResult(
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          directAllocations as any, poolsResult, "clipboard",
-        ),
-      };
-      const applied = mergeCapBundle(bundle, "clipboard");
-      setUnmappedBases(applied.unmappedBases);
-      return { ok: true, message: buildStatusMessage(applied) };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+    },
+    apply: (payload, source) => {
+      const p = payload as Record<string, unknown>;
+      return applySections({
+        centers: (Array.isArray(p.centers) ? p.centers : []) as CapCenterRows,
+        bases:   (Array.isArray(p.bases)   ? p.bases   : []) as CapBaseRows,
+        basisUnits: (Array.isArray(p.basisUnits) ? p.basisUnits : []) as CapBasisUnitRows,
+        pools:   (Array.isArray(p.pools)   ? p.pools   : []) as CapPoolRows,
+        directAllocations: (Array.isArray(p.directAllocations)
+          ? p.directAllocations : []) as CapDirectAllocationRows,
+      }, source);
+    },
+  });
 
   return (
     <Page>
@@ -178,53 +189,31 @@ export default function CapPage() {
       />
 
       {unmappedBases.length > 0 && (
-        <div style={{
-          background: "var(--paper)", border: "1px solid var(--rule)",
-        }}>
-          <div style={{
-            padding: "10px 16px",
-            display: "flex", alignItems: "baseline", gap: 10,
-            borderBottom: showUnmappedDetails ? "1px solid var(--rule)" : "none",
-            background: "var(--paper-2)",
-          }}>
-            <span className="mono" style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-              color: "var(--ink-3)", textTransform: "uppercase",
-            }}>Bases for review</span>
-            <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
-              {unmappedBases.length} unbound — pick a driverKey or skip.
-            </span>
-            <button
-              type="button"
-              onClick={() => setShowUnmappedDetails((v) => !v)}
-              style={{
-                marginLeft: "auto",
-                all: "unset", cursor: "pointer",
-                fontSize: 11, color: "var(--ink-2)",
-                padding: "2px 8px",
-              }}
-            >{showUnmappedDetails ? "Hide details" : "Show details"}</button>
-            <button
-              type="button"
-              onClick={() => setUnmappedBases([])}
-              style={{
-                all: "unset", cursor: "pointer",
-                fontSize: 11, color: "var(--ink-3)",
-                padding: "2px 8px",
-              }}
-            >Dismiss all</button>
-          </div>
+        <ImportReviewPanel
+          label="Bases for review"
+          summary={`${unmappedBases.length} unbound — pick a driverKey or skip.`}
+          actions={(
+            <>
+              <ImportReviewAction
+                tone="default"
+                onClick={() => setShowUnmappedDetails((v) => !v)}
+              >
+                {showUnmappedDetails ? "Hide details" : "Show details"}
+              </ImportReviewAction>
+              <ImportReviewAction onClick={() => setUnmappedBases([])}>
+                Dismiss all
+              </ImportReviewAction>
+            </>
+          )}
+        >
           {showUnmappedDetails && unmappedBases.map((u, i) => {
             const d = unmappedBasisDetails(u);
             return (
-              <div key={i} style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(220px, 2fr) 120px minmax(140px, 1.4fr) minmax(140px, 1fr) 60px",
-                gap: 12, alignItems: "baseline",
-                padding: "8px 16px",
-                fontSize: 12.5,
-                borderBottom: i < unmappedBases.length - 1 ? "1px solid var(--rule)" : "none",
-              }}>
+              <ImportReviewRow
+                key={i}
+                columns="minmax(220px, 2fr) 120px minmax(140px, 1.4fr) minmax(140px, 1fr) 60px"
+                isLast={i === unmappedBases.length - 1}
+              >
                 <span style={{ color: "var(--ink)" }}>{d.name}</span>
                 <span className="mono" style={{
                   fontSize: 10.5, color: "var(--ink-3)",
@@ -232,19 +221,16 @@ export default function CapPage() {
                 }}>{d.driverKey}</span>
                 <span style={{ color: "var(--ink-2)", fontSize: 11.5 }}>{d.source}</span>
                 <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
-                <button
-                  type="button"
+                <ImportReviewAction
+                  align="right"
                   onClick={() => setUnmappedBases((prev) => prev.filter((_, j) => j !== i))}
-                  style={{
-                    all: "unset", cursor: "pointer",
-                    fontSize: 11, color: "var(--ink-3)",
-                    textAlign: "right",
-                  }}
-                >Skip</button>
-              </div>
+                >
+                  Skip
+                </ImportReviewAction>
+              </ImportReviewRow>
             );
           })}
-        </div>
+        </ImportReviewPanel>
       )}
 
       <CostInputsSubsectionNav/>

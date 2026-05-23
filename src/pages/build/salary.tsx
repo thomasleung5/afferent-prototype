@@ -6,8 +6,13 @@ import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNa
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
 import { aiParseSalaryPdf, salaryToExtractionResult } from "@/lib/ai/parseSalary";
+
+type SalaryRows = Parameters<typeof salaryToExtractionResult>[0];
 
 const POSITIONS_SCHEMA = `{
   positions: [
@@ -32,45 +37,23 @@ export default function DirectLaborPage() {
   const { mergePositions } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    try {
-      const result = await aiParseSalaryPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
-      const extraction = salaryToExtractionResult(result.positions, file.name);
-      const applied = mergePositions(extraction, file.name);
-      return {
-        ok: true,
-        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF import failed.",
-      };
-    }
-  }
+  const apply = (rows: SalaryRows, source: string) => {
+    const extraction = salaryToExtractionResult(rows, source);
+    const applied = mergePositions(extraction, source);
+    return formatImportSummary(
+      extraction.stats.total, applied.mapped, applied.lowConfidence,
+    );
+  };
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as { positions?: unknown[] };
-      if (!Array.isArray(parsed.positions) || parsed.positions.length === 0)
-        throw new Error('Expected { "positions": [...] } structure.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const extraction = salaryToExtractionResult(parsed.positions as any, "clipboard");
-      const applied = mergePositions(extraction, "clipboard");
-      return {
-        ok: true,
-        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+  const uploadPdfToClaude = createPdfImportHandler({
+    parsePdf: aiParseSalaryPdf,
+    apply: (parsed, fileName) => apply(parsed.positions, fileName),
+  });
+
+  const pasteJson = createJsonImportHandler({
+    rootKey: "positions",
+    apply: (rows, source) => apply(rows as SalaryRows, source),
+  });
 
   return (
     <Page>

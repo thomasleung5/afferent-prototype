@@ -4,8 +4,13 @@ import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { ServicesTable } from "@/features/build/ServicesTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
 import { aiParseServicesPdf, servicesToExtractionResult } from "@/lib/ai/parseServices";
+
+type ServiceRows = Parameters<typeof servicesToExtractionResult>[0];
 
 const SERVICES_SCHEMA = `{
   services: [
@@ -32,50 +37,27 @@ export default function ServicesPage() {
   const { services, mergeServices } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    try {
-      const catalog = services.map((s) => ({ name: s.name, dept: s.dept }));
-      const result = await aiParseServicesPdf(file, catalog);
-      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
-      const extraction = servicesToExtractionResult(result.services, services, file.name);
-      const applied = mergeServices(extraction, file.name);
-      return {
-        ok: true,
-        message: formatImportSummary(
-          extraction.stats.total, applied.mapped, applied.lowConfidence, applied.duplicates,
-        ),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF import failed.",
-      };
-    }
-  }
+  const apply = (rows: ServiceRows, source: string) => {
+    const extraction = servicesToExtractionResult(rows, services, source);
+    const applied = mergeServices(extraction, source);
+    return formatImportSummary(
+      extraction.stats.total, applied.mapped, applied.lowConfidence, applied.duplicates,
+    );
+  };
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as { services?: unknown[] };
-      if (!Array.isArray(parsed.services) || parsed.services.length === 0)
-        throw new Error('Expected { "services": [...] } structure.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const extraction = servicesToExtractionResult(parsed.services as any, services, "clipboard");
-      const applied = mergeServices(extraction, "clipboard");
-      return {
-        ok: true,
-        message: formatImportSummary(
-          extraction.stats.total, applied.mapped, applied.lowConfidence, applied.duplicates,
-        ),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+  const uploadPdfToClaude = createPdfImportHandler({
+    // Wraps the parser so it can pull the live catalog into the prompt;
+    // factory only knows about `(file) => Promise<…>`.
+    parsePdf: (file) => aiParseServicesPdf(
+      file, services.map((s) => ({ name: s.name, dept: s.dept })),
+    ),
+    apply: (parsed, fileName) => apply(parsed.services, fileName),
+  });
+
+  const pasteJson = createJsonImportHandler({
+    rootKey: "services",
+    apply: (rows, source) => apply(rows as ServiceRows, source),
+  });
 
   return (
     <Page>

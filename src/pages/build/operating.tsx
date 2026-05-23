@@ -6,8 +6,13 @@ import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNa
 import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingTable } from "@/features/build/OperatingTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
 import { aiParseOperatingPdf, operatingToExtractionResult } from "@/lib/ai/parseOperating";
+
+type OperatingRows = Parameters<typeof operatingToExtractionResult>[0];
 
 const OPERATING_SCHEMA = `{
   operating: [
@@ -32,45 +37,23 @@ export default function OperatingPage() {
   const { mergeOperating } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    try {
-      const result = await aiParseOperatingPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
-      const extraction = operatingToExtractionResult(result.operating, file.name);
-      const applied = mergeOperating(extraction, file.name);
-      return {
-        ok: true,
-        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF import failed.",
-      };
-    }
-  }
+  const apply = (rows: OperatingRows, source: string) => {
+    const extraction = operatingToExtractionResult(rows, source);
+    const applied = mergeOperating(extraction, source);
+    return formatImportSummary(
+      extraction.stats.total, applied.mapped, applied.lowConfidence,
+    );
+  };
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as { operating?: unknown[] };
-      if (!Array.isArray(parsed.operating) || parsed.operating.length === 0)
-        throw new Error('Expected { "operating": [...] } structure.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const extraction = operatingToExtractionResult(parsed.operating as any, "clipboard");
-      const applied = mergeOperating(extraction, "clipboard");
-      return {
-        ok: true,
-        message: formatImportSummary(extraction.stats.total, applied.mapped, applied.lowConfidence),
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+  const uploadPdfToClaude = createPdfImportHandler({
+    parsePdf: aiParseOperatingPdf,
+    apply: (parsed, fileName) => apply(parsed.operating, fileName),
+  });
+
+  const pasteJson = createJsonImportHandler({
+    rootKey: "operating",
+    apply: (rows, source) => apply(rows as OperatingRows, source),
+  });
 
   return (
     <Page>

@@ -4,9 +4,19 @@ import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { WorkloadTable } from "@/features/build/WorkloadTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  ImportReviewAction,
+  ImportReviewPanel,
+  ImportReviewRow,
+} from "@/features/imports/ImportReviewPanel";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
 import { aiParseWorkloadPdf, workloadToExtractionResult } from "@/lib/ai/parseWorkload";
 import type { UnmappedRow } from "@/lib/parse/types";
+
+type WorkloadRows = Parameters<typeof workloadToExtractionResult>[0];
 
 /** Pull human-readable display fields out of an UnmappedRow's lineage so the
  *  surfaced list can show "name (dept) — prior / current". The shape mirrors
@@ -46,55 +56,34 @@ export default function WorkloadPage() {
   // didn't bind). Populated as a side effect inside the drawer hooks.
   const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
 
-  function applyExtraction(rows: Parameters<typeof workloadToExtractionResult>[0], fileName: string) {
-    const extraction = workloadToExtractionResult(rows, services, fileName, workload);
-    const applied = mergeWorkload(extraction, fileName);
+  // Apply extraction + populate the page's "unmatched" review state as
+  // a side effect. The shared handler factories handle the try/catch
+  // and `setUnmapped([])` reset via `onStart`.
+  const apply = (rows: WorkloadRows, source: string) => {
+    const extraction = workloadToExtractionResult(rows, services, source, workload);
+    const applied = mergeWorkload(extraction, source);
+    setUnmapped(extraction.unmapped);
     const imported = applied.mapped + applied.lowConfidence + applied.duplicates;
     const parts: string[] = [`${applied.mapped} accepted`];
     if (applied.duplicates > 0)    parts.push(`${applied.duplicates} updated`);
     parts.push(`${applied.lowConfidence} for review`);
     if (applied.unmapped > 0)      parts.push(`${applied.unmapped} unmatched`);
-    return {
-      summary: `${imported} row${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`,
-      unmapped: extraction.unmapped,
-    };
-  }
+    return `${imported} row${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
+  };
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    setUnmapped([]);
-    try {
-      const result = await aiParseWorkloadPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "PDF extraction failed.");
-      const { summary, unmapped: u } = applyExtraction(result.items, file.name);
-      setUnmapped(u);
-      return { ok: true, message: summary };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF import failed.",
-      };
-    }
-  }
+  const resetUnmapped = () => setUnmapped([]);
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    setUnmapped([]);
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as { items?: unknown[] };
-      if (!Array.isArray(parsed.items) || parsed.items.length === 0)
-        throw new Error('Expected { "items": [...] } structure.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const { summary, unmapped: u } = applyExtraction(parsed.items as any, "clipboard");
-      setUnmapped(u);
-      return { ok: true, message: summary };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+  const uploadPdfToClaude = createPdfImportHandler({
+    parsePdf: aiParseWorkloadPdf,
+    apply: (parsed, fileName) => apply(parsed.items, fileName),
+    onStart: resetUnmapped,
+  });
+
+  const pasteJson = createJsonImportHandler({
+    rootKey: "items",
+    apply: (rows, source) => apply(rows as WorkloadRows, source),
+    onStart: resetUnmapped,
+  });
 
   return (
     <Page>
@@ -110,46 +99,29 @@ export default function WorkloadPage() {
       />
 
       {unmapped.length > 0 && (
-        <div style={{
-          background: "var(--paper)", border: "1px solid var(--rule)",
-        }}>
-          <div style={{
-            padding: "10px 16px",
-            background: "var(--paper-2)",
-            borderBottom: "1px solid var(--rule)",
-            display: "flex", alignItems: "baseline", gap: 10,
-          }}>
-            <span className="mono" style={{
-              fontSize: 10, fontWeight: 700, letterSpacing: "0.14em",
-              color: "var(--ink-3)", textTransform: "uppercase",
-            }}>Unmatched</span>
-            <span style={{ fontSize: 11.5, color: "var(--ink-3)" }}>
+        <ImportReviewPanel
+          label="Unmatched"
+          summary={(
+            <>
               {unmapped.length} row{unmapped.length === 1 ? "" : "s"} could not be matched to the catalog. Add the service to
               {" "}<code style={{ fontFamily: "var(--ff-mono)", fontSize: 11 }}>lib/data/services.ts</code>{" "}
               and re-import, or skip.
-            </span>
-            <button
-              type="button"
-              onClick={() => setUnmapped([])}
-              style={{
-                marginLeft: "auto",
-                all: "unset", cursor: "pointer",
-                fontSize: 11, color: "var(--ink-3)",
-                padding: "2px 8px",
-              }}
-            >Dismiss all</button>
-          </div>
+            </>
+          )}
+          actions={(
+            <ImportReviewAction onClick={() => setUnmapped([])}>
+              Dismiss all
+            </ImportReviewAction>
+          )}
+        >
           {unmapped.map((u, i) => {
             const d = unmappedDetails(u);
             return (
-              <div key={i} style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(220px, 2fr) 64px 80px 80px minmax(140px, 1fr) 60px",
-                gap: 12, alignItems: "baseline",
-                padding: "8px 16px",
-                fontSize: 12.5,
-                borderBottom: i < unmapped.length - 1 ? "1px solid var(--rule)" : "none",
-              }}>
+              <ImportReviewRow
+                key={i}
+                columns="minmax(220px, 2fr) 64px 80px 80px minmax(140px, 1fr) 60px"
+                isLast={i === unmapped.length - 1}
+              >
                 <span style={{ color: "var(--ink)" }}>{d.name}</span>
                 <span className="mono" style={{
                   fontSize: 10.5, color: "var(--ink-3)",
@@ -164,19 +136,16 @@ export default function WorkloadPage() {
                   fontVariantNumeric: "tabular-nums",
                 }}>{d.current}</span>
                 <span style={{ fontSize: 11, color: "var(--ink-3)" }}>{d.reason}</span>
-                <button
-                  type="button"
+                <ImportReviewAction
+                  align="right"
                   onClick={() => setUnmapped((prev) => prev.filter((_, j) => j !== i))}
-                  style={{
-                    all: "unset", cursor: "pointer",
-                    fontSize: 11, color: "var(--ink-3)",
-                    textAlign: "right",
-                  }}
-                >Skip</button>
-              </div>
+                >
+                  Skip
+                </ImportReviewAction>
+              </ImportReviewRow>
             );
           })}
-        </div>
+        </ImportReviewPanel>
       )}
 
       <WorkloadTable/>

@@ -188,76 +188,76 @@ export function ServicesTable() {
         Service catalog
       </SectionLabel>
       <DataTable
-      cols={cols}
-      rows={rows}
-      filters={filters}
-      onAdd={addService}
-      addLabel="Add service"
-      defaultSort={{ key: "name", dir: "asc" }}
-      stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
-      openId={openId}
-      renderDrilldown={(r) => {
-        const mix = getMix(r);
-        const totalPct = mix.reduce((a, m) => a + m.pct, 0);
-        return (
-          <DrilldownShell>
-            <DrilldownColumn marker="①" title="Role mix">
-              <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
-                <div style={{
-                  display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                  padding: "6px 10px",
-                  background: "var(--paper-2)",
-                  borderBottom: "1px solid var(--rule)",
-                }}>
-                  <DrilldownLabel>Role</DrilldownLabel>
-                  <DrilldownLabel align="right">%</DrilldownLabel>
-                  <DrilldownLabel align="right">Hours</DrilldownLabel>
-                </div>
-                {mix.map((m, i) => (
-                  <div key={m.role} style={{
+        cols={cols}
+        rows={rows}
+        filters={filters}
+        onAdd={addService}
+        addLabel="Add service"
+        defaultSort={{ key: "name", dir: "asc" }}
+        stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
+        openId={openId}
+        renderDrilldown={(r) => {
+          const mix = getMix(r);
+          const totalPct = mix.reduce((a, m) => a + m.pct, 0);
+          return (
+            <DrilldownShell>
+              <DrilldownColumn marker="①" title="Role mix">
+                <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
+                  <div style={{
                     display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                    padding: "5px 10px",
-                    borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
-                    fontSize: 12.5, alignItems: "center",
+                    padding: "6px 10px",
+                    background: "var(--paper-2)",
+                    borderBottom: "1px solid var(--rule)",
                   }}>
-                    <span style={{ color: "var(--ink-2)" }}>{m.role}</span>
-                    <span style={{ textAlign: "right" }}>
-                      <CellInput
-                        type="number"
-                        value={m.pct}
-                        onChange={(v) => setPct(r, m.role, Number(v) || 0)}
-                        step={5} min={0} max={100}
-                        align="right" suffix="%"
-                      />
-                    </span>
-                    <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
-                      {((r.hours * m.pct) / 100).toFixed(1)} h
-                    </span>
+                    <DrilldownLabel>Role</DrilldownLabel>
+                    <DrilldownLabel align="right">%</DrilldownLabel>
+                    <DrilldownLabel align="right">Hours</DrilldownLabel>
                   </div>
-                ))}
-                <div style={{
-                  display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                  padding: "6px 10px",
-                  background: "var(--paper-2)",
-                  borderTop: "2px solid var(--ink)",
-                  fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700,
-                  alignItems: "baseline",
-                }}>
-                  <span className="mono" style={{
-                    fontSize: 10, letterSpacing: "0.1em",
-                    color: "var(--ink-3)", textTransform: "uppercase",
-                  }}>Total</span>
-                  <span className="num" style={{
-                    textAlign: "right",
-                    color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
-                  }}>{totalPct}%</span>
-                  <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
+                  {mix.map((m, i) => (
+                    <div key={m.role} style={{
+                      display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                      padding: "5px 10px",
+                      borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
+                      fontSize: 12.5, alignItems: "center",
+                    }}>
+                      <span style={{ color: "var(--ink-2)" }}>{m.role}</span>
+                      <span style={{ textAlign: "right" }}>
+                        <CellInput
+                          type="number"
+                          value={m.pct}
+                          onChange={(v) => setPct(r, m.role, Number(v) || 0)}
+                          step={5} min={0} max={100}
+                          align="right" suffix="%"
+                        />
+                      </span>
+                      <span className="num" style={{ textAlign: "right", color: "var(--ink-2)" }}>
+                        {((r.hours * m.pct) / 100).toFixed(1)} h
+                      </span>
+                    </div>
+                  ))}
+                  <div style={{
+                    display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                    padding: "6px 10px",
+                    background: "var(--paper-2)",
+                    borderTop: "2px solid var(--ink)",
+                    fontFamily: "var(--ff-mono)", fontSize: 11, fontWeight: 700,
+                    alignItems: "baseline",
+                  }}>
+                    <span className="mono" style={{
+                      fontSize: 10, letterSpacing: "0.1em",
+                      color: "var(--ink-3)", textTransform: "uppercase",
+                    }}>Total</span>
+                    <span className="num" style={{
+                      textAlign: "right",
+                      color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
+                    }}>{totalPct}%</span>
+                    <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
+                  </div>
                 </div>
-              </div>
-            </DrilldownColumn>
-          </DrilldownShell>
-        );
-      }}
+              </DrilldownColumn>
+            </DrilldownShell>
+          );
+        }}
       />
     </div>
   );

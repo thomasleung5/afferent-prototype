@@ -5,9 +5,14 @@ import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { FeeScheduleTable } from "@/features/build/FeeScheduleTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
+import {
+  createJsonImportHandler, createPdfImportHandler,
+} from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
 import { aiParseFeesPdf, feesToExtractionResult } from "@/lib/ai/parseFees";
+
+type FeeRows = Parameters<typeof feesToExtractionResult>[0];
 
 export default function FeeSchedulePage() {
   const { derived, services, mergeFeeSchedule } = useBuildState();
@@ -26,47 +31,29 @@ export default function FeeSchedulePage() {
   // c.recommended (rounded for display) — rounding drift breaks reconciliation.
   const targetRevenue = comparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
 
-  async function uploadPdfToClaude(file: File): Promise<{ ok: boolean; message: string }> {
-    try {
-      const result = await aiParseFeesPdf(file);
-      if (!result.ok) throw new Error(result.message ?? "AI parsing failed.");
-      const extraction = feesToExtractionResult(result.fees, services, file.name);
-      const applied = mergeFeeSchedule(extraction, file.name);
-      const total = applied.mapped + applied.duplicates + applied.lowConfidence;
-      return {
-        ok: true,
-        message: `${total} fee${total === 1 ? "" : "s"} imported from PDF (${applied.mapped} new, ${applied.duplicates} updated).`,
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "PDF parsing failed.",
-      };
-    }
-  }
+  // Fee Schedule's two summaries differ subtly: PDF includes "from PDF"
+  // in its sentence; clipboard does not. Each handler owns that
+  // formatting so the existing copy is preserved verbatim.
+  const apply = (rows: FeeRows, source: string, fromPdf: boolean) => {
+    const extraction = feesToExtractionResult(rows, services, source);
+    const applied = mergeFeeSchedule(extraction, source);
+    const total = applied.mapped + applied.duplicates + applied.lowConfidence;
+    const noun = `fee${total === 1 ? "" : "s"}`;
+    const suffix = fromPdf ? " from PDF" : "";
+    return `${total} ${noun} imported${suffix} (${applied.mapped} new, ${applied.duplicates} updated).`;
+  };
 
-  async function pasteJson(text: string): Promise<{ ok: boolean; message: string }> {
-    try {
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) throw new Error("No JSON object found in clipboard.");
-      const parsed = JSON.parse(jsonMatch[0]) as { fees?: unknown[] };
-      if (!Array.isArray(parsed.fees) || parsed.fees.length === 0)
-        throw new Error('Expected { "fees": [...] } structure.');
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const extraction = feesToExtractionResult(parsed.fees as any, services, "clipboard");
-      const applied = mergeFeeSchedule(extraction, "clipboard");
-      const total = applied.mapped + applied.duplicates + applied.lowConfidence;
-      return {
-        ok: true,
-        message: `${total} fee${total === 1 ? "" : "s"} imported (${applied.mapped} new, ${applied.duplicates} updated).`,
-      };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : "Failed to parse JSON.",
-      };
-    }
-  }
+  const uploadPdfToClaude = createPdfImportHandler({
+    parsePdf: aiParseFeesPdf,
+    apply: (parsed, fileName) => apply(parsed.fees, fileName, true),
+    parseFailureMessage: "AI parsing failed.",
+    importFailureMessage: "PDF parsing failed.",
+  });
+
+  const pasteJson = createJsonImportHandler({
+    rootKey: "fees",
+    apply: (rows, source) => apply(rows as FeeRows, source, false),
+  });
 
   return (
     <Page>
