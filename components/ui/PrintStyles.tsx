@@ -89,6 +89,14 @@ export function PrintStyles({ pageMargin = "0.6in", extraCss }: Props) {
       .report .body p:last-child { margin-bottom: 0; }
       .report .body ul { margin: 6px 0 10px; padding-left: 20px; }
       .report .body li { margin-bottom: 4px; }
+      .report .body-lede { max-width: 640px; }
+      .report .footnote {
+        margin-top: 14px;
+        padding-top: 10px;
+        border-top: 1px dashed var(--rule);
+        font-size: 11.5px;
+        color: var(--ink-3);
+      }
       .report table { width: 100%; border-collapse: collapse; font-size: 11px; }
       .report th, .report td { padding: 6px 8px; text-align: left; vertical-align: top; }
       .report th {

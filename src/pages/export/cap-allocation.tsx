@@ -220,7 +220,7 @@ function ExecutiveSummary({ payload }: { payload: CapExportPayload }) {
       <div className="eyebrow">Section 1</div>
       <h2 className="h2">Executive summary</h2>
 
-      <div className="body" style={{ maxWidth: 640 }}>
+      <div className="body body-lede">
         <p style={{ marginTop: 0 }}>
           This Full Cost Allocation Plan identifies and allocates indirect
           administrative and support service costs to departments, divisions,
@@ -268,11 +268,7 @@ function ExecutiveSummary({ payload }: { payload: CapExportPayload }) {
         <ExportTile size="compact" label="Disallowed" value={totalDis > 0 ? fmt.dollars(totalDis) : "—"} last/>
       </ExportTileGrid>
 
-      <div className="body" style={{
-        marginTop: 16, paddingTop: 10,
-        borderTop: "1px dashed var(--rule)",
-        fontSize: 11.5, color: "var(--ink-3)",
-      }}>
+      <div className="body footnote">
         Largest support function reflects total outgoing allocations from a
         single indirect cost center. Largest receiver reflects total indirect
         cost received by a single direct department under the double-step-down
@@ -288,7 +284,7 @@ function PurposeAndMethodology() {
       <div className="eyebrow">Section 2</div>
       <h2 className="h2">Purpose and methodology</h2>
 
-      <div className="body" style={{ maxWidth: 640 }}>
+      <div className="body body-lede">
         <p style={{ marginTop: 0 }}>
           A Cost Allocation Plan distributes indirect support service costs
           to departments and programs that benefit from those services.
@@ -303,7 +299,7 @@ function PurposeAndMethodology() {
 
       <h3 className="h3" style={{ marginTop: 16 }}>Defined terms</h3>
       <div className="body">
-        <ul style={{ margin: "4px 0 10px", paddingLeft: 18 }}>
+        <ul>
           <li>
             <b>Direct costs</b> — expenditures that can be attributed to a
             single program, service, or operating department in their
@@ -528,7 +524,7 @@ function ProjectDevelopmentProcess() {
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 3</div>
       <h2 className="h2">Project development process</h2>
-      <div className="body" style={{ maxWidth: 640 }}>
+      <div className="body body-lede">
         <p style={{ marginTop: 0 }}>
           The Cost Allocation Plan was developed through a structured
           analytical process intended to produce a reasonable and equitable
@@ -565,7 +561,7 @@ function DataSourcesAndValidation() {
       <div className="eyebrow">Section 4</div>
       <h2 className="h2">Data sources and validation</h2>
 
-      <div className="body" style={{ maxWidth: 640 }}>
+      <div className="body body-lede">
         <p style={{ marginTop: 0 }}>
           The Cost Allocation Plan is based primarily on budgeted
           expenditures and operational data provided by the organization.
@@ -596,7 +592,7 @@ function DataSourcesAndValidation() {
 
       <h3 className="h3" style={{ marginTop: 16 }}>Validation approach</h3>
       <div className="body">
-        <ul style={{ margin: "4px 0 10px", paddingLeft: 18 }}>
+        <ul>
           <li>
             Reconciliation of central service department expenditures to
             adopted budget appropriations for the fiscal year analyzed.
@@ -659,7 +655,7 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 5</div>
       <h2 className="h2">Allocation basis summary</h2>
-      <div className="body" style={{ marginBottom: 12, maxWidth: 640 }}>
+      <div className="body body-lede" style={{ marginBottom: 12 }}>
         <p style={{ marginTop: 0 }}>
           Allocation bases were selected to reasonably approximate the level
           of support or benefit received by each department, division,
@@ -727,7 +723,7 @@ function ReadingThePlan() {
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 6</div>
       <h2 className="h2">Reading the plan</h2>
-      <div className="body" style={{ maxWidth: 640 }}>
+      <div className="body body-lede">
         <p style={{ marginTop: 0 }}>
           The remainder of the Plan presents the allocation inventory, the
           per-center allocation detail schedules, and supporting summary
@@ -775,7 +771,7 @@ function ReadingThePlan() {
 
       <h3 className="h3" style={{ marginTop: 10 }}>Reading conventions</h3>
       <div className="body">
-        <ul style={{ margin: "4px 0 10px", paddingLeft: 18 }}>
+        <ul>
           <li>
             <b>Provider department</b> — the central service department
             distributing indirect support cost out of one of its cost
@@ -1197,7 +1193,7 @@ function FbhrRollup({ payload }: { payload: CapExportPayload }) {
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 10</div>
       <h2 className="h2">Fully Burdened Hourly Rate roll-up</h2>
-      <div className="body" style={{ marginBottom: 12, maxWidth: 640 }}>
+      <div className="body body-lede" style={{ marginBottom: 12 }}>
         Allocated indirect support service dollars feeding the Fully
         Burdened Hourly Rate calculation for each fee-supported operating
         department. Equals the sum of receiving-department totals classified
@@ -1632,8 +1628,8 @@ function AppendixE() {
   return (
     <div className="section" style={{ marginTop: 22 }}>
       <h3 className="h3" style={{ fontSize: 14 }}>Appendix E — Assumptions and Limitations</h3>
-      <div className="body" style={{ maxWidth: 640 }}>
-        <ul style={{ margin: "4px 0 10px", paddingLeft: 18 }}>
+      <div className="body body-lede">
+        <ul>
           <li>
             This Cost Allocation Plan is based on budgeted expenditure
             data and operational statistics available at the time of

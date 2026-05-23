@@ -295,11 +295,7 @@ function BackgroundAndObjectives({ payload }: { payload: ExportPayload }) {
 function FootnoteServicesContext({ payload }: { payload: ExportPayload }) {
   const s = payload.summary;
   return (
-    <div className="body" style={{
-      marginTop: 14, paddingTop: 10,
-      borderTop: "1px dashed var(--rule)",
-      fontSize: 11.5, color: "var(--ink-3)",
-    }}>
+    <div className="body footnote">
       Scope: {s.services} fee-related services across {s.fte.toFixed(1)} FTE of
       development services staffing.
     </div>
@@ -466,11 +462,7 @@ function DataSourcesAndValidation({ payload }: { payload: ExportPayload }) {
       </div>
 
       {totalReviewFlags > 0 && (
-        <div className="body" style={{
-          marginTop: 14, paddingTop: 10,
-          borderTop: "1px dashed var(--rule)",
-          fontSize: 11.5, color: "var(--ink-3)",
-        }}>
+        <div className="body footnote">
           {totalReviewFlags} source record
           {totalReviewFlags === 1 ? "" : "s"} remain
           {totalReviewFlags === 1 ? "s" : ""} flagged for review at the
@@ -1260,11 +1252,7 @@ function ImplementationOptions({ payload }: { payload: ExportPayload }) {
         <div className="body"><p>Not available.</p></div>
       )}
 
-      <div className="body" style={{
-        marginTop: 14, paddingTop: 10,
-        borderTop: "1px dashed var(--rule)",
-        fontSize: 11.5, color: "var(--ink-3)",
-      }}>
+      <div className="body footnote">
         Fiscal impacts shown are estimated annualized impacts at full
         implementation of each option and assume the volume and service-mix
         assumptions described in Section 5. Actual impacts in any given
