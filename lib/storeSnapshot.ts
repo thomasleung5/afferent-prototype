@@ -3,7 +3,7 @@ import type { BuildSnapshot, StudyVersion, StudyVersionStatus } from "./store";
 /** Deep-clone any JSON-serialisable value. Snapshot helpers use this so
  *  the captured slice is fully detached from the live store and safe to
  *  freeze inside a `StudyVersion`. */
-export function cloneJson<T>(value: T): T {
+function cloneJson<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T;
 }
 

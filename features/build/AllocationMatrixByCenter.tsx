@@ -352,7 +352,6 @@ function CenterCellTrace({
   const centerEligible = pools.reduce((a, p) => a + p.amount, 0);
   const centerShare = centerEligible > 0 ? (totalToNode / centerEligible) * 100 : 0;
 
-  const recipientGl = node.glCode.startsWith("seed:") ? "—" : node.glCode;
   const breakdownGrid = "minmax(220px, 2fr) 1fr 1fr 1fr";
   const fmtMoney = (v: number) => v < 0.5 ? "—" : fmt.dollars(v);
 
