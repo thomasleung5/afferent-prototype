@@ -350,50 +350,6 @@ export function sectionHrefForDomain(domain: Domain): string {
 }
 
 // ---------------------------------------------------------------------------
-// Packet page
-// ---------------------------------------------------------------------------
-
-interface PacketSummary {
-  totalImports: number;
-  domainsRefreshed: number;
-  currentRecovery: number;
-  policyTarget: number;
-  recoverableGap: number;
-  feesBelowTarget: number;
-  totalFees: number;
-  topCostDriver: { name: string; cost: number } | undefined;
-  topFeeOpportunity: { name: string; uplift: number } | undefined;
-  lastRefresh: string;
-}
-
-export function derivePacketSummary(input: AnnualInput): PacketSummary {
-  const refreshed = new Set(input.imports.map((e) => e.domain)).size;
-  const current = input.impact.totalCost > 0
-    ? (input.impact.currentRevenue / input.impact.totalCost) * 100
-    : 0;
-  const feesBelowTarget = input.comparisons.filter((c) => c.recoveryPct < c.target).length;
-  const topCost = [...input.comparisons].sort((a, b) => b.annualCost - a.annualCost)[0];
-  const topFee = [...input.comparisons].sort((a, b) => b.annualUplift - a.annualUplift)[0];
-  const lastImport = input.imports.length > 0
-    ? input.imports.reduce((a, b) => (b.id > a.id ? b : a)).at
-    : undefined;
-  return {
-    totalImports: input.imports.length,
-    domainsRefreshed: refreshed,
-    currentRecovery: Math.round(current),
-    policyTarget: Math.round(input.impact.overallPct),
-    recoverableGap: Math.round(Math.max(0, input.impact.recoverableGap)),
-    feesBelowTarget,
-    totalFees: input.comparisons.length,
-    topCostDriver: topCost ? { name: topCost.name, cost: topCost.annualCost } : undefined,
-    topFeeOpportunity: topFee && topFee.annualUplift > 0
-      ? { name: topFee.name, uplift: topFee.annualUplift }
-      : undefined,
-    lastRefresh: lastImport ? formatStamp(lastImport) : "Seed data",
-  };
-}
-
-// ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
 
