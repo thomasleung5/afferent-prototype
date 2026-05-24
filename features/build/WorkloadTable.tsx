@@ -82,6 +82,9 @@ export function WorkloadTable() {
       render: (r) => (
         <div>
           <div style={{ fontSize: "var(--fs-ui)" }}>{r.name}</div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
+            {r.id}
+          </div>
           {r.warning === "missing-current-volume" && (
             <div style={{ fontSize: "var(--t-l8)", color: "var(--warn)", marginTop: 2 }}>
               ⚠ No current-year volume — enter manually or use prior
