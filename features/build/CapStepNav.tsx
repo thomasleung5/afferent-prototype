@@ -3,12 +3,12 @@ export type CapStep =
   | "centers" | "pools" | "drivers"
   | "detail" | "matrixByCenter";
 
-const CAP_STEPS: { id: CapStep; label: string; hint: string }[] = [
-  { id: "centers",        label: "Indirect Cost Centers", hint: "Indirect departments ordered for step-down." },
-  { id: "pools",          label: "Cost Pools",            hint: "Functional overhead pools and recovery policy." },
-  { id: "drivers",        label: "Allocation Bases",      hint: "Allocation drivers by department." },
-  { id: "detail",         label: "Allocation Detail",     hint: "Per-pool schedule." },
-  { id: "matrixByCenter", label: "Allocation Matrix",     hint: "Rolled-up per-pool allocations from the Allocation Detail." },
+const CAP_STEPS: { id: CapStep; label: string }[] = [
+  { id: "centers",        label: "Indirect Cost Centers" },
+  { id: "pools",          label: "Cost Pools" },
+  { id: "drivers",        label: "Allocation Bases" },
+  { id: "detail",         label: "Allocation Detail" },
+  { id: "matrixByCenter", label: "Allocation Matrix" },
 ];
 
 interface Props {
@@ -16,44 +16,39 @@ interface Props {
   onJump: (step: CapStep) => void;
 }
 
-/** Four-card step navigator at the top of the CAP screen. Active card is
- *  inverted (ink bg, paper text); past steps are slightly dimmed. */
+/** Sub-tab row for the CAP page. Visual mirrors the main Build Model tab row
+ *  (components/layout/SubNav) — underline on the active tab — but is driven
+ *  by local state instead of routing. */
 export function CapStepNav({ current, onJump }: Props) {
-  const currentIdx = CAP_STEPS.findIndex((s) => s.id === current);
   return (
     <div style={{
-      display: "flex", alignItems: "stretch",
-      border: "1px solid var(--rule)",
+      borderBottom: "1px solid var(--rule)",
       background: "var(--paper)",
+      display: "flex", gap: 0, alignItems: "stretch",
+      overflowX: "auto",
     }}>
       {CAP_STEPS.map((s, i) => {
-        const active = s.id === current;
-        const past = currentIdx > i;
+        const on = s.id === current;
         return (
           <button
             key={s.id}
+            type="button"
             onClick={() => onJump(s.id)}
             style={{
-              flex: 1,
-              display: "flex", alignItems: "flex-start",
-              padding: "14px 16px",
-              background: active ? "var(--ink)" : "var(--paper)",
-              color: active ? "var(--paper)" : past ? "var(--ink-2)" : "var(--ink-3)",
-              borderRight: i < CAP_STEPS.length - 1 ? "1px solid var(--rule)" : "none",
-              textAlign: "left",
-              cursor: "pointer",
+              padding: "10px 14px",
+              display: "inline-flex", alignItems: "center",
+              fontSize: 12, fontWeight: 500, whiteSpace: "nowrap",
               fontFamily: "var(--ff-ui)",
+              color: on ? "var(--ink)" : "var(--ink-3)",
+              background: on ? "var(--paper-2)" : "transparent",
+              borderTop: "none", borderLeft: "none",
+              borderRight: i < CAP_STEPS.length - 1 ? "1px solid var(--rule)" : "none",
+              borderBottom: on ? "2px solid var(--accent)" : "2px solid transparent",
+              marginBottom: -1,
+              cursor: "pointer",
             }}
           >
-            <div style={{ minWidth: 0 }}>
-              <div style={{ fontSize: "var(--t-l7)", fontWeight: 600, marginBottom: 3 }}>
-                {s.label}
-              </div>
-              <div style={{
-                fontSize: "var(--t-l4)", lineHeight: 1.35,
-                color: active ? "rgba(255,255,255,0.65)" : "var(--ink-3)",
-              }}>{s.hint}</div>
-            </div>
+            {s.label}
           </button>
         );
       })}
