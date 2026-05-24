@@ -1,8 +1,7 @@
 
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
-import { useExport } from "@/features/build/useExport";
+import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { ServicesTable } from "@/features/build/ServicesTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
@@ -36,7 +35,6 @@ function formatImportSummary(
 
 export default function ServicesPage() {
   const { services, mergeServices } = useBuildState();
-  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
 
   const apply = (rows: ServiceRows, source: string) => {
@@ -68,12 +66,9 @@ export default function ServicesPage() {
         title="Services"
         subtitle="Hours per instance, role mix."
         actions={
-          <>
-            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
-          </>
+          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+            <Icon name="arrow-up-to-line" size={13}/> Import
+          </Btn>
         }
       />
 

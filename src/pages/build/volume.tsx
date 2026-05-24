@@ -1,8 +1,7 @@
 
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
-import { useExport } from "@/features/build/useExport";
+import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { VolumeTable } from "@/features/build/VolumeTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
@@ -51,7 +50,6 @@ const VOLUME_SCHEMA = `{
 
 export default function VolumePage() {
   const { mergeVolume, services, volume } = useBuildState();
-  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
   // Unmatched rows are volume-specific (mergeVolume writes them to
   // pendingReview, but the page surfaces them inline so users see what
@@ -94,12 +92,9 @@ export default function VolumePage() {
         title="Volume of Activity"
         subtitle="Annual volume per service."
         actions={
-          <>
-            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
-          </>
+          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+            <Icon name="arrow-up-to-line" size={13}/> Import
+          </Btn>
         }
       />
 

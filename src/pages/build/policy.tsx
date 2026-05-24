@@ -1,16 +1,14 @@
 ﻿
 import { Page, PageHeader } from "@/components/layout";
-import { ExportMenu, NodeEyebrow } from "@/components/ui";
+import { NodeEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { DepartmentTargets } from "@/features/build/DepartmentTargets";
 import { PolicyExceptions } from "@/features/build/PolicyExceptions";
-import { useExport } from "@/features/build/useExport";
 import { useBuildState } from "@/lib/store";
 
 export default function RecoveryPolicyPage() {
   const { policyTargets, policyExceptions, derived } = useBuildState();
-  const { downloadExcel, pdfHref } = useExport();
   const impact = derived.impact;
 
   return (
@@ -19,7 +17,6 @@ export default function RecoveryPolicyPage() {
         eyebrow={<NodeEyebrow node="policy"/>}
         title="Recovery Policy"
         subtitle="Target cost recovery by department and category."
-        actions={<ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>}
       />
 
       <StatusRow items={[
