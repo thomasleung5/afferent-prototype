@@ -1,10 +1,10 @@
-import type { Service, WorkloadRow } from "@/lib/types";
+import type { Service, VolumeRow } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import type {
   ExtractedRow, ExtractionResult, SourceLineage, UnmappedRow,
 } from "@/lib/parse/types";
 
-interface WorkloadItem {
+interface VolumeItem {
   name: string;
   dept: string;
   prior?: number | null;
@@ -13,21 +13,21 @@ interface WorkloadItem {
   confidence: "high" | "low";
 }
 
-interface AiParseWorkloadResult {
+interface AiParseVolumeResult {
   ok: boolean;
-  items: WorkloadItem[];
+  items: VolumeItem[];
   message?: string;
 }
 
-export async function aiParseWorkloadPdf(file: File): Promise<AiParseWorkloadResult> {
+export async function aiParseVolumePdf(file: File): Promise<AiParseVolumeResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-workload", { method: "POST", body: form });
+  const res = await fetch("/api/ai/parse-volume", { method: "POST", body: form });
   if (!res.ok && res.status !== 502) {
     const text = await res.text().catch(() => "");
     return { ok: false, items: [], message: text || `HTTP ${res.status}` };
   }
-  const body = await res.json() as AiParseWorkloadResult;
+  const body = await res.json() as AiParseVolumeResult;
   return body;
 }
 
@@ -48,29 +48,29 @@ function normDept(v: string): Service["dept"] | null {
   return null;
 }
 
-export function workloadToExtractionResult(
-  rows: WorkloadItem[],
+export function volumeToExtractionResult(
+  rows: VolumeItem[],
   existing: Service[],
   fileName: string,
-  /** Existing workload rows in state, used to detect rows that would
+  /** Existing volume rows in state, used to detect rows that would
    *  overwrite a service that already has a non-null current. */
-  existingWorkload: WorkloadRow[] = [],
-): ExtractionResult<WorkloadRow> {
+  existingVolume: VolumeRow[] = [],
+): ExtractionResult<VolumeRow> {
   const now = new Date().toISOString();
 
   // Lookup: normalized name → catalog service. The catalog is read-only
-  // from workload-import's perspective — we only consult it, never mutate.
+  // from volume-import's perspective — we only consult it, never mutate.
   const byName = new Map<string, Service>();
   for (const s of existing) byName.set(normName(s.name), s);
 
-  // Map of existing workload rows by service id so we can detect duplicates
+  // Map of existing volume rows by service id so we can detect duplicates
   // (existing non-null current values the import would clobber).
-  const existingByServiceId = new Map<string, WorkloadRow>();
-  for (const w of existingWorkload) existingByServiceId.set(w.id, w);
+  const existingByServiceId = new Map<string, VolumeRow>();
+  for (const w of existingVolume) existingByServiceId.set(w.id, w);
 
-  const mapped: ExtractedRow<WorkloadRow>[] = [];
-  const lowConfidence: ExtractedRow<WorkloadRow>[] = [];
-  const duplicates: ExtractedRow<WorkloadRow>[] = [];
+  const mapped: ExtractedRow<VolumeRow>[] = [];
+  const lowConfidence: ExtractedRow<VolumeRow>[] = [];
+  const duplicates: ExtractedRow<VolumeRow>[] = [];
   const unmapped: UnmappedRow[] = [];
 
   rows.forEach((row, i) => {
@@ -138,7 +138,7 @@ export function workloadToExtractionResult(
       return;
     }
 
-    const entity: WorkloadRow = {
+    const entity: VolumeRow = {
       id: matched.id,
       prior: priorNum,
       current: currentNum,
@@ -149,13 +149,13 @@ export function workloadToExtractionResult(
       ...(currentNum == null ? { flag: "missing-current-volume" as const } : {}),
     };
 
-    const extracted: ExtractedRow<WorkloadRow> = { entity, lineage: baseLineage };
+    const extracted: ExtractedRow<VolumeRow> = { entity, lineage: baseLineage };
 
     // Duplicate detection: the target service already has a non-null
     // current in state. mergeRows would clobber it; route to duplicates so
     // the user is aware.
-    const prevWorkload = existingByServiceId.get(matched.id);
-    if (prevWorkload && prevWorkload.current != null) {
+    const prevVolume = existingByServiceId.get(matched.id);
+    if (prevVolume && prevVolume.current != null) {
       duplicates.push(extracted);
     } else if (row.confidence === "low") {
       lowConfidence.push(extracted);
@@ -172,7 +172,7 @@ export function workloadToExtractionResult(
       lowConfidence: lowConfidence.length,
       unmapped: unmapped.length,
       duplicates: duplicates.length,
-      detected: "Workload (AI parsed)",
+      detected: "Volume (AI parsed)",
     },
   };
 }

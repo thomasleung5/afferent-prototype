@@ -44,7 +44,7 @@ src/
     gap.tsx                # /gap
     monitoring.tsx         # /monitoring
     build.tsx, build/*     # /build, /build/{services,salary,operating,cap,
-                           #   workload,costs,policy,feestudy,benchmark}
+                           #   volume,costs,policy,feestudy,benchmark}
     annual.tsx, annual/*   # /annual, /annual/{refresh,changes}
     export/fee-study.tsx   # /export/fee-study
   pages/                   # page bodies, imported by the matching route file
@@ -53,7 +53,7 @@ src/
 server/                    # Hono API on :8787 (proxied as /api from Vite)
   index.ts                 # Hono entry + route registration
   aiParseRunner.ts         # shared Anthropic PDF parse helper
-  aiParse{Services,Salary,Operating,Cap,Workload,Fees}.ts
+  aiParse{Services,Salary,Operating,Cap,Volume,Fees}.ts
 
 components/
   ui/                      # Btn, Stat, RecoveryMeter, DeptChip, Icon,

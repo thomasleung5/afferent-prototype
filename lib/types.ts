@@ -257,7 +257,7 @@ export interface CapAllocation {
   allocated: number;
 }
 
-export interface WorkloadRow {
+export interface VolumeRow {
   /** Matches a `Service.id` from `lib/data/services.ts`. */
   id: string;
   prior: number | null;

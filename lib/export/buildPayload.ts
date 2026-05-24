@@ -4,7 +4,7 @@
 
 import type {
   DeptCode, OperatingLine, PolicyException, PolicyTarget,
-  Position, Service, WorkloadRow, CapPool,
+  Position, Service, VolumeRow, CapPool,
 } from "@/lib/types";
 import type {
   FeeComparison, PolicyImpact, ServiceCost,
@@ -138,7 +138,7 @@ interface ExportInput {
   positions: Position[];
   operating: OperatingLine[];
   capPools: CapPool[];
-  workload: WorkloadRow[];
+  volume: VolumeRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
   policyExceptions: PolicyException[];
@@ -213,7 +213,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   operating: "Operating",
   services:  "Services",
   fees:      "Fee Schedule",
-  workload:  "Workload",
+  volume:    "Volume of Activity",
   cap:       "Overhead Cost Allocation",
 };
 

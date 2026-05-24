@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import WorkloadPage from "@/src/pages/build/workload";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// Legacy path kept so bookmarks and saved links to /build/workload still
+// land on the renamed Volume of Activity tab.
 export const Route = createFileRoute("/build/workload")({
-  component: WorkloadPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/build/volume" });
+  },
 });

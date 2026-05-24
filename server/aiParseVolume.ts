@@ -4,7 +4,7 @@ const SYSTEM = `You are extracting service-volume / workload counts from a munic
 
 IMPORTANT — if the document is a comprehensive fee study, annual report, or multi-section document:
 - Skip narrative chapters, methodology sections, executive summaries, recommendation tables, financial tables, fee tables, revenue summaries, and rate-derivation tables
-- Focus exclusively on sections titled "Workload", "Service Volumes", "Annual Activity", "Permit Volume", "Application Counts", "Transactions", "Activity Report", "Year-over-Year Activity", appendices labeled "Workload" or "Activity", or any tabular section that lists individual services with annual unit counts
+- Focus exclusively on sections titled "Volume of Activity", "Workload", "Service Volumes", "Annual Activity", "Permit Volume", "Application Counts", "Transactions", "Activity Report", "Year-over-Year Activity", appendices labeled "Volume of Activity", "Workload" or "Activity", or any tabular section that lists individual services with annual unit counts
 
 Extract every row that reports a count of services performed and return ONLY this JSON, no prose:
 
@@ -29,11 +29,11 @@ Rules:
 - SKIP narrative-style rows (single sentences without a tabular count) and rows that describe a service without giving a count
 - Return only the JSON object, nothing else`;
 
-export async function handleAiParseWorkload(req: Request): Promise<Response> {
+export async function handleAiParseVolume(req: Request): Promise<Response> {
   return runPdfParser(req, {
-    tag: "ai-parse-workload",
+    tag: "ai-parse-volume",
     rowsKey: "items",
     rowAnchor: "name",
-    rowNoun: "workload",
+    rowNoun: "volume",
   }, () => SYSTEM);
 }

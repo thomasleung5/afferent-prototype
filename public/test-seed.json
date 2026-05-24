@@ -1158,7 +1158,7 @@
       "source": "seed"
     }
   ],
-  "workload": [
+  "volume": [
     {
       "id": "plan-sdh",
       "prior": 20,
@@ -1562,7 +1562,7 @@
     "operating": [],
     "services": [],
     "fees": [],
-    "workload": [],
+    "volume": [],
     "cap": []
   },
   "aiSuggestions": {
@@ -1570,7 +1570,7 @@
     "operating": [],
     "services": [],
     "fees": [],
-    "workload": [],
+    "volume": [],
     "cap": []
   },
   "aiStatus": {
@@ -1586,7 +1586,7 @@
     "fees": {
       "running": false
     },
-    "workload": {
+    "volume": {
       "running": false
     },
     "cap": {

@@ -1,7 +1,7 @@
 /* Shared import orchestration helpers for the per-page import drawers.
  *
  * The drawer UI (PageImportDrawer.tsx) is a presentation shell. Each
- * build page (salary, operating, services, feestudy, workload, cap)
+ * build page (salary, operating, services, feestudy, volume, cap)
  * wires up domain-specific parsers + merge calls + side effects, but
  * the surrounding scaffolding — try/catch shape, clipboard JSON
  * extraction, root-key validation, "clipboard" source tag, fallback
@@ -13,7 +13,7 @@
  *     ExtractionResult (or CAP-style multi-section bundle)
  *   - the `merge*` call into the store
  *   - the per-import summary formatter
- *   - any local side effect (e.g. workload's setUnmapped, cap's
+ *   - any local side effect (e.g. volume's setUnmapped, cap's
  *     setUnmappedBases)
  *   - contextual inputs the parser needs (e.g. services catalog)
  *

@@ -10,14 +10,14 @@ import {
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { FEE_DEPTS } from "@/lib/data/departments";
-import { WORKLOAD } from "@/lib/data/workload";
+import { VOLUME } from "@/lib/data/volume";
 import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import { IMPORTS } from "@/lib/data/imports";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
   DirectAllocationRow, OperatingLine, PolicyException, PolicyTarget,
-  Position, Service, SourceTag, WorkloadRow,
+  Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -45,7 +45,7 @@ export { createBuildSnapshot } from "./storeSnapshot";
 
 export type Domain =
   | "positions" | "operating" | "services"
-  | "fees" | "workload" | "cap";
+  | "fees" | "volume" | "cap";
 
 export interface BuildImportLog {
   id: number;
@@ -68,7 +68,7 @@ export interface BuildSnapshot {
   allocationBases: AllocationBasis[];
   capBasisUnits: BasisUnitRow[];
   capDirectAllocations: DirectAllocationRow[];
-  workload: WorkloadRow[];
+  volume: VolumeRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
   policyExceptions: PolicyException[];
@@ -130,7 +130,7 @@ export interface BuildState {
   /** Per-DIRECT-pool explicit allocations. DIRECT pools skip the
    *  basis-driven split and route to the receivers listed here. */
   capDirectAllocations: DirectAllocationRow[];
-  workload: WorkloadRow[];
+  volume: VolumeRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
   policyExceptions: PolicyException[];
@@ -159,7 +159,7 @@ export interface BuildState {
 interface BuildActions {
   updatePosition: (id: string, patch: Partial<Position>) => void;
   updateOperating: (id: string, patch: Partial<OperatingLine>) => void;
-  updateWorkload: (id: string, patch: Partial<WorkloadRow>) => void;
+  updateVolume: (id: string, patch: Partial<VolumeRow>) => void;
   updateService: (id: string, patch: Partial<Service>) => void;
   updatePolicyTarget: (id: string, patch: Partial<PolicyTarget>) => void;
   updatePolicyException: (id: string, patch: Partial<PolicyException>) => void;
@@ -184,7 +184,7 @@ interface BuildActions {
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
-  mergeWorkload: (r: ExtractionResult<WorkloadRow>, fileName: string) => ImportApplyResult;
+  mergeVolume: (r: ExtractionResult<VolumeRow>, fileName: string) => ImportApplyResult;
   /** Bulk-import a CAP bundle covering centers, bases, basisUnits, pools,
    *  and directAllocations. Centers upsert into capCenterTotals by name;
    *  bases upsert into allocationBases by name (existing entries keep
@@ -231,7 +231,7 @@ interface BuildActions {
 /* ── Helpers ── */
 
 const emptyPending: Record<Domain, UnmappedRow[]> = {
-  positions: [], operating: [], services: [], fees: [], workload: [], cap: [],
+  positions: [], operating: [], services: [], fees: [], volume: [], cap: [],
 };
 export function defaultCenterOrder(pools: CapPool[]): string[] {
   const totals = new Map<string, number>();
@@ -261,7 +261,7 @@ const initialState = (): BuildState => {
     capDirectAllocations: CAP_DIRECT_ALLOCATIONS.map((da) => ({
       ...da, receivers: da.receivers.map((r) => ({ ...r })),
     })),
-    workload: WORKLOAD.map((w) => ({ ...w })),
+    volume: VOLUME.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
     policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
@@ -346,8 +346,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       updateOperating: (id, patch) =>
         set((s) => ({ operating: s.operating.map((o) => o.id === id ? { ...o, ...patch } : o) })),
 
-      updateWorkload: (id, patch) =>
-        set((s) => ({ workload: s.workload.map((w) => w.id === id ? { ...w, ...patch } : w) })),
+      updateVolume: (id, patch) =>
+        set((s) => ({ volume: s.volume.map((w) => w.id === id ? { ...w, ...patch } : w) })),
 
       updateService: (id, patch) =>
         set((s) => ({ services: s.services.map((sv) => sv.id === id ? { ...sv, ...patch } : sv) })),
@@ -613,15 +613,15 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         return result;
       },
 
-      mergeWorkload: (r, fileName) => {
-        const result = toApplyResult("workload", fileName, r);
+      mergeVolume: (r, fileName) => {
+        const result = toApplyResult("volume", fileName, r);
         set((s) => {
-          const { merged, lineagePatch } = mergeRows(s.workload, r);
+          const { merged, lineagePatch } = mergeRows(s.volume, r);
           return {
-            workload: merged,
+            volume: merged,
             lineage: { ...s.lineage, ...lineagePatch },
-            pendingReview: { ...s.pendingReview, workload: [...s.pendingReview.workload, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "workload", result, at: new Date().toISOString() }],
+            pendingReview: { ...s.pendingReview, volume: [...s.pendingReview.volume, ...r.unmapped] },
+            imports: [...s.imports, { id: Date.now(), domain: "volume", result, at: new Date().toISOString() }],
           };
         });
         return result;
@@ -926,7 +926,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capBasisUnits: [],
           capDirectAllocations: [],
-          workload: [],
+          volume: [],
           services: [],
           policyTargets: [],
           policyExceptions: [],

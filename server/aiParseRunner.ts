@@ -1,7 +1,7 @@
 /* Shared scaffolding for the Anthropic-backed PDF parse routes.
  *
  * The five "simple" parsers (fees, salary, operating, services,
- * workload) each follow the same pipeline:
+ * volume) each follow the same pipeline:
  *
  *   1. Verify ANTHROPIC_API_KEY is set.
  *   2. Read a multipart form, pull out the PDF, base64 it.

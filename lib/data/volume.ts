@@ -1,16 +1,17 @@
-import type { WorkloadRow } from "../types";
+import type { VolumeRow } from "../types";
 import { SERVICES } from "./services";
 
-/* Workload (annual volume per service) layered on top of the canonical service
- * catalog. `prior` is the prior-study volume; `current` is what's in the
- * permit-system import for FY 26-27. All seed rows carry source: "seed"
- * (the status / flag mix below simulates the legacy review-state variety). */
+/* Volume of Activity (annual count per service) layered on top of the
+ * canonical service catalog. `prior` is the prior-study volume; `current` is
+ * what's in the permit-system import for FY 26-27. All seed rows carry
+ * source: "seed" (the status / flag mix below simulates the legacy
+ * review-state variety). */
 
 function vary(volume: number, i: number): number {
   return Math.max(1, Math.round(volume * (0.85 + (i % 5) * 0.06)));
 }
 
-export const WORKLOAD: WorkloadRow[] = SERVICES.map((s, i): WorkloadRow => {
+export const VOLUME: VolumeRow[] = SERVICES.map((s, i): VolumeRow => {
   const bucket = i % 13;
   const prior = vary(s.volume, i);
 

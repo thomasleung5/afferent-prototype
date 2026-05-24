@@ -11,7 +11,7 @@ export default function AnnualRefreshPage() {
     imports: state.imports,
     positions: state.positions,
     operating: state.operating,
-    workload: state.workload,
+    volume: state.volume,
     services: state.services,
     capPools: state.capPools,
     comparisons: state.derived.comparisons,
@@ -23,7 +23,7 @@ export default function AnnualRefreshPage() {
       <PageHeader
         eyebrow={<SectionEyebrow prefix="Annual Update" label="Refresh inputs"/>}
         title="Annual Data Refresh"
-        subtitle="Refresh current-year staffing, operating, workload, fee schedule, and CAP inputs."
+        subtitle="Refresh current-year staffing, operating, volume of activity, fee schedule, and CAP inputs."
       />
       <StatusRow items={[
         {

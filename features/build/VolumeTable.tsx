@@ -5,7 +5,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import { CellInput, DeptChip, SectionLabel, SourcePill } from "@/components/ui";
-import type { DeptCode, WorkloadRow } from "@/lib/types";
+import type { DeptCode, VolumeRow } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
 interface Row {
@@ -15,20 +15,20 @@ interface Row {
   unit: string;
   prior: number | null;
   current: number | null;
-  status: WorkloadRow["status"];
-  source: WorkloadRow["source"];
+  status: VolumeRow["status"];
+  source: VolumeRow["source"];
   sourceFile?: string;
   flag: boolean;
-  warning?: WorkloadRow["flag"];
+  warning?: VolumeRow["flag"];
   changePct: number | null;
 }
 
-export function WorkloadTable() {
-  const { services, workload, updateWorkload } = useBuildState();
+export function VolumeTable() {
+  const { services, volume, updateVolume } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
 
-  const all: Row[] = useMemo(() => workload.map((w): Row => {
+  const all: Row[] = useMemo(() => volume.map((w): Row => {
     const svc = services.find((s) => s.id === w.id);
     const changePct =
       w.current == null || w.prior == null || w.prior === 0
@@ -48,7 +48,7 @@ export function WorkloadTable() {
       warning: w.flag,
       changePct,
     };
-  }), [services, workload]);
+  }), [services, volume]);
 
   const flaggedCount = all.filter((r) => r.flag).length;
   const rows = useMemo(() => {
@@ -135,7 +135,7 @@ export function WorkloadTable() {
         <CellInput
           type="number"
           value={r.current ?? ""}
-          onChange={(v) => updateWorkload(r.id, {
+          onChange={(v) => updateVolume(r.id, {
             current: Number(v) || 0,
             status: "Manual",
             source: "manual",
@@ -178,7 +178,7 @@ export function WorkloadTable() {
   return (
     <div>
       <SectionLabel right={`${all.length} services`}>
-        Service workload
+        Service volume
       </SectionLabel>
       <DataTable
         cols={cols}

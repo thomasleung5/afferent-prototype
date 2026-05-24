@@ -17,7 +17,7 @@ export function useExport() {
       positions:    state.positions,
       operating:    state.operating,
       capPools:     state.capPools,
-      workload:     state.workload,
+      volume:       state.volume,
       services:     state.services,
       policyTargets: state.policyTargets,
       policyExceptions: state.policyExceptions,

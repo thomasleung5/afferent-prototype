@@ -13,13 +13,13 @@ import {
 } from "@/lib/data/annual";
 
 const KNOWN_DOMAINS = new Set<string>([
-  "positions", "operating", "services", "fees", "workload", "cap",
+  "positions", "operating", "services", "fees", "volume", "cap",
 ]);
 const asDomain = (s: string): Domain | null => (KNOWN_DOMAINS.has(s) ? (s as Domain) : null);
 
 type DecisionStatus = "accepted" | "deferred" | "rejected" | undefined;
 type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
-type SectionFilter = "ALL" | "SAL" | "WKL" | "CAP" | "FEE" | "SVC" | "OPS";
+type SectionFilter = "ALL" | "SAL" | "VOL" | "CAP" | "FEE" | "SVC" | "OPS";
 
 function priorityForBadge(badge: string): "high" | "med" | "low" | "none" {
   const b = badge.toLowerCase();
@@ -81,7 +81,7 @@ export function ChangeReviewTable() {
     imports: state.imports,
     positions: state.positions,
     operating: state.operating,
-    workload: state.workload,
+    volume: state.volume,
     services: state.services,
     capPools: state.capPools,
     comparisons: state.derived.comparisons,
@@ -140,7 +140,7 @@ export function ChangeReviewTable() {
       options: [
         { value: "ALL", label: "All" },
         { value: "SAL", label: "Direct Labor" },
-        { value: "WKL", label: "Workload" },
+        { value: "VOL", label: "Volume" },
         { value: "CAP", label: "Overhead Cost Allocation" },
         { value: "FEE", label: "Fee schedule" },
         { value: "SVC", label: "Services" },

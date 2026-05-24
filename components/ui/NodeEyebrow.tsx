@@ -1,7 +1,7 @@
 import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
-  | "services" | "salary" | "operating" | "cap" | "workload"
+  | "services" | "salary" | "operating" | "cap" | "volume"
   | "costs" | "policy" | "feestudy" | "benchmark";
 
 const NODE_LABEL: Record<NodeId, string> = {
@@ -9,7 +9,7 @@ const NODE_LABEL: Record<NodeId, string> = {
   salary:    "Direct Labor",
   operating: "Operating",
   cap:       "Overhead Cost Allocation",
-  workload:  "Workload",
+  volume:    "Volume of Activity",
   costs:     "Cost of Service",
   policy:    "Recovery Policy",
   feestudy:  "Fee Schedule",

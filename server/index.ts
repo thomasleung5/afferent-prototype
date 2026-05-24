@@ -5,7 +5,7 @@ import { handleAiParseServices } from "./aiParseServices";
 import { handleAiParseDirectLabor } from "./aiParseDirectLabor";
 import { handleAiParseOperating } from "./aiParseOperating";
 import { handleAiParseCap } from "./aiParseCap";
-import { handleAiParseWorkload } from "./aiParseWorkload";
+import { handleAiParseVolume } from "./aiParseVolume";
 
 const app = new Hono();
 
@@ -14,7 +14,9 @@ app.post("/api/ai/parse-services", (c) => handleAiParseServices(c.req.raw));
 app.post("/api/ai/parse-direct-labor", (c) => handleAiParseDirectLabor(c.req.raw));
 app.post("/api/ai/parse-operating", (c) => handleAiParseOperating(c.req.raw));
 app.post("/api/ai/parse-cap", (c) => handleAiParseCap(c.req.raw));
-app.post("/api/ai/parse-workload", (c) => handleAiParseWorkload(c.req.raw));
+app.post("/api/ai/parse-volume", (c) => handleAiParseVolume(c.req.raw));
+// Backward-compat alias for clients still pointed at the prior route name.
+app.post("/api/ai/parse-workload", (c) => handleAiParseVolume(c.req.raw));
 
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, ({ port }) => {

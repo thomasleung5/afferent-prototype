@@ -6,7 +6,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   operating: "Operating",
   services: "Services",
   fees: "Fee Schedule",
-  workload: "Workload",
+  volume: "Volume of Activity",
   cap: "Overhead Cost Allocation",
 };
 

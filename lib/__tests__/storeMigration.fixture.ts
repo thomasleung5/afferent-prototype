@@ -64,7 +64,7 @@ import { IMPORTS } from "../data/imports";
       { id: "p2", source: "manual" },
     ],
     operating: [{ id: "o1", source: "not-a-tag" }],
-    workload: [{ id: "w1", source: 42 }],
+    volume: [{ id: "w1", source: 42 }],
   };
   migratePersistedState(state as never);
 
@@ -77,7 +77,7 @@ import { IMPORTS } from "../data/imports";
     ["seed", "manual"],
   );
   assert.equal((state.operating as { source: string }[])[0].source, "seed");
-  assert.equal((state.workload as { source: string }[])[0].source, "seed");
+  assert.equal((state.volume as { source: string }[])[0].source, "seed");
   console.log("  ✓ SourceTag coercion normalizes legacy values");
 }
 

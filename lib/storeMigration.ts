@@ -6,7 +6,7 @@ import { IMPORTS } from "@/lib/data/imports";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  OperatingLine, Position, Service, SourceTag, WorkloadRow,
+  OperatingLine, Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { defaultCenterOrder } from "./store";
 import type { BuildState, StudyVersion } from "./store";
@@ -29,6 +29,32 @@ const coerceSource = (v: unknown): SourceTag =>
  *  fields earlier steps may have just backfilled (e.g. allocationPercent
  *  reads capCenterTotals). */
 export function migratePersistedState(state: Partial<BuildState>): void {
+  // Rename "workload" → "volume" for state persisted before the Volume of
+  // Activity tab was introduced. Covers the array field, the pendingReview
+  // domain key, and the import-log domain discriminator (on both the entry
+  // and its inner result). One-way: legacy fields are deleted after copy
+  // so subsequent passes (and the SourceTag coercion below) see the new
+  // shape.
+  const legacy = state as unknown as Record<string, unknown>;
+  if ("workload" in legacy && !("volume" in legacy)) {
+    legacy.volume = legacy.workload;
+    delete legacy.workload;
+  }
+  if (state.pendingReview && "workload" in state.pendingReview) {
+    const pr = state.pendingReview as unknown as Record<string, unknown[]>;
+    if (!("volume" in pr)) pr.volume = pr.workload;
+    delete pr.workload;
+  }
+  if (Array.isArray(state.imports)) {
+    for (const entry of state.imports) {
+      if ((entry as { domain: string }).domain === "workload") {
+        (entry as { domain: string }).domain = "volume";
+      }
+      const result = (entry as { result?: { domain?: string } }).result;
+      if (result && result.domain === "workload") result.domain = "volume";
+    }
+  }
+
   if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
     state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
   }
@@ -84,8 +110,8 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (Array.isArray(state.operating)) {
     state.operating = state.operating.map((o: OperatingLine) => ({ ...o, source: coerceSource(o.source) }));
   }
-  if (Array.isArray(state.workload)) {
-    state.workload = state.workload.map((w: WorkloadRow) => ({ ...w, source: coerceSource(w.source) }));
+  if (Array.isArray(state.volume)) {
+    state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));
   }
   // Backfill for state persisted before allocationBases existed. Without
   // this, basisForPool(pool, undefined) crashes the matrix.

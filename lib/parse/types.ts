@@ -56,7 +56,7 @@ export interface UnmappedRow {
 export interface ImportApplyResult {
   domain:
     | "positions" | "operating" | "services"
-    | "fees" | "workload" | "cap";
+    | "fees" | "volume" | "cap";
   fileName: string;
   detected?: string;
   rows: number;

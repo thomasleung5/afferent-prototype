@@ -22,7 +22,7 @@ import type { SourceTag } from "@/lib/types";
  *  runtime go through the same coercion so the in-memory state is
  *  well-formed without waiting for a browser refresh. */
 const SOURCE_TAGGED_SLICES = [
-  "operating", "services", "positions", "workload",
+  "operating", "services", "positions", "volume",
   "capPools", "policyTargets", "policyExceptions",
 ] as const;
 

@@ -27,7 +27,7 @@ export default function FeeStudyExportPage() {
     positions:    state.positions,
     operating:    state.operating,
     capPools:     state.capPools,
-    workload:     state.workload,
+    volume:       state.volume,
     services:     state.services,
     policyTargets: state.policyTargets,
     policyExceptions: state.policyExceptions,
@@ -1773,7 +1773,7 @@ const SOURCE_DOMAINS: { domain: ExportPayload["reviewFlags"][number]["domain"]; 
   { domain: "cap",       label: "Cost Allocation Plan" },
   { domain: "services",  label: "Service Catalog" },
   { domain: "fees",      label: "Current Fee Schedule" },
-  { domain: "workload",  label: "Annual Workload" },
+  { domain: "volume",    label: "Annual Volume of Activity" },
 ];
 
 interface SourceInventoryRow {

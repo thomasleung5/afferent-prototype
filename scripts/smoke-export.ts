@@ -11,7 +11,7 @@ import { exportFeeStudyXlsx } from "../lib/export/excel";
 import { POSITIONS } from "../lib/data/positions";
 import { OPERATING } from "../lib/data/operating";
 import { CAP_POOLS } from "../lib/data/cap";
-import { WORKLOAD } from "../lib/data/workload";
+import { VOLUME } from "../lib/data/volume";
 import { SERVICES } from "../lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "../lib/data/policy";
 import {
@@ -39,13 +39,13 @@ async function main() {
     positions: POSITIONS,
     operating: OPERATING,
     capPools: CAP_POOLS,
-    workload: WORKLOAD,
+    volume: VOLUME,
     services: SERVICES,
     policyTargets: POLICY_TARGETS,
     policyExceptions: POLICY_EXCEPTIONS,
     pendingReview: {
       positions: [], operating: [], services: [],
-      fees: [], workload: [], cap: [],
+      fees: [], volume: [], cap: [],
     },
     lineage: {},
     derived: { labor, fbhr, costs, comparisons, impact },

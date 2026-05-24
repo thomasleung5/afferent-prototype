@@ -3,7 +3,7 @@ import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
 import { useExport } from "@/features/build/useExport";
-import { WorkloadTable } from "@/features/build/WorkloadTable";
+import { VolumeTable } from "@/features/build/VolumeTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
   ImportReviewAction,
@@ -14,14 +14,14 @@ import {
   createJsonImportHandler, createPdfImportHandler,
 } from "@/features/imports/importRunners";
 import { useBuildState } from "@/lib/store";
-import { aiParseWorkloadPdf, workloadToExtractionResult } from "@/lib/ai/parseWorkload";
+import { aiParseVolumePdf, volumeToExtractionResult } from "@/lib/ai/parseVolume";
 import type { UnmappedRow } from "@/lib/parse/types";
 
-type WorkloadRows = Parameters<typeof workloadToExtractionResult>[0];
+type VolumeRows = Parameters<typeof volumeToExtractionResult>[0];
 
 /** Pull human-readable display fields out of an UnmappedRow's lineage so the
  *  surfaced list can show "name (dept) — prior / current". The shape mirrors
- *  what workloadToExtractionResult writes into `rawCells`. */
+ *  what volumeToExtractionResult writes into `rawCells`. */
 function unmappedDetails(u: UnmappedRow): {
   name: string; dept: string; prior: string; current: string; reason: string;
 } {
@@ -43,17 +43,17 @@ function unmappedDetails(u: UnmappedRow): {
   };
 }
 
-const WORKLOAD_SCHEMA = `{
+const VOLUME_SCHEMA = `{
   items: [
     { name, dept, prior, current, unit, confidence }
   ]
 }`;
 
-export default function WorkloadPage() {
-  const { mergeWorkload, services, workload } = useBuildState();
+export default function VolumePage() {
+  const { mergeVolume, services, volume } = useBuildState();
   const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
-  // Unmatched rows are workload-specific (mergeWorkload writes them to
+  // Unmatched rows are volume-specific (mergeVolume writes them to
   // pendingReview, but the page surfaces them inline so users see what
   // didn't bind). Populated as a side effect inside the drawer hooks.
   const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
@@ -61,9 +61,9 @@ export default function WorkloadPage() {
   // Apply extraction + populate the page's "unmatched" review state as
   // a side effect. The shared handler factories handle the try/catch
   // and `setUnmapped([])` reset via `onStart`.
-  const apply = (rows: WorkloadRows, source: string) => {
-    const extraction = workloadToExtractionResult(rows, services, source, workload);
-    const applied = mergeWorkload(extraction, source);
+  const apply = (rows: VolumeRows, source: string) => {
+    const extraction = volumeToExtractionResult(rows, services, source, volume);
+    const applied = mergeVolume(extraction, source);
     setUnmapped(extraction.unmapped);
     const imported = applied.mapped + applied.lowConfidence + applied.duplicates;
     const parts: string[] = [`${applied.mapped} accepted`];
@@ -76,22 +76,22 @@ export default function WorkloadPage() {
   const resetUnmapped = () => setUnmapped([]);
 
   const uploadPdfToClaude = createPdfImportHandler({
-    parsePdf: aiParseWorkloadPdf,
+    parsePdf: aiParseVolumePdf,
     apply: (parsed, fileName) => apply(parsed.items, fileName),
     onStart: resetUnmapped,
   });
 
   const pasteJson = createJsonImportHandler({
     rootKey: "items",
-    apply: (rows, source) => apply(rows as WorkloadRows, source),
+    apply: (rows, source) => apply(rows as VolumeRows, source),
     onStart: resetUnmapped,
   });
 
   return (
     <Page>
       <PageHeader
-        eyebrow={<NodeEyebrow node="workload"/>}
-        title="Workload"
+        eyebrow={<NodeEyebrow node="volume"/>}
+        title="Volume of Activity"
         subtitle="Annual volume per service."
         actions={
           <>
@@ -153,18 +153,18 @@ export default function WorkloadPage() {
         </ImportReviewPanel>
       )}
 
-      <WorkloadTable/>
+      <VolumeTable/>
 
       <PageImportDrawer
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
-        title="Import Workload Data"
+        title="Import Volume of Activity"
         helper="Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog."
-        aiPdfHelper="Send an annual report, permit-volume table, or workload appendix. We'll extract service-level volume counts and match them to the existing catalog."
+        aiPdfHelper="Send an annual report, permit-volume table, or volume-of-activity appendix. We'll extract service-level volume counts and match them to the existing catalog."
         onAiPdfImport={uploadPdfToClaude}
         pasteExample="{ items: [...] }"
         pasteHelper="Paste structured output shaped like { items: [...] }."
-        pasteSchema={WORKLOAD_SCHEMA}
+        pasteSchema={VOLUME_SCHEMA}
         onPasteJson={pasteJson}
       />
     </Page>

@@ -10,7 +10,7 @@ export function RefreshImportGrid() {
     imports: state.imports,
     positions: state.positions,
     operating: state.operating,
-    workload: state.workload,
+    volume: state.volume,
     services: state.services,
     capPools: state.capPools,
     comparisons: state.derived.comparisons,
@@ -47,14 +47,14 @@ export function RefreshImportGrid() {
           </div>
         </div>
         <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
-          Upload current-year exports for staffing, operating, workload, fee schedules, benchmark fees, and CAP inputs.
+          Upload current-year exports for staffing, operating, volume of activity, fee schedules, benchmark fees, and CAP inputs.
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 12 }}>
           {[
             "Budget export",
             "Staffing / FTE",
             "Operating costs",
-            "Workload metrics",
+            "Volume of activity",
             "Fee schedule",
             "CAP / indirect costs",
             "Benchmark fees",

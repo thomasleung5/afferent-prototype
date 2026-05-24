@@ -9,7 +9,7 @@
 //   - Packet:   a recovery / opportunity summary built from comparisons.
 
 import type {
-  CapPool, OperatingLine, Position, Service, WorkloadRow,
+  CapPool, OperatingLine, Position, Service, VolumeRow,
 } from "../types";
 import type { BuildImportLog, Domain } from "../store";
 import { deriveBuildDerived, type BuildSnapshot, type StudyVersion } from "../store";
@@ -22,7 +22,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   operating: "Operating",
   services:  "Services",
   fees:      "Fee schedule",
-  workload:  "Workload",
+  volume:    "Volume of Activity",
   cap:       "Overhead Cost Allocation",
 };
 
@@ -31,16 +31,16 @@ const DOMAIN_HREF: Record<Domain, string> = {
   operating: "/build/operating",
   services:  "/build/services",
   fees:      "/build/feestudy",
-  workload:  "/build/workload",
+  volume:    "/build/volume",
   cap:       "/build/cap",
 };
 
 const DOMAIN_SECTION_CODE: Record<Domain, string> = {
   positions: "SAL", operating: "OPS", services: "SVC",
-  fees: "FEE", workload: "WKL", cap: "CAP",
+  fees: "FEE", volume: "VOL", cap: "CAP",
 };
 
-const ALL_DOMAINS: Domain[] = ["positions", "operating", "workload", "services", "fees", "cap"];
+const ALL_DOMAINS: Domain[] = ["positions", "operating", "volume", "services", "fees", "cap"];
 
 export interface AnnualChange {
   id: string;
@@ -111,7 +111,7 @@ interface AnnualInput {
   imports: BuildImportLog[];
   positions: Position[];
   operating: OperatingLine[];
-  workload: WorkloadRow[];
+  volume: VolumeRow[];
   services: Service[];
   capPools: CapPool[];
   comparisons: FeeComparison[];
@@ -176,7 +176,7 @@ function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCar
 const SECTION_NAMES: Record<Domain, string> = {
   positions: "Staffing / Direct Labor",
   operating: "Operating Budget",
-  workload:  "Workload Volumes",
+  volume:    "Volume of Activity",
   services:  "Services Catalog",
   fees:      "Fee Schedule",
   cap:       "CAP / Indirect Costs",
@@ -186,7 +186,7 @@ function seedCountFor(domain: Domain, input: AnnualInput): number {
   switch (domain) {
     case "positions": return input.positions.length;
     case "operating": return input.operating.length;
-    case "workload":  return input.workload.length;
+    case "volume":    return input.volume.length;
     case "services":  return input.services.length;
     case "fees":      return input.services.filter((s) => s.fee > 0).length;
     case "cap":       return input.capPools.length;
