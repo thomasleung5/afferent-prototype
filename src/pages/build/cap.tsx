@@ -3,7 +3,6 @@ import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
 import { useCapExport } from "@/features/build/useCapExport";
 import { CapCentersTable } from "@/features/build/CapCentersTable";
-import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNav";
 import { CapSummary } from "@/features/build/CapSummary";
 import { CapPoolsTable } from "@/features/build/CapPoolsTable";
 import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
@@ -232,8 +231,6 @@ export default function CapPage() {
           })}
         </ImportReviewPanel>
       )}
-
-      <CostInputsSubsectionNav/>
 
       <CapSummary/>
 

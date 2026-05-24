@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
-import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNav";
+import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
+import { useExport } from "@/features/build/useExport";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
@@ -40,6 +40,7 @@ export default function DirectLaborPage() {
   const { mergePositions } = useBuildActions((s) => ({
     mergePositions: s.mergePositions,
   }));
+  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
 
   const apply = (rows: DirectLaborRows, source: string) => {
@@ -67,13 +68,14 @@ export default function DirectLaborPage() {
         title="Direct Labor"
         subtitle="Direct labor rate per department."
         actions={
-          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-            <Icon name="arrow-up-to-line" size={13}/> Import
-          </Btn>
+          <>
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
+          </>
         }
       />
-
-      <CostInputsSubsectionNav/>
 
       <LaborSummary/>
 

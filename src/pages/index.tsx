@@ -123,7 +123,7 @@ export default function HomePage() {
           progress={modelProgress}
           progressLabel="Baseline model"
           cta="Configure model"
-          href="/build"
+          href="/build/services"
           checklist={[
             { l: "Services", v: `${services.length} mapped` },
             { l: "Labor",    v: `${positions.length} positions` },

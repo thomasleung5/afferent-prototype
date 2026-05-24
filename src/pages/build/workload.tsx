@@ -1,7 +1,8 @@
 
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
+import { useExport } from "@/features/build/useExport";
 import { WorkloadTable } from "@/features/build/WorkloadTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
@@ -50,6 +51,7 @@ const WORKLOAD_SCHEMA = `{
 
 export default function WorkloadPage() {
   const { mergeWorkload, services, workload } = useBuildState();
+  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
   // Unmatched rows are workload-specific (mergeWorkload writes them to
   // pendingReview, but the page surfaces them inline so users see what
@@ -92,9 +94,12 @@ export default function WorkloadPage() {
         title="Workload"
         subtitle="Annual volume per service."
         actions={
-          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-            <Icon name="arrow-up-to-line" size={13}/> Import
-          </Btn>
+          <>
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
+          </>
         }
       />
 

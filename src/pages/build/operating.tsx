@@ -1,8 +1,8 @@
 
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
-import { Btn, Icon, NodeEyebrow } from "@/components/ui";
-import { CostInputsSubsectionNav } from "@/features/build/CostInputsSubsectionNav";
+import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
+import { useExport } from "@/features/build/useExport";
 import { OperatingSummary } from "@/features/build/OperatingSummary";
 import { OperatingTable } from "@/features/build/OperatingTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
@@ -37,6 +37,7 @@ export default function OperatingPage() {
   const { mergeOperating } = useBuildActions((s) => ({
     mergeOperating: s.mergeOperating,
   }));
+  const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
 
   const apply = (rows: OperatingRows, source: string) => {
@@ -64,13 +65,14 @@ export default function OperatingPage() {
         title="Operating"
         subtitle="Department non-labor spend."
         actions={
-          <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
-            <Icon name="arrow-up-to-line" size={13}/> Import
-          </Btn>
+          <>
+            <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+            <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
+          </>
         }
       />
-
-      <CostInputsSubsectionNav/>
 
       <OperatingSummary/>
 

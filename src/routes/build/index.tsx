@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import BuildOverviewPage from "@/src/pages/build";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// /build has no landing page — Services is the canonical first step in
+// the model-building flow, so the index route just bounces there.
 export const Route = createFileRoute("/build/")({
-  component: BuildOverviewPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/build/services" });
+  },
 });

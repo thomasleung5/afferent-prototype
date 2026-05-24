@@ -1,5 +1,5 @@
 import { Link, useRouterState } from "@tanstack/react-router";
-import { useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
+import { ModelSettingsMenu } from "./ModelSettingsMenu";
 
 interface NavItem {
   href: string;
@@ -11,7 +11,7 @@ interface NavItem {
 const NAV: NavItem[] = [
   { href: "/",           label: "Home" },
   { href: "/gap",        label: "Revenue Gap" },
-  { href: "/build",      label: "Build Model",        prefix: "/build" },
+  { href: "/build/services", label: "Build Model",    prefix: "/build" },
   { href: "/monitoring", label: "Revenue Monitoring", prefix: "/monitoring" },
   { href: "/annual",     label: "Annual Update",      prefix: "/annual" },
 ];
@@ -49,7 +49,7 @@ export function TopBar() {
 
         <div style={{ width: 1, height: 18, background: "var(--rule)" }}/>
 
-        <WorkspaceContext/>
+        <ModelSettingsMenu/>
 
         <div style={{ flex: 1 }}/>
         <div className="mono" style={{
@@ -88,23 +88,3 @@ export function TopBar() {
   );
 }
 
-/** Active workspace context — jurisdiction name + fiscal year shown as
- *  static, non-editable metadata. Switching happens elsewhere (the
- *  Demo City picker on the Build Model overview), so this reads as a
- *  city operating-system surface, not a tenant selector. */
-function WorkspaceContext() {
-  const jurisdiction = useActiveJurisdiction();
-  const fiscalYear = useActiveFiscalYear();
-  return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div style={{ fontSize: "var(--t-l7)", fontWeight: 500 }}>{jurisdiction.name}</div>
-      <span className="mono" style={{
-        padding: "3px 7px",
-        border: "1px solid var(--rule)",
-        background: "var(--paper-2)",
-        fontSize: "var(--t-l4)",
-        color: "var(--ink-3)",
-      }}>{fiscalYear}</span>
-    </div>
-  );
-}
