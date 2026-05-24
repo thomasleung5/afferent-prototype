@@ -21,11 +21,6 @@ type DecisionStatus = "accepted" | "deferred" | "rejected" | undefined;
 type QueueFilter = "ALL" | "PENDING" | "ACCEPTED" | "DEFERRED";
 type SectionFilter = "ALL" | "SAL" | "WKL" | "CAP" | "FEE" | "SVC" | "OPS";
 
-const SECTION_LABEL: Record<string, string> = {
-  SAL: "Direct Labor", WKL: "Workload", CAP: "Overhead Cost Allocation",
-  FEE: "Fee schedule", SVC: "Services", OPS: "Operating",
-};
-
 function priorityForBadge(badge: string): "high" | "med" | "low" | "none" {
   const b = badge.toLowerCase();
   if (b.includes("needs review") || b.includes("low confidence") || b.includes("warning")) return "high";
@@ -171,43 +166,13 @@ export function ChangeReviewTable() {
       ),
     },
     {
-      key: "section",
-      label: "Section",
-      width: "150px",
-      sortable: true,
-      sortKey: (r) => SECTION_LABEL[r.section] ?? "",
-      render: (r) => (
-        <span style={{ color: "var(--ink-2)" }}>{SECTION_LABEL[r.section]}</span>
-      ),
-    },
-    {
-      key: "prior",
-      label: "Prior",
-      width: "130px",
+      key: "result",
+      label: "Result",
+      width: "200px",
       align: "right",
       sortable: true,
       render: (r) => (
-        <span className="num" style={{ color: "var(--ink-3)" }}>{r.prior}</span>
-      ),
-    },
-    {
-      key: "current",
-      label: "Current",
-      width: "150px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        <span className="num">{r.current}</span>
-      ),
-    },
-    {
-      key: "impact",
-      label: "Impact",
-      width: "180px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        <span className="num" style={{ color: "var(--ink-2)" }}>{r.impact}</span>
+        <span className="num">{r.result}</span>
       ),
     },
     {

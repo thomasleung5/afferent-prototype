@@ -46,8 +46,7 @@ export interface AnnualChange {
   id: string;
   change: string;
   prior: string;
-  current: string;
-  impact: string;
+  result: string;
   affected: string;
   confidence: ConfLevel;
   action: string;
@@ -206,14 +205,16 @@ export function deriveAnnualChanges(input: AnnualInput): AnnualChange[] {
     const r = entry.result;
     const totalProcessed = r.mapped + r.lowConfidence + r.unmapped + r.duplicates;
     const reviewCount = r.lowConfidence + r.unmapped;
+    const itemsNoun = `item${r.mapped === 1 ? "" : "s"}`;
     return {
       id: `change-${entry.id}`,
       change: `${DOMAIN_LABEL[entry.domain]} refreshed from ${r.fileName}`,
       prior: r.duplicates > 0
         ? `${r.duplicates} existing row${r.duplicates === 1 ? "" : "s"}`
         : "Seed baseline",
-      current: `${r.mapped} new · ${reviewCount} for review`,
-      impact: importImpactLabel(r),
+      result: reviewCount > 0
+        ? `${r.mapped} ${itemsNoun} · ${reviewCount} need review`
+        : `${r.mapped} ${itemsNoun}`,
       affected: r.detected ?? DOMAIN_LABEL[entry.domain],
       confidence: confidenceFor(r.mapped, Math.max(1, totalProcessed)),
       action: `Open ${DOMAIN_LABEL[entry.domain]}`,
@@ -318,13 +319,6 @@ export function deriveFeeChangeExplanations(
     })
     .filter((row): row is FeeChangeExplanation => !!row)
     .sort((a, b) => Math.abs(b.annualDelta) - Math.abs(a.annualDelta));
-}
-
-function importImpactLabel(r: BuildImportLog["result"]): string {
-  if (r.mapped === 0 && r.lowConfidence === 0 && r.unmapped === 0) return "No mapping changes";
-  if (r.unmapped > 0) return `+${r.mapped} mapped · ${r.unmapped} unmapped`;
-  if (r.lowConfidence > 0) return `+${r.mapped} mapped · ${r.lowConfidence} low-confidence`;
-  return `+${r.mapped} mapped`;
 }
 
 function badgeFor(r: BuildImportLog["result"]): string {
