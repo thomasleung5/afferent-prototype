@@ -64,8 +64,10 @@ import { IMPORTS } from "../data/imports";
       { id: "p2", source: "manual",  title: "Role B", dept: "BLDG", fte: 0.5, salary: 0, benefits: 0, hours: 1600 },
     ],
     operating: [
-      { id: "o1", source: "not-a-tag" },                         // no costType — backfill
-      { id: "o2", source: "seed", costType: "Labor" },           // existing value preserved
+      { id: "o1", source: "not-a-tag" },                                                              // no costType — backfill to Operating
+      { id: "o2", source: "seed", costType: "Labor", line: "Salaries", category: "Other" },           // labor, no laborType — backfill to Salary
+      { id: "o3", source: "seed", costType: "Labor", line: "Health Insurance", category: "Other" },   // labor, no laborType — backfill to Benefits (no Salary patterns)
+      { id: "o4", source: "seed", costType: "Labor", line: "Anything", laborType: "Salary" },         // existing laborType preserved
     ],
     volume: [{ id: "w1", source: 42 }],
   };
@@ -80,12 +82,18 @@ import { IMPORTS } from "../data/imports";
   // rows) carry the data.
   assert.equal((state as Record<string, unknown>).positions, undefined,
     "PR-F: state.positions removed after consumption");
-  const op = state.operating as { id: string; source: string; costType: string }[];
+  const op = state.operating as { id: string; source: string; costType: string; laborType?: string }[];
   assert.equal(op[0].source, "seed");
   assert.equal(op[0].costType, "Operating",
     "PR-A: legacy operating rows without costType get backfilled to 'Operating'");
   assert.equal(op[1].costType, "Labor",
     "PR-A: existing costType value preserved");
+  assert.equal(op[1].laborType, "Salary",
+    "PR-G: labor row with 'Salaries' in line text classified as Salary");
+  assert.equal(op[2].laborType, "Benefits",
+    "PR-G: labor row with 'Health Insurance' classified as Benefits");
+  assert.equal(op[3].laborType, "Salary",
+    "PR-G: existing laborType value preserved");
   assert.equal((state.volume as { source: string }[])[0].source, "seed");
 
   // PR-C: productiveHours derived from positions when missing.

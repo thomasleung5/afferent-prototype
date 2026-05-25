@@ -7,22 +7,11 @@ import {
 import {
   CellInput, CellSelect, SectionLabel, SharedChip, SourcePill,
 } from "@/components/ui";
-import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
+import type { LaborType, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { FEE_DEPTS } from "@/lib/data/departments";
 
 const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
-const CATEGORIES: OpCategory[] = [
-  "Software & subscriptions",
-  "Professional services",
-  "Training & travel",
-  "Office & supplies",
-  "Memberships & dues",
-  "Vehicles & equipment",
-  "Legal noticing",
-  "Capital outlay",
-  "Other",
-];
 
 /** Labor-classified slice of the master operating dataset. Reads and
  *  writes the same OperatingLine rows the Operating page edits, filtered
@@ -31,7 +20,7 @@ const CATEGORIES: OpCategory[] = [
 export function LaborLineItemsTable() {
   const { operating, activeFiscalYear, updateOperating, addOperatingLine } = useBuildState();
   const [deptFilter, setDeptFilter] = useState("ALL");
-  const [categoryFilter, setCategoryFilter] = useState("ALL");
+  const [laborTypeFilter, setLaborTypeFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
 
   // Master labor scope before per-filter narrowing — used for filter
@@ -43,21 +32,20 @@ export function LaborLineItemsTable() {
 
   const rows: OperatingLine[] = useMemo(() => labor.filter((r) => {
     if (deptFilter !== "ALL" && r.dept !== deptFilter) return false;
-    if (categoryFilter !== "ALL" && r.category !== categoryFilter) return false;
+    if (laborTypeFilter !== "ALL" && (r.laborType ?? "Benefits") !== laborTypeFilter) return false;
     if (includeFilter === "INC" && !r.include) return false;
     if (includeFilter === "EXC" && r.include) return false;
     return true;
-  }), [labor, deptFilter, categoryFilter, includeFilter]);
+  }), [labor, deptFilter, laborTypeFilter, includeFilter]);
 
   const deptOptions = deriveDeptFilter(labor, "dept", { "SHARED:CDS": "Shared" });
 
-  const categoryCounts: Record<string, number> = {};
-  labor.forEach((r) => { categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1; });
-  const categoryOptions = [
-    { value: "ALL", label: "All", count: labor.length },
-    ...CATEGORIES.filter((c) => categoryCounts[c]).map((c) => ({
-      value: c, label: c, count: categoryCounts[c],
-    })),
+  const salaryCount   = labor.filter((r) => (r.laborType ?? "Benefits") === "Salary").length;
+  const benefitsCount = labor.length - salaryCount;
+  const laborTypeOptions = [
+    { value: "ALL",      label: "All",      count: labor.length },
+    { value: "Salary",   label: "Salary",   count: salaryCount },
+    { value: "Benefits", label: "Benefits", count: benefitsCount },
   ];
 
   const includeOptions = [
@@ -67,9 +55,9 @@ export function LaborLineItemsTable() {
   ];
 
   const filters: FilterGroup[] = [
-    { id: "dept",     label: "Dept",     options: deptOptions,     value: deptFilter,     onChange: setDeptFilter },
-    { id: "category", label: "Category", options: categoryOptions, value: categoryFilter, onChange: setCategoryFilter },
-    { id: "include",  label: "Status",   options: includeOptions,  value: includeFilter,  onChange: setIncludeFilter },
+    { id: "dept",      label: "Dept",    options: deptOptions,      value: deptFilter,      onChange: setDeptFilter },
+    { id: "laborType", label: "Type",    options: laborTypeOptions, value: laborTypeFilter, onChange: setLaborTypeFilter },
+    { id: "include",   label: "Status",  options: includeOptions,   value: includeFilter,   onChange: setIncludeFilter },
   ];
 
   // Reuse the Operating column set verbatim — same fonts/spacing/widths
@@ -150,16 +138,17 @@ export function LaborLineItemsTable() {
       ),
     },
     {
-      key: "category",
-      label: "Category",
-      width: "170px",
+      key: "laborType",
+      label: "Type",
+      width: "120px",
       sortable: true,
+      sortKey: (r) => r.laborType ?? "Benefits",
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
           <CellSelect
-            value={r.category}
-            options={CATEGORIES}
-            onChange={(v) => updateOperating(r.id, { category: v as OpCategory })}
+            value={r.laborType ?? "Benefits"}
+            options={["Salary", "Benefits"]}
+            onChange={(v) => updateOperating(r.id, { laborType: v as LaborType })}
           />
         </div>
       ),

@@ -1,4 +1,4 @@
-import type { CostType, OperatingLine, OpCategory, OpDept } from "@/lib/types";
+import type { CostType, LaborType, OperatingLine, OpCategory, OpDept } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import type { SourceLineage } from "@/lib/parse/types";
 
@@ -71,13 +71,15 @@ export function operatingToExtractionResult(
       importedAt: now,
     };
 
+    const costType = classifyCostType(row);
     const entity: OperatingLine = {
       id: `op-ai-${Date.now()}-${i}`,
       code: row.code?.trim() || "—",
       dept,
       ...(row.sourceDept?.trim() ? { sourceDept: row.sourceDept.trim() } : {}),
       category: normCategory(row.category),
-      costType: classifyCostType(row),
+      costType,
+      ...(costType === "Labor" ? { laborType: classifyLaborType(row) } : {}),
       line: row.line,
       amount: row.amount ?? 0,
       source: "imported",
@@ -165,4 +167,34 @@ function classifyCostType(row: OperatingRow): CostType {
     if (re.test(text)) return "Labor";
   }
   return "Operating";
+}
+
+/** Pattern matching the Salary side of the two-value LaborType taxonomy:
+ *  direct-compensation accounts the cities universally call salaries,
+ *  wages, overtime, premium pay, shift pay, temporary pay. Everything
+ *  else under costType "Labor" falls through to "Benefits" (the safe
+ *  default per the spec — retirement, pension, healthcare, payroll
+ *  taxes, workers comp, wellness, leave accruals, labor burden). */
+const SALARY_PATTERNS: RegExp[] = [
+  /\bsalar(?:y|ies)\b/i,
+  /\bwages?\b/i,
+  /\bhourly\b/i,
+  /\bovertime\b/i,
+  /\b(?:temp(?:orary)?|part[-\s]?time|seasonal)\s+(?:labor|pay|wages?)\b/i,
+  /\bpremium\s+pay\b/i,
+  /\bshift\s+(?:pay|differential)\b/i,
+  /\bstipends?\b/i,
+];
+
+/** Classify a labor-classified row into the two-value LaborType
+ *  taxonomy. Exported so the persisted-state migration can backfill
+ *  legacy labor rows that pre-date the field with the same rule the
+ *  parser uses on fresh imports. Default Benefits when uncertain. */
+export function classifyLaborType(row: { line?: string; category?: string }): LaborType {
+  const text = `${row.line ?? ""} ${row.category ?? ""}`.trim();
+  if (!text) return "Benefits";
+  for (const re of SALARY_PATTERNS) {
+    if (re.test(text)) return "Salary";
+  }
+  return "Benefits";
 }

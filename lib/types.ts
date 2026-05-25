@@ -116,6 +116,23 @@ export type OpCategory =
  *  the AI parser pattern-matches new rows. */
 export type CostType = "Labor" | "Operating";
 
+/** Sub-classification for labor budget lines (costType === "Labor").
+ *  Two-value taxonomy by design — the field is high-level for FBHR
+ *  modeling, reconciliation, reporting, benchmarking, and UI filtering.
+ *  Per-account detail stays in `line` / `sourceDept` / source GL.
+ *
+ *  Salary covers direct compensation: salaries, wages, hourly pay,
+ *  overtime, temporary pay, premium pay, shift pay.
+ *
+ *  Benefits covers labor burden + employee support: retirement,
+ *  pension, healthcare, dental/vision, payroll taxes, Medicare,
+ *  Social Security, workers comp, wellness, leave accruals, labor
+ *  burden accounts.
+ *
+ *  When uncertain, default to Benefits. Do not invent additional
+ *  labor types. */
+export type LaborType = "Salary" | "Benefits";
+
 export interface OperatingLine {
   id: string;
   code: string;
@@ -129,6 +146,11 @@ export interface OperatingLine {
   category: OpCategory;
   /** Budget-line classification. See CostType. */
   costType: CostType;
+  /** Sub-classification when costType === "Labor". See LaborType. Absent
+   *  on Operating rows. Optional in the type so legacy labor rows that
+   *  pre-date this field don't crash readers; production rows are
+   *  always stamped (parser heuristic, seed init, migration backfill). */
+  laborType?: LaborType;
   line: string;
   amount: number;
   /** Row provenance — set at creation, not mutated by edits. Was previously

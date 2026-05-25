@@ -12,6 +12,7 @@ import {
   buildLaborLinesFromPositions, buildProductiveHoursFromPositions,
   defaultCenterOrder, synthCenterKey,
 } from "./store";
+import { classifyLaborType } from "./ai/parseOperating";
 import type { BuildSnapshot, BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
 
@@ -238,11 +239,23 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     // read. Imports that pre-date the field get the same default.
     // The labor-row derivation now lives in the PR-F block above
     // because state.positions is consumed (and deleted) there.
-    state.operating = state.operating.map((o: OperatingLine) => ({
-      ...o,
-      source: coerceSource(o.source),
-      costType: o.costType ?? "Operating",
-    }));
+    state.operating = state.operating.map((o: OperatingLine) => {
+      const next: OperatingLine = {
+        ...o,
+        source: coerceSource(o.source),
+        costType: o.costType ?? "Operating",
+      };
+      // PR-G: backfill laborType on labor-classified rows that pre-date
+      // the field. Uses the parser's classifyLaborType so legacy rows
+      // get the same Salary/Benefits split a fresh import would.
+      // Existing values pass through untouched.
+      if (next.costType === "Labor" && !next.laborType) {
+        next.laborType = classifyLaborType({
+          line: next.line, category: next.category,
+        });
+      }
+      return next;
+    });
   }
   if (Array.isArray(state.volume)) {
     state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));
