@@ -23,7 +23,6 @@
 
 import assert from "node:assert/strict";
 import { migratePersistedState } from "../storeMigration";
-import { CAP_CENTER_GLCODES } from "../data/cap";
 import { SEED_ALLOCATION_BASES } from "../data/allocationBasesCatalog";
 import { DEFAULT_STUDY_CONTEXT } from "../data/studyContext";
 import { DEFAULT_JURISDICTION_ID } from "../data/jurisdictions";
@@ -35,7 +34,8 @@ import { IMPORTS } from "../data/imports";
   migratePersistedState(state as never);
 
   assert.deepEqual(state.capCenterOrder, []);
-  assert.deepEqual(state.capCenterGlCodes, { ...CAP_CENTER_GLCODES });
+  assert.equal(state.capCenterGlCodes, undefined,
+    "capCenterGlCodes is not on the post-PR-12 state shape");
   assert.deepEqual(state.studyContext, { ...DEFAULT_STUDY_CONTEXT });
   assert.equal(state.activeJurisdictionId, DEFAULT_JURISDICTION_ID);
   assert.ok(typeof state.activeFiscalYear === "string" && (state.activeFiscalYear as string).length > 0);
@@ -181,6 +181,11 @@ import { IMPORTS } from "../data/imports";
   assert.equal(pools.find((p) => p.id === "p2")!.centerGlCode, "011-1400");
   assert.equal(pools.find((p) => p.id === "p3")!.centerGlCode, "seed:center:Manual Center");
   assert.equal(pools.find((p) => p.id === "p4")!.centerGlCode, "999-9999", "existing centerGlCode preserved");
+
+  // PR-12: the legacy name → glCode map is stripped from the migrated
+  // state once translateCenterMaps has consumed it.
+  assert.equal(state.capCenterGlCodes, undefined,
+    "legacy capCenterGlCodes field deleted after translation");
   console.log("  ✓ center maps translated from name-keyed to glCode-keyed");
 }
 

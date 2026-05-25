@@ -5,7 +5,7 @@ import { useShallow } from "zustand/react/shallow";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
 import {
-  CAP_BASIS_UNITS, CAP_CENTER_GLCODES, CAP_CENTER_SOURCES_SEED,
+  CAP_BASIS_UNITS, CAP_CENTER_SOURCES_SEED,
   CAP_CENTER_TOTALS, CAP_DIRECT_ALLOCATIONS, CAP_POOLS,
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
@@ -64,9 +64,6 @@ export interface BuildSnapshot {
    *  centers, `seed:center:NAME` synth for manually-added centers). */
   capCenterTotals: Record<string, number>;
   capCenterDisallowed: Record<string, number>;
-  /** Legacy name → glCode map kept on state for one more PR. Nothing
-   *  reads it after PR-11; PR-12 deletes the field. */
-  capCenterGlCodes: Record<string, string>;
   /** Center metadata keyed by center identity. `name` is the display
    *  text, mutated by renameCapCenter (no longer requires walking every
    *  map since the key is now stable). */
@@ -123,9 +120,6 @@ export interface BuildState {
    *  reduction automatically. Default 0 per center; preserved separately
    *  from capCenterTotals so the gross/net trail is auditable. */
   capCenterDisallowed: Record<string, number>;
-  /** Legacy name → glCode map. Kept on state for one more PR so PR-12
-   *  can clean up call sites; nothing reads this after PR-11. */
-  capCenterGlCodes: Record<string, string>;
   /** Center key → metadata: display name + provenance. `name` is the
    *  human-readable label (mutated by renameCapCenter); identity is
    *  stable since the key doesn't change on rename. */
@@ -297,7 +291,6 @@ const initialState = (): BuildState => {
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},
-    capCenterGlCodes: { ...CAP_CENTER_GLCODES },
     capCenterSources: Object.fromEntries(
       Object.entries(CAP_CENTER_SOURCES_SEED).map(([key, meta]) => [
         key, { name: meta.name, source: "seed" as SourceTag },
@@ -757,7 +750,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           // merge below can stamp centerGlCode on each imported pool.
           const nextTotals = { ...s.capCenterTotals };
           const nextOrder = [...s.capCenterOrder];
-          const nextCenterGlCodes = { ...s.capCenterGlCodes };
           const nextCenterSources = { ...s.capCenterSources };
           const importedCenterKeyByName = new Map<string, string>();
           for (const { entity } of centersIn) {
@@ -765,8 +757,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             importedCenterKeyByName.set(entity.name, key);
             nextTotals[key] = entity.totalCost;
             if (!nextOrder.includes(key)) nextOrder.push(key);
-            if (entity.glCode) nextCenterGlCodes[entity.name] = entity.glCode;
             nextCenterSources[key] = { name: entity.name, source: "imported", sourceFile: fileName };
+          }
+          // Existing-state name → key lookup, used by the pool merge below
+          // for pools whose center didn't appear in this bundle's centers
+          // section but is already known to the store.
+          const existingCenterKeyByName = new Map<string, string>();
+          for (const [key, meta] of Object.entries(nextCenterSources)) {
+            existingCenterKeyByName.set(meta.name, key);
           }
 
           // ── 2. Bases ───────────────────────────────────────────────────
@@ -806,11 +804,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           // Re-resolve basisId against the post-merge basis catalog so pools
           // that referenced a basis imported in the same bundle (or just
           // matched by name to seed) bind correctly. Also stamp
-          // centerGlCode from the just-updated nextCenterGlCodes map so
-          // the engine can route by glCode without going through the
-          // name-resolver — falls back to undefined when no glCode was
-          // imported for the center (engine still synthesizes
-          // seed:center:NAME for those).
+          // centerGlCode so the engine routes by glCode without consulting
+          // any name → glCode map: first from the bundle's own centers
+          // section, then from existing state (matched by name), then synth.
           const fixedPools = poolsIn.map(({ entity, lineage }) => {
             let basisId = entity.basisId;
             // Trust an existing basisId only if it survived the remap or
@@ -823,14 +819,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               );
               basisId = match?.id ?? "";
             }
-            // Resolve the pool's center identity key — first from the
-            // bundle's own centers section (importedCenterKeyByName),
-            // then from any preexisting state mapping
-            // (nextCenterGlCodes), and finally synth from the name as
-            // a last resort. centerGlCode is required, so we always
-            // produce one.
             const centerGlCode = importedCenterKeyByName.get(entity.center)
-              ?? nextCenterGlCodes[entity.center]
+              ?? existingCenterKeyByName.get(entity.center)
               ?? synthCenterKey(entity.center);
             // If we synthed here (because the pool's center wasn't
             // declared in the centers section), make sure the maps
@@ -908,7 +898,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return {
             capPools: mergedPools,
             capCenterTotals: nextTotals,
-            capCenterGlCodes: nextCenterGlCodes,
             capCenterSources: nextCenterSources,
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
@@ -1019,7 +1008,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capPools: [],
           capCenterTotals: {},
           capCenterDisallowed: {},
-          capCenterGlCodes: {},
           capCenterSources: {},
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
@@ -1231,7 +1219,7 @@ export function useBuildState() {
     state.positions, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.capBasisUnits, state.capDirectAllocations,
-    state.allocationBases, state.capCenterGlCodes, state.studyContext,
+    state.allocationBases, state.capCenterSources, state.studyContext,
     state.services, state.policyTargets, state.policyExceptions,
   ]);
 

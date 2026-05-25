@@ -1,5 +1,5 @@
 import {
-  CAP_BASIS_UNITS, CAP_CENTER_GLCODES, CAP_DIRECT_ALLOCATIONS,
+  CAP_BASIS_UNITS, CAP_DIRECT_ALLOCATIONS,
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { IMPORTS } from "@/lib/data/imports";
@@ -35,7 +35,14 @@ function isLikelyCenterKey(s: string): boolean {
  *  still look name-keyed. Used for both the live BuildState and every
  *  persisted version snapshot. */
 function translateCenterMaps(target: Partial<BuildSnapshot>): void {
-  const glByName = target.capCenterGlCodes ?? {};
+  // capCenterGlCodes was a name → glCode lookup map on the persisted state
+  // shape pre-PR-12. It's no longer on BuildSnapshot, but the field can
+  // still appear in legacy persisted blobs — read it via an opaque cast,
+  // and delete it post-translation so we don't keep the dead key around.
+  const legacy = target as Partial<BuildSnapshot> & {
+    capCenterGlCodes?: Record<string, string>;
+  };
+  const glByName = legacy.capCenterGlCodes ?? {};
   const keyForName = (name: string): string => glByName[name] ?? synthCenterKey(name);
 
   // Pool centerGlCode backfill ALWAYS runs (independent of map translation)
@@ -87,6 +94,11 @@ function translateCenterMaps(target: Partial<BuildSnapshot>): void {
   if (Array.isArray(target.capCenterOrder)) {
     target.capCenterOrder = target.capCenterOrder.map(keyForName);
   }
+
+  // Drop the legacy field once we've consumed it — the BuildSnapshot
+  // shape no longer carries it, so leaving it around would pollute every
+  // future snapshot the user takes.
+  delete (legacy as { capCenterGlCodes?: unknown }).capCenterGlCodes;
 }
 
 /** Apply every backfill the Zustand persist layer needs to bring an old
@@ -129,11 +141,9 @@ export function migratePersistedState(state: Partial<BuildState>): void {
 
   // PR-11: flip center maps from name-keyed to glCode-keyed. Runs BEFORE
   // every backfill that reads/writes those maps; the helper detects
-  // already-translated state and no-ops on it. capCenterGlCodes stays as
-  // input here (PR-12 deletes it once nothing reads the name→glCode shape).
-  if (state.capCenterGlCodes == null) {
-    state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
-  }
+  // already-translated state and no-ops on it. The legacy
+  // capCenterGlCodes field on persisted state (pre-PR-12) is consumed by
+  // translateCenterMaps as a name → glCode lookup and then deleted.
   translateCenterMaps(state);
 
   if (!state.capCenterOrder || state.capCenterOrder.length === 0) {

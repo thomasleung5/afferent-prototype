@@ -82,7 +82,6 @@ export async function switchJurisdiction(id: string): Promise<void> {
         // jurisdictions that use different names ("Finance & Admin").
         // The seed re-supplies any fields the target needs.
         useBuildStore.setState({
-          capCenterGlCodes: {},
           capCenterTotals: {},
           capCenterDisallowed: {},
           capCenterSources: {},

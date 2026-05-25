@@ -18,7 +18,6 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     capPools: state.capPools,
     capCenterTotals: state.capCenterTotals,
     capCenterDisallowed: state.capCenterDisallowed,
-    capCenterGlCodes: state.capCenterGlCodes,
     capCenterSources: state.capCenterSources,
     studyContext: state.studyContext,
     allocationBases: state.allocationBases,

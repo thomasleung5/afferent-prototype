@@ -10,17 +10,16 @@ import { INST_DEPTS } from "./institutionalDepts";
  * the new bundle — every other map in this file derives from them. */
 
 /** Canonical jurisdiction-scoped GL codes per InstDeptCode — LAH FY 24/25.
- *  Indirect codes are the center's routing identity (mirrored into
- *  CAP_CENTER_GLCODES below); direct codes stamp glCode onto the
- *  BasisUnitRow + DirectAllocationRow receivers further down.
+ *  Indirect codes are the center's routing identity; direct codes stamp
+ *  glCode onto the BasisUnitRow + DirectAllocationRow receivers further
+ *  down. Used by the KEY() helper below to assign centerGlCode on each
+ *  seed pool.
  *
  *  Pattern: General Fund (011) for governance/operating, Internal Service
  *  Funds (061) for fleet/facilities. Building Use and Equipment Use are
  *  the LAH document's own short codes (no fund prefix in the source).
  *
- *  Not exported — every consumer that needs a glCode either reads it off
- *  persisted receivers (post-seed) or goes through CAP_CENTER_GLCODES
- *  (centers). When a second jurisdiction lands this map forks per
+ *  Not exported. When a second jurisdiction lands this map forks per
  *  jurisdiction; InstDeptCode itself stays universal. */
 const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
   // Indirect cost centers
@@ -55,10 +54,11 @@ const NON_INST_CENTER_GLCODES: Record<string, string> = {
   "Vehicle / Equipment Operations": "061-4400",
 };
 
-/** Indirect-center GL codes keyed by display name. Bridges the canonical
- *  code-keyed maps above to the name-keyed shape AI imports + legacy
- *  store readers expect. */
-export const CAP_CENTER_GLCODES: Record<string, string> = (() => {
+/** Internal: indirect-center GL codes keyed by display name. Used only by
+ *  the KEY() helper below to stamp centerGlCode onto each seed pool. No
+ *  longer exported — every store consumer reads the glCode straight off
+ *  the pool / off the engine node, never via a name lookup. */
+const CAP_CENTER_GLCODES: Record<string, string> = (() => {
   const out: Record<string, string> = { ...NON_INST_CENTER_GLCODES };
   for (const dept of INST_DEPTS) {
     if (dept.kind === "indirect") out[dept.name] = SEED_DEPT_GLCODES[dept.code];
