@@ -1,41 +1,62 @@
-// Seed catalog of named allocation bases. Users can extend at runtime via
+// Seed catalog of named allocation bases — Los Altos Hills FY 24/25 CAP.
+// Mirrors the bases section of the published CAP bundle exactly: 15 named
+// denominators, one DIRECT routing entry. Users can extend at runtime via
 // the AllocationBasisCombobox; that state lives in BuildState.allocationBases.
 //
-// The 14 canonical entries are the standardized bases requested by the user.
-// The trailing 5 (VEHICLE / EXPEND_X / PRA / COMMITS / DIRECT) exist so every
-// pool in the seed CAP_POOLS has a catalog entry to point at — without them,
-// legacy pools would dangle.
+// driverKey controls which column of the DRIVERS matrix (lib/data/capStepDown.ts)
+// supplies the denominator when a pool with this basis is stepped down — but
+// because every basis below has a corresponding BasisUnitRow in
+// lib/data/cap.ts:CAP_BASIS_UNITS, the engine's fallback path almost never
+// fires for seed pools.
 
 import type { AllocationBasis } from "@/lib/types";
 
 const SEED_AT = "2026-05-17T00:00:00.000Z";
 
-// driverKey controls which column of the DRIVERS matrix (lib/data/capStepDown.ts)
-// supplies the denominator when a pool with this basis is stepped down. When
-// the underlying driver type doesn't have a perfect existing column, we map to
-// the closest available denominator — noted inline.
 export const SEED_ALLOCATION_BASES: AllocationBasis[] = [
-  // ── canonical 14 (user-listed) ──────────────────────────────────────────
-  { id: "bas-fte-budget",   name: "Budgeted FTE",             source: "HRIS budget worksheet",       driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-fte-actual",   name: "Actual FTE",               source: "Payroll system",              driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-salaries",     name: "Salaries",                 source: "Payroll system",              driverKey: "PAYROLL",  validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-payroll-tx",   name: "Payroll transactions",     source: "Finance ledger",              driverKey: "PAYROLL",  validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-ap-invoices",  name: "AP invoices",              source: "Finance ledger",              driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-agenda",       name: "Agenda item count",        source: "Clerk annual report",         driverKey: "AGENDA",   validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-contracts",    name: "Contract count",           source: "Procurement system",          driverKey: "CONTRACT", validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-sqft",         name: "Square footage",           source: "Facilities inventory",        driverKey: "SQFT",     validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-labor-hours",  name: "Direct labor hours",       source: "Time tracking",               driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-permits",      name: "Permit volume",            source: "Permit system",               driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-op-expend",    name: "Operating expenditures",   source: "Budget book",                 driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-acct-tx",      name: "Accounting transactions",  source: "GL extract",                  driverKey: "ACCT",     validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-time-study",   name: "Time study %",             source: "Annual time survey",          driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-population",   name: "Population",               source: "DOF demographic estimates",   driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
-
-  // ── additional entries needed by the existing CAP_POOLS seed ────────────
-  { id: "bas-vehicle",      name: "Vehicle depreciation",     source: "Fleet inventory",             driverKey: "VEHICLE",  validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-op-expend-x",  name: "Operating expenditures (excl. development)", source: "Budget book", driverKey: "EXPEND_X", validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-op-expend-pw", name: "Operating expenditures (PW departments only)", source: "Budget book", driverKey: "EXPEND_PW", validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-pra",          name: "PRA request count",        source: "Clerk records log",           driverKey: "PRA",      validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-committees",   name: "Number of committees",     source: "Council records",             driverKey: "COMMITS",  validationStatus: "verified", createdAt: SEED_AT },
-  { id: "bas-direct",       name: "Direct allocation",        source: "Manual assignment",           driverKey: "DIRECT",   directTo: "PARKS", validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-fte-th-occupy",     name: "FY 24/25 Budgeted FTE Occupying Town Hall",
+    source: "Allocations 3.2025 NBS.xlsx",
+    driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-direct-pr",         name: "Direct to Parks and Recreation",
+    source: "Manual assignment",
+    driverKey: "DIRECT",   directTo: "PARKS", validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-vehicle-dep",       name: "FY 23/24 Vehicle Depreciation Expense by Department",
+    source: "Vehicle Listing - Dept usage_NBS.xlsx",
+    driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-agenda-count",      name: "FY 23/24 Agenda Item Count per Fund, Department, and/or Division",
+    source: "Agenda Items by Dept.Fund.Program FY 23-24_NBS.xlsx",
+    driverKey: "AGENDA",   validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-op-expend",         name: "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers)",
+    source: "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+    driverKey: "EXPEND",   validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-op-expend-x",       name: "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers) - Excluding Planning, Building, & Engineering",
+    source: "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+    driverKey: "EXPEND_X", validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-pra-count",         name: "FY 23/24 Public Records Act (PRA) Requests per Fund, Department, and/or Division",
+    source: "5.2 PRAs by Program.xlsx",
+    driverKey: "PRA",      validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-contracts-count",   name: "FY 23/24 Contracts Count per Fund, Department, and/or Division",
+    source: "5.3 Contracts per Program.xlsx",
+    driverKey: "CONTRACT", validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-fte-budget",        name: "FY 24/25 Budgeted FTE per Fund, Department, and/or Division",
+    source: "Allocations 3.2025 NBS",
+    driverKey: "FTE",      validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-payroll-tx",        name: "FY 23/24 Number of Payroll Transactions excluding Payroll per Fund, Department, and/or Division",
+    source: "Los Altos Hills _Count of Transactions.pdf",
+    driverKey: "PAYROLL",  validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-acct-tx",           name: "FY 23/24 Number of Accounting Transactions per Fund, Department, and/or Division",
+    source: "6.4 JE count by Dept request.xlsx & 6.4 Invoices by Program.xlsx",
+    driverKey: "ACCT",     validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-committees-supp",   name: "Number of Committees Supported per Department",
+    source: "Committees 3.20.25.xlsx",
+    driverKey: "COMMITS",  validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-salary-dist",       name: "FY 24/25 Salary Cost Distribution per Fund, Department, and/or Division",
+    source: "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+    driverKey: "PAYROLL",  validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-op-expend-pw",      name: "FY 24/25 Budgeted Expenditures (PW Departments Only)",
+    source: "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+    driverKey: "EXPEND_PW",validationStatus: "verified", createdAt: SEED_AT },
+  { id: "bas-vehicles-maint",    name: "FY 23/24 Vehicles Maintained per Department",
+    source: "CapAssets_All_listing_CostAllocation_Nicole_04.01.2025_NBS",
+    driverKey: "VEHICLE",  validationStatus: "verified", createdAt: SEED_AT },
 ];
