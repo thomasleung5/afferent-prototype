@@ -323,7 +323,7 @@ interface LaborAccount {
  *  under direct compensation. The first entry (Regular Salaries) absorbs
  *  the rounding residual so the four rows reconcile to the dept's total
  *  salary bucket exactly. */
-export const SALARY_ACCOUNTS: LaborAccount[] = [
+const SALARY_ACCOUNTS: LaborAccount[] = [
   { glCode: "51110", line: "Regular Salaries",          share: 0.93 },
   { glCode: "51120", line: "Overtime",                  share: 0.03 },
   { glCode: "51130", line: "Temporary / Part-Time Pay", share: 0.02 },
@@ -334,7 +334,7 @@ export const SALARY_ACCOUNTS: LaborAccount[] = [
  *  under labor burden. The first entry (Retirement) absorbs the rounding
  *  residual so the four rows reconcile to the dept's total benefits
  *  bucket exactly. */
-export const BENEFITS_ACCOUNTS: LaborAccount[] = [
+const BENEFITS_ACCOUNTS: LaborAccount[] = [
   { glCode: "51210", line: "Retirement",           share: 0.52 },
   { glCode: "51220", line: "Health Insurance",     share: 0.30 },
   { glCode: "51230", line: "Payroll Taxes",        share: 0.15 },
@@ -388,7 +388,6 @@ export function buildLaborLinesFromBuckets(
         category: "Other",
         costType: "Labor",
         laborType: "Salary",
-        notReconciled: true,
         line: acct.line,
         amount,
         source: bucket.source,
@@ -408,7 +407,6 @@ export function buildLaborLinesFromBuckets(
         category: "Other",
         costType: "Labor",
         laborType: "Benefits",
-        notReconciled: true,
         line: acct.line,
         amount,
         source: bucket.source,
@@ -430,11 +428,6 @@ export function buildLaborLinesFromBuckets(
  *  items) and decouples the labor cost from the position roster:
  *  editing a productive-role's FTE doesn't change labor cost unless
  *  the user explicitly edits the labor row.
- *
- *  Rows are marked `notReconciled: true` — they're a fallback derived
- *  from position estimates, not pulled from an actual budget import.
- *  The UI surfaces a banner reminding the user to import real budget
- *  labor lines.
  *
  *  Ids are deterministic at the (dept, GL-code) level
  *  (`op-labor-<dept>-<glCode>`) so re-running the conversion in
@@ -853,8 +846,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           // so we rebuild them ONCE per dept touched by this batch from
           // the imported positions. Existing labor rows for those depts
           // get replaced (deterministic id collision); other depts'
-          // labor rows stay untouched. Labor rows derived from positions
-          // carry `notReconciled: true` — UI flags them as fallback.
+          // labor rows stay untouched.
           const incoming = [...r.mapped, ...r.lowConfidence, ...r.duplicates];
           const lineagePatch: Record<string, SourceLineage> = {};
           const phById = new Map(s.productiveHours.map((row) => [row.id, row]));

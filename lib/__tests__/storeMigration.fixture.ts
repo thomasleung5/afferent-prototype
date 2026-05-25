@@ -119,7 +119,7 @@ import { IMPORTS } from "../data/imports";
   };
   migratePersistedState(state as never);
 
-  type Row = { id: string; costType: string; dept: string; amount: number; line: string; laborType?: string; notReconciled?: boolean; code: string };
+  type Row = { id: string; costType: string; dept: string; amount: number; line: string; laborType?: string; code: string };
   const op = state.operating as Row[];
   const labor = op.filter((o) => o.costType === "Labor");
   assert.equal(labor.length, 8,
@@ -150,8 +150,6 @@ import { IMPORTS } from "../data/imports";
   assert.equal(retirement!.line, "Retirement");
   assert.equal(regSalaries!.code, "011-2410",
     "displayed code matches the dept program code used by non-labor Operating rows");
-  assert.equal(regSalaries!.notReconciled, true,
-    "PR-I: position-derived rows flagged as fallback");
 
   // Re-running migration must be idempotent (the new id pattern doesn't
   // match the legacy `-salary` / `-benefits` suffix detector).
@@ -169,10 +167,10 @@ import { IMPORTS } from "../data/imports";
       // in `-salary` / `-benefits`. Migration should bucket and re-expand.
       { id: "op-labor-PLAN-salary",   code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
         category: "Other", costType: "Labor", laborType: "Salary",   line: "Regular Salaries",
-        amount: 500000, source: "seed", include: true, notReconciled: true },
+        amount: 500000, source: "seed", include: true },
       { id: "op-labor-PLAN-benefits", code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
         category: "Other", costType: "Labor", laborType: "Benefits", line: "Benefits",
-        amount: 200000, source: "seed", include: true, notReconciled: true },
+        amount: 200000, source: "seed", include: true },
     ],
   };
   migratePersistedState(state as never);
