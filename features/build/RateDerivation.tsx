@@ -56,7 +56,6 @@ export function RateDerivation() {
       key: "deptName",
       label: "Department",
       width: "minmax(220px, 2fr)",
-      sortable: true,
       render: (r) => (
         <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
           <DeptChip code={r.dept}/>
@@ -69,7 +68,6 @@ export function RateDerivation() {
       label: "Direct labor $/hr",
       width: "150px",
       align: "right",
-      sortable: true,
       render: (r) => <span className="num">${Math.round(r.directRate)}</span>,
     },
     {
@@ -77,7 +75,6 @@ export function RateDerivation() {
       label: "Operating $/hr",
       width: "130px",
       align: "right",
-      sortable: true,
       render: (r) => <span className="num">${Math.round(r.operatingRate)}</span>,
     },
     {
@@ -85,7 +82,6 @@ export function RateDerivation() {
       label: "Overhead $/hr",
       width: "130px",
       align: "right",
-      sortable: true,
       render: (r) => <span className="num">${Math.round(r.capRate)}</span>,
     },
     {
@@ -93,7 +89,6 @@ export function RateDerivation() {
       label: "FBHR",
       width: "110px",
       align: "right",
-      sortable: true,
       render: (r) => (
         <span className="num" style={{ color: "var(--accent)" }}>
           ${Math.round(r.fbhrTotal)}<span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>/hr</span>
@@ -105,7 +100,6 @@ export function RateDerivation() {
       label: "Prod hrs/yr",
       width: "110px",
       align: "right",
-      sortable: true,
       render: (r) => <span className="num">{fmt.int(r.productiveHours)}</span>,
     },
   ];
@@ -118,7 +112,6 @@ export function RateDerivation() {
       <DataTable
       cols={cols}
       rows={rows}
-      defaultSort={{ key: "deptName", dir: "asc" }}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
       drilldownIndicator

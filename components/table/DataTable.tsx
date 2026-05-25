@@ -222,7 +222,7 @@ export function DataTable<Row extends DataTableRow>({
           {sortedRows.length === 0 ? (
             <div style={{
               padding: "32px 16px", textAlign: "center",
-              fontSize: "var(--t-l7)", color: "var(--ink-3)",
+              fontSize: "var(--fs-ui)", color: "var(--ink-3)",
             }}>
               {emptyState ?? "No rows match the current filters."}
             </div>
@@ -303,7 +303,7 @@ export function DataTable<Row extends DataTableRow>({
                           : i < sortedRows.length - 1 ? "1px solid var(--rule)" : "none",
                       background: isOpen ? "var(--paper-2)" : bg,
                       borderLeft: accent,
-                      fontSize: "var(--t-l7)",
+                      fontSize: "var(--fs-ui)",
                       cursor: onRowClick ? "pointer" : "default",
                       opacity: isDragging ? 0.45 : 1,
                       transition: "background 80ms",

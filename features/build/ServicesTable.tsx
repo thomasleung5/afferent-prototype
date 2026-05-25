@@ -151,7 +151,7 @@ export function ServicesTable() {
       sortable: true,
       sortKey: (r) => getMix(r).length,
       render: (r) => (
-        <span style={{ color: "var(--ink-2)" }}>
+        <span className="num" style={{ color: "var(--ink-2)" }}>
           {getMix(r).length} roles
         </span>
       ),

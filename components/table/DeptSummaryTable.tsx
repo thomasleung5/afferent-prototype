@@ -59,7 +59,8 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
         padding: "9px 16px",
         borderBottom: "1px solid var(--rule)",
         background: "var(--paper-2)",
-        fontSize: "var(--t-l8)", fontWeight: 600, letterSpacing: "0.04em",
+        fontFamily: "var(--ff-mono)",
+        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.08em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         {cols.map((c) => (
@@ -88,7 +89,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
                 display: "grid", gridTemplateColumns: colTpl, columnGap: 28,
                 padding: "12px 16px", alignItems: "center",
                 cursor: canExpand ? "pointer" : "default",
-                fontSize: "var(--fs-ui)",
+                fontSize: "var(--fs-ui)", color: "var(--ink)",
                 background: isOpen ? "var(--paper-2)" : "transparent",
                 transition: "background 80ms",
               }}
@@ -122,7 +123,7 @@ export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
         <div style={{
           display: "grid", gridTemplateColumns: colTpl, columnGap: 28,
           padding: "12px 16px", alignItems: "center",
-          fontSize: "var(--fs-ui)", fontWeight: 600,
+          fontSize: "var(--fs-ui)", fontWeight: 600, color: "var(--ink)",
           borderTop: "1px solid var(--rule-strong)",
           background: "var(--paper-2)",
         }}>
@@ -168,7 +169,8 @@ export function Ledger({ cols, rows, total }: LedgerProps) {
         padding: "8px 12px", borderBottom: "1px solid var(--rule)",
         background: "var(--paper-2)",
         display: "grid", gridTemplateColumns: grid, gap: 12,
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.08em",
+        fontFamily: "var(--ff-mono)",
+        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.08em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>
         {cols.map((c) => (
@@ -180,7 +182,7 @@ export function Ledger({ cols, rows, total }: LedgerProps) {
           padding: "7px 12px",
           display: "grid", gridTemplateColumns: grid, gap: 12,
           borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : "none",
-          fontSize: 12, alignItems: "baseline",
+          fontSize: "var(--fs-ui)", color: "var(--ink)", alignItems: "baseline",
         }}>
           {cols.map((c) => (
             <div key={c.key} style={{
@@ -196,7 +198,8 @@ export function Ledger({ cols, rows, total }: LedgerProps) {
         display: "grid", gridTemplateColumns: grid, gap: 12,
         borderTop: "1px solid var(--rule-strong)",
         background: "var(--paper-2)",
-        fontSize: 12, fontWeight: 600, alignItems: "baseline",
+        fontSize: "var(--fs-ui)", fontWeight: 600, color: "var(--ink)",
+        alignItems: "baseline",
       }}>
         {cols.map((c) => (
           <div key={c.key} style={{
