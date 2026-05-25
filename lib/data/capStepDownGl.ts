@@ -210,25 +210,20 @@ export function buildEngineGraph(args: {
   //    receiver's classification matches PLAN/BLDG/ENG so FBHR can sum by
   //    fee dept; classification is metadata only and never determines a
   //    routing destination.
-  const modeledFeeDeptSet = modeledFeeDepts && modeledFeeDepts.length > 0
-    ? new Set<string>(modeledFeeDepts)
-    : null;
+  //
+  //    No modeledFeeDepts filter here: every receiver in capReceivers came
+  //    from real basisUnits or directAllocations imports (the LAH FY 24/25
+  //    seed bundle has actual Public Safety / Parks / Fire receivers at
+  //    real LAH glCodes). The previous filter was guarding against phantom
+  //    fee-dept receivers in older seed data; that data is gone. FBHR
+  //    roll-up at the edge (capAllocatedFromGl) is what scopes per-dept
+  //    display to the jurisdiction's modeled fee depts — the engine's job
+  //    is to distribute faithfully.
   for (const r of capReceivers) {
     if (!r.glCode) continue;
     if (nodeByKey.has(r.glCode)) continue;
 
     const isFeeDept = FEE_DEPT_SET.has(r.deptCode);
-    // Skip fee-dept receivers the active jurisdiction doesn't model. The
-    // seed CAP basis schedules (lib/data/cap.ts:CAP_BASIS_UNITS) include
-    // receivers for every fee dept regardless of jurisdiction; without
-    // this filter, jurisdictions that only model PLAN/BLDG/ENG would
-    // route real CAP $ to phantom PARKS/PD/FIRE direct nodes with
-    // imported-looking glCodes (011-3500/011-3600/011-3700). Non-fee
-    // direct receivers (e.g. PW) flow through normally — they don't
-    // affect the fee study.
-    if (isFeeDept && modeledFeeDeptSet && !modeledFeeDeptSet.has(r.deptCode)) {
-      continue;
-    }
     addNode({
       key: r.glCode, glCode: r.glCode, name: r.dept,
       role: "direct",
