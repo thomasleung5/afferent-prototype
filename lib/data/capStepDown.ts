@@ -3,14 +3,14 @@
  * The engine itself lives in capStepDownGl.ts (glCode-native). This file
  * exposes the helpers and constants that engine uses:
  *   - basisForPool / inferBasis — resolves a pool's basis key + directTo.
- *   - DRIVERS — per-MatrixDeptCode seed driver values used as fallback
+ *   - DRIVERS — per-InstDeptCode seed driver values used as fallback
  *     when no imports cover a given node.
  *
  * The institutional dept catalog (the registry that INDIRECT_DEPTS and
  * CENTER_NAME_TO_CODE used to encode) lives in ./institutionalDepts.ts.
  */
 
-import type { AllocationBasis, BasisKey, CapPool, MatrixDeptCode } from "../types";
+import type { AllocationBasis, BasisKey, CapPool, InstDeptCode } from "../types";
 import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
 
 // ---------------------------------------------------------------------------
@@ -49,7 +49,7 @@ function inferBasis(p: CapPool): BasisKey {
 export function basisForPool(
   p: CapPool,
   bases: AllocationBasis[],
-): { basis: BasisKey; directTo?: MatrixDeptCode } {
+): { basis: BasisKey; directTo?: InstDeptCode } {
   const cat = p.basisId ? bases.find((b) => b.id === p.basisId) : undefined;
   if (cat) return { basis: cat.driverKey, directTo: cat.directTo };
   return { basis: inferBasis(p) };
@@ -59,7 +59,7 @@ export function basisForPool(
 // Drivers (department × basis denominators)
 // ---------------------------------------------------------------------------
 
-type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
+type DriverMatrix = Record<InstDeptCode, Partial<Record<BasisKey, number>>>;
 
 /** Seed driver values per department × basis — derived from the Allocation
  *  Bases matrix (lib/data/allocationBases.ts) so the Allocation Bases tab
@@ -71,7 +71,7 @@ type DriverMatrix = Record<MatrixDeptCode, Partial<Record<BasisKey, number>>>;
 export const DRIVERS: DriverMatrix = (() => {
   const out: DriverMatrix = {} as DriverMatrix;
   for (const row of ALLOCATION_BASIS_ROWS) {
-    const code = row.code as MatrixDeptCode;
+    const code = row.code as InstDeptCode;
     const cell: Partial<Record<BasisKey, number>> = {};
     for (const [k, v] of Object.entries(row.values)) {
       if (v != null) cell[k as BasisKey] = v as number;

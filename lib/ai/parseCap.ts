@@ -1,6 +1,6 @@
 import type {
   AllocationBasis, BasisKey, BasisUnitReceiver, BasisUnitRow, CapPool,
-  DirectAllocationReceiver, DirectAllocationRow, MatrixDeptCode,
+  DirectAllocationReceiver, DirectAllocationRow, InstDeptCode,
 } from "@/lib/types";
 import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
@@ -33,7 +33,7 @@ interface BasisRow {
 interface BasisUnitsReceiverRow {
   dept: string;
   glCode: string;
-  /** Optional MatrixDeptCode classification. Defaults to "OTHER" when
+  /** Optional InstDeptCode classification. Defaults to "OTHER" when
    *  missing or unmappable — glCode is the identity anyway. */
   deptCode?: string;
   units: number;
@@ -209,7 +209,7 @@ export function capBasesToExtractionResult(
       });
       return;
     }
-    const directTo = driverKey === "DIRECT" ? normMatrixDept(row.directTo) ?? undefined : undefined;
+    const directTo = driverKey === "DIRECT" ? normInstDept(row.directTo) ?? undefined : undefined;
 
     const entity: AllocationBasis = {
       id: `bas-ai-${Date.now()}-${i}`,
@@ -525,23 +525,23 @@ function inferBasisKey(row: BasisRow): BasisKey | null {
   return null;
 }
 
-function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
+function normInstDept(v: string | undefined): InstDeptCode | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
-  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
+  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as InstDeptCode) : null;
 }
 
 /** Coerce a receiver row's deptCode. Receivers may legitimately point at a
- *  fund/program with no MatrixDeptCode (CIP funds, grant funds, "All Other"),
+ *  fund/program with no InstDeptCode (CIP funds, grant funds, "All Other"),
  *  which the SYSTEM prompt encodes as the literal "OTHER" — so unlike
- *  normMatrixDept this returns "OTHER" instead of null in that case.
+ *  normInstDept this returns "OTHER" instead of null in that case.
  *  Returns null only when the value is missing entirely; the caller can
  *  then fall back to "OTHER" since glCode is the identity anyway. */
-function normReceiverDeptCode(v: string | undefined): MatrixDeptCode | "OTHER" | null {
+function normReceiverDeptCode(v: string | undefined): InstDeptCode | "OTHER" | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   if (s === "OTHER") return "OTHER";
-  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as MatrixDeptCode) : "OTHER";
+  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as InstDeptCode) : "OTHER";
 }
 
 /** Resolve a free-text basis name to a catalog entry. */

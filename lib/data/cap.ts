@@ -1,5 +1,5 @@
 import type {
-  BasisUnitRow, CapPool, DirectAllocationRow, MatrixDeptCode,
+  BasisUnitRow, CapPool, DirectAllocationRow, InstDeptCode,
 } from "../types";
 import { ALLOCATION_BASIS_ROWS, type AllocationBasisKey } from "./allocationBases";
 import { SEED_ALLOCATION_BASES } from "./allocationBasesCatalog";
@@ -74,7 +74,7 @@ export const CAP_CENTER_GLCODES: Record<string, string> = {
  *  live in the General Fund operating range (3xxx), numbered in step-
  *  down-receiving order. Not exported — once the seed runs, the engine
  *  reads glCode off the persisted receivers, never this map. */
-const SEED_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
+const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
   // Indirect — mirror CAP_CENTER_GLCODES
   BLDG_USE: "011-1800",
   EQUIP:    "011-1900",
@@ -113,7 +113,7 @@ export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
     const receivers = ALLOCATION_BASIS_ROWS.flatMap((row) => {
       const v = row.values[driverKey];
       if (v == null || v <= 0) return [];
-      const code = row.code as MatrixDeptCode;
+      const code = row.code as InstDeptCode;
       const glCode = SEED_DEPT_GLCODES[code];
       if (!glCode) return [];
       return [{ glCode, dept: row.name, deptCode: code, units: v }];

@@ -104,7 +104,7 @@ Extract the catalog of named denominators (drivers) the document defines.
   * "DIRECT"   — a one-to-one direct assignment (the pool routes entirely to one department, bypassing the step-down)
   * "OTHER"    — the basis does not match any key above. Use ONLY as a last resort (see routing rule below).
 - driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund" is "EXPEND"; "Budgeted Expenditures (PW Departments Only)" / "Public Works Operating $" → "EXPEND_PW"; "Budgeted Expenditures (excl. Development)" → "EXPEND_X". Use "OTHER" ONLY when the underlying driver is genuinely outside every named key (e.g. "# of Work Stations", "Council Chamber Breakout") — not merely because the wording is unfamiliar. Whenever driverKey is "OTHER", set confidence to "low" so the basis is surfaced for review. Do NOT invent new key values; "OTHER" is the only permitted overflow.
-- directTo: optional legacy hint when driverKey === "DIRECT" and there is exactly one receiving MatrixDeptCode. DIRECT routing is primarily captured in Section 5 directAllocations, so omit directTo when the receiver is a GL-coded budget unit outside the MatrixDeptCode list or when the pool uses the Section 5 receiver list. Omit when driverKey !== "DIRECT".
+- directTo: optional legacy hint when driverKey === "DIRECT" and there is exactly one receiving InstDeptCode. DIRECT routing is primarily captured in Section 5 directAllocations, so omit directTo when the receiver is a GL-coded budget unit outside the InstDeptCode list or when the pool uses the Section 5 receiver list. Omit when driverKey !== "DIRECT".
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
 - confidence: "high" if name, source, and driverKey are unambiguous from the document; "low" if driverKey is "OTHER" or any field is uncertain.
 
@@ -119,7 +119,7 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - receivers: the full list of budget units the schedule assigns units to. Each receiver is an object:
   * dept: the receiving budget unit name exactly as written.
   * glCode: REQUIRED. The budget unit's account / GL code exactly as printed — e.g. "011-1200", "100-10-100", "BLDG", "EQUIP". This is the receiver's UNIQUE IDENTIFIER and the engine's routing key. Capture verbatim. If the document does not print a code for a row, SKIP that row entirely — receivers without a glCode are not extractable.
-  * deptCode: optional MatrixDeptCode classification — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" (for funds/programs with no matching code). When unknown, set "OTHER" — glCode is the identity, deptCode is just classification metadata.
+  * deptCode: optional InstDeptCode classification — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" (for funds/programs with no matching code). When unknown, set "OTHER" — glCode is the identity, deptCode is just classification metadata.
   * units: REQUIRED. The raw allocation-factor units (FTE count, sq ft, etc.). Plain number, no units suffix. Receivers with zero or missing units should be omitted.
   * confidence: "high" if dept, glCode, and units are unambiguous; "low" otherwise.
 - Do NOT include "percent" or "amount" in basis-unit receivers — the engine derives those at run time from units / Σ units across the schedule.
@@ -160,7 +160,7 @@ Extract one entry per pool whose basis's driverKey is "DIRECT". DIRECT pools rou
 - receivers: explicit list of receiving budget units. Each receiver:
   * dept: the receiving budget unit name as written.
   * glCode: REQUIRED. The receiver's account / GL code. Routing identity for the engine.
-  * deptCode: optional MatrixDeptCode or "OTHER" (defaults to "OTHER" when unknown).
+  * deptCode: optional InstDeptCode or "OTHER" (defaults to "OTHER" when unknown).
   * percent: receiver's explicit share of the pool, 0–100 plain number. Receivers in one direct allocation should sum to ~100.
   * confidence: "high" if dept, glCode, and percent are unambiguous; "low" otherwise.
 - Skip pools that are not DIRECT — those route through Section 3 (basisUnits) instead.

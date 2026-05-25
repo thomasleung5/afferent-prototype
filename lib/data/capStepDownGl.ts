@@ -27,7 +27,7 @@
 
 import type {
   AllocationBasis, BasisKey, BasisUnitRow, CapPool, DeptCode,
-  DirectAllocationRow, MatrixDeptCode,
+  DirectAllocationRow, InstDeptCode,
 } from "../types";
 import {
   basisForPool, DRIVERS,
@@ -70,8 +70,8 @@ export interface GlNode {
    *  FBHR roll-up (sum direct totals by feeDept). Never used for routing
    *  decisions inside the engine. */
   feeDept?: DeptCode;
-  /** Underlying MatrixDeptCode classification — display/debug only. */
-  classification?: MatrixDeptCode | "OTHER";
+  /** Underlying InstDeptCode classification — display/debug only. */
+  classification?: InstDeptCode | "OTHER";
 }
 
 export type GlDriverMatrix = Record<NodeKey, Partial<Record<BasisKey, number>>>;

@@ -17,12 +17,12 @@
  * derives from this list, so nothing else needs updating.
  */
 
-import type { DeptCode, MatrixDeptCode } from "../types";
+import type { DeptCode, InstDeptCode } from "../types";
 
-/** Alias of MatrixDeptCode under a name that better reflects what the type
- *  actually represents (the institutional dept registry, not a matrix). The
- *  rename to InstDeptCode across call sites is a later, isolated PR. */
-export type InstDeptCode = MatrixDeptCode;
+// Re-export so consumers can grab the type from the institutional-depts
+// module alongside the catalog and projections. Canonical declaration
+// lives in ../types alongside DeptCode + BasisKey.
+export type { InstDeptCode };
 
 export type IndirectDeptCode =
   | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"

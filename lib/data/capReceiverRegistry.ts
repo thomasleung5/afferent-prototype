@@ -19,7 +19,7 @@
  */
 
 import type {
-  BasisUnitRow, DirectAllocationRow, MatrixDeptCode,
+  BasisUnitRow, DirectAllocationRow, InstDeptCode,
 } from "@/lib/types";
 import type { BasisKey, AllocationBasis } from "@/lib/types";
 import { INDIRECT_DEPT_CODES } from "./institutionalDepts";
@@ -45,8 +45,8 @@ export interface ReceiverEntry {
   glCode: string;
   /** Display name from the source document (first-seen). */
   dept: string;
-  /** Classification (MatrixDeptCode | "OTHER") — for grouping/filtering. */
-  deptCode: MatrixDeptCode | "OTHER";
+  /** Classification (InstDeptCode | "OTHER") — for grouping/filtering. */
+  deptCode: InstDeptCode | "OTHER";
   /** Per-basis aggregated unit counts. One BasisUnitRow per basis means
    *  this is just a copy of the per-receiver unit row, keyed by basis. */
   values: Partial<Record<BasisKey, number>>;
@@ -71,7 +71,7 @@ export function buildReceiverRegistry(
   const basisById = new Map(bases.map((b) => [b.id, b]));
 
   const upsert = (
-    glCode: string, dept: string, deptCode: MatrixDeptCode | "OTHER",
+    glCode: string, dept: string, deptCode: InstDeptCode | "OTHER",
   ): ReceiverEntry => {
     const key = receiverKey("receiver", glCode, ctx);
     let entry = byKey.get(key);
@@ -123,6 +123,6 @@ export function buildReceiverRegistry(
 /** True for the indirect-class deptCodes; used only for ordering, not
  *  identity. Reads the registry via INDIRECT_DEPT_CODES so the indirect set
  *  has exactly one source of truth (institutionalDepts.ts). */
-function isIndirectCode(c: MatrixDeptCode | "OTHER"): boolean {
+function isIndirectCode(c: InstDeptCode | "OTHER"): boolean {
   return c !== "OTHER" && INDIRECT_DEPT_CODES.has(c);
 }

@@ -114,13 +114,15 @@ export interface OperatingLine {
 // ---------------------------------------------------------------------------
 // CAP step-down primitives
 //
-// MatrixDeptCode is the full institutional dept list (indirect cost centers
+// InstDeptCode is the full institutional dept list (indirect cost centers
 // + direct fee-eligible depts). BasisKey is the denominator the step-down
 // engine uses to split a pool across receiving depts. Both live here so
 // AllocationBasis can reference them without a circular dep into capStepDown.
+// The institutional dept catalog itself (display names, kind, isFeeDept) is
+// in lib/data/institutionalDepts.ts.
 // ---------------------------------------------------------------------------
 
-export type MatrixDeptCode =
+export type InstDeptCode =
   // Indirect cost centers
   | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"
   | "ATTY" | "INS" | "CMTE"
@@ -142,7 +144,7 @@ export type BasisKey =
 export interface BasisUnitReceiver {
   glCode: string;
   dept: string;
-  deptCode: MatrixDeptCode | "OTHER";
+  deptCode: InstDeptCode | "OTHER";
   units: number;
 }
 
@@ -168,7 +170,7 @@ export interface BasisUnitRow {
 export interface DirectAllocationReceiver {
   glCode: string;
   dept: string;
-  deptCode: MatrixDeptCode | "OTHER";
+  deptCode: InstDeptCode | "OTHER";
   /** Receiver's share of the pool, 0–100. Sum across receivers in one
    *  DIRECT row should equal 100. */
   percent: number;
@@ -247,7 +249,7 @@ export interface AllocationBasis {
   /** Only meaningful when driverKey === "DIRECT": the single dept that
    *  receives the entire pool. (Direct allocations skip the step-down split.)
    *  User-created Direct bases without this field will land in leakage. */
-  directTo?: MatrixDeptCode;
+  directTo?: InstDeptCode;
 }
 
 /** Final CAP allocation, per direct department. */
