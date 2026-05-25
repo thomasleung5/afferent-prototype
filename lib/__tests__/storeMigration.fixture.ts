@@ -116,6 +116,35 @@ import { IMPORTS } from "../data/imports";
   console.log("  ✓ capCenterTotals synthesized from Σ amount per center");
 }
 
+// ── 4b. centerGlCode backfill ─────────────────────────────────────────────
+// Persisted pools missing centerGlCode get it stamped from the
+// (just-backfilled) capCenterGlCodes name map. Pools with an existing
+// value pass through untouched; pools whose center has no glCode mapping
+// keep centerGlCode undefined.
+{
+  const state: Record<string, unknown> = {
+    capCenterGlCodes: {
+      "City Manager": "011-1200",
+      "Finance & Administrative Services": "011-1400",
+    },
+    capPools: [
+      // No glCode field — should be stamped from the map above.
+      { id: "p1", center: "City Manager", amount: 100 },
+      // Existing glCode value — preserved verbatim even if the map disagrees.
+      { id: "p2", center: "City Manager", centerGlCode: "999-9999", amount: 50 },
+      // Center has no entry in capCenterGlCodes — centerGlCode stays undefined.
+      { id: "p3", center: "Manual Center", amount: 80 },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  const pools = state.capPools as { id: string; centerGlCode?: string }[];
+  assert.equal(pools.find((p) => p.id === "p1")!.centerGlCode, "011-1200");
+  assert.equal(pools.find((p) => p.id === "p2")!.centerGlCode, "999-9999");
+  assert.equal(pools.find((p) => p.id === "p3")!.centerGlCode, undefined);
+  console.log("  ✓ centerGlCode backfilled from capCenterGlCodes when missing");
+}
+
 // ── 5. versions backfill (seed when missing) ──────────────────────────────
 {
   const state: Record<string, unknown> = { imports: [] };

@@ -61,6 +61,20 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (state.capCenterGlCodes == null) {
     state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
   }
+  // Backfill centerGlCode on every persisted pool by reading from the
+  // (just-backfilled) capCenterGlCodes name map. Pools whose center has
+  // no imported glCode keep centerGlCode undefined; the engine will
+  // continue to synthesize seed:center:NAME for those once it starts
+  // reading the field (later PR). Only patches pools missing the field —
+  // re-imports + manual edits keep their existing value.
+  if (Array.isArray(state.capPools)) {
+    const glByName = state.capCenterGlCodes;
+    state.capPools = state.capPools.map((p) => {
+      if (p.centerGlCode) return p;
+      const glCode = glByName[p.center];
+      return glCode ? { ...p, centerGlCode: glCode } : p;
+    });
+  }
   if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
   if (!state.activeJurisdictionId) {
     state.activeJurisdictionId = DEFAULT_JURISDICTION_ID;

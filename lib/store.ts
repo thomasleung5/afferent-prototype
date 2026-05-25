@@ -772,7 +772,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           // ── 3. Pools ───────────────────────────────────────────────────
           // Re-resolve basisId against the post-merge basis catalog so pools
           // that referenced a basis imported in the same bundle (or just
-          // matched by name to seed) bind correctly.
+          // matched by name to seed) bind correctly. Also stamp
+          // centerGlCode from the just-updated nextCenterGlCodes map so
+          // the engine can route by glCode without going through the
+          // name-resolver — falls back to undefined when no glCode was
+          // imported for the center (engine still synthesizes
+          // seed:center:NAME for those).
           const fixedPools = poolsIn.map(({ entity, lineage }) => {
             let basisId = entity.basisId;
             // Trust an existing basisId only if it survived the remap or
@@ -785,7 +790,15 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               );
               basisId = match?.id ?? "";
             }
-            return { entity: { ...entity, basisId }, lineage };
+            const centerGlCode = nextCenterGlCodes[entity.center];
+            return {
+              entity: {
+                ...entity,
+                basisId,
+                ...(centerGlCode ? { centerGlCode } : {}),
+              },
+              lineage,
+            };
           });
 
           const poolResult: ExtractionResult<CapPool> = {
