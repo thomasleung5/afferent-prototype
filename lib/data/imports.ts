@@ -64,7 +64,7 @@ export const IMPORTS: BuildImportLog[] = [
     result: {
       domain: "cap",
       fileName: "FY26-27 Cost Allocation Plan.pdf",
-      detected: "NBS CAP study · 14 indirect centers · 22 cost pools",
+      detected: "CAP study · 14 indirect centers · 22 cost pools",
       rows: 14,
       mapped: 12,
       lowConfidence: 2,

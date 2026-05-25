@@ -52,7 +52,7 @@ async function main() {
     jurisdiction: {
       name: "Town of Los Altos Hills",
       fiscal: "FY 2025-26",
-      preparedBy: "Finance Department · NBS Consulting",
+      preparedBy: "Finance Department",
       peers: ["Atherton", "Portola Valley", "Woodside", "Hillsborough", "Monte Sereno"],
     },
   });

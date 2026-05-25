@@ -52,7 +52,7 @@ export const JURISDICTIONS: Jurisdiction[] = [
     defaultFiscalYear: "FY 2025-26",
     departments: ["Planning", "Building", "Engineering"],
     peers: ["Atherton", "Portola Valley", "Woodside", "Hillsborough", "Monte Sereno"],
-    preparedBy: "Finance Department · NBS Consulting",
+    preparedBy: "Finance Department",
     dataAvailable: true,
   },
   {
