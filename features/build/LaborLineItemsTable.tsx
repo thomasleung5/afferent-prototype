@@ -1,5 +1,5 @@
-﻿
 import { useMemo, useState } from "react";
+import { Link } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter,
   type Column, type FilterGroup,
@@ -9,7 +9,6 @@ import {
 } from "@/components/ui";
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-
 import { FEE_DEPTS } from "@/lib/data/departments";
 
 const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
@@ -25,45 +24,46 @@ const CATEGORIES: OpCategory[] = [
   "Other",
 ];
 
-export function OperatingTable() {
-  const { operating, updateOperating, addOperatingLine } = useBuildState();
+/** Labor-classified slice of the master operating dataset. Reads and
+ *  writes the same OperatingLine rows the Operating page edits, filtered
+ *  to costType === "Labor". This is the Direct Labor page's view onto
+ *  the budget-classification table — not a separate dataset. */
+export function LaborLineItemsTable() {
+  const { operating, activeFiscalYear, updateOperating, addOperatingLine } = useBuildState();
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
 
-  // This page is the non-labor view of the budget-classification table.
-  // Labor-classified rows surface on the Direct Labor page's Labor Line
-  // Items section instead, so they're filtered out here to avoid double
-  // display. costType === "Operating" is the default (and what every
-  // pre-PR-A row gets backfilled to via storeMigration).
-  const operatingScope = useMemo(
-    () => operating.filter((r) => r.costType !== "Labor"),
+  // Master labor scope before per-filter narrowing — used for filter
+  // option counts and the metadata banner.
+  const labor = useMemo(
+    () => operating.filter((r) => r.costType === "Labor"),
     [operating],
   );
 
-  const rows: OperatingLine[] = useMemo(() => operatingScope.filter((r) => {
+  const rows: OperatingLine[] = useMemo(() => labor.filter((r) => {
     if (deptFilter !== "ALL" && r.dept !== deptFilter) return false;
     if (categoryFilter !== "ALL" && r.category !== categoryFilter) return false;
     if (includeFilter === "INC" && !r.include) return false;
     if (includeFilter === "EXC" && r.include) return false;
     return true;
-  }), [operatingScope, deptFilter, categoryFilter, includeFilter]);
+  }), [labor, deptFilter, categoryFilter, includeFilter]);
 
-  const deptOptions = deriveDeptFilter(operatingScope, "dept", { "SHARED:CDS": "Shared" });
+  const deptOptions = deriveDeptFilter(labor, "dept", { "SHARED:CDS": "Shared" });
 
   const categoryCounts: Record<string, number> = {};
-  operatingScope.forEach((r) => { categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1; });
+  labor.forEach((r) => { categoryCounts[r.category] = (categoryCounts[r.category] ?? 0) + 1; });
   const categoryOptions = [
-    { value: "ALL", label: "All", count: operatingScope.length },
+    { value: "ALL", label: "All", count: labor.length },
     ...CATEGORIES.filter((c) => categoryCounts[c]).map((c) => ({
       value: c, label: c, count: categoryCounts[c],
     })),
   ];
 
   const includeOptions = [
-    { value: "ALL", label: "All",      count: operatingScope.length },
-    { value: "INC", label: "Included", count: operatingScope.filter((r) => r.include).length },
-    { value: "EXC", label: "Excluded", count: operatingScope.filter((r) => !r.include).length },
+    { value: "ALL", label: "All",      count: labor.length },
+    { value: "INC", label: "Included", count: labor.filter((r) => r.include).length },
+    { value: "EXC", label: "Excluded", count: labor.filter((r) => !r.include).length },
   ];
 
   const filters: FilterGroup[] = [
@@ -72,6 +72,8 @@ export function OperatingTable() {
     { id: "include",  label: "Status",   options: includeOptions,  value: includeFilter,  onChange: setIncludeFilter },
   ];
 
+  // Reuse the Operating column set verbatim — same fonts/spacing/widths
+  // so the two tables read identically when stacked across pages.
   const cols: Column<OperatingLine>[] = [
     {
       key: "code",
@@ -219,15 +221,32 @@ export function OperatingTable() {
 
   return (
     <div>
-      <SectionLabel right={`${operatingScope.length} line${operatingScope.length === 1 ? "" : "s"}`}>
-        Operating cost lines
+      <SectionLabel right={`${labor.length} line${labor.length === 1 ? "" : "s"}`}>
+        Labor Line Items
       </SectionLabel>
+      {/* Compact metadata banner */}
+      <div style={{
+        display: "flex", alignItems: "baseline", justifyContent: "space-between",
+        gap: 12, marginBottom: 10,
+        fontSize: 12, color: "var(--ink-3)",
+      }}>
+        <span>
+          Derived from Operating budget classifications · {labor.length}{" "}
+          labor-classified line{labor.length === 1 ? "" : "s"} · FY {activeFiscalYear}
+        </span>
+        <Link to="/build/operating" style={{
+          fontSize: 12, color: "var(--accent)",
+          textDecoration: "underline", textUnderlineOffset: 3,
+        }}>
+          View in Operating →
+        </Link>
+      </div>
       <DataTable
         cols={cols}
         rows={rows}
         filters={filters}
-        onAdd={() => addOperatingLine("Operating")}
-        addLabel="Add line item"
+        onAdd={() => addOperatingLine("Labor")}
+        addLabel="Add labor line"
         defaultSort={{ key: "amount", dir: "desc" }}
       />
     </div>

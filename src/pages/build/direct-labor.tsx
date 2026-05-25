@@ -3,6 +3,7 @@ import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { LaborSummary } from "@/features/build/LaborSummary";
+import { LaborLineItemsTable } from "@/features/build/LaborLineItemsTable";
 import { PositionsTable } from "@/features/build/PositionsTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
@@ -73,6 +74,8 @@ export default function DirectLaborPage() {
       />
 
       <LaborSummary/>
+
+      <LaborLineItemsTable/>
 
       <PositionsTable/>
 

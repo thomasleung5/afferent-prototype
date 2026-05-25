@@ -182,7 +182,10 @@ interface BuildActions {
   removePolicyException: (id: string) => void;
   addService: () => void;
   addPosition: () => void;
-  addOperatingLine: () => void;
+  /** Append a new operating row. costType defaults to "Operating"; the
+   *  Direct Labor page passes "Labor" so newly-added rows surface in its
+   *  filtered view rather than the Operating page's. */
+  addOperatingLine: (costType?: "Labor" | "Operating") => void;
   /** Add a pool to an existing center. `centerKey` is the center's identity
    *  (glCode or `seed:center:NAME` synth); the new pool inherits the
    *  center's display name + glCode from capCenterSources. */
@@ -440,13 +443,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           ],
         })),
 
-      addOperatingLine: () =>
+      addOperatingLine: (costType = "Operating") =>
         set((s) => ({
           operating: [
             ...s.operating,
             { id: `op-${Date.now()}`, code: "—", dept: "PLAN", category: "Other",
-              costType: "Operating",
-              line: "New line item", amount: 0, source: "manual", include: true },
+              costType,
+              line: costType === "Labor" ? "New labor line" : "New line item",
+              amount: 0, source: "manual", include: true },
           ],
         })),
 
