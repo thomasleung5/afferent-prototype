@@ -199,6 +199,34 @@ function targetFor(
   return t?.target ?? service.target ?? 100;
 }
 
+/** PR-L3 gate: does this fee row participate in recovery aggregates?
+ *
+ *  Returns true only for "flat" or "formula" rowKinds in lifecycle
+ *  status "existing" / "new" / "renamed" / "moved". Returns false for:
+ *    - rowKind "deposit" / "time-and-materials" / "pass-through" /
+ *      "statutory" — `fee × volume` doesn't represent realized
+ *      revenue for these, so summing them into currentRevenue /
+ *      intendedRevenue / recoverableGap produces nonsense.
+ *    - status "deleted" / "not-evaluated" — the row exists in the
+ *      catalog for audit but shouldn't influence forward-looking
+ *      recovery math.
+ *
+ *  Undefined fields default to the legacy semantics ("flat" + "existing")
+ *  so every existing seed row is countable — PR-L3 changes ZERO
+ *  numbers for the current LAH / Maplewood baselines.
+ *
+ *  Non-countable rows still flow through serviceCosts / feeComparisons
+ *  so per-row UI (cost, recommended, uplift) keeps rendering for
+ *  display + audit. Only the policyImpact / buildDeptRollup totals
+ *  filter them out. */
+export function isCountableFee(service: Service): boolean {
+  const kind = service.rowKind ?? "flat";
+  if (kind !== "flat" && kind !== "formula") return false;
+  const status = service.status ?? "existing";
+  if (status === "deleted" || status === "not-evaluated") return false;
+  return true;
+}
+
 export interface FeeComparison extends ServiceCost {
   recoveryPct: number;
   target: number;
@@ -214,6 +242,12 @@ export interface FeeComparison extends ServiceCost {
    *  when current fee exceeds target. Summing this across all rows reconciles
    *  with Recovery Policy's recoverableGap (same underlying math). */
   annualUplift: number;
+  /** PR-L3: derived from isCountableFee(service). When false, this row
+   *  is excluded from policyImpact + buildDeptRollup aggregates. Per-row
+   *  fields above (annualCost, annualRevenue, recommended, annualUplift)
+   *  are still computed so per-row UI keeps working; only aggregates
+   *  filter on this flag. */
+  countable: boolean;
 }
 
 export function feeComparisons(
@@ -236,6 +270,7 @@ export function feeComparisons(
       calculatedRecommendedFee,
       recommended,
       annualUplift: (calculatedRecommendedFee - c.fee) * c.volume,
+      countable: isCountableFee(svc),
     };
   });
 }
@@ -257,8 +292,12 @@ export interface PolicyImpact {
 }
 
 export function policyImpact(comparisons: FeeComparison[]): PolicyImpact {
+  // PR-L3: skip non-countable rows (deposit / T&M / pass-through /
+  // statutory + deleted / not-evaluated). They flow through the
+  // per-row UI but don't pollute the aggregate recovery math.
   let totalCost = 0, intendedRevenue = 0, currentRevenue = 0;
   for (const c of comparisons) {
+    if (!c.countable) continue;
     totalCost += c.annualCost;
     intendedRevenue += c.annualCost * (c.target / 100);
     currentRevenue += c.annualRevenue;
