@@ -19,10 +19,14 @@ export function CapPoolsTable() {
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {centers.map((c) => {
         const pools = capPools.filter((p) => p.centerGlCode === c.key);
+        // The center's identity key IS its imported code (e.g. "011-1200",
+        // "BLDG"); `seed:center:*` synth keys have no published code.
+        const code = c.key.startsWith("seed:center:") ? undefined : c.key;
         return (
           <CenterSection
             key={c.key}
             name={c.name}
+            code={code}
             pools={pools}
             total={c.total}
             bases={allocationBases}
@@ -38,6 +42,7 @@ export function CapPoolsTable() {
 
 interface SectionProps {
   name: string;
+  code?: string;
   pools: CapPool[];
   total: number;
   bases: AllocationBasis[];
@@ -51,7 +56,7 @@ const GRID = "minmax(220px, 1.6fr) 60px 120px minmax(260px, 2fr)";
 // rightmost cell, so we scroll horizontally below this width.
 const GRID_MIN_WIDTH = 705;
 
-function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
+function CenterSection({ name, code, pools, total, bases, onAddPool, onUpdatePool, onCreateBasis }: SectionProps) {
   // Sum of allocation percentages. Should normally equal 100%; drift signals
   // an in-progress edit that needs rebalancing.
   const allocPctSum = pools.reduce((a, p) => a + p.allocationPercent, 0);
@@ -59,6 +64,12 @@ function CenterSection({ name, pools, total, bases, onAddPool, onUpdatePool, onC
   return (
     <div>
       <SectionLabel right={`${pools.length} pool${pools.length === 1 ? "" : "s"}`}>
+        {code && (
+          <span style={{
+            color: "var(--ink-3)", marginRight: 8,
+            letterSpacing: "0.02em", fontWeight: 400, textTransform: "none",
+          }}>{code}</span>
+        )}
         {name}
       </SectionLabel>
       <div style={{
