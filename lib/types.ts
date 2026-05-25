@@ -17,6 +17,18 @@ export type DepartmentMap = Record<DeptCode, Department>;
  *  layer pairs this with an optional `sourceFile` to render a Source pill. */
 export type SourceTag = "seed" | "imported" | "manual";
 
+/** Per-service role allocation entry. `productiveHoursId` is a foreign key
+ *  into the productiveHours slice — the source of truth for the role's
+ *  display title and authoritative dept. Storing the position id instead
+ *  of a freeform role string means role.dept can never drift from the
+ *  roster and cross-dept allocations (a BLDG service drawing on a PLAN
+ *  position) are first-class. `pct` is 0–100; allocations for one service
+ *  should sum to 100 but may temporarily drift during editing. */
+export interface RoleAllocation {
+  productiveHoursId: string;
+  pct: number;
+}
+
 export interface Service {
   id: string;
   name: string;

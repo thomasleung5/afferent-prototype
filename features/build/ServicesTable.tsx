@@ -10,40 +10,67 @@ import {
   DrilldownColumn, DrilldownLabel, DrilldownShell,
   SectionLabel, SourcePill,
 } from "@/components/ui";
-import type { DeptCode, Service } from "@/lib/types";
+import type { DeptCode, ProductiveHoursRow, RoleAllocation, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
+import { effectiveRoleAllocations } from "@/lib/capacity";
 
 import { FEE_DEPTS } from "@/lib/data/departments";
 
 const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
 
-const ROLE_MIX_BY_DEPT: Record<DeptCode, { role: string; pct: number }[]> = {
-  PLAN:  [{ role: "Planner II",        pct: 70 }, { role: "Senior Planner",       pct: 30 }],
-  BLDG:  [{ role: "Plans Examiner",    pct: 60 }, { role: "Permit Technician",    pct: 40 }],
-  ENG:   [{ role: "Civil Engineer II", pct: 65 }, { role: "Engineering Technician", pct: 35 }],
-  PARKS: [{ role: "Recreation Coordinator", pct: 70 }, { role: "Recreation Supervisor", pct: 30 }],
-  PD:    [{ role: "Records Specialist", pct: 60 }, { role: "Police Officer",          pct: 40 }],
-  FIRE:  [{ role: "Fire Inspector",     pct: 70 }, { role: "Fire Marshal",            pct: 30 }],
-};
-
 interface Row extends Service {
   flag?: boolean;
 }
 
-type RoleMix = { role: string; pct: number }[];
-
 export function ServicesTable() {
-  const { services, updateService, addService } = useBuildState();
+  const {
+    services, productiveHours, serviceRoleAllocations,
+    updateService, addService, setServiceRoleAllocations,
+  } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
   const [openId, setOpenId] = useState<string | undefined>();
-  const [mixById, setMixById] = useState<Record<string, RoleMix>>({});
 
-  const getMix = (r: Row): RoleMix => mixById[r.id] ?? ROLE_MIX_BY_DEPT[r.dept];
-  const setPct = (r: Row, role: string, pct: number) => {
-    const next = getMix(r).map((m) => m.role === role ? { ...m, pct } : m);
-    setMixById({ ...mixById, [r.id]: next });
+  // Resolved allocations per service — override when set, else FTE-weighted
+  // default from same-dept positions. Editors below commit changes by
+  // writing the full allocation array back through setServiceRoleAllocations.
+  const getMix = (r: Row): RoleAllocation[] =>
+    effectiveRoleAllocations(r, productiveHours, serviceRoleAllocations);
+  const commitMix = (serviceId: string, next: RoleAllocation[]) =>
+    setServiceRoleAllocations(serviceId, next);
+  const setPct = (r: Row, productiveHoursId: string, pct: number) => {
+    const next = getMix(r).map((m) =>
+      m.productiveHoursId === productiveHoursId ? { ...m, pct } : m,
+    );
+    commitMix(r.id, next);
   };
+  const setRole = (r: Row, idx: number, productiveHoursId: string) => {
+    const next = getMix(r).map((m, i) =>
+      i === idx ? { ...m, productiveHoursId } : m,
+    );
+    commitMix(r.id, next);
+  };
+  const removeRole = (r: Row, idx: number) => {
+    commitMix(r.id, getMix(r).filter((_, i) => i !== idx));
+  };
+  const addRole = (r: Row) => {
+    const existing = new Set(getMix(r).map((m) => m.productiveHoursId));
+    const candidate = productiveHours.find(
+      (p) => p.dept === r.dept && !existing.has(p.id),
+    ) ?? productiveHours.find((p) => !existing.has(p.id));
+    if (!candidate) return;
+    commitMix(r.id, [...getMix(r), { productiveHoursId: candidate.id, pct: 0 }]);
+  };
+
+  // Position picker options — all productiveHours rows, ordered by dept
+  // (service's own dept first) then by title. Cross-dept allocations are
+  // possible since role.dept is what the capacity model rolls up.
+  const positionOptions = useMemo(() => buildPositionOptions(productiveHours), [productiveHours]);
+  const positionById = useMemo(() => {
+    const m = new Map<string, ProductiveHoursRow>();
+    for (const p of productiveHours) m.set(p.id, p);
+    return m;
+  }, [productiveHours]);
 
   const allRows: Row[] = useMemo(() => services.map((s) => ({
     ...s,
@@ -145,13 +172,13 @@ export function ServicesTable() {
     },
     {
       key: "mix",
-      label: "Role mix",
-      width: "120px",
+      label: "Role allocation",
+      width: "170px",
       align: "right",
       sortable: true,
       sortKey: (r) => getMix(r).length,
       render: (r) => (
-        <span className="num" style={{ color: "var(--ink-2)" }}>
+        <span style={{ color: "var(--ink-2)" }}>
           {getMix(r).length} roles
         </span>
       ),
@@ -186,45 +213,77 @@ export function ServicesTable() {
         renderDrilldown={(r) => {
           const mix = getMix(r);
           const totalPct = mix.reduce((a, m) => a + m.pct, 0);
+          const COLS = "minmax(220px, 1.5fr) 70px 80px 80px 28px";
           return (
             <DrilldownShell>
-              <DrilldownColumn marker="①" title="Role mix">
+              <DrilldownColumn marker="①" title="Role allocation">
                 <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                    display: "grid", gridTemplateColumns: COLS, gap: 12,
                     padding: "8px 12px",
                     background: "var(--paper-2)",
                     borderBottom: "1px solid var(--rule)",
                   }}>
                     <DrilldownLabel>Role</DrilldownLabel>
+                    <DrilldownLabel align="right">Dept</DrilldownLabel>
                     <DrilldownLabel align="right">%</DrilldownLabel>
                     <DrilldownLabel align="right">Hours</DrilldownLabel>
+                    <span/>
                   </div>
-                  {mix.map((m, i) => (
-                    <div key={m.role} style={{
-                      display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
-                      padding: "7px 12px",
-                      borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
-                      fontSize: 12, alignItems: "baseline",
-                    }}>
-                      <span style={{ color: "var(--ink-2)" }}>{m.role}</span>
-                      <span style={{ textAlign: "right" }}>
-                        <CellInput
-                          type="number"
-                          value={m.pct}
-                          onChange={(v) => setPct(r, m.role, Number(v) || 0)}
-                          step={5} min={0} max={100}
-                          align="right" suffix="%"
-                          fontSize={12}
-                        />
-                      </span>
-                      <span className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
-                        {((r.hours * m.pct) / 100).toFixed(1)} h
-                      </span>
-                    </div>
-                  ))}
+                  {mix.map((m, i) => {
+                    const pos = positionById.get(m.productiveHoursId);
+                    const roleDept = pos?.dept ?? r.dept;
+                    const crossDept = pos != null && pos.dept !== r.dept;
+                    return (
+                      <div key={`${m.productiveHoursId}-${i}`} style={{
+                        display: "grid", gridTemplateColumns: COLS, gap: 12,
+                        padding: "7px 12px",
+                        borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
+                        fontSize: 12, alignItems: "baseline",
+                      }}>
+                        <span style={{ color: "var(--ink-2)" }}>
+                          <CellSelect
+                            value={m.productiveHoursId}
+                            options={positionOptions}
+                            onChange={(v) => setRole(r, i, v)}
+                          />
+                        </span>
+                        <span
+                          className="mono"
+                          title={crossDept ? `Cross-dept allocation (service belongs to ${r.dept})` : undefined}
+                          style={{
+                            textAlign: "right",
+                            color: crossDept ? "var(--warn)" : "var(--ink-3)",
+                            fontSize: "var(--t-l9)", letterSpacing: "0.04em",
+                          }}
+                        >{roleDept}</span>
+                        <span style={{ textAlign: "right" }}>
+                          <CellInput
+                            type="number"
+                            value={m.pct}
+                            onChange={(v) => setPct(r, m.productiveHoursId, Number(v) || 0)}
+                            step={5} min={0} max={100}
+                            align="right" suffix="%"
+                            fontSize={12}
+                          />
+                        </span>
+                        <span className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
+                          {((r.hours * m.pct) / 100).toFixed(1)} h
+                        </span>
+                        <button
+                          onClick={(e) => { e.stopPropagation(); removeRole(r, i); }}
+                          title="Remove role"
+                          style={{
+                            color: "var(--ink-4)", fontSize: 14,
+                            lineHeight: 1, padding: "0 4px",
+                            background: "transparent", border: 0, cursor: "pointer",
+                          }}
+                        >×</button>
+                      </div>
+                    );
+                  })}
                   <div style={{
-                    display: "grid", gridTemplateColumns: "1fr 80px 80px", gap: 12,
+                    display: "grid", gridTemplateColumns: COLS, gap: 12,
                     padding: "8px 12px",
                     background: "var(--paper-2)",
                     borderTop: "1px solid var(--rule-strong)",
@@ -235,11 +294,25 @@ export function ServicesTable() {
                       fontSize: "var(--t-l9)", letterSpacing: "0.06em",
                       color: "var(--ink-3)", textTransform: "uppercase",
                     }}>Total</span>
+                    <span/>
                     <span className="num" style={{
                       textAlign: "right",
                       color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
                     }}>{totalPct}%</span>
                     <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
+                    <span/>
+                  </div>
+                  <div style={{
+                    padding: "8px 12px", borderTop: "1px solid var(--rule)",
+                  }}>
+                    <button
+                      onClick={(e) => { e.stopPropagation(); addRole(r); }}
+                      style={{
+                        fontSize: 12, color: "var(--accent)",
+                        background: "transparent", border: 0, cursor: "pointer",
+                        padding: 0,
+                      }}
+                    >+ Add role</button>
                   </div>
                 </div>
               </DrilldownColumn>
@@ -249,4 +322,24 @@ export function ServicesTable() {
       />
     </div>
   );
+}
+
+/** Build the position picker options from the full productiveHours roster.
+ *  Sort by dept (FEE_DEPTS order) then by title for stable listings; the
+ *  display label includes the dept code so cross-dept picks are visible
+ *  before the role's Dept column refreshes. */
+function buildPositionOptions(
+  rows: ProductiveHoursRow[],
+): { value: string; label: string }[] {
+  const deptOrder = new Map<DeptCode, number>(
+    FEE_DEPTS.map((d, i) => [d, i]),
+  );
+  return [...rows]
+    .sort((a, b) => {
+      const da = deptOrder.get(a.dept) ?? 99;
+      const db = deptOrder.get(b.dept) ?? 99;
+      if (da !== db) return da - db;
+      return a.title.localeCompare(b.title);
+    })
+    .map((p) => ({ value: p.id, label: `${p.title} (${p.dept})` }));
 }

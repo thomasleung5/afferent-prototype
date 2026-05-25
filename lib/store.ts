@@ -17,7 +17,7 @@ import { IMPORTS } from "@/lib/data/imports";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
   DirectAllocationRow, OperatingLine, PolicyException, PolicyTarget,
-  Position, ProductiveHoursRow, Service, SourceTag, VolumeRow,
+  Position, ProductiveHoursRow, RoleAllocation, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -84,6 +84,14 @@ export interface BuildSnapshot {
   directBills: Record<string, Record<string, number>>;
   volume: VolumeRow[];
   services: Service[];
+  /** Per-service role allocation overrides, keyed by service.id. Each entry
+   *  is the full allocation array (productiveHours position id + pct).
+   *  Sparse — services NOT in this map use `defaultRoleAllocationsForService`
+   *  at read time, derived from same-dept productiveHours rows. The override
+   *  pattern keeps the persisted slice minimal (only edited allocations get
+   *  stored) and lets the default re-derive automatically when the position
+   *  roster changes. */
+  serviceRoleAllocations: Record<string, RoleAllocation[]>;
   policyTargets: PolicyTarget[];
   policyExceptions: PolicyException[];
   lineage: Record<string, SourceLineage>;
@@ -152,6 +160,8 @@ export interface BuildState {
   directBills: Record<string, Record<string, number>>;
   volume: VolumeRow[];
   services: Service[];
+  /** See BuildSnapshot.serviceRoleAllocations. */
+  serviceRoleAllocations: Record<string, RoleAllocation[]>;
   policyTargets: PolicyTarget[];
   policyExceptions: PolicyException[];
   lineage: Record<string, SourceLineage>;
@@ -189,6 +199,10 @@ interface BuildActions {
   addPolicyException: () => void;
   removePolicyException: (id: string) => void;
   addService: () => void;
+  /** Replace the full role-allocation array for one service. Pass an empty
+   *  array (or undefined-equivalent) to clear the override and revert to
+   *  the default-derived allocation at read time. */
+  setServiceRoleAllocations: (serviceId: string, allocations: RoleAllocation[]) => void;
   /** Append a new operating row. costType defaults to "Operating"; the
    *  Direct Labor page passes "Labor" so newly-added rows surface in its
    *  filtered view rather than the Operating page's. */
@@ -507,6 +521,10 @@ const initialState = (): BuildState => {
     directBills: {},
     volume: VOLUME.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
+    // Sparse by design — populated lazily via setServiceRoleAllocations
+    // when the user edits a service's mix. Reads fall back to
+    // defaultRoleAllocationsForService when a service has no entry here.
+    serviceRoleAllocations: {},
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
     policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
     lineage: {},
@@ -647,6 +665,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               source: "manual" },
           ],
         })),
+
+      setServiceRoleAllocations: (serviceId, allocations) =>
+        set((s) => {
+          const next = { ...s.serviceRoleAllocations };
+          if (allocations.length === 0) delete next[serviceId];
+          else next[serviceId] = allocations;
+          return { serviceRoleAllocations: next };
+        }),
 
 
       addOperatingLine: (costType = "Operating") =>
@@ -1271,6 +1297,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           directBills: {},
           volume: [],
           services: [],
+          serviceRoleAllocations: {},
           policyTargets: [],
           policyExceptions: [],
           lineage: {},

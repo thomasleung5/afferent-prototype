@@ -40,6 +40,8 @@ import { IMPORTS } from "../data/imports";
   assert.equal(state.activeJurisdictionId, DEFAULT_JURISDICTION_ID);
   assert.ok(typeof state.activeFiscalYear === "string" && (state.activeFiscalYear as string).length > 0);
   assert.deepEqual(state.capCenterDisallowed, {});
+  assert.deepEqual(state.serviceRoleAllocations, {},
+    "PR-K1: serviceRoleAllocations backfills to empty override map");
   assert.ok(Array.isArray(state.imports));
   assert.equal((state.imports as unknown[]).length, IMPORTS.length);
   assert.ok(Array.isArray(state.allocationBases));
