@@ -369,6 +369,10 @@ export function capPoolsToExtractionResult(
     const entity: CapPool = {
       id: `cap-ai-${Date.now()}-${i}`,
       center,
+      // centerGlCode is resolved during mergeCapBundle from the bundle's
+      // own centers section (preferred) or from existing state. Placeholder
+      // here so the entity type-checks; never reaches the engine.
+      centerGlCode: "",
       pool,
       allocationPercent: Math.max(0, Math.min(100, allocationPercent)),
       amount,

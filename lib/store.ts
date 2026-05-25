@@ -5,8 +5,8 @@ import { useShallow } from "zustand/react/shallow";
 import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
 import {
-  CAP_BASIS_UNITS, CAP_CENTER_GLCODES, CAP_CENTER_TOTALS, CAP_DIRECT_ALLOCATIONS,
-  CAP_POOLS,
+  CAP_BASIS_UNITS, CAP_CENTER_GLCODES, CAP_CENTER_SOURCES_SEED,
+  CAP_CENTER_TOTALS, CAP_DIRECT_ALLOCATIONS, CAP_POOLS,
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { FEE_DEPTS } from "@/lib/data/departments";
@@ -60,10 +60,17 @@ export interface BuildSnapshot {
   positions: Position[];
   operating: OperatingLine[];
   capPools: CapPool[];
+  /** Center totals, keyed by center identity (glCode for imported
+   *  centers, `seed:center:NAME` synth for manually-added centers). */
   capCenterTotals: Record<string, number>;
   capCenterDisallowed: Record<string, number>;
+  /** Legacy name → glCode map kept on state for one more PR. Nothing
+   *  reads it after PR-11; PR-12 deletes the field. */
   capCenterGlCodes: Record<string, string>;
-  capCenterSources: Record<string, { source: SourceTag; sourceFile?: string }>;
+  /** Center metadata keyed by center identity. `name` is the display
+   *  text, mutated by renameCapCenter (no longer requires walking every
+   *  map since the key is now stable). */
+  capCenterSources: Record<string, { name: string; source: SourceTag; sourceFile?: string }>;
   studyContext: StudyContext;
   allocationBases: AllocationBasis[];
   capBasisUnits: BasisUnitRow[];
@@ -105,22 +112,24 @@ export interface BuildState {
   operating: OperatingLine[];
   capPools: CapPool[];
   /** Source-department cost per cost center — the 100% reference for each
-   *  pool's allocationPercent. Editing a center total rescales all member
-   *  pool amounts proportionally. */
+   *  pool's allocationPercent. Keyed by center identity (glCode or
+   *  `seed:center:NAME` synth). Editing a center total rescales all
+   *  member pool amounts proportionally. */
   capCenterTotals: Record<string, number>;
-  /** Center name → disallowed expenses (capital outlay, one-time spend,
+  /** Center key → disallowed expenses (capital outlay, one-time spend,
    *  pass-through, grant-funded non-fee items, etc.) excluded before
    *  allocation. Net Allocable = Total − Disallowed; the engine reads
    *  pool.amount (derived from net), so all downstream math reflects this
    *  reduction automatically. Default 0 per center; preserved separately
    *  from capCenterTotals so the gross/net trail is auditable. */
   capCenterDisallowed: Record<string, number>;
-  /** Center name → glCode (from imported CenterRow.glCode). Drives the
-   *  glCode-first center routing in computeStepDown's center resolver. */
+  /** Legacy name → glCode map. Kept on state for one more PR so PR-12
+   *  can clean up call sites; nothing reads this after PR-11. */
   capCenterGlCodes: Record<string, string>;
-  /** Center name → provenance (parallel map to capCenterTotals; kept
-   *  separate so we don't restructure capCenterTotals into an object map). */
-  capCenterSources: Record<string, { source: SourceTag; sourceFile?: string }>;
+  /** Center key → metadata: display name + provenance. `name` is the
+   *  human-readable label (mutated by renameCapCenter); identity is
+   *  stable since the key doesn't change on rename. */
+  capCenterSources: Record<string, { name: string; source: SourceTag; sourceFile?: string }>;
   /** Scoping prefix on every receiver / center identity key. Populated by
    *  mergeCapBundle from the imported file name; sentinel default when no
    *  CAP has been imported. */
@@ -180,10 +189,16 @@ interface BuildActions {
   addService: () => void;
   addPosition: () => void;
   addOperatingLine: () => void;
-  addCapPool: (center: string) => void;
+  /** Add a pool to an existing center. `centerKey` is the center's identity
+   *  (glCode or `seed:center:NAME` synth); the new pool inherits the
+   *  center's display name + glCode from capCenterSources. */
+  addCapPool: (centerKey: string) => void;
   addCapCenter: () => void;
   updateCapPool: (id: string, patch: Partial<CapPool>) => void;
-  renameCapCenter: (oldName: string, newName: string) => void;
+  /** Rename a center — mutates only the display name in capCenterSources
+   *  and every pool's denormalized `center` text. The center's identity
+   *  key stays stable, so totals/disallowed/order need no rekeying. */
+  renameCapCenter: (centerKey: string, newName: string) => void;
   /** Set the direct-bill carve-out for one (pool, receiver) cell. amount
    *  is clamped to ≥ 0; the caller is responsible for the upper bound
    *  (Gross) since only the UI knows it. Passing 0 (or NaN) clears the
@@ -191,10 +206,10 @@ interface BuildActions {
   setDirectBill: (poolId: string, nodeKey: string, amount: number) => void;
   /** Set a cost center's source-department total cost. Rescales every pool
    *  in that center: pool.amount = totalCost × pool.allocationPercent / 100. */
-  updateCenterTotal: (centerName: string, totalCost: number) => void;
+  updateCenterTotal: (centerKey: string, totalCost: number) => void;
   /** Set a cost center's disallowed expenses. Clamped to [0, Total]; rescales
    *  all pools in the center by net = Total − Disallowed. */
-  updateCenterDisallowed: (centerName: string, disallowed: number) => void;
+  updateCenterDisallowed: (centerKey: string, disallowed: number) => void;
   /** Append a user-defined allocation basis to the catalog. Returns the new id. */
   addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
@@ -250,12 +265,28 @@ interface BuildActions {
 const emptyPending: Record<Domain, UnmappedRow[]> = {
   positions: [], operating: [], services: [], fees: [], volume: [], cap: [],
 };
+/** Default step-down order — a list of center identity keys (glCodes
+ *  or `seed:center:NAME` synth) sorted by total $ descending, then by
+ *  key ascending for determinism. The display name is resolved at the
+ *  use site via capCenterSources[key].name. */
 export function defaultCenterOrder(pools: CapPool[]): string[] {
   const totals = new Map<string, number>();
-  for (const p of pools) totals.set(p.center, (totals.get(p.center) ?? 0) + p.amount);
+  for (const p of pools) {
+    const key = p.centerGlCode;
+    if (!key) continue;
+    totals.set(key, (totals.get(key) ?? 0) + p.amount);
+  }
   return [...totals.entries()]
     .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
-    .map(([name]) => name);
+    .map(([key]) => key);
+}
+
+/** Stable synth identity key for a center with no imported glCode.
+ *  Engine treats `seed:center:*` keys as nodes just like real glCodes.
+ *  Exported so storeMigration + addCapCenter can share one canonical
+ *  format. */
+export function synthCenterKey(name: string): string {
+  return `seed:center:${name}`;
 }
 
 const initialState = (): BuildState => {
@@ -268,7 +299,9 @@ const initialState = (): BuildState => {
     capCenterDisallowed: {},
     capCenterGlCodes: { ...CAP_CENTER_GLCODES },
     capCenterSources: Object.fromEntries(
-      Object.keys(CAP_CENTER_TOTALS).map((name) => [name, { source: "seed" as SourceTag }]),
+      Object.entries(CAP_CENTER_SOURCES_SEED).map(([key, meta]) => [
+        key, { name: meta.name, source: "seed" as SourceTag },
+      ]),
     ),
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
@@ -416,35 +449,39 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           ],
         })),
 
-      addCapPool: (center) =>
-        set((s) => ({
-          capPools: [
-            ...s.capPools,
-            { id: `cap-${Date.now()}`, center, pool: "New pool",
-              allocationPercent: 0, amount: 0,
-              basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
-          ],
-        })),
+      addCapPool: (centerKey) =>
+        set((s) => {
+          const meta = s.capCenterSources[centerKey];
+          const centerName = meta?.name ?? centerKey;
+          return {
+            capPools: [
+              ...s.capPools,
+              { id: `cap-${Date.now()}`, center: centerName, centerGlCode: centerKey,
+                pool: "New pool",
+                allocationPercent: 0, amount: 0,
+                basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
+            ],
+          };
+        }),
 
       addCapCenter: () =>
         set((s) => {
           const name = "New Cost Center";
+          // Synth a stable identity key for a manually-added center.
+          // Date-suffixed so repeated "Add" clicks produce distinct
+          // centers instead of collapsing onto the first one.
+          const key = `seed:center:new-${Date.now()}`;
           return {
             capPools: [
               ...s.capPools,
-              { id: `cap-${Date.now()}`, center: name, pool: "New pool",
+              { id: `cap-${Date.now()}`, center: name, centerGlCode: key,
+                pool: "New pool",
                 allocationPercent: 100, amount: 0,
                 basisId: "", basis: "", receiving: "All depts", recoverability: "TBD", review: "Review" },
             ],
-            capCenterTotals: name in s.capCenterTotals
-              ? s.capCenterTotals
-              : { ...s.capCenterTotals, [name]: 0 },
-            capCenterSources: name in s.capCenterSources
-              ? s.capCenterSources
-              : { ...s.capCenterSources, [name]: { source: "manual" } },
-            capCenterOrder: s.capCenterOrder.includes(name)
-              ? s.capCenterOrder
-              : [...s.capCenterOrder, name],
+            capCenterTotals: { ...s.capCenterTotals, [key]: 0 },
+            capCenterSources: { ...s.capCenterSources, [key]: { name, source: "manual" } },
+            capCenterOrder: [...s.capCenterOrder, key],
           };
         }),
 
@@ -457,8 +494,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set((s) => {
           const target = s.capPools.find((p) => p.id === id);
           if (!target) return s;
-          const centerTotal = s.capCenterTotals[target.center] ?? 0;
-          const centerDisallowed = s.capCenterDisallowed[target.center] ?? 0;
+          const targetKey = target.centerGlCode;
+          const centerTotal = s.capCenterTotals[targetKey] ?? 0;
+          const centerDisallowed = s.capCenterDisallowed[targetKey] ?? 0;
           const centerNet = Math.max(0, centerTotal - centerDisallowed);
 
           let nextPools = s.capPools.map((p) => {
@@ -481,13 +519,13 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             // center's NET, then back-fill Total Expenses = Net + Disallowed
             // so the gross figure stays consistent.
             const derivedNet = nextPools
-              .filter((p) => p.center === target.center)
+              .filter((p) => p.centerGlCode === targetKey)
               .reduce((a, p) => a + p.amount, 0);
             if (derivedNet > 0) {
               const newTotal = derivedNet + centerDisallowed;
-              nextTotals = { ...s.capCenterTotals, [target.center]: newTotal };
+              nextTotals = { ...s.capCenterTotals, [targetKey]: newTotal };
               nextPools = nextPools.map((p) =>
-                p.center === target.center
+                p.centerGlCode === targetKey
                   ? { ...p, allocationPercent: (p.amount / derivedNet) * 100 }
                   : p,
               );
@@ -497,38 +535,30 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return { capPools: nextPools, capCenterTotals: nextTotals };
         }),
 
-      renameCapCenter: (oldName, newName) =>
+      renameCapCenter: (centerKey, newName) =>
         set((s) => {
-          if (oldName === newName) return s;
-          const nextTotals = { ...s.capCenterTotals };
-          if (oldName in nextTotals) {
-            nextTotals[newName] = nextTotals[oldName];
-            delete nextTotals[oldName];
-          }
-          const nextDisallowed = { ...s.capCenterDisallowed };
-          if (oldName in nextDisallowed) {
-            nextDisallowed[newName] = nextDisallowed[oldName];
-            delete nextDisallowed[oldName];
-          }
+          const meta = s.capCenterSources[centerKey];
+          if (!meta || meta.name === newName) return s;
           return {
             capPools: s.capPools.map((p) =>
-              p.center === oldName ? { ...p, center: newName } : p,
+              p.centerGlCode === centerKey ? { ...p, center: newName } : p,
             ),
-            capCenterTotals: nextTotals,
-            capCenterDisallowed: nextDisallowed,
-            capCenterOrder: s.capCenterOrder.map((n) => n === oldName ? newName : n),
+            capCenterSources: {
+              ...s.capCenterSources,
+              [centerKey]: { ...meta, name: newName },
+            },
           };
         }),
 
-      updateCenterTotal: (centerName, totalCost) =>
+      updateCenterTotal: (centerKey, totalCost) =>
         set((s) => {
           const newTotal = Math.max(0, totalCost);
-          const disallowed = s.capCenterDisallowed[centerName] ?? 0;
+          const disallowed = s.capCenterDisallowed[centerKey] ?? 0;
           const net = Math.max(0, newTotal - disallowed);
           return {
-            capCenterTotals: { ...s.capCenterTotals, [centerName]: newTotal },
+            capCenterTotals: { ...s.capCenterTotals, [centerKey]: newTotal },
             capPools: s.capPools.map((p) =>
-              p.center === centerName
+              p.centerGlCode === centerKey
                 ? { ...p, amount: net * (p.allocationPercent / 100) }
                 : p,
             ),
@@ -555,16 +585,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return { directBills: next };
         }),
 
-      updateCenterDisallowed: (centerName, disallowed) =>
+      updateCenterDisallowed: (centerKey, disallowed) =>
         set((s) => {
-          const total = s.capCenterTotals[centerName] ?? 0;
+          const total = s.capCenterTotals[centerKey] ?? 0;
           // Clamp to [0, Total] so Net Allocable can never be negative.
           const clamped = Math.max(0, Math.min(disallowed, total));
           const net = Math.max(0, total - clamped);
           return {
-            capCenterDisallowed: { ...s.capCenterDisallowed, [centerName]: clamped },
+            capCenterDisallowed: { ...s.capCenterDisallowed, [centerKey]: clamped },
             capPools: s.capPools.map((p) =>
-              p.center === centerName
+              p.centerGlCode === centerKey
                 ? { ...p, amount: net * (p.allocationPercent / 100) }
                 : p,
             ),
@@ -721,19 +751,22 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           };
 
           // ── 1. Centers ─────────────────────────────────────────────────
-          // Upsert totals by name; append unseen names to the step-down order.
-          // Capture each center's glCode (when the import provides one) so
-          // the step-down center resolver can route via glCode instead of
-          // the LAH-only name map.
+          // Upsert totals by center identity key (glCode when imported,
+          // synth `seed:center:NAME` when not). Append unseen keys to
+          // the step-down order. Build a name → key map so the pool
+          // merge below can stamp centerGlCode on each imported pool.
           const nextTotals = { ...s.capCenterTotals };
           const nextOrder = [...s.capCenterOrder];
           const nextCenterGlCodes = { ...s.capCenterGlCodes };
           const nextCenterSources = { ...s.capCenterSources };
+          const importedCenterKeyByName = new Map<string, string>();
           for (const { entity } of centersIn) {
-            nextTotals[entity.name] = entity.totalCost;
-            if (!nextOrder.includes(entity.name)) nextOrder.push(entity.name);
+            const key = entity.glCode ?? synthCenterKey(entity.name);
+            importedCenterKeyByName.set(entity.name, key);
+            nextTotals[key] = entity.totalCost;
+            if (!nextOrder.includes(key)) nextOrder.push(key);
             if (entity.glCode) nextCenterGlCodes[entity.name] = entity.glCode;
-            nextCenterSources[entity.name] = { source: "imported", sourceFile: fileName };
+            nextCenterSources[key] = { name: entity.name, source: "imported", sourceFile: fileName };
           }
 
           // ── 2. Bases ───────────────────────────────────────────────────
@@ -790,13 +823,27 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               );
               basisId = match?.id ?? "";
             }
-            const centerGlCode = nextCenterGlCodes[entity.center];
+            // Resolve the pool's center identity key — first from the
+            // bundle's own centers section (importedCenterKeyByName),
+            // then from any preexisting state mapping
+            // (nextCenterGlCodes), and finally synth from the name as
+            // a last resort. centerGlCode is required, so we always
+            // produce one.
+            const centerGlCode = importedCenterKeyByName.get(entity.center)
+              ?? nextCenterGlCodes[entity.center]
+              ?? synthCenterKey(entity.center);
+            // If we synthed here (because the pool's center wasn't
+            // declared in the centers section), make sure the maps
+            // know about the synth key too.
+            if (!(centerGlCode in nextTotals)) nextTotals[centerGlCode] = 0;
+            if (!nextOrder.includes(centerGlCode)) nextOrder.push(centerGlCode);
+            if (!nextCenterSources[centerGlCode]) {
+              nextCenterSources[centerGlCode] = {
+                name: entity.center, source: "imported", sourceFile: fileName,
+              };
+            }
             return {
-              entity: {
-                ...entity,
-                basisId,
-                ...(centerGlCode ? { centerGlCode } : {}),
-              },
+              entity: { ...entity, basisId, centerGlCode },
               lineage,
             };
           });
@@ -898,12 +945,13 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         };
       },
 
-      moveCenter: (name, direction) =>
+      moveCenter: (centerKey, direction) =>
         set((s) => {
           const known = new Set(s.capCenterOrder);
-          const missing = [...new Set(s.capPools.map((p) => p.center))].filter((c) => !known.has(c));
+          const missing = [...new Set(s.capPools.map((p) => p.centerGlCode))]
+            .filter((k): k is string => !!k && !known.has(k));
           const base = [...s.capCenterOrder, ...missing];
-          const idx = base.indexOf(name);
+          const idx = base.indexOf(centerKey);
           if (idx < 0) return s;
           const swapWith = direction === "up" ? idx - 1 : idx + 1;
           if (swapWith < 0 || swapWith >= base.length) return s;
@@ -919,8 +967,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       setCapCenterOrder: (order) =>
         set((s) => {
           const inOrder = new Set(order);
-          const tail = [...new Set(s.capPools.map((p) => p.center))]
-            .filter((c) => !inOrder.has(c));
+          const tail = [...new Set(s.capPools.map((p) => p.centerGlCode))]
+            .filter((k): k is string => !!k && !inOrder.has(k));
           return { capCenterOrder: [...order, ...tail] };
         }),
 
@@ -1073,7 +1121,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     basisUnits: state.capBasisUnits,
     directAllocations: state.capDirectAllocations,
     capCenterTotals: state.capCenterTotals,
-    capCenterGlCodes: state.capCenterGlCodes,
+    capCenterSources: state.capCenterSources,
     capReceivers,
     modeledFeeDepts,
   });

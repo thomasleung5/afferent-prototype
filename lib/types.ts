@@ -189,14 +189,13 @@ export interface DirectAllocationRow {
 export interface CapPool {
   id: string;
   center: string;
-  /** Center's glCode. Optional in this PR — when present, the engine
-   *  prefers this over name resolution to find the pool's home center.
-   *  Denormalized for routing identity; `center` stays as the display
-   *  name. Becomes required once the state shape flips to glCode-keyed
-   *  in a later PR. Undefined for manually-added centers that have no
-   *  imported glCode (the engine still synthesizes `seed:center:NAME`
-   *  for those). */
-  centerGlCode?: string;
+  /** Center's identity key (glCode for imported centers,
+   *  `seed:center:NAME` synth for centers with no glCode). Required: the
+   *  engine routes via this; `center` is denormalized display text only.
+   *  Stamped on every pool at seed time (lib/data/cap.ts), on import
+   *  (mergeCapBundle), and on manual creation (addCapCenter / addCapPool
+   *  via the caller's center identity). */
+  centerGlCode: string;
   pool: string;
   /** This pool's claimed share of the source department's total cost. The
    *  source of truth for the "%" column. Sum of allocationPercent across a

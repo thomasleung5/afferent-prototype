@@ -102,6 +102,8 @@ import { IMPORTS } from "../data/imports";
 }
 
 // ── 4. capCenterTotals backfill ───────────────────────────────────────────
+// Pools without capCenterGlCodes get synth `seed:center:NAME` keys
+// stamped onto centerGlCode, and the derived totals key on those.
 {
   const state: Record<string, unknown> = {
     capPools: [
@@ -112,37 +114,150 @@ import { IMPORTS } from "../data/imports";
   };
   migratePersistedState(state as never);
 
-  assert.deepEqual(state.capCenterTotals, { "Center A": 150, "Center B": 80 });
+  assert.deepEqual(state.capCenterTotals, {
+    "seed:center:Center A": 150,
+    "seed:center:Center B": 80,
+  });
   console.log("  ✓ capCenterTotals synthesized from Σ amount per center");
 }
 
-// ── 4b. centerGlCode backfill ─────────────────────────────────────────────
-// Persisted pools missing centerGlCode get it stamped from the
-// (just-backfilled) capCenterGlCodes name map. Pools with an existing
-// value pass through untouched; pools whose center has no glCode mapping
-// keep centerGlCode undefined.
+// ── 4b. PR-11: name-keyed center maps translate to glCode-keyed ──────────
+// A persisted state with name-keyed capCenterTotals + capCenterGlCodes
+// gets rewritten so the maps key on glCode (or `seed:center:NAME` synth)
+// instead. Pools get centerGlCode stamped. Centers without a glCode in
+// capCenterGlCodes get the synth key.
 {
   const state: Record<string, unknown> = {
     capCenterGlCodes: {
       "City Manager": "011-1200",
       "Finance & Administrative Services": "011-1400",
+      // "Manual Center" intentionally absent — should synth.
     },
+    capCenterTotals: {
+      "City Manager": 1000,
+      "Finance & Administrative Services": 2000,
+      "Manual Center": 500,
+    },
+    capCenterDisallowed: { "City Manager": 50 },
+    capCenterSources: {
+      "City Manager": { source: "imported", sourceFile: "cap.pdf" },
+      "Manual Center": { source: "manual" },
+    },
+    capCenterOrder: ["City Manager", "Finance & Administrative Services", "Manual Center"],
     capPools: [
-      // No glCode field — should be stamped from the map above.
-      { id: "p1", center: "City Manager", amount: 100 },
-      // Existing glCode value — preserved verbatim even if the map disagrees.
-      { id: "p2", center: "City Manager", centerGlCode: "999-9999", amount: 50 },
-      // Center has no entry in capCenterGlCodes — centerGlCode stays undefined.
-      { id: "p3", center: "Manual Center", amount: 80 },
+      { id: "p1", center: "City Manager", amount: 100, allocationPercent: 10 },
+      { id: "p2", center: "Finance & Administrative Services", amount: 50, allocationPercent: 2.5 },
+      { id: "p3", center: "Manual Center", amount: 80, allocationPercent: 16 },
+      // Existing centerGlCode preserved verbatim even if it disagrees with the map.
+      { id: "p4", center: "City Manager", centerGlCode: "999-9999", amount: 40, allocationPercent: 4 },
     ],
   };
   migratePersistedState(state as never);
 
+  const totals = state.capCenterTotals as Record<string, number>;
+  assert.equal(totals["011-1200"], 1000, "City Manager translated to glCode key");
+  assert.equal(totals["011-1400"], 2000, "FAS translated to glCode key");
+  assert.equal(totals["seed:center:Manual Center"], 500, "Manual Center gets synth key");
+  assert.equal(totals["City Manager"], undefined, "old name key removed");
+
+  const disallowed = state.capCenterDisallowed as Record<string, number>;
+  assert.equal(disallowed["011-1200"], 50);
+
+  const sources = state.capCenterSources as Record<string, { name: string; source: string; sourceFile?: string }>;
+  assert.equal(sources["011-1200"].name, "City Manager");
+  assert.equal(sources["011-1200"].source, "imported");
+  assert.equal(sources["011-1200"].sourceFile, "cap.pdf");
+  assert.equal(sources["seed:center:Manual Center"].name, "Manual Center");
+  assert.equal(sources["seed:center:Manual Center"].source, "manual");
+
+  assert.deepEqual(
+    state.capCenterOrder,
+    ["011-1200", "011-1400", "seed:center:Manual Center"],
+    "order entries rewritten to identity keys",
+  );
+
   const pools = state.capPools as { id: string; centerGlCode?: string }[];
   assert.equal(pools.find((p) => p.id === "p1")!.centerGlCode, "011-1200");
-  assert.equal(pools.find((p) => p.id === "p2")!.centerGlCode, "999-9999");
-  assert.equal(pools.find((p) => p.id === "p3")!.centerGlCode, undefined);
-  console.log("  ✓ centerGlCode backfilled from capCenterGlCodes when missing");
+  assert.equal(pools.find((p) => p.id === "p2")!.centerGlCode, "011-1400");
+  assert.equal(pools.find((p) => p.id === "p3")!.centerGlCode, "seed:center:Manual Center");
+  assert.equal(pools.find((p) => p.id === "p4")!.centerGlCode, "999-9999", "existing centerGlCode preserved");
+  console.log("  ✓ center maps translated from name-keyed to glCode-keyed");
+}
+
+// ── 4c. Translation is idempotent — already-translated state passes through
+{
+  const state: Record<string, unknown> = {
+    capCenterGlCodes: { "City Manager": "011-1200" },
+    capCenterTotals: { "011-1200": 1000, "seed:center:Manual": 500 },
+    capCenterDisallowed: { "011-1200": 50 },
+    capCenterSources: {
+      "011-1200": { name: "City Manager", source: "imported" },
+      "seed:center:Manual": { name: "Manual", source: "manual" },
+    },
+    capCenterOrder: ["011-1200", "seed:center:Manual"],
+    capPools: [
+      { id: "p1", center: "City Manager", centerGlCode: "011-1200", amount: 100, allocationPercent: 10 },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  const totals = state.capCenterTotals as Record<string, number>;
+  // Keys unchanged — no re-translation happened.
+  assert.equal(totals["011-1200"], 1000);
+  assert.equal(totals["seed:center:Manual"], 500);
+  // No double-prefixing (would produce `seed:center:seed:center:Manual`).
+  assert.equal(totals["seed:center:seed:center:Manual"], undefined,
+    "already-translated state must not be re-translated");
+  console.log("  ✓ already-translated state passes through unchanged (idempotent)");
+}
+
+// ── 4d. Version snapshots also get translated ─────────────────────────────
+{
+  const state: Record<string, unknown> = {
+    capCenterGlCodes: { "City Manager": "011-1200" },
+    capCenterTotals: { "011-1200": 1000 },
+    capCenterDisallowed: {},
+    capCenterSources: { "011-1200": { name: "City Manager", source: "imported" } },
+    capCenterOrder: ["011-1200"],
+    capPools: [
+      { id: "p1", center: "City Manager", centerGlCode: "011-1200", amount: 100, allocationPercent: 100 },
+    ],
+    versions: [
+      {
+        id: "v-legacy",
+        versionNumber: 1,
+        label: "Legacy",
+        status: "adopted",
+        createdAt: "2026-01-01T00:00:00.000Z",
+        createdBy: "user",
+        sourceImportIds: [],
+        // Old name-keyed snapshot — should be translated by migration.
+        snapshot: {
+          capCenterGlCodes: { "City Manager": "011-1200" },
+          capCenterTotals: { "City Manager": 999 },
+          capCenterDisallowed: { "City Manager": 9 },
+          capCenterSources: { "City Manager": { source: "seed" } },
+          capCenterOrder: ["City Manager"],
+          capPools: [
+            { id: "old-p", center: "City Manager", amount: 50, allocationPercent: 5 },
+          ],
+        },
+      },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  const versions = state.versions as { snapshot: Record<string, unknown> }[];
+  const snap = versions[0].snapshot as {
+    capCenterTotals: Record<string, number>;
+    capCenterOrder: string[];
+    capPools: { centerGlCode?: string }[];
+  };
+  assert.equal(snap.capCenterTotals["011-1200"], 999, "version snapshot totals translated");
+  assert.deepEqual(snap.capCenterOrder, ["011-1200"], "version snapshot order translated");
+  assert.equal(snap.capPools[0].centerGlCode, "011-1200",
+    "version snapshot pool centerGlCode stamped");
+  console.log("  ✓ version snapshots translated alongside live state");
 }
 
 // ── 5. versions backfill (seed when missing) ──────────────────────────────

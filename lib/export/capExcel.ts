@@ -113,27 +113,28 @@ function buildCenters(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
     [h("#"), h("glCode"), h("Center"), h("Total Expenses"), h("Disallowed"), h("Net Allocable"), h("Pools")],
   ];
-  const poolCountByCenter = new Map<string, number>();
+  const poolCountByKey = new Map<string, number>();
   for (const pl of p.capPools) {
-    poolCountByCenter.set(pl.center, (poolCountByCenter.get(pl.center) ?? 0) + 1);
+    poolCountByKey.set(pl.centerGlCode, (poolCountByKey.get(pl.centerGlCode) ?? 0) + 1);
   }
-  const glByName = glCodeByCenter(p);
+  const meta = centerMeta(p);
   let totalGross = 0;
   let totalDisallowed = 0;
-  p.capCenterOrder.forEach((name, i) => {
-    const gross = p.capCenterTotals[name] ?? 0;
-    const dis   = p.capCenterDisallowed[name] ?? 0;
+  p.capCenterOrder.forEach((key, i) => {
+    const gross = p.capCenterTotals[key] ?? 0;
+    const dis   = p.capCenterDisallowed[key] ?? 0;
     const net   = Math.max(0, gross - dis);
     totalGross += gross;
     totalDisallowed += dis;
+    const m = meta.get(key);
     rows.push([
       i + 1,
-      glByName.get(name) ?? "—",
-      name,
+      m?.glCode ?? "—",
+      m?.name ?? key,
       n(gross, "$#,##0"),
       n(dis, "$#,##0"),
       n(net, "$#,##0"),
-      poolCountByCenter.get(name) ?? 0,
+      poolCountByKey.get(key) ?? 0,
     ]);
   });
   rows.push([
@@ -147,14 +148,17 @@ function buildCenters(p: CapExportPayload): Cell[][] {
   return rows;
 }
 
-/** Shared helper: center name → imported glCode (e.g. "011-1200" for City
- *  Manager). Returns an empty Map when no centers have imported glCodes. */
-function glCodeByCenter(p: CapExportPayload): Map<string, string> {
-  const m = new Map<string, string>();
+/** Shared helper: center identity key → {name, glCode} pair. glCode is
+ *  undefined for synth `seed:center:*` centers. Reads from the model's
+ *  indirect nodes (which the engine populated from capCenterSources). */
+function centerMeta(p: CapExportPayload): Map<string, { name: string; glCode?: string }> {
+  const m = new Map<string, { name: string; glCode?: string }>();
   for (const nn of p.model.nodes) {
     if (nn.role !== "indirect") continue;
-    if (nn.glCode.startsWith("seed:")) continue;
-    m.set(nn.name, nn.glCode);
+    m.set(nn.key, {
+      name: nn.name,
+      glCode: nn.glCode.startsWith("seed:") ? undefined : nn.glCode,
+    });
   }
   return m;
 }
@@ -173,13 +177,13 @@ function buildPools(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
     [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Net allocable $")],
   ];
-  const glByName = glCodeByCenter(p);
+  const meta = centerMeta(p);
   let total = 0;
   for (const pl of p.capPools) {
     const { basis } = basisForPool(pl, p.allocationBases);
     total += pl.amount;
     rows.push([
-      glByName.get(pl.center) ?? "—",
+      meta.get(pl.centerGlCode)?.glCode ?? "—",
       pl.center,
       pl.pool,
       basis,
@@ -204,19 +208,16 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
   ];
 
   const stepIndex = new Map<string, number>();
-  p.model.stepOrder.forEach((k, i) => {
-    const node = p.model.nodes.find((nn) => nn.key === k);
-    if (node) stepIndex.set(node.name, i);
-  });
-  const glByName = glCodeByCenter(p);
+  p.model.stepOrder.forEach((k, i) => stepIndex.set(k, i));
+  const meta = centerMeta(p);
 
-  const poolsByCenter = new Map<string, CapPool[]>();
+  const poolsByCenterKey = new Map<string, CapPool[]>();
   for (const pl of p.capPools) {
-    const list = poolsByCenter.get(pl.center) ?? [];
+    const list = poolsByCenterKey.get(pl.centerGlCode) ?? [];
     list.push(pl);
-    poolsByCenter.set(pl.center, list);
+    poolsByCenterKey.set(pl.centerGlCode, list);
   }
-  for (const list of poolsByCenter.values()) {
+  for (const list of poolsByCenterKey.values()) {
     list.sort((a, b) => a.pool.localeCompare(b.pool));
   }
 
@@ -228,15 +229,15 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
     .sort((a, b) => a.glCode.localeCompare(b.glCode));
 
   p.model.stepOrder.forEach((centerKey, centerIdx) => {
-    const centerNode = p.model.nodes.find((nn) => nn.key === centerKey);
-    if (!centerNode) return;
-    const centerName = centerNode.name;
-    const targetStep = stepIndex.get(centerName) ?? -1;
-    const centerPools = poolsByCenter.get(centerName) ?? [];
+    const centerMetaEntry = meta.get(centerKey);
+    if (!centerMetaEntry) return;
+    const centerName = centerMetaEntry.name;
+    const targetStep = stepIndex.get(centerKey) ?? -1;
+    const centerPools = poolsByCenterKey.get(centerKey) ?? [];
 
     // -------- Center header band --------
     const stepLabel = String(centerIdx + 1).padStart(2, "0");
-    const centerGl = glByName.get(centerName);
+    const centerGl = centerMetaEntry.glCode;
     const centerHeader = centerGl
       ? `${centerGl} · ${centerName.toUpperCase()}`
       : centerName.toUpperCase();
@@ -252,23 +253,23 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
 
     const sources = new Map<string, { first: number; second: number }>();
     for (const node of p.model.nodes) {
-      if (node.role === "indirect") sources.set(node.name, { first: 0, second: 0 });
+      if (node.role === "indirect") sources.set(node.key, { first: 0, second: 0 });
     }
     for (const sp of p.capPools) {
-      const srcStep = stepIndex.get(sp.center) ?? -1;
+      const srcStep = stepIndex.get(sp.centerGlCode) ?? -1;
       const isUpstream = srcStep !== -1 && targetStep !== -1 && srcStep < targetStep;
       const r1 = p.model.firstAllocation[sp.id]?.[centerKey] ?? 0;
       const r2 = p.model.secondAllocation[sp.id]?.[centerKey] ?? 0;
       const first = isUpstream ? r1 : 0;
       const second = isUpstream ? r2 : (r1 + r2);
-      const cur = sources.get(sp.center) ?? { first: 0, second: 0 };
+      const cur = sources.get(sp.centerGlCode) ?? { first: 0, second: 0 };
       cur.first += first;
       cur.second += second;
-      sources.set(sp.center, cur);
+      sources.set(sp.centerGlCode, cur);
     }
     const sourceRows = [...sources.entries()]
-      .map(([name, v]) => ({ name, ...v }))
-      .sort((a, b) => (stepIndex.get(a.name) ?? 999) - (stepIndex.get(b.name) ?? 999));
+      .map(([key, v]) => ({ key, name: meta.get(key)?.name ?? key, ...v }))
+      .sort((a, b) => (stepIndex.get(a.key) ?? 999) - (stepIndex.get(b.key) ?? 999));
     const totalFirst = sourceRows.reduce((a, r) => a + r.first, 0);
     const totalSecond = sourceRows.reduce((a, r) => a + r.second, 0);
 
@@ -278,9 +279,9 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
       n(departmental, "$#,##0"), n(departmental, "$#,##0"), n(0, "$#,##0"), n(departmental, "$#,##0"),
     ]);
     for (const r of sourceRows) {
-      const sourceGl = glByName.get(r.name);
+      const sourceGl = meta.get(r.key)?.glCode;
       const baseLabel = sourceGl ? `${sourceGl} · ${r.name}` : r.name;
-      const label = r.name === centerName ? `${baseLabel} (self)` : baseLabel;
+      const label = r.key === centerKey ? `${baseLabel} (self)` : baseLabel;
       rows.push([
         "", "", label, "", "Incoming", "",
         "", n(r.first, "$#,##0"), n(r.second, "$#,##0"), n(r.first + r.second, "$#,##0"),
@@ -353,7 +354,7 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
   const directNodes = p.model.nodes
     .filter((n) => n.role === "direct")
     .sort((a, b) => a.glCode.localeCompare(b.glCode));
-  const glByName = glCodeByCenter(p);
+  const meta = centerMeta(p);
 
   const header: Cell[] = [
     h("glCode"), h("Center"), h("Pool"),
@@ -362,21 +363,18 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
   ];
   const rows: Cell[][] = [header];
 
-  const sortByCenter = new Map<string, number>();
-  p.model.stepOrder.forEach((k, i) => {
-    const n = p.model.nodes.find((nn) => nn.key === k);
-    if (n) sortByCenter.set(n.name, i);
-  });
+  const sortByCenterKey = new Map<string, number>();
+  p.model.stepOrder.forEach((k, i) => sortByCenterKey.set(k, i));
   const sortedPools = [...p.capPools].sort((a, b) => {
-    const ai = sortByCenter.get(a.center) ?? 999;
-    const bi = sortByCenter.get(b.center) ?? 999;
+    const ai = sortByCenterKey.get(a.centerGlCode) ?? 999;
+    const bi = sortByCenterKey.get(b.centerGlCode) ?? 999;
     if (ai !== bi) return ai - bi;
     return a.pool.localeCompare(b.pool);
   });
 
   const colTotals = new Array<number>(directNodes.length).fill(0);
   for (const pl of sortedPools) {
-    const row: Cell[] = [glByName.get(pl.center) ?? "—", pl.center, pl.pool];
+    const row: Cell[] = [meta.get(pl.centerGlCode)?.glCode ?? "—", pl.center, pl.pool];
     let rowTotal = 0;
     for (let i = 0; i < directNodes.length; i++) {
       const v = p.model.alloc2[pl.id]?.[directNodes[i].key] ?? 0;

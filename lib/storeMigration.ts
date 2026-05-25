@@ -6,16 +6,88 @@ import { IMPORTS } from "@/lib/data/imports";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  OperatingLine, Position, Service, SourceTag, VolumeRow,
+  CapPool, OperatingLine, Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
-import { defaultCenterOrder } from "./store";
-import type { BuildState, StudyVersion } from "./store";
+import { defaultCenterOrder, synthCenterKey } from "./store";
+import type { BuildSnapshot, BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
 
 const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual"];
 
 const coerceSource = (v: unknown): SourceTag =>
   typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
+
+/** True when a string already looks like a center identity key (a glCode
+ *  or a `seed:center:*` synth) rather than a free-form display name.
+ *  Used as the idempotency check before re-translating center maps. */
+function isLikelyCenterKey(s: string): boolean {
+  // Synth keys + the LAH 011-NNNN pattern + tightly-formatted alphanumeric
+  // codes ("BLDG", "EQUIP"). Display names like "City Manager" or "Finance
+  // & Administrative Services" don't match.
+  return s.startsWith("seed:center:")
+    || /^[A-Z0-9]+(-[A-Z0-9]+)+$/.test(s)
+    || /^[A-Z][A-Z0-9_]*$/.test(s);
+}
+
+/** Translate the four name-keyed center maps + pool centerGlCode fields
+ *  on a snapshot-like target into the glCode-keyed shape PR-11 requires.
+ *  Operates in-place. Idempotent — runs only when the target's centers
+ *  still look name-keyed. Used for both the live BuildState and every
+ *  persisted version snapshot. */
+function translateCenterMaps(target: Partial<BuildSnapshot>): void {
+  const glByName = target.capCenterGlCodes ?? {};
+  const keyForName = (name: string): string => glByName[name] ?? synthCenterKey(name);
+
+  // Pool centerGlCode backfill ALWAYS runs (independent of map translation)
+  // so pools persisted before PR-9 get their identity key stamped. Skips
+  // pools that already have a value.
+  if (Array.isArray(target.capPools)) {
+    target.capPools = target.capPools.map((p) => {
+      if (p.centerGlCode) return p;
+      return { ...p, centerGlCode: keyForName(p.center) } satisfies CapPool;
+    });
+  }
+
+  const totals = target.capCenterTotals;
+  if (!totals || Object.keys(totals).length === 0) return;
+  const keys = Object.keys(totals);
+  if (keys.every(isLikelyCenterKey)) return;
+
+  // Collect every center name present anywhere on the target so no map
+  // entry is silently dropped during translation.
+  const names = new Set<string>([
+    ...Object.keys(totals),
+    ...Object.keys(target.capCenterDisallowed ?? {}),
+    ...Object.keys(target.capCenterSources ?? {}),
+    ...(Array.isArray(target.capCenterOrder) ? target.capCenterOrder : []),
+  ]);
+
+  const newTotals: Record<string, number> = {};
+  const newDisallowed: Record<string, number> = {};
+  type SourceMeta = { name: string; source: SourceTag; sourceFile?: string };
+  const newSources: Record<string, SourceMeta> = {};
+  const oldDisallowed = target.capCenterDisallowed ?? {};
+  const oldSources = (target.capCenterSources ?? {}) as Record<string, Partial<SourceMeta>>;
+
+  for (const name of names) {
+    const key = keyForName(name);
+    if (name in totals) newTotals[key] = totals[name];
+    if (name in oldDisallowed) newDisallowed[key] = oldDisallowed[name];
+    const meta = oldSources[name];
+    newSources[key] = {
+      name,
+      source: coerceSource(meta?.source),
+      ...(meta?.sourceFile ? { sourceFile: meta.sourceFile } : {}),
+    };
+  }
+  target.capCenterTotals = newTotals;
+  target.capCenterDisallowed = newDisallowed;
+  target.capCenterSources = newSources;
+
+  if (Array.isArray(target.capCenterOrder)) {
+    target.capCenterOrder = target.capCenterOrder.map(keyForName);
+  }
+}
 
 /** Apply every backfill the Zustand persist layer needs to bring an old
  *  persisted snapshot up to the current `BuildState` shape. Mutates
@@ -55,25 +127,17 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     }
   }
 
-  if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
-    state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
-  }
+  // PR-11: flip center maps from name-keyed to glCode-keyed. Runs BEFORE
+  // every backfill that reads/writes those maps; the helper detects
+  // already-translated state and no-ops on it. capCenterGlCodes stays as
+  // input here (PR-12 deletes it once nothing reads the name→glCode shape).
   if (state.capCenterGlCodes == null) {
     state.capCenterGlCodes = { ...CAP_CENTER_GLCODES };
   }
-  // Backfill centerGlCode on every persisted pool by reading from the
-  // (just-backfilled) capCenterGlCodes name map. Pools whose center has
-  // no imported glCode keep centerGlCode undefined; the engine will
-  // continue to synthesize seed:center:NAME for those once it starts
-  // reading the field (later PR). Only patches pools missing the field —
-  // re-imports + manual edits keep their existing value.
-  if (Array.isArray(state.capPools)) {
-    const glByName = state.capCenterGlCodes;
-    state.capPools = state.capPools.map((p) => {
-      if (p.centerGlCode) return p;
-      const glCode = glByName[p.center];
-      return glCode ? { ...p, centerGlCode: glCode } : p;
-    });
+  translateCenterMaps(state);
+
+  if (!state.capCenterOrder || state.capCenterOrder.length === 0) {
+    state.capCenterOrder = defaultCenterOrder(state.capPools ?? []);
   }
   if (!state.studyContext) state.studyContext = { ...DEFAULT_STUDY_CONTEXT };
   if (!state.activeJurisdictionId) {
@@ -108,13 +172,16 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     }));
   }
 
-  // Backfill for state persisted before SourceTag standardization. Older
-  // OperatingLine rows carried a free-form GL string in `source`; coerce
-  // anything outside the SourceTag union to "seed".
+  // capCenterSources default — keyed by center identity (glCode or synth),
+  // value carries the display name lifted from capCenterTotals' keys (now
+  // identity keys after translateCenterMaps). New seed sessions fall
+  // through this path with `state.capCenterSources` already populated by
+  // initialState; this branch only fires when a persisted state arrives
+  // with no sources at all.
   if (!state.capCenterSources) {
     state.capCenterSources = Object.fromEntries(
-      Object.keys(state.capCenterTotals ?? {}).map((name) => [
-        name, { source: "seed" as SourceTag },
+      Object.keys(state.capCenterTotals ?? {}).map((key) => [
+        key, { name: key, source: "seed" as SourceTag },
       ]),
     );
   }
@@ -137,24 +204,33 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   }
   // Backfill capCenterTotals + allocationPercent for state persisted
   // before the % column became editable. Derive totals from Σ amount per
-  // center; derive each pool's % from amount/centerTotal.
+  // center; derive each pool's % from amount/centerTotal. Keys are
+  // pool.centerGlCode (guaranteed populated by translateCenterMaps above).
   if (state.capPools) {
     if (!state.capCenterTotals || Object.keys(state.capCenterTotals).length === 0) {
       const totals: Record<string, number> = {};
       for (const p of state.capPools) {
-        totals[p.center] = (totals[p.center] ?? 0) + (p.amount ?? 0);
+        const key = p.centerGlCode;
+        if (!key) continue;
+        totals[key] = (totals[key] ?? 0) + (p.amount ?? 0);
       }
       state.capCenterTotals = totals;
     }
     const totals = state.capCenterTotals;
     state.capPools = state.capPools.map((p): BuildState["capPools"][number] => {
       if (typeof p.allocationPercent === "number") return p;
-      const total = totals[p.center] ?? 0;
+      const total = totals[p.centerGlCode] ?? 0;
       const pct = total > 0 ? (p.amount / total) * 100 : 0;
       return { ...p, allocationPercent: pct };
     });
   }
-  if (!Array.isArray(state.versions)) {
+  // Translate every persisted version snapshot so the version-comparison
+  // dropdown keeps working across the PR-11 schema flip.
+  if (Array.isArray(state.versions)) {
+    for (const v of state.versions) {
+      if (v.snapshot) translateCenterMaps(v.snapshot as Partial<BuildSnapshot>);
+    }
+  } else {
     // makeStudyVersion expects a `BuildSnapshot` shape; by this point in
     // the rehydrate we've backfilled every snapshot field, so the cast
     // is safe.

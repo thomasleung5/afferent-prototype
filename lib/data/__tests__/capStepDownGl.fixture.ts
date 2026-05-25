@@ -29,6 +29,30 @@ import {
 import { buildReceiverRegistry } from "../capReceiverRegistry";
 import { DEFAULT_STUDY_CONTEXT } from "../studyContext";
 
+/** Convert the fixture's legacy name-keyed (totals, glCodes) pair into
+ *  the engine's PR-11 glCode-keyed (totals, sources) shape so each test
+ *  block can keep declaring centers by name. Names that don't appear in
+ *  glByName fall back to `seed:center:NAME`. */
+function buildCenterMaps(
+  totalsByName: Record<string, number>,
+  glByName: Record<string, string>,
+): {
+  totals: Record<string, number>;
+  sources: Record<string, { name: string; source: "seed"; sourceFile?: string }>;
+  keyByName: Record<string, string>;
+} {
+  const totals: Record<string, number> = {};
+  const sources: Record<string, { name: string; source: "seed"; sourceFile?: string }> = {};
+  const keyByName: Record<string, string> = {};
+  for (const [name, total] of Object.entries(totalsByName)) {
+    const key = glByName[name] ?? `seed:center:${name}`;
+    keyByName[name] = key;
+    totals[key] = total;
+    sources[key] = { name, source: "seed" };
+  }
+  return { totals, sources, keyByName };
+}
+
 // ── Fixture data ─────────────────────────────────────────────────────────
 
 const NOW = "2026-01-01T00:00:00.000Z";
@@ -50,17 +74,14 @@ const bases: AllocationBasis[] = [
   },
 ];
 
-const capCenterTotals: Record<string, number> = {
-  "City Manager": 100000,
-  "Fringe Benefits Allocation": 0,
-};
-
-const capCenterGlCodes: Record<string, string> = {
-  "City Manager": "011-1200",
-  "Fringe Benefits Allocation": "061-1470",
-};
-
-const capCenterOrder: string[] = ["City Manager", "Fringe Benefits Allocation"];
+const mainCenters = buildCenterMaps(
+  { "City Manager": 100000, "Fringe Benefits Allocation": 0 },
+  { "City Manager": "011-1200", "Fringe Benefits Allocation": "061-1470" },
+);
+const capCenterOrder: string[] = [
+  mainCenters.keyByName["City Manager"],
+  mainCenters.keyByName["Fringe Benefits Allocation"],
+];
 
 /* basisUnits — one schedule per basis. Units double as percents here
  * (each schedule sums to 100), so the engine's derived percent equals
@@ -95,6 +116,7 @@ const capPools: CapPool[] = [
   {
     id: "cm-salaries",
     center: "City Manager",
+    centerGlCode: mainCenters.keyByName["City Manager"],
     pool: "City Manager Salaries",
     allocationPercent: 100,
     amount: 100000,
@@ -107,6 +129,7 @@ const capPools: CapPool[] = [
   {
     id: "fb-redistribution",
     center: "Fringe Benefits Allocation",
+    centerGlCode: mainCenters.keyByName["Fringe Benefits Allocation"],
     pool: "Fringe Benefits Distribution",
     allocationPercent: 100,
     amount: 0,
@@ -133,7 +156,9 @@ const graph = buildEngineGraph({
   allocationBases: bases,
   basisUnits: capBasisUnits,
   directAllocations: capDirectAllocations,
-  capCenterTotals, capCenterGlCodes, capReceivers,
+  capCenterTotals: mainCenters.totals,
+  capCenterSources: mainCenters.sources,
+  capReceivers,
 });
 
 const model = computeStepDownGl({
@@ -253,8 +278,10 @@ const sharedBases: AllocationBasis[] = [{
   driverKey: "FTE", createdAt: NOW, createdBy: "fixture",
   validationStatus: "verified",
 }];
-const sharedCenters = { "Shared Center": 0 };
-const sharedGl = { "Shared Center": "SEED-SHARED" };
+const sharedCtr = buildCenterMaps(
+  { "Shared Center": 0 },
+  { "Shared Center": "SEED-SHARED" },
+);
 const sharedBasisUnits: BasisUnitRow[] = [{
   basisId: "shared-basis-A",
   basis: "Shared FTE",
@@ -265,13 +292,17 @@ const sharedBasisUnits: BasisUnitRow[] = [{
 }];
 const sharedPools: CapPool[] = [
   {
-    id: "shared-pool-1", center: "Shared Center", pool: "Pool One",
+    id: "shared-pool-1", center: "Shared Center",
+    centerGlCode: sharedCtr.keyByName["Shared Center"],
+    pool: "Pool One",
     allocationPercent: 50, amount: 100000,
     basisId: "shared-basis-A", basis: "Shared FTE",
     receiving: "PLAN+BLDG", recoverability: "Fully recoverable", review: "Reviewed",
   },
   {
-    id: "shared-pool-2", center: "Shared Center", pool: "Pool Two",
+    id: "shared-pool-2", center: "Shared Center",
+    centerGlCode: sharedCtr.keyByName["Shared Center"],
+    pool: "Pool Two",
     allocationPercent: 50, amount: 50000,
     basisId: "shared-basis-A", basis: "Shared FTE",
     receiving: "PLAN+BLDG", recoverability: "Fully recoverable", review: "Reviewed",
@@ -284,12 +315,12 @@ const sharedGraph = buildEngineGraph({
   allocationBases: sharedBases,
   basisUnits: sharedBasisUnits,
   directAllocations: [],
-  capCenterTotals: sharedCenters,
-  capCenterGlCodes: sharedGl,
+  capCenterTotals: sharedCtr.totals,
+  capCenterSources: sharedCtr.sources,
   capReceivers: sharedReceivers,
 });
 const sharedModel = computeStepDownGl({
-  pools: sharedPools, centerOrder: ["Shared Center"],
+  pools: sharedPools, centerOrder: [sharedCtr.keyByName["Shared Center"]],
   bases: sharedBases, basisUnits: sharedBasisUnits,
   directAllocations: [], graph: sharedGraph,
 });
@@ -355,15 +386,11 @@ const wtBases: AllocationBasis[] = [
     driverKey: "PAYROLL", createdAt: NOW, validationStatus: "verified",
   },
 ];
-const wtCenters: Record<string, number> = {
-  "Upstream Center": 1_072_341,
-  "Inner Center": 0,
-};
-const wtGl: Record<string, string> = {
-  "Upstream Center": "UP-CTR",
-  "Inner Center": "IN-CTR",
-};
-const wtOrder = ["Upstream Center", "Inner Center"];
+const wt = buildCenterMaps(
+  { "Upstream Center": 1_072_341, "Inner Center": 0 },
+  { "Upstream Center": "UP-CTR", "Inner Center": "IN-CTR" },
+);
+const wtOrder = [wt.keyByName["Upstream Center"], wt.keyByName["Inner Center"]];
 const wtBasisUnits: BasisUnitRow[] = [
   // Upstream pool ships its full amount into Inner Center.
   {
@@ -383,14 +410,16 @@ const wtBasisUnits: BasisUnitRow[] = [
 const wtPools: CapPool[] = [
   {
     id: "wt-upstream-pool",
-    center: "Upstream Center", pool: "Upstream Pool",
+    center: "Upstream Center", centerGlCode: wt.keyByName["Upstream Center"],
+    pool: "Upstream Pool",
     allocationPercent: 100, amount: 1_072_341,
     basisId: "wt-upstream", basis: "Upstream",
     receiving: "Inner Center", recoverability: "Fully recoverable", review: "Reviewed",
   },
   {
     id: "wt-pool-a",
-    center: "Inner Center", pool: "Pool A (P+O 613,161)",
+    center: "Inner Center", centerGlCode: wt.keyByName["Inner Center"],
+    pool: "Pool A (P+O 613,161)",
     allocationPercent: 64.4, amount: 0,
     personnelCost: 600_000, operatingCost: 13_161,
     basisId: "wt-inner", basis: "Inner schedule",
@@ -398,7 +427,8 @@ const wtPools: CapPool[] = [
   },
   {
     id: "wt-pool-b",
-    center: "Inner Center", pool: "Pool B (P+O 339,000)",
+    center: "Inner Center", centerGlCode: wt.keyByName["Inner Center"],
+    pool: "Pool B (P+O 339,000)",
     allocationPercent: 35.6, amount: 0,
     personnelCost: 300_000, operatingCost:  39_000,
     basisId: "wt-inner", basis: "Inner schedule",
@@ -412,8 +442,8 @@ const wtGraph = buildEngineGraph({
   allocationBases: wtBases,
   basisUnits: wtBasisUnits,
   directAllocations: [],
-  capCenterTotals: wtCenters,
-  capCenterGlCodes: wtGl,
+  capCenterTotals: wt.totals,
+  capCenterSources: wt.sources,
   capReceivers: wtReceivers,
 });
 const wtModel = computeStepDownGl({
@@ -445,9 +475,11 @@ assert.ok(close(wtPoolAPlan + wtPoolBPlan, 1_072_341, 1),
 
 console.log("\n== DIRECT-routing strictness ==");
 
-const directOnlyCenters = { "Test Direct Center": 50000 };
-const directOnlyGl = { "Test Direct Center": "SEED-TDC" };
-const directOnlyOrder = ["Test Direct Center"];
+const directOnly = buildCenterMaps(
+  { "Test Direct Center": 50000 },
+  { "Test Direct Center": "SEED-TDC" },
+);
+const directOnlyOrder = [directOnly.keyByName["Test Direct Center"]];
 const directOnlyBasisUnits: BasisUnitRow[] = [];
 const directOkBases: AllocationBasis[] = [
   ...bases,
@@ -462,6 +494,7 @@ const directOkBases: AllocationBasis[] = [
 const directOkPools: CapPool[] = [{
   id: "test-direct-ok",
   center: "Test Direct Center",
+  centerGlCode: directOnly.keyByName["Test Direct Center"],
   pool: "Routes to Recreation Admin",
   allocationPercent: 100, amount: 50000,
   basisId: "bas-direct", basis: "Direct allocation",
@@ -481,8 +514,8 @@ const directOkGraph = buildEngineGraph({
   allocationBases: directOkBases,
   basisUnits: directOnlyBasisUnits,
   directAllocations: directOkAllocations,
-  capCenterTotals: directOnlyCenters,
-  capCenterGlCodes: directOnlyGl,
+  capCenterTotals: directOnly.totals,
+  capCenterSources: directOnly.sources,
   capReceivers: directOkReceivers,
 });
 const directOkModel = computeStepDownGl({
@@ -514,6 +547,7 @@ assert.equal(parksNode, undefined,
 const directLeakPools: CapPool[] = [{
   id: "test-direct-leak",
   center: "Test Direct Center",
+  centerGlCode: directOnly.keyByName["Test Direct Center"],
   pool: "Empty direct allocation",
   allocationPercent: 100, amount: 50000,
   basisId: "bas-direct", basis: "Direct allocation",
@@ -526,8 +560,8 @@ const directLeakGraph = buildEngineGraph({
   allocationBases: directOkBases,
   basisUnits: directOnlyBasisUnits,
   directAllocations: [],
-  capCenterTotals: directOnlyCenters,
-  capCenterGlCodes: directOnlyGl,
+  capCenterTotals: directOnly.totals,
+  capCenterSources: directOnly.sources,
   capReceivers: directLeakReceivers,
 });
 const directLeakModel = computeStepDownGl({
@@ -551,6 +585,7 @@ assert.equal(directLeakModel.diagnostics[0].kind, "no-valid-glcodes");
 const directBadPools: CapPool[] = [{
   id: "test-direct-bad",
   center: "Test Direct Center",
+  centerGlCode: directOnly.keyByName["Test Direct Center"],
   pool: "Bad direct receivers",
   allocationPercent: 100, amount: 50000,
   basisId: "bas-direct", basis: "Direct allocation",
@@ -569,8 +604,8 @@ const directBadGraph = buildEngineGraph({
   allocationBases: directOkBases,
   basisUnits: directOnlyBasisUnits,
   directAllocations: directBadAllocations,
-  capCenterTotals: directOnlyCenters,
-  capCenterGlCodes: directOnlyGl,
+  capCenterTotals: directOnly.totals,
+  capCenterSources: directOnly.sources,
   capReceivers: directBadReceivers,
 });
 const directBadModel = computeStepDownGl({
@@ -606,8 +641,10 @@ const glRouteBases: AllocationBasis[] = [{
   driverKey: "FTE", createdAt: NOW, createdBy: "fixture",
   validationStatus: "verified",
 }];
-const glRouteCenters = { "City Manager": 100000 };
-const glRouteGl = { "City Manager": "011-1200" };
+const glRoute = buildCenterMaps(
+  { "City Manager": 100000 },
+  { "City Manager": "011-1200" },
+);
 const glRouteBasisUnits: BasisUnitRow[] = [{
   basisId: "bas-fte-route",
   basis: "Route FTE",
@@ -636,15 +673,14 @@ const glRouteGraph = buildEngineGraph({
   allocationBases: glRouteBases,
   basisUnits: glRouteBasisUnits,
   directAllocations: [],
-  capCenterTotals: glRouteCenters,
-  capCenterGlCodes: glRouteGl,
+  capCenterTotals: glRoute.totals,
+  capCenterSources: glRoute.sources,
   capReceivers: glRouteReceivers,
 });
 const glRouteModel = computeStepDownGl({
   pools: glRoutePools,
-  // centerOrder is still name-keyed in this PR — must list the real
-  // center name so stepOrder finds the node.
-  centerOrder: ["City Manager"],
+  // centerOrder is NodeKey[] post-PR-11 — pass the indirect node's key.
+  centerOrder: [glRoute.keyByName["City Manager"]],
   bases: glRouteBases, basisUnits: glRouteBasisUnits,
   directAllocations: [], graph: glRouteGraph,
 });

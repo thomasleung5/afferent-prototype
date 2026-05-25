@@ -24,31 +24,31 @@ interface Row {
  *  (= Total − Disallowed, read-only). All downstream math reads pool.amount,
  *  which is derived from the NET — toggling Disallowed propagates through
  *  the engine, CAP rates, FBHR, and the fee study automatically. */
+interface CenterRowAug extends Row {
+  key: string;
+}
+
 export function CapCentersTable() {
   const {
     capPools, capCenterOrder, capCenterTotals, capCenterDisallowed, capCenterSources,
-    capCenterGlCodes,
     addCapCenter, renameCapCenter, updateCenterTotal, updateCenterDisallowed,
     setCapCenterOrder,
   } = useBuildState();
-  const centers = deriveCenters(capPools, capCenterOrder);
-  const rows: Row[] = centers.map((c, i) => {
-    const provenance = capCenterSources[c.name];
+  const centers = deriveCenters(capPools, capCenterOrder, capCenterSources);
+  const rows: CenterRowAug[] = centers.map((c, i) => {
+    const provenance = capCenterSources[c.key];
     // Total Expenses (gross). Falls back to derived Σ pool.amount only when
     // no stored total exists — that path treats the imported pool sum as
     // the gross figure (net = gross since disallowed is 0 by default).
-    const totalCost = capCenterTotals[c.name] ?? c.total;
-    const disallowed = capCenterDisallowed[c.name] ?? 0;
+    const totalCost = capCenterTotals[c.key] ?? c.total;
+    const disallowed = capCenterDisallowed[c.key] ?? 0;
     const netAllocable = Math.max(0, totalCost - disallowed);
-    // Use the imported glCode (e.g. "011-1100" for City Council, "BLDG"
-    // for Building Use) — matches the published CAP format. Falls back to the
-    // legacy per-pool synthesized prefix only when no glCode was imported.
-    const importedGl = capCenterGlCodes[c.name];
-    const samplePool = capPools.find((p) => p.center === c.name);
-    const code = importedGl
-      ?? samplePool?.id.replace(/^cap-/, "").split("-")[0]
-      ?? "—";
+    // The center's identity key IS its glCode for imported centers
+    // ("011-1100", "BLDG", etc.). Synth `seed:center:*` keys show "—" since
+    // those have no published code.
+    const code = c.key.startsWith("seed:center:") ? "—" : c.key;
     return {
+      key: c.key,
       id: `center-${i}`,
       idx: i + 1,
       code,
@@ -94,7 +94,7 @@ export function CapCentersTable() {
           value={r.name}
           onChange={(v) => {
             const next = String(v).trim();
-            if (next && next !== r.name) renameCapCenter(r.name, next);
+            if (next && next !== r.name) renameCapCenter((r as CenterRowAug).key, next);
           }}
         />
       ),
@@ -108,7 +108,7 @@ export function CapCentersTable() {
       render: (r) => (
         <CellInput
           type="currency" value={Math.round(r.totalCost)} min={0}
-          onChange={(v) => updateCenterTotal(r.name, Number(v) || 0)}
+          onChange={(v) => updateCenterTotal((r as CenterRowAug).key, Number(v) || 0)}
           align="right" prefix="$"
         />
       ),
@@ -125,7 +125,7 @@ export function CapCentersTable() {
           value={Math.round(r.disallowed)}
           min={0}
           max={Math.round(r.totalCost)}
-          onChange={(v) => updateCenterDisallowed(r.name, Number(v) || 0)}
+          onChange={(v) => updateCenterDisallowed((r as CenterRowAug).key, Number(v) || 0)}
           align="right" prefix="$"
         />
       ),
@@ -179,8 +179,8 @@ export function CapCentersTable() {
         onReorderRow={(fromIdx, toIdx) => {
           // Translate the displayed (sortedRows) positions back into a new
           // capCenterOrder. With defaultSort=idx asc, the displayed order
-          // matches centers[], so we can splice directly on center names.
-          const order = centers.map((c) => c.name);
+          // matches centers[], so we can splice directly on center keys.
+          const order = centers.map((c) => c.key);
           if (fromIdx < 0 || fromIdx >= order.length) return;
           if (toIdx < 0 || toIdx >= order.length) return;
           const [moved] = order.splice(fromIdx, 1);

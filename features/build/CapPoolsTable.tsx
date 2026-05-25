@@ -9,21 +9,24 @@ import { useBuildState } from "@/lib/store";
 import { deriveCenters } from "./CapKpiRail";
 
 export function CapPoolsTable() {
-  const { capPools, capCenterOrder, allocationBases, addCapPool, updateCapPool, addAllocationBasis } = useBuildState();
-  const centers = deriveCenters(capPools, capCenterOrder);
+  const {
+    capPools, capCenterOrder, capCenterSources, allocationBases,
+    addCapPool, updateCapPool, addAllocationBasis,
+  } = useBuildState();
+  const centers = deriveCenters(capPools, capCenterOrder, capCenterSources);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {centers.map((c) => {
-        const pools = capPools.filter((p) => p.center === c.name);
+        const pools = capPools.filter((p) => p.centerGlCode === c.key);
         return (
           <CenterSection
-            key={c.name}
+            key={c.key}
             name={c.name}
             pools={pools}
             total={c.total}
             bases={allocationBases}
-            onAddPool={() => addCapPool(c.name)}
+            onAddPool={() => addCapPool(c.key)}
             onUpdatePool={updateCapPool}
             onCreateBasis={addAllocationBasis}
           />

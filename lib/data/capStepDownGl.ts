@@ -46,7 +46,6 @@ interface PoolSchedule {
 import { FEE_DEPTS } from "./departments";
 const FEE_DEPT_SET = new Set<string>(FEE_DEPTS);
 
-const seedCenterKey = (centerName: string) => `seed:center:${centerName}`;
 /** Stable synth glCode used for PLAN/BLDG/ENG direct nodes when no
  *  imported receiver covers a fee dept. These nodes exist to hold seeded
  *  DRIVERS values for the driver-unit fallback; they are NOT a routing
@@ -157,8 +156,14 @@ export function buildEngineGraph(args: {
   allocationBases: AllocationBasis[];
   basisUnits: BasisUnitRow[];
   directAllocations: DirectAllocationRow[];
+  /** Center totals keyed by center identity (glCode or `seed:center:*`).
+   *  The key IS the indirect node's NodeKey — no second resolution step. */
   capCenterTotals: Record<string, number>;
-  capCenterGlCodes: Record<string, string>;
+  /** Center metadata keyed alongside capCenterTotals. Provides the
+   *  display name + classification lookup the engine stamps on each
+   *  indirect node. Missing entries fall back to using the key itself
+   *  as the name (defensive — production state always has metadata). */
+  capCenterSources: Record<string, { name: string; source: unknown; sourceFile?: string }>;
   capReceivers: ReceiverEntry[];
   /** Fee depts the active jurisdiction actually models (typically derived
    *  from state.positions / state.services). Scopes the synthetic
@@ -170,7 +175,7 @@ export function buildEngineGraph(args: {
 }): GlEngineGraph {
   const {
     allocationBases, basisUnits, directAllocations,
-    capCenterTotals, capCenterGlCodes, capReceivers,
+    capCenterTotals, capCenterSources, capReceivers,
     modeledFeeDepts,
   } = args;
 
@@ -182,16 +187,21 @@ export function buildEngineGraph(args: {
     nodeByKey.set(n.key, n);
   };
 
-  // 1. Indirect nodes — one per cost center.
+  // 1. Indirect nodes — one per cost center. The center's identity key
+  //    (glCode for imported centers, `seed:center:NAME` synth for
+  //    manually-added or pre-glCode-import centers) IS the node key, so
+  //    no name→key resolution is needed at routing time. Display name +
+  //    classification come from capCenterSources, with defensive
+  //    fallbacks for snapshots that predate the metadata field.
   const indirectNodeByCenter = new Map<string, NodeKey>();
-  for (const centerName of Object.keys(capCenterTotals)) {
-    const importedGl = capCenterGlCodes[centerName];
-    const key = importedGl ?? seedCenterKey(centerName);
+  for (const key of Object.keys(capCenterTotals)) {
+    const meta = capCenterSources[key];
+    const name = meta?.name ?? key;
     addNode({
-      key, glCode: key, name: centerName, role: "indirect",
-      classification: INDIRECT_CODE_BY_NAME.get(centerName),
+      key, glCode: key, name, role: "indirect",
+      classification: INDIRECT_CODE_BY_NAME.get(name),
     });
-    indirectNodeByCenter.set(centerName, key);
+    indirectNodeByCenter.set(name, key);
   }
 
   // 2. Every imported receiver glCode that isn't already an indirect center
@@ -200,35 +210,12 @@ export function buildEngineGraph(args: {
   //    receiver's classification matches PLAN/BLDG/ENG so FBHR can sum by
   //    fee dept; classification is metadata only and never determines a
   //    routing destination.
-  //
-  //    Defensive merge: if a receiver's name matches an indirect center we
-  //    just built with a synth seed:center:* key (because capCenterGlCodes
-  //    didn't list it), promote that center to the receiver's real glCode
-  //    rather than duplicating it as a direct node. This protects against
-  //    imports that bring receivers with real glCodes but don't separately
-  //    populate the center→glCode map.
   const modeledFeeDeptSet = modeledFeeDepts && modeledFeeDepts.length > 0
     ? new Set<string>(modeledFeeDepts)
     : null;
   for (const r of capReceivers) {
     if (!r.glCode) continue;
     if (nodeByKey.has(r.glCode)) continue;
-
-    const seedCenter = nodes.find(
-      (n) => n.role === "indirect" && n.key.startsWith("seed:center:")
-        && (n.name === r.dept || (n.classification && n.classification === r.deptCode)),
-    );
-    if (seedCenter) {
-      const oldKey = seedCenter.key;
-      nodeByKey.delete(oldKey);
-      seedCenter.key = r.glCode;
-      seedCenter.glCode = r.glCode;
-      nodeByKey.set(r.glCode, seedCenter);
-      for (const [name, key] of indirectNodeByCenter) {
-        if (key === oldKey) indirectNodeByCenter.set(name, r.glCode);
-      }
-      continue;
-    }
 
     const isFeeDept = FEE_DEPT_SET.has(r.deptCode);
     // Skip fee-dept receivers the active jurisdiction doesn't model. The
@@ -498,10 +485,13 @@ export function computeStepDownGl(args: {
   // stepOrder in sequence so each center's First Pool can include its
   // upstream centers' First contributions, and each center's Phase 2
   // input can include upstream centers' Phase 2 contributions.
+  // centerOrder entries are NodeKeys (glCodes / `seed:center:*` synth)
+  // post-PR-11. If a stale name slips through (legacy caller), the
+  // resolveCenterNode fallback finds it via the name→key map.
   const stepOrder: NodeKey[] = [];
   const seenStep = new Set<NodeKey>();
-  for (const cn of centerOrder) {
-    const k = resolveCenterNode(cn);
+  for (const entry of centerOrder) {
+    const k = allNodeKeys.has(entry) ? entry : resolveCenterNode(entry);
     if (k && !seenStep.has(k)) { stepOrder.push(k); seenStep.add(k); }
   }
   for (const n of indirectNodes) {

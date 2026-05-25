@@ -10,7 +10,7 @@ import {
 } from "./TracePanel";
 
 interface OpenCell {
-  center: string;
+  centerKey: string;
   nodeKey: NodeKey;
 }
 
@@ -34,13 +34,14 @@ export function AllocationMatrixByCenter() {
       if (aSeed !== bSeed) return aSeed ? 1 : -1;
       return a.glCode.localeCompare(b.glCode);
     });
-  // Cost center → imported glCode for the row-label glCode prefix.
-  const glCodeByCenter = useMemo(() => {
-    const m = new Map<string, string>();
+  // capCenterOrder is NodeKey[] (glCode or `seed:center:*`). Build a
+  // key → indirect node lookup so we can render display name + the
+  // optional glCode prefix without re-scanning model.nodes inside the
+  // hot row loop.
+  const indirectByKey = useMemo(() => {
+    const m = new Map<string, GlNode>();
     for (const n of model.nodes) {
-      if (n.role !== "indirect") continue;
-      if (n.glCode.startsWith("seed:")) continue;
-      m.set(n.name, n.glCode);
+      if (n.role === "indirect") m.set(n.key, n);
     }
     return m;
   }, [model.nodes]);
@@ -103,26 +104,27 @@ export function AllocationMatrixByCenter() {
   const poolsByCenter = useMemo(() => {
     const m = new Map<string, typeof capPools>();
     for (const p of capPools) {
-      const list = m.get(p.center) ?? [];
+      if (!p.centerGlCode) continue;
+      const list = m.get(p.centerGlCode) ?? [];
       list.push(p);
-      m.set(p.center, list);
+      m.set(p.centerGlCode, list);
     }
     return m;
   }, [capPools]);
 
-  const centerCell = (center: string, nodeKey: NodeKey): number =>
-    (poolsByCenter.get(center) ?? []).reduce(
+  const centerCell = (centerKey: string, nodeKey: NodeKey): number =>
+    (poolsByCenter.get(centerKey) ?? []).reduce(
       (a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0),
       0,
     );
 
-  const centerRowTotal = (center: string): number =>
-    cols.reduce((a, n) => a + centerCell(center, n.key), 0);
+  const centerRowTotal = (centerKey: string): number =>
+    cols.reduce((a, n) => a + centerCell(centerKey, n.key), 0);
 
   const colTotal = (nodeKey: NodeKey): number =>
     capPools.reduce((a, p) => a + (allocSrc[p.id]?.[nodeKey] ?? 0), 0);
 
-  const grandTotal = capCenterOrder.reduce((a, c) => a + centerRowTotal(c), 0);
+  const grandTotal = capCenterOrder.reduce((a, k) => a + centerRowTotal(k), 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -185,32 +187,35 @@ export function AllocationMatrixByCenter() {
               </tr>
             </thead>
             <tbody>
-              {capCenterOrder.map((center, i) => {
-                const pools = poolsByCenter.get(center) ?? [];
+              {capCenterOrder.map((centerKey, i) => {
+                const pools = poolsByCenter.get(centerKey) ?? [];
                 if (pools.length === 0) return null;
-                const rt = centerRowTotal(center);
+                const rt = centerRowTotal(centerKey);
+                const indirectNode = indirectByKey.get(centerKey);
+                const centerName = indirectNode?.name ?? centerKey;
+                const showGl = indirectNode && !indirectNode.glCode.startsWith("seed:");
                 const isLast = i === capCenterOrder.length - 1;
                 const rowBorder = isLast ? "none" : "1px solid var(--rule)";
                 return (
-                  <tr key={center} className="tbl-row-hover">
+                  <tr key={centerKey} className="tbl-row-hover">
                     <td style={{
                       ...stickyLeftBody,
                       borderBottom: rowBorder,
                       fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)", lineHeight: 1.3,
                       fontWeight: 500, color: "var(--ink)",
                     }}>
-                      {glCodeByCenter.get(center) && (
+                      {showGl && (
                         <span className="mono" style={{
                           fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
                           letterSpacing: "0.02em", fontWeight: 400,
-                        }}>{glCodeByCenter.get(center)}</span>
+                        }}>{indirectNode!.glCode}</span>
                       )}
-                      {center}
+                      {centerName}
                     </td>
                     {cols.map((n) => {
-                      const v = centerCell(center, n.key);
+                      const v = centerCell(centerKey, n.key);
                       const zero = v < 0.5;
-                      const isOpen = openCell?.center === center && openCell?.nodeKey === n.key;
+                      const isOpen = openCell?.centerKey === centerKey && openCell?.nodeKey === n.key;
                       return (
                         <td key={n.key} style={{
                           padding: 0,
@@ -220,7 +225,7 @@ export function AllocationMatrixByCenter() {
                         }}>
                           <button
                             type="button"
-                            onClick={() => !zero && setOpenCell(isOpen ? null : { center, nodeKey: n.key })}
+                            onClick={() => !zero && setOpenCell(isOpen ? null : { centerKey, nodeKey: n.key })}
                             title={zero ? "—" : `${fmt.dollars(v)} — click for trace`}
                             style={{
                               display: "block", width: "100%",
@@ -286,7 +291,7 @@ export function AllocationMatrixByCenter() {
 
       {openCell ? (
         <CenterCellTrace
-          center={openCell.center}
+          centerKey={openCell.centerKey}
           nodeKey={openCell.nodeKey}
           model={model}
           onClose={() => setOpenCell(null)}
@@ -320,9 +325,9 @@ function TraceHint() {
 }
 
 function CenterCellTrace({
-  center, nodeKey, model, onClose,
+  centerKey, nodeKey, model, onClose,
 }: {
-  center: string; nodeKey: NodeKey;
+  centerKey: string; nodeKey: NodeKey;
   model: GlStepDownModel;
   onClose: () => void;
 }) {
@@ -330,7 +335,9 @@ function CenterCellTrace({
   const node = model.nodes.find((n) => n.key === nodeKey);
   if (!node) return null;
 
-  const pools = capPools.filter((p) => p.center === center);
+  const centerNode = model.nodes.find((n) => n.role === "indirect" && n.key === centerKey);
+  const centerName = centerNode?.name ?? centerKey;
+  const pools = capPools.filter((p) => p.centerGlCode === centerKey);
   const allocSrc = model.alloc2;
 
   const totalToNode = pools.reduce(
@@ -359,7 +366,7 @@ function CenterCellTrace({
   return (
     <TracePanel
       eyebrow="Center allocation trace"
-      from={center}
+      from={centerName}
       to={node.name}
       onClose={onClose}
     >
@@ -367,7 +374,7 @@ function CenterCellTrace({
         <SummaryStrip cols={4}>
           <TraceStat
             label="Center"
-            value={center}
+            value={centerName}
             sub={`${pools.length} pool${pools.length === 1 ? "" : "s"}`}
           />
           <TraceStat
@@ -405,7 +412,7 @@ function CenterCellTrace({
             border: "1px solid var(--rule)",
             fontSize: "var(--t-l7)", color: "var(--ink-3)",
           }}>
-            No pool from <strong>{center}</strong> contributes to <strong>{node.name}</strong>.
+            No pool from <strong>{centerName}</strong> contributes to <strong>{node.name}</strong>.
           </div>
         ) : (
           <div style={{

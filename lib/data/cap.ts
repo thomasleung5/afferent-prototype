@@ -99,15 +99,32 @@ export const CAP_POOLS: CapPool[] = ([
 });
 
 /** Source department cost per cost center — the 100% reference for each
- *  pool's allocationPercent. Computed once from the seed CAP_POOLS so the
- *  initial state is internally consistent; user edits to center totals
- *  rescale all member pools proportionally. */
+ *  pool's allocationPercent. Keyed by centerGlCode (the canonical center
+ *  identity) so state shape matches the store's glCode-keyed center maps.
+ *  Computed once from the seed CAP_POOLS so the initial state is
+ *  internally consistent; user edits to center totals rescale all member
+ *  pools proportionally. */
 export const CAP_CENTER_TOTALS: Record<string, number> = (() => {
   const map: Record<string, number> = {};
   for (const p of CAP_POOLS) {
-    map[p.center] = (map[p.center] ?? 0) + p.amount;
+    const key = p.centerGlCode;
+    if (!key) continue;
+    map[key] = (map[key] ?? 0) + p.amount;
   }
   return map;
+})();
+
+/** Seed center metadata, keyed by centerGlCode. Pair with CAP_CENTER_TOTALS
+ *  to populate the store's glCode-keyed `capCenterSources` map at module
+ *  init time. */
+export const CAP_CENTER_SOURCES_SEED: Record<string, { name: string }> = (() => {
+  const out: Record<string, { name: string }> = {};
+  for (const p of CAP_POOLS) {
+    const key = p.centerGlCode;
+    if (!key || out[key]) continue;
+    out[key] = { name: p.center };
+  }
+  return out;
 })();
 
 /** Seed per-basis allocation schedules. One BasisUnitRow per non-DIRECT

@@ -35,33 +35,41 @@ export function AllocationDetailReport() {
     [capDirectAllocations],
   );
 
-  // Center name → imported glCode (e.g. "011-1200" for City Manager).
-  // Seed centers without a real imported glCode resolve to undefined, which
-  // CenterCode renders as "—".
-  const glCodeByCenter = useMemo(() => {
+  // Center identity key → imported glCode (e.g. "011-1200" for
+  // City Manager). Synth `seed:center:*` keys resolve to undefined,
+  // which CenterCode renders as "—".
+  const glCodeByCenterKey = useMemo(() => {
     const m = new Map<string, string>();
     for (const n of model.nodes) {
       if (n.role !== "indirect") continue;
       if (n.glCode.startsWith("seed:")) continue;
-      m.set(n.name, n.glCode);
+      m.set(n.key, n.glCode);
+    }
+    return m;
+  }, [model.nodes]);
+
+  // Center identity key → display name from the engine's indirect nodes
+  // (the engine reads it from capCenterSources). Used to render row
+  // labels in the Costs-to-be-Allocated table when iterating step order.
+  const nameByCenterKey = useMemo(() => {
+    const m = new Map<string, string>();
+    for (const n of model.nodes) {
+      if (n.role === "indirect") m.set(n.key, n.name);
     }
     return m;
   }, [model.nodes]);
 
   // Sort pools by their center order (then pool name) for predictability.
   const sortedPools = useMemo(() => {
-    const byCenter = new Map<string, number>();
-    model.stepOrder.forEach((k, i) => {
-      const node = model.nodes.find((n) => n.key === k);
-      if (node) byCenter.set(node.name, i);
-    });
+    const byCenterKey = new Map<string, number>();
+    model.stepOrder.forEach((k, i) => byCenterKey.set(k, i));
     return [...capPools].sort((a, b) => {
-      const ai = byCenter.get(a.center) ?? 999;
-      const bi = byCenter.get(b.center) ?? 999;
+      const ai = byCenterKey.get(a.centerGlCode) ?? 999;
+      const bi = byCenterKey.get(b.centerGlCode) ?? 999;
       if (ai !== bi) return ai - bi;
       return a.pool.localeCompare(b.pool);
     });
-  }, [capPools, model.stepOrder, model.nodes]);
+  }, [capPools, model.stepOrder]);
 
   const [selectedId, setSelectedId] = useState<string>(sortedPools[0]?.id ?? "");
   const selected = sortedPools.find((p) => p.id === selectedId) ?? sortedPools[0];
@@ -83,24 +91,25 @@ export function AllocationDetailReport() {
         pools={sortedPools}
         selectedId={selected.id}
         onSelect={setSelectedId}
-        glCodeByCenter={glCodeByCenter}
+        glCodeByCenterKey={glCodeByCenterKey}
       />
-      <CenterCostsToBeAllocated centerName={selected.center}/>
+      <CenterCostsToBeAllocated centerKey={selected.centerGlCode}/>
       <PoolDetailCard pool={selected}/>
     </div>
   );
 
-  function CenterCostsToBeAllocated({ centerName }: { centerName: string }) {
-    // Find this center's indirect node.
+  function CenterCostsToBeAllocated({ centerKey }: { centerKey: string }) {
+    // Find this center's indirect node by its identity key.
     const centerNode = model.nodes.find(
-      (n) => n.role === "indirect" && n.name === centerName,
+      (n) => n.role === "indirect" && n.key === centerKey,
     );
     if (!centerNode) return null;
     const homeKey = centerNode.key;
+    const centerName = centerNode.name;
 
     // Departmental = Σ net allocable across all pools at this center.
     const departmental = capPools
-      .filter((p) => p.center === centerName)
+      .filter((p) => p.centerGlCode === centerKey)
       .reduce((a, p) => a + p.amount, 0);
 
     // Column labeling rule for the "Costs to be Allocated" report: a source
@@ -108,14 +117,9 @@ export function AllocationDetailReport() {
     // source's home center is UPSTREAM (= earlier in stepOrder) of this
     // center AND the contribution is in Round 1. Everything else (upstream
     // Round 2, self R1+R2, downstream R1+R2) counts as Incoming SECOND.
-    // Self-allocations and downstream cross-flows all land in the Second
-    // column even though they originated in their own Round 1.
-    const stepIndexByCenter = new Map<string, number>();
-    model.stepOrder.forEach((k, i) => {
-      const n = model.nodes.find((nn) => nn.key === k);
-      if (n) stepIndexByCenter.set(n.name, i);
-    });
-    const targetStepIndex = stepIndexByCenter.get(centerName) ?? -1;
+    const stepIndexByKey = new Map<string, number>();
+    model.stepOrder.forEach((k, i) => stepIndexByKey.set(k, i));
+    const targetStepIndex = stepIndexByKey.get(centerKey) ?? -1;
 
     // Seed every indirect center as a potential source row so the table
     // matches the "Costs to be Allocated" layout (every allocable budget
@@ -123,26 +127,28 @@ export function AllocationDetailReport() {
     // First/Second contributions into its source-center row.
     const sources = new Map<string, { first: number; second: number }>();
     for (const n of model.nodes) {
-      if (n.role === "indirect") sources.set(n.name, { first: 0, second: 0 });
+      if (n.role === "indirect") sources.set(n.key, { first: 0, second: 0 });
     }
     for (const sp of capPools) {
-      const sourceStepIndex = stepIndexByCenter.get(sp.center) ?? -1;
+      const sourceStepIndex = stepIndexByKey.get(sp.centerGlCode) ?? -1;
       const isUpstream = sourceStepIndex !== -1 && targetStepIndex !== -1
         && sourceStepIndex < targetStepIndex;
       const r1 = model.firstAllocation[sp.id]?.[homeKey] ?? 0;
       const r2 = model.secondAllocation[sp.id]?.[homeKey] ?? 0;
       const first  = isUpstream ? r1 : 0;
       const second = isUpstream ? r2 : (r1 + r2);
-      const cur = sources.get(sp.center) ?? { first: 0, second: 0 };
+      const cur = sources.get(sp.centerGlCode) ?? { first: 0, second: 0 };
       cur.first  += first;
       cur.second += second;
-      sources.set(sp.center, cur);
+      sources.set(sp.centerGlCode, cur);
     }
     const sourceRows = [...sources.entries()]
-      .map(([name, v]) => ({ name, ...v, total: v.first + v.second }))
+      .map(([key, v]) => ({
+        key, name: nameByCenterKey.get(key) ?? key, ...v, total: v.first + v.second,
+      }))
       .sort((a, b) => {
-        const ai = stepIndexByCenter.get(a.name) ?? 999;
-        const bi = stepIndexByCenter.get(b.name) ?? 999;
+        const ai = stepIndexByKey.get(a.key) ?? 999;
+        const bi = stepIndexByKey.get(b.key) ?? 999;
         if (ai !== bi) return ai - bi;
         return a.name.localeCompare(b.name);
       });
@@ -155,7 +161,7 @@ export function AllocationDetailReport() {
     if (totalIncoming <= 0.5 && departmental <= 0.5) return null;
 
     const COL = "minmax(220px, 1.8fr) 120px 120px 120px";
-    const centerGl = glCodeByCenter.get(centerName);
+    const centerGl = glCodeByCenterKey.get(centerKey);
     return (
       <div>
         <SectionLabel right={centerGl ? `${centerGl} · ${centerName}` : centerName}>
@@ -199,13 +205,13 @@ export function AllocationDetailReport() {
 
           {sourceRows.map((r) => (
             <CostsRow
-              key={r.name}
+              key={r.key}
               label={r.name}
-              glCode={glCodeByCenter.get(r.name)}
+              glCode={glCodeByCenterKey.get(r.key)}
               first={r.first}
               second={r.second}
               total={r.total}
-              isSelf={r.name === centerName}
+              isSelf={r.key === centerKey}
             />
           ))}
 
@@ -294,7 +300,7 @@ export function AllocationDetailReport() {
       total: acc.total + r.total,
     }), { units: 0, percent: 0, gross: 0, directBilled: 0, first: 0, second: 0, total: 0 });
 
-    const centerGl = glCodeByCenter.get(pool.center);
+    const centerGl = glCodeByCenterKey.get(pool.centerGlCode);
     const rightLabel = [
       centerGl,
       pool.center,
@@ -419,12 +425,12 @@ function CostsRow({
 }
 
 function PoolPicker({
-  pools, selectedId, onSelect, glCodeByCenter,
+  pools, selectedId, onSelect, glCodeByCenterKey,
 }: {
-  pools: { id: string; center: string; pool: string; amount: number; allocationPercent: number }[];
+  pools: { id: string; center: string; centerGlCode: string; pool: string; amount: number; allocationPercent: number }[];
   selectedId: string;
   onSelect: (id: string) => void;
-  glCodeByCenter: Map<string, string>;
+  glCodeByCenterKey: Map<string, string>;
 }) {
   return (
     <div>
@@ -438,7 +444,7 @@ function PoolPicker({
         {pools.map((p, i) => {
           const eligible = p.amount;
           const selected = p.id === selectedId;
-          const gl = glCodeByCenter.get(p.center);
+          const gl = glCodeByCenterKey.get(p.centerGlCode);
           return (
             <button
               key={p.id}

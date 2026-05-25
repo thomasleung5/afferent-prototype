@@ -447,11 +447,11 @@ function DiagramArrow() {
 }
 
 function CostCenters({ payload }: { payload: CapExportPayload }) {
-  const poolCountByCenter = new Map<string, number>();
+  const poolCountByKey = new Map<string, number>();
   for (const pl of payload.capPools) {
-    poolCountByCenter.set(pl.center, (poolCountByCenter.get(pl.center) ?? 0) + 1);
+    poolCountByKey.set(pl.centerGlCode, (poolCountByKey.get(pl.centerGlCode) ?? 0) + 1);
   }
-  const glByName = pdfGlCodeByCenter(payload);
+  const meta = pdfCenterMeta(payload);
   let totalGross = 0, totalDis = 0;
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
@@ -475,21 +475,23 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
           </tr>
         </thead>
         <tbody>
-          {payload.capCenterOrder.map((name, i) => {
-            const gross = payload.capCenterTotals[name] ?? 0;
-            const dis = payload.capCenterDisallowed[name] ?? 0;
+          {payload.capCenterOrder.map((key, i) => {
+            const gross = payload.capCenterTotals[key] ?? 0;
+            const dis = payload.capCenterDisallowed[key] ?? 0;
             const net = Math.max(0, gross - dis);
-            const gl = glByName.get(name);
+            const m = meta.get(key);
+            const gl = m?.glCode;
+            const name = m?.name ?? key;
             totalGross += gross; totalDis += dis;
             return (
-              <tr key={name}>
+              <tr key={key}>
                 <td className="num mono dim">{String(i + 1).padStart(2, "0")}</td>
                 <td><span className="mono" style={{ fontSize: 10, color: gl ? "var(--ink-2)" : "var(--ink-4)" }}>{gl ?? "—"}</span></td>
                 <td>{name}</td>
                 <td className="num">{fmt.dollars(gross)}</td>
                 <td className="num">{dis > 0 ? fmt.dollars(dis) : <span className="dim">—</span>}</td>
                 <td className="num"><b>{fmt.dollars(net)}</b></td>
-                <td className="num">{poolCountByCenter.get(name) ?? 0}</td>
+                <td className="num">{poolCountByKey.get(key) ?? 0}</td>
               </tr>
             );
           })}
@@ -515,6 +517,22 @@ function pdfGlCodeByCenter(payload: CapExportPayload): Map<string, string> {
     if (nn.role !== "indirect") continue;
     if (nn.glCode.startsWith("seed:")) continue;
     m.set(nn.name, nn.glCode);
+  }
+  return m;
+}
+
+/** Center identity key → {name, glCode} pair used by every step-order
+ *  iteration in this file. glCode is undefined for synth `seed:center:*`
+ *  keys. Reads from the engine's indirect-node list (which carries the
+ *  display name from capCenterSources). */
+function pdfCenterMeta(payload: CapExportPayload): Map<string, { name: string; glCode?: string }> {
+  const m = new Map<string, { name: string; glCode?: string }>();
+  for (const nn of payload.model.nodes) {
+    if (nn.role !== "indirect") continue;
+    m.set(nn.key, {
+      name: nn.name,
+      glCode: nn.glCode.startsWith("seed:") ? undefined : nn.glCode,
+    });
   }
   return m;
 }
@@ -815,7 +833,7 @@ function ReadingThePlan() {
 }
 
 function CostPools({ payload }: { payload: CapExportPayload }) {
-  const glByName = pdfGlCodeByCenter(payload);
+  const meta = pdfCenterMeta(payload);
   let totalEligible = 0;
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
@@ -838,7 +856,7 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
         <tbody>
           {payload.capPools.map((pl) => {
             const { basis } = basisForPool(pl, payload.allocationBases);
-            const gl = glByName.get(pl.center);
+            const gl = meta.get(pl.centerGlCode)?.glCode;
             totalEligible += pl.amount;
             return (
               <tr key={pl.id}>
@@ -862,17 +880,15 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
 
 function AllocationByCenter({ payload }: { payload: CapExportPayload }) {
   const stepIndex = new Map<string, number>();
-  payload.model.stepOrder.forEach((k, i) => {
-    const node = payload.model.nodes.find((nn) => nn.key === k);
-    if (node) stepIndex.set(node.name, i);
-  });
-  const poolsByCenter = new Map<string, CapExportPayload["capPools"]>();
+  payload.model.stepOrder.forEach((k, i) => stepIndex.set(k, i));
+  const meta = pdfCenterMeta(payload);
+  const poolsByCenterKey = new Map<string, CapExportPayload["capPools"]>();
   for (const pl of payload.capPools) {
-    const list = poolsByCenter.get(pl.center) ?? [];
+    const list = poolsByCenterKey.get(pl.centerGlCode) ?? [];
     list.push(pl);
-    poolsByCenter.set(pl.center, list);
+    poolsByCenterKey.set(pl.centerGlCode, list);
   }
-  for (const list of poolsByCenter.values()) {
+  for (const list of poolsByCenterKey.values()) {
     list.sort((a, b) => a.pool.localeCompare(b.pool));
   }
 
@@ -888,15 +904,14 @@ function AllocationByCenter({ payload }: { payload: CapExportPayload }) {
         First/Second column subtotals on the pool pages.
       </div>
       {payload.model.stepOrder.map((centerKey, idx) => {
-        const centerNode = payload.model.nodes.find((nn) => nn.key === centerKey);
-        if (!centerNode) return null;
-        const centerName = centerNode.name;
-        const centerPools = poolsByCenter.get(centerName) ?? [];
+        const m = meta.get(centerKey);
+        if (!m) return null;
+        const centerPools = poolsByCenterKey.get(centerKey) ?? [];
         return (
           <CenterBlock
             key={centerKey}
             centerKey={centerKey}
-            centerName={centerName}
+            centerName={m.name}
             centerPools={centerPools}
             stepIndex={stepIndex}
             payload={payload}
@@ -918,30 +933,31 @@ function CenterBlock({
   payload: CapExportPayload;
   indexLabel: string;
 }) {
-  const targetStep = stepIndex.get(centerName) ?? -1;
+  const targetStep = stepIndex.get(centerKey) ?? -1;
+  const meta = pdfCenterMeta(payload);
 
   const departmental = centerPools
     .reduce((a, pl) => a + pl.amount, 0);
 
   const sources = new Map<string, { first: number; second: number }>();
   for (const n of payload.model.nodes) {
-    if (n.role === "indirect") sources.set(n.name, { first: 0, second: 0 });
+    if (n.role === "indirect") sources.set(n.key, { first: 0, second: 0 });
   }
   for (const sp of payload.capPools) {
-    const srcStep = stepIndex.get(sp.center) ?? -1;
+    const srcStep = stepIndex.get(sp.centerGlCode) ?? -1;
     const isUpstream = srcStep !== -1 && targetStep !== -1 && srcStep < targetStep;
     const r1 = payload.model.firstAllocation[sp.id]?.[centerKey] ?? 0;
     const r2 = payload.model.secondAllocation[sp.id]?.[centerKey] ?? 0;
     const first = isUpstream ? r1 : 0;
     const second = isUpstream ? r2 : (r1 + r2);
-    const cur = sources.get(sp.center) ?? { first: 0, second: 0 };
+    const cur = sources.get(sp.centerGlCode) ?? { first: 0, second: 0 };
     cur.first += first;
     cur.second += second;
-    sources.set(sp.center, cur);
+    sources.set(sp.centerGlCode, cur);
   }
   const sourceRows = [...sources.entries()]
-    .map(([name, v]) => ({ name, ...v }))
-    .sort((a, b) => (stepIndex.get(a.name) ?? 999) - (stepIndex.get(b.name) ?? 999));
+    .map(([key, v]) => ({ key, name: meta.get(key)?.name ?? key, ...v }))
+    .sort((a, b) => (stepIndex.get(a.key) ?? 999) - (stepIndex.get(b.key) ?? 999));
   const totalFirst = sourceRows.reduce((a, r) => a + r.first, 0);
   const totalSecond = sourceRows.reduce((a, r) => a + r.second, 0);
 
@@ -970,11 +986,11 @@ function CenterBlock({
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>Center {indexLabel} · Step {indexLabel}</div>
         <div style={{ fontSize: 18, fontWeight: 600, marginTop: 4 }}>
-          {pdfGlCodeByCenter(payload).get(centerName) && (
+          {meta.get(centerKey)?.glCode && (
             <span className="mono" style={{
               fontSize: 14, color: "var(--ink-3)", marginRight: 10,
               letterSpacing: "0.02em",
-            }}>{pdfGlCodeByCenter(payload).get(centerName)}</span>
+            }}>{meta.get(centerKey)!.glCode}</span>
           )}
           {centerName}
         </div>
@@ -1000,12 +1016,12 @@ function CenterBlock({
                 <td className="num"><b>{fmt.dollars(departmental)}</b></td>
               </tr>
               {sourceRows.map((r) => {
-                const isSelf = r.name === centerName;
+                const isSelf = r.key === centerKey;
                 const total = r.first + r.second;
                 const allZero = r.first < 0.5 && r.second < 0.5;
-                const sourceGl = pdfGlCodeByCenter(payload).get(r.name);
+                const sourceGl = meta.get(r.key)?.glCode;
                 return (
-                  <tr key={r.name}>
+                  <tr key={r.key}>
                     <td style={{ color: allZero ? "var(--ink-4)" : "var(--ink-2)" }}>
                       {sourceGl && (
                         <span className="mono dim" style={{
@@ -1093,7 +1109,7 @@ function PoolBlock({
   const totalSecond = allRows.reduce((a, r) => a + r.second, 0);
 
   const centerNode = model.nodes.find(
-    (n) => n.role === "indirect" && n.name === pool.center,
+    (n) => n.role === "indirect" && n.key === pool.centerGlCode,
   );
   const centerGl = centerNode && !centerNode.glCode.startsWith("seed:")
     ? centerNode.glCode : undefined;
@@ -1253,12 +1269,13 @@ function Appendices({ payload }: { payload: CapExportPayload }) {
 // ---------------------------------------------------------------------------
 
 function AppendixA({ payload }: { payload: CapExportPayload }) {
-  const poolsByCenter = new Map<string, CapExportPayload["capPools"]>();
+  const poolsByCenterKey = new Map<string, CapExportPayload["capPools"]>();
   for (const pl of payload.capPools) {
-    const list = poolsByCenter.get(pl.center) ?? [];
+    const list = poolsByCenterKey.get(pl.centerGlCode) ?? [];
     list.push(pl);
-    poolsByCenter.set(pl.center, list);
+    poolsByCenterKey.set(pl.centerGlCode, list);
   }
+  const meta = pdfCenterMeta(payload);
   const receiverCount = (poolId: string): number => {
     const first = payload.model.firstAllocation[poolId] ?? {};
     const second = payload.model.secondAllocation[poolId] ?? {};
@@ -1291,11 +1308,12 @@ function AppendixA({ payload }: { payload: CapExportPayload }) {
           </tr>
         </thead>
         <tbody>
-          {payload.capCenterOrder.map((centerName) => {
-            const pools = poolsByCenter.get(centerName) ?? [];
+          {payload.capCenterOrder.map((centerKey) => {
+            const pools = poolsByCenterKey.get(centerKey) ?? [];
+            const centerName = meta.get(centerKey)?.name ?? centerKey;
             if (pools.length === 0) {
               return (
-                <tr key={centerName}>
+                <tr key={centerKey}>
                   <td><b>{centerName}</b></td>
                   <td colSpan={5} style={{ color: "var(--ink-3)" }}>Not available</td>
                 </tr>
@@ -1413,7 +1431,7 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
   const rows = indirectNodes
     .map((node) => {
       const centerName = node.name;
-      const pools = payload.capPools.filter((pl) => pl.center === centerName);
+      const pools = payload.capPools.filter((pl) => pl.centerGlCode === node.key);
       const departmental = pools.reduce((a, pl) => a + pl.amount, 0);
 
       let outgoing = 0;
@@ -1433,10 +1451,10 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
         }
       }
 
-      const targetStep = stepIndex.get(centerName) ?? -1;
+      const targetStep = stepIndex.get(node.key) ?? -1;
       let incoming = 0;
       for (const sp of payload.capPools) {
-        const srcStep = stepIndex.get(sp.center) ?? -1;
+        const srcStep = stepIndex.get(sp.centerGlCode) ?? -1;
         const isUpstream = srcStep !== -1 && targetStep !== -1 && srcStep < targetStep;
         if (!isUpstream) continue;
         const r1 = payload.model.firstAllocation[sp.id]?.[node.key] ?? 0;
@@ -1537,17 +1555,22 @@ function AppendixD({ payload }: { payload: CapExportPayload }) {
   const totalReceivedAll = Object.values(payload.model.directTotals)
     .reduce((a, v) => a + v, 0);
 
+  const meta = pdfCenterMeta(payload);
   const rows = directNodes
     .map((node) => {
       const total = payload.model.directTotals[node.key] ?? 0;
 
-      const byProvider = new Map<string, number>();
+      const byProviderKey = new Map<string, number>();
       for (const pl of payload.capPools) {
         const r1 = payload.model.firstAllocation[pl.id]?.[node.key] ?? 0;
         const r2 = payload.model.secondAllocation[pl.id]?.[node.key] ?? 0;
         const amt = r1 + r2;
         if (amt < 0.5) continue;
-        byProvider.set(pl.center, (byProvider.get(pl.center) ?? 0) + amt);
+        byProviderKey.set(pl.centerGlCode, (byProviderKey.get(pl.centerGlCode) ?? 0) + amt);
+      }
+      const byProvider = new Map<string, number>();
+      for (const [key, amt] of byProviderKey) {
+        byProvider.set(meta.get(key)?.name ?? key, amt);
       }
       const topProviders = [...byProvider.entries()]
         .map(([name, amt]) => ({ name, amount: amt }))
@@ -1685,33 +1708,33 @@ function AppendixE() {
 // ============================================================================
 
 function computeProviderOutgoing(payload: CapExportPayload): Map<string, number> {
+  const meta = pdfCenterMeta(payload);
   const out = new Map<string, number>();
   for (const pl of payload.capPools) {
     const first = payload.model.firstAllocation[pl.id] ?? {};
     const second = payload.model.secondAllocation[pl.id] ?? {};
-    const selfNode = payload.model.nodes.find(
-      (n) => n.role === "indirect" && n.name === pl.center,
-    );
+    const selfKey = pl.centerGlCode;
     let total = 0;
     for (const [k, v] of Object.entries(first)) {
-      if (selfNode && k === selfNode.key) continue;
+      if (k === selfKey) continue;
       total += v;
     }
     for (const [k, v] of Object.entries(second)) {
-      if (selfNode && k === selfNode.key) continue;
+      if (k === selfKey) continue;
       total += v;
     }
-    out.set(pl.center, (out.get(pl.center) ?? 0) + total);
+    const label = meta.get(pl.centerGlCode)?.name ?? pl.center;
+    out.set(label, (out.get(label) ?? 0) + total);
   }
   return out;
 }
 
+/** Center identity key → step-order index. stepOrder is NodeKey[] so the
+ *  identity key IS the key — every consumer that needs step ordering
+ *  reads pl.centerGlCode against this map. */
 function stepIndexMap(payload: CapExportPayload): Map<string, number> {
   const m = new Map<string, number>();
-  payload.model.stepOrder.forEach((k, i) => {
-    const node = payload.model.nodes.find((nn) => nn.key === k);
-    if (node) m.set(node.name, i);
-  });
+  payload.model.stepOrder.forEach((k, i) => m.set(k, i));
   return m;
 }
 
