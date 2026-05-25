@@ -256,6 +256,54 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       }
       return next;
     });
+    // PR-H: coalesce legacy per-position labor row ids
+    // (`op-labor-<positionId>-{salary|benefits}` from PR-D) into per-dept
+    // aggregates (`op-labor-<dept>-{salary|benefits}`). Sums amounts per
+    // (dept, laborType) bucket. Marks the new rows notReconciled since
+    // they came from position estimates. The check is conservative: it
+    // only fires if any row matches the old per-position id pattern,
+    // so re-running on already-migrated state is a no-op.
+    const legacyPerPositionPattern = /^op-labor-(?!PLAN-|BLDG-|ENG-|PARKS-|PD-|FIRE-|PW-)/;
+    const legacyLaborRows = state.operating.filter(
+      (o) => o.costType === "Labor" && legacyPerPositionPattern.test(o.id),
+    );
+    if (legacyLaborRows.length > 0) {
+      type Bucket = { amount: number; laborType: OperatingLine["laborType"]; sourceFile?: string; source: OperatingLine["source"] };
+      const byKey = new Map<string, Bucket>();
+      for (const row of legacyLaborRows) {
+        const key = `${row.dept}|${row.laborType ?? "Benefits"}`;
+        const cur = byKey.get(key) ?? {
+          amount: 0, laborType: row.laborType ?? "Benefits", source: row.source,
+        };
+        cur.amount += row.amount;
+        if (row.sourceFile && !cur.sourceFile) cur.sourceFile = row.sourceFile;
+        byKey.set(key, cur);
+      }
+      const survivors = state.operating.filter(
+        (o) => !(o.costType === "Labor" && legacyPerPositionPattern.test(o.id)),
+      );
+      const coalesced: OperatingLine[] = [];
+      for (const [key, bucket] of byKey) {
+        const dept = key.split("|")[0] as OperatingLine["dept"];
+        const lt = bucket.laborType;
+        coalesced.push({
+          id: `op-labor-${dept}-${lt === "Salary" ? "salary" : "benefits"}`,
+          code: dept === "PLAN" ? "011-2410" : dept === "BLDG" ? "011-2420" : dept === "ENG" ? "011-3100" : "—",
+          dept,
+          sourceDept: dept === "PLAN" ? "Planning Division" : dept === "BLDG" ? "Building & Safety" : dept === "ENG" ? "Public Works — Engineering" : String(dept),
+          category: "Other",
+          costType: "Labor",
+          laborType: lt,
+          notReconciled: true,
+          line: lt === "Salary" ? "Regular Salaries" : "Benefits",
+          amount: bucket.amount,
+          source: bucket.source,
+          ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
+          include: true,
+        });
+      }
+      state.operating = [...survivors, ...coalesced];
+    }
   }
   if (Array.isArray(state.volume)) {
     state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));

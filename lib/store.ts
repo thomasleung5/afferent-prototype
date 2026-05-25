@@ -287,59 +287,87 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
 
 /** Per-dept payroll GL code stamped on derived labor operating rows.
  *  Mirrors the non-labor operating seed's per-dept code so labor and
- *  non-labor rows for the same dept share a GL prefix in the table.
- *  Fall-through is a generic "—" placeholder. */
+ *  non-labor rows for the same dept share a GL prefix in the table. */
 const LABOR_CODE_BY_DEPT: Partial<Record<DeptCode, string>> = {
   PLAN: "011-2410",
   BLDG: "011-2420",
   ENG:  "011-3100",
 };
 
-/** Derive labor-classified OperatingLine[] from a Position[]. Each
- *  position emits two rows — a Salaries row and a Benefits row — both
- *  `costType: "Labor"`. Amounts are weighted by FTE so the dept-level
- *  totals match `deptLabor`'s totalComp calc to the cent. Ids are
- *  deterministic (`op-labor-<positionId>-{salary|benefits}`) so
- *  re-running the conversion stays idempotent — the row-id collision
- *  is what lets storeMigration safely re-derive without duplicating. */
+/** Per-dept source-program label stamped on derived labor rows. Matches
+ *  the non-labor operating seed's sourceDept text for the same dept so
+ *  the two surfaces read consistently. */
+const SOURCE_DEPT_BY_DEPT: Partial<Record<DeptCode, string>> = {
+  PLAN: "Planning Division",
+  BLDG: "Building & Safety",
+  ENG:  "Public Works — Engineering",
+};
+
+/** Derive labor-classified OperatingLine[] from a Position[],
+ *  aggregated at the GL/account/dept level — one Salaries row + one
+ *  Benefits row PER DEPT, summing FTE-weighted comp across every
+ *  position in that dept. This matches what a real labor budget book
+ *  looks like (per-account totals, not per-person line items) and
+ *  decouples the labor cost from the position roster: editing a
+ *  productive-role's FTE doesn't change labor cost unless the user
+ *  explicitly edits the labor row.
+ *
+ *  Rows are marked `notReconciled: true` — they're a fallback derived
+ *  from position estimates, not pulled from an actual budget import.
+ *  The UI surfaces a banner reminding the user to import real budget
+ *  labor lines.
+ *
+ *  Ids are deterministic at the (dept, laborType) level
+ *  (`op-labor-<dept>-{salary|benefits}`) so re-running the conversion
+ *  in migration/seed produces a stable, idempotent result. */
 export function buildLaborLinesFromPositions(
   positions: Position[],
 ): OperatingLine[] {
-  const out: OperatingLine[] = [];
+  type Bucket = { salary: number; benefits: number; sourceFile?: string; source: Position["source"] };
+  const byDept = new Map<DeptCode, Bucket>();
   for (const p of positions) {
-    const code = LABOR_CODE_BY_DEPT[p.dept] ?? "—";
-    const sourceFile = p.sourceFile;
-    const salaryAmount = p.salary * p.fte;
-    const benefitsAmount = p.benefits * p.fte;
-    if (salaryAmount > 0) {
+    const cur = byDept.get(p.dept) ?? { salary: 0, benefits: 0, source: p.source };
+    cur.salary   += p.salary   * p.fte;
+    cur.benefits += p.benefits * p.fte;
+    if (p.sourceFile && !cur.sourceFile) cur.sourceFile = p.sourceFile;
+    byDept.set(p.dept, cur);
+  }
+
+  const out: OperatingLine[] = [];
+  for (const [dept, bucket] of byDept) {
+    const code = LABOR_CODE_BY_DEPT[dept] ?? "—";
+    const sourceDept = SOURCE_DEPT_BY_DEPT[dept] ?? dept;
+    if (bucket.salary > 0) {
       out.push({
-        id: `op-labor-${p.id}-salary`,
+        id: `op-labor-${dept}-salary`,
         code,
-        dept: p.dept,
-        sourceDept: p.title,
+        dept,
+        sourceDept,
         category: "Other",
         costType: "Labor",
         laborType: "Salary",
-        line: `${p.title} · Salaries`,
-        amount: salaryAmount,
-        source: p.source,
-        ...(sourceFile ? { sourceFile } : {}),
+        notReconciled: true,
+        line: "Regular Salaries",
+        amount: bucket.salary,
+        source: bucket.source,
+        ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
         include: true,
       });
     }
-    if (benefitsAmount > 0) {
+    if (bucket.benefits > 0) {
       out.push({
-        id: `op-labor-${p.id}-benefits`,
+        id: `op-labor-${dept}-benefits`,
         code,
-        dept: p.dept,
-        sourceDept: p.title,
+        dept,
+        sourceDept,
         category: "Other",
         costType: "Labor",
         laborType: "Benefits",
-        line: `${p.title} · Benefits`,
-        amount: benefitsAmount,
-        source: p.source,
-        ...(sourceFile ? { sourceFile } : {}),
+        notReconciled: true,
+        line: "Benefits",
+        amount: bucket.benefits,
+        source: bucket.source,
+        ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
         include: true,
       });
     }
@@ -740,13 +768,15 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergePositions: (r, fileName) => {
         const result = toApplyResult("positions", fileName, r);
         set((s) => {
-          // PR-F: an imported Position is no longer a stored entity; it
-          // splits into one productiveHours row (id mirrors the import)
-          // and two labor operating rows (Salaries + Benefits, with
-          // deterministic ids from buildLaborLinesFromPositions). All
-          // three are upserted into their respective slices. Lineage is
-          // keyed on the position id so the import drawer's summary
-          // counts stay consistent with the wire payload.
+          // PR-F: each imported Position upserts into productiveHours
+          // (id mirrors the import) so the role roster stays in sync.
+          //
+          // PR-H: labor budget lines are dept-aggregate, not per-role,
+          // so we rebuild them ONCE per dept touched by this batch from
+          // the imported positions. Existing labor rows for those depts
+          // get replaced (deterministic id collision); other depts'
+          // labor rows stay untouched. Labor rows derived from positions
+          // carry `notReconciled: true` — UI flags them as fallback.
           const incoming = [...r.mapped, ...r.lowConfidence, ...r.duplicates];
           const lineagePatch: Record<string, SourceLineage> = {};
           const phById = new Map(s.productiveHours.map((row) => [row.id, row]));
@@ -766,11 +796,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               ...(entity.sourceFile ? { sourceFile: entity.sourceFile } : {}),
             };
             phById.set(entity.id, phRow);
-
-            for (const laborRow of buildLaborLinesFromPositions([entity])) {
-              opById.set(laborRow.id, laborRow);
-            }
             lineagePatch[entity.id] = lineage;
+          }
+          // Rebuild per-dept labor rows from the full incoming batch in
+          // one shot; deterministic ids overwrite whatever was there.
+          for (const laborRow of buildLaborLinesFromPositions(
+            incoming.map((x) => x.entity),
+          )) {
+            opById.set(laborRow.id, laborRow);
           }
 
           return {

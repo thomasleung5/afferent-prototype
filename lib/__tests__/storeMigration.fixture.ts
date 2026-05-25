@@ -118,22 +118,23 @@ import { IMPORTS } from "../data/imports";
   };
   migratePersistedState(state as never);
 
-  const op = state.operating as { id: string; costType: string; dept: string; amount: number; line: string }[];
+  const op = state.operating as { id: string; costType: string; dept: string; amount: number; line: string; notReconciled?: boolean }[];
   const labor = op.filter((o) => o.costType === "Labor");
-  assert.equal(labor.length, 2, "PR-D: each position produces 2 labor rows (salary + benefits)");
-  const salary = labor.find((o) => o.id === "op-labor-pos-x-salary");
-  const benefits = labor.find((o) => o.id === "op-labor-pos-x-benefits");
-  assert.ok(salary && benefits, "deterministic ids on derived labor rows");
+  assert.equal(labor.length, 2, "PR-H: per-dept aggregation = 2 labor rows per dept (salary + benefits)");
+  const salary = labor.find((o) => o.id === "op-labor-PLAN-salary");
+  const benefits = labor.find((o) => o.id === "op-labor-PLAN-benefits");
+  assert.ok(salary && benefits, "PR-H: dept-keyed deterministic ids");
   assert.equal(salary!.amount, 100000, "salary amount = salary × fte (200000 × 0.5)");
   assert.equal(benefits!.amount, 30000, "benefits amount = benefits × fte (60000 × 0.5)");
   assert.equal(salary!.dept, "PLAN");
-  assert.equal(salary!.line, "Planner · Salaries");
+  assert.equal(salary!.line, "Regular Salaries", "PR-H: line text is GL-level, not role-level");
+  assert.equal(salary!.notReconciled, true, "PR-H: position-derived rows flagged as fallback");
 
   // Re-running migration must be idempotent (no duplicate labor rows).
   migratePersistedState(state as never);
   const laborAfter = (state.operating as { costType: string }[]).filter((o) => o.costType === "Labor");
   assert.equal(laborAfter.length, 2, "PR-D: re-migration does not duplicate labor rows");
-  console.log("  ✓ labor operating rows derived from positions (idempotent)");
+  console.log("  ✓ labor operating rows aggregated per dept (PR-H)");
 }
 
 // ── 3. allocationPercent backfill ─────────────────────────────────────────

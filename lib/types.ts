@@ -151,6 +151,13 @@ export interface OperatingLine {
    *  pre-date this field don't crash readers; production rows are
    *  always stamped (parser heuristic, seed init, migration backfill). */
   laborType?: LaborType;
+  /** True on labor rows that were derived from the productive-role
+   *  roster (position fte × salary/benefits) rather than imported from
+   *  an actual budget/GL source. UI surfaces a "Manual labor estimate,
+   *  not reconciled to budget" banner when any visible row has this
+   *  flag — the user should import real budget labor lines to clear it.
+   *  Absent on Operating rows and on labor rows from real imports. */
+  notReconciled?: boolean;
   line: string;
   amount: number;
   /** Row provenance — set at creation, not mutated by edits. Was previously
