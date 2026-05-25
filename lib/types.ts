@@ -29,6 +29,114 @@ export interface RoleAllocation {
   pct: number;
 }
 
+/* ---------- Fee-study row metadata (PR-L1) ----------
+ *
+ * The original Service shape carried only flat numeric pricing (fee /
+ * peer / target). Real municipal fee schedules — modeled on the
+ * Los Altos Hills / NBS structure — also need: nested categories,
+ * line-item numbering, free-form units, formula / deposit / T&M /
+ * pass-through pricing, lifecycle status (new / moved / deleted),
+ * legal-authority citations, free-form notes, per-agency peer survey
+ * values, and display-text variants for fees that can't be reduced to
+ * a single dollar amount.
+ *
+ * All extensions below land as OPTIONAL fields on Service. Existing
+ * flat-row rows + math + UI + export stay unchanged until later PRs
+ * teach the display / calc layers to read the new fields. Migration
+ * is a no-op (undefined is the legacy default). */
+
+/** Free-form unit label for a fee (e.g., "each", "per hour", "deposit",
+ *  "per sq.ft.", "per $1,000 valuation"). Open string by design — fee
+ *  schedules use long-tail unit phrasing that resists enumeration. The
+ *  display layer renders this alongside the fee value. */
+export type FeeUnit = string;
+
+/** Pricing structure of an active fee — how the fee is computed, not its
+ *  lifecycle state. Lifecycle (moved / deleted / not-evaluated) lives on
+ *  FeeScheduleStatus instead so the two axes stay orthogonal. */
+export type FeeRowKind =
+  | "flat"               // single dollar amount (the legacy default)
+  | "formula"            // tiered or percentage formula — see FeeFormula
+  | "deposit"            // deposit required; balance billed later
+  | "time-and-materials" // billed at actual cost of staff time
+  | "pass-through"       // actual third-party / agency cost passed through
+  | "statutory";         // capped or set by state/federal statute
+
+/** Lifecycle state of a fee row within this study cycle. Drives the
+ *  "filter to new / changed / deleted" affordance and the published
+ *  study's migration narrative. */
+export type FeeScheduleStatus =
+  | "existing"        // carried forward unchanged
+  | "new"             // introduced this cycle
+  | "renamed"         // same fee, new label
+  | "moved"           // shifted to another dept (use Service.movedToDept)
+  | "deleted"         // removed this cycle
+  | "not-evaluated";  // listed but not analyzed
+
+/** One tier in a tiered-valuation formula. `upTo` is the upper bound
+ *  for this tier; the top tier carries upTo: undefined to signal "no
+ *  cap". `baseFee` is the flat charge at the tier's lower bound;
+ *  `perUnit` × `unitSize` describes the marginal rate inside the tier
+ *  (e.g., "$14 per $1,000 of valuation over $2,000" → perUnit 14,
+ *  unitSize 1000). */
+export interface FeeFormulaTier {
+  upTo?: number;
+  baseFee: number;
+  perUnit?: number;
+  unitSize?: number;
+}
+
+/** Structured description of a fee that's computed from inputs rather
+ *  than charged as a flat amount. Discriminated union — the four kinds
+ *  cover almost every formula a real fee study uses; "expression" is
+ *  the freeform escape hatch for the rare outliers. */
+export type FeeFormula =
+  | {
+      kind: "tiered-valuation";
+      /** What "valuation" means for this fee (e.g., "construction valuation",
+       *  "contract amount", "project cost"). Display-only label. */
+      basis: string;
+      tiers: FeeFormulaTier[];
+    }
+  | {
+      kind: "percentage";
+      /** What's being percent-of (e.g., "construction valuation"). */
+      basis: string;
+      /** Rate expressed as a percent (e.g., 5 for "5% of valuation"). */
+      rate: number;
+      minFee?: number;
+      maxFee?: number;
+    }
+  | {
+      kind: "per-unit";
+      /** Unit being charged per (e.g., "linear foot of frontage"). */
+      unit: string;
+      rate: number;
+      minFee?: number;
+    }
+  | {
+      /** Freeform expression text for formulas that don't fit the
+       *  structured variants above. Surfaced verbatim in the display
+       *  layer; not parseable by the engine. */
+      kind: "expression";
+      text: string;
+    };
+
+/** One agency's value in the peer-survey supporting a fee benchmark.
+ *  `valueNumber` is set when the agency's fee is reducible to a single
+ *  dollar amount comparable to ours; `valueText` carries the display
+ *  label when it isn't (e.g., "T&M w/ $500 deposit"). `comparable`
+ *  flags whether the row should count toward median / range math —
+ *  partial / contextual matches stay in the array for audit but get
+ *  excluded from rollups. */
+export interface PeerSurveyValue {
+  agency: string;
+  valueText?: string;
+  valueNumber?: number;
+  sourceNote?: string;
+  comparable: boolean;
+}
+
 export interface Service {
   id: string;
   name: string;
@@ -39,9 +147,14 @@ export interface Service {
   hours: number;
   /** Fully-burdened cost per occurrence */
   cost: number;
-  /** Currently adopted fee */
+  /** Currently adopted fee. When the fee can't be reduced to a single
+   *  dollar amount (T&M, formula, deposit + balance), set
+   *  `currentFeeText` for the display label and leave `fee` as a
+   *  best-effort numeric estimate (or 0) for chart / total math. */
   fee: number;
-  /** Peer-median fee */
+  /** Peer-median fee. Computed from the comparable subset of
+   *  `peerSurvey` when that's populated; otherwise carried as-is from
+   *  the import. */
   peer: number;
   /** Recovery target % (e.g. 100 = full cost recovery) */
   target: number;
@@ -49,6 +162,64 @@ export interface Service {
   source: SourceTag;
   /** Filename when source === "imported". */
   sourceFile?: string;
+
+  /* ── Fee-study metadata (PR-L1) — all optional, all back-compatible.
+   *    Existing flat-row math + UI + export read only the required
+   *    fields above and continue to work without these. */
+
+  /** Line number as published in the adopted resolution (e.g., "PLN-12",
+   *  "B-4(a)", "5.2.1"). Stable across cycles when the same fee carries
+   *  forward, so it's a stable cross-reference between the audit trail
+   *  and the published schedule. */
+  feeNo?: string;
+  /** Top-level grouping in the published schedule (e.g., "Planning &
+   *  Zoning", "Building Permits"). Display + filter axis. */
+  category?: string;
+  /** Subgrouping under category (e.g., "Discretionary Permits",
+   *  "Plan Check"). Optional second-level axis. */
+  subcategory?: string;
+  /** Free-form unit label rendered alongside the fee value. */
+  unit?: FeeUnit;
+  /** Pricing structure. Defaults to "flat" semantics in display when
+   *  undefined; PR-L3 will use this to gate which rows roll into
+   *  recovery math (deposit / T&M / pass-through rows shouldn't count
+   *  the same as flat rows). */
+  rowKind?: FeeRowKind;
+  /** Lifecycle state of this row in the current study cycle. Defaults
+   *  to "existing" semantics when undefined. */
+  status?: FeeScheduleStatus;
+  /** Display label for the currently-adopted fee when it can't be
+   *  reduced to a single dollar amount. Takes display precedence over
+   *  `fee` when set. */
+  currentFeeText?: string;
+  /** Display label for the recommended fee when it can't be reduced to
+   *  a single dollar amount. Falls back to the computed recommendation
+   *  (unitCost × target/100) at display time when undefined. */
+  recommendedFeeText?: string;
+  /** Display label for the full-cost-recovery fee when it can't be
+   *  reduced to a single dollar amount. Falls back to the computed
+   *  unit cost when undefined. */
+  fullCostRecoveryFeeText?: string;
+  /** Structured formula description for "formula" rowKind rows. When
+   *  set, the display layer renders the formula breakdown instead of
+   *  a flat dollar amount. */
+  formula?: FeeFormula;
+  /** Free-form analyst notes, one per line. Surfaced in the row
+   *  drilldown and the published study's footnotes. */
+  notes?: string[];
+  /** Citation of the legal authority for this fee (e.g.,
+   *  "CA Gov Code §66014", "Health & Safety Code §17951", local
+   *  ordinance number). Surfaced in the audit trail. */
+  legalAuthority?: string;
+  /** Destination department when status === "moved". The `dept` field
+   *  still reflects ownership at the start of this cycle (for diff
+   *  rendering); `movedToDept` is where the fee lands at the end. */
+  movedToDept?: DeptCode;
+  /** Per-agency peer-survey values supporting the Fee Benchmark view.
+   *  The numeric `peer` field above is the median of the comparable
+   *  subset; this array preserves the individual rows + sourcing for
+   *  the audit trail. */
+  peerSurvey?: PeerSurveyValue[];
 }
 
 /* ---------- Build Model inputs ---------- */
