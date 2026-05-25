@@ -17,7 +17,7 @@ import { IMPORTS } from "@/lib/data/imports";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
   DirectAllocationRow, OperatingLine, PolicyException, PolicyTarget,
-  Position, Service, SourceTag, VolumeRow,
+  Position, ProductiveHoursRow, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -58,6 +58,11 @@ export type StudyVersionStatus = "draft" | "review" | "published" | "adopted" | 
 
 export interface BuildSnapshot {
   positions: Position[];
+  /** Per-role productive-hours slice. Carries FTE × hrs-per-FTE inputs
+   *  for the FBHR denominator, derived from positions during migration
+   *  and editable in its own UI section (PR-C: read-only mirror; PR-F:
+   *  becomes the canonical store after positions retires). */
+  productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   capPools: CapPool[];
   /** Center totals, keyed by center identity (glCode for imported
@@ -106,6 +111,8 @@ export interface StudyVersion {
 
 export interface BuildState {
   positions: Position[];
+  /** Per-role productive-hours rows. See BuildSnapshot.productiveHours. */
+  productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   capPools: CapPool[];
   /** Source-department cost per cost center — the 100% reference for each
@@ -278,6 +285,27 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
     .map(([key]) => key);
 }
 
+/** Derive a ProductiveHoursRow[] from a Position[] (seed init, legacy
+ *  migration). One row per position, carrying the FTE × hrs-per-FTE
+ *  inputs plus the optional breakdown. id mirrors position.id so audit
+ *  trails align across the two slices until positions retires. */
+export function buildProductiveHoursFromPositions(
+  positions: Position[],
+): ProductiveHoursRow[] {
+  return positions.map((p) => ({
+    id: p.id,
+    title: p.title,
+    dept: p.dept,
+    fte: p.fte,
+    hours: p.hours,
+    ...(p.productiveHoursBreakdown
+      ? { productiveHoursBreakdown: { ...p.productiveHoursBreakdown } }
+      : {}),
+    source: p.source,
+    ...(p.sourceFile ? { sourceFile: p.sourceFile } : {}),
+  }));
+}
+
 /** Stable synth identity key for a center with no imported glCode.
  *  Engine treats `seed:center:*` keys as nodes just like real glCodes.
  *  Exported so storeMigration + addCapCenter can share one canonical
@@ -288,8 +316,10 @@ export function synthCenterKey(name: string): string {
 
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
+  const seedPositions = POSITIONS.map((p) => ({ ...p }));
   const state: BuildSnapshot = {
-    positions: POSITIONS.map((p) => ({ ...p })),
+    positions: seedPositions,
+    productiveHours: buildProductiveHoursFromPositions(seedPositions),
     operating: OPERATING.map((o) => ({ ...o })),
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
@@ -1016,6 +1046,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set({
           positions: [],
+          productiveHours: [],
           operating: [],
           capPools: [],
           capCenterTotals: {},

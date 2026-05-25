@@ -14,6 +14,7 @@ function cloneJson<T>(value: T): T {
 export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
   return cloneJson({
     positions: state.positions,
+    productiveHours: state.productiveHours,
     operating: state.operating,
     capPools: state.capPools,
     capCenterTotals: state.capCenterTotals,

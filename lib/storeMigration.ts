@@ -8,7 +8,7 @@ import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictio
 import type {
   CapPool, OperatingLine, Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
-import { defaultCenterOrder, synthCenterKey } from "./store";
+import { buildProductiveHoursFromPositions, defaultCenterOrder, synthCenterKey } from "./store";
 import type { BuildSnapshot, BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
 
@@ -200,6 +200,16 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   }
   if (Array.isArray(state.positions)) {
     state.positions = state.positions.map((p: Position) => ({ ...p, source: coerceSource(p.source) }));
+  }
+  // PR-C: derive the productive-hours slice from positions if it's
+  // missing on the persisted blob. Always runs after positions has been
+  // SourceTag-coerced so the derived rows pick up the cleaned values.
+  // Pre-existing productiveHours arrays pass through untouched.
+  if (!state.productiveHours && Array.isArray(state.positions)) {
+    state.productiveHours = buildProductiveHoursFromPositions(state.positions);
+  }
+  if (state.productiveHours == null) {
+    state.productiveHours = [];
   }
   if (Array.isArray(state.operating)) {
     // PR-A: backfill costType on legacy rows. Existing persisted

@@ -60,8 +60,8 @@ import { IMPORTS } from "../data/imports";
       { id: "s5" },                       // missing entirely
     ],
     positions: [
-      { id: "p1", source: undefined },
-      { id: "p2", source: "manual" },
+      { id: "p1", source: undefined, title: "Role A", dept: "PLAN", fte: 1, salary: 0, benefits: 0, hours: 1720 },
+      { id: "p2", source: "manual",  title: "Role B", dept: "BLDG", fte: 0.5, salary: 0, benefits: 0, hours: 1600 },
     ],
     operating: [
       { id: "o1", source: "not-a-tag" },                         // no costType — backfill
@@ -86,7 +86,15 @@ import { IMPORTS } from "../data/imports";
   assert.equal(op[1].costType, "Labor",
     "PR-A: existing costType value preserved");
   assert.equal((state.volume as { source: string }[])[0].source, "seed");
-  console.log("  ✓ SourceTag coercion normalizes legacy values + costType backfill");
+
+  // PR-C: productiveHours derived from positions when missing.
+  const ph = state.productiveHours as { id: string; title: string; dept: string; fte: number; hours: number }[];
+  assert.equal(ph.length, 2, "PR-C: productiveHours derived from positions count");
+  assert.equal(ph[0].id, "p1");
+  assert.equal(ph[0].dept, "PLAN");
+  assert.equal(ph[0].fte, 1);
+  assert.equal(ph[1].hours, 1600);
+  console.log("  ✓ SourceTag coercion normalizes legacy values + costType + productiveHours backfill");
 }
 
 // ── 3. allocationPercent backfill ─────────────────────────────────────────

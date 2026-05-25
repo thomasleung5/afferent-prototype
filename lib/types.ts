@@ -74,6 +74,26 @@ export interface ProductiveHoursBreakdown {
   other?: number;
 }
 
+/** Per-role productive-hours row. Carries the FTE × hrs-per-FTE inputs
+ *  the FBHR denominator needs, decoupled from the labor-cost line items
+ *  that live in OperatingLine (costType: "Labor"). PR-C introduces this
+ *  slice as a parallel store; PR-D/E rewire FBHR to read hours here and
+ *  cost from operating, retiring Position[] as the dual source. The
+ *  `id` mirrors the originating Position.id during migration so audit
+ *  trails stay traceable. */
+export interface ProductiveHoursRow {
+  id: string;
+  title: string;
+  dept: DeptCode;
+  fte: number;
+  /** Productive hours per FTE per year (e.g. 1720). */
+  hours: number;
+  productiveHoursBreakdown?: ProductiveHoursBreakdown;
+  /** Row provenance — set at creation, not mutated by edits. */
+  source: SourceTag;
+  sourceFile?: string;
+}
+
 export type OpDept = DeptCode | "SHARED:CDS";
 
 export type OpCategory =
