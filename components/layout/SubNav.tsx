@@ -3,12 +3,6 @@ import { Link, useRouterState } from "@tanstack/react-router";
 export interface SubNavItem {
   href: string;
   label: string;
-  /** When provided, this item is active for any pathname starting with `prefix`. */
-  prefix?: string;
-  /** Additional path prefixes that also count as active. Useful when one
-   *  nav entry stands in for several routes (e.g. a "Cost Inputs" entry
-   *  that highlights for /build/direct-labor, /build/operating, /build/cap). */
-  matchPrefixes?: string[];
 }
 
 interface Props {
@@ -17,11 +11,6 @@ interface Props {
 
 export function SubNav({ items }: Props) {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
-  const isActive = (it: SubNavItem) => {
-    if (it.matchPrefixes?.some((p) => pathname === p || pathname.startsWith(p + "/"))) return true;
-    if (it.prefix) return pathname === it.prefix || pathname.startsWith(it.prefix + "/");
-    return pathname === it.href;
-  };
 
   return (
     <div style={{
@@ -32,7 +21,7 @@ export function SubNav({ items }: Props) {
       overflowX: "auto",
     }}>
       {items.map((it, i) => {
-        const on = isActive(it);
+        const on = pathname === it.href;
         return (
           <Link key={it.href} to={it.href} style={{
             padding: "10px 14px",
