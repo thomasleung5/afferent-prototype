@@ -17,36 +17,22 @@
  * derives from this list, so nothing else needs updating.
  */
 
-import type { DeptCode, InstDeptCode } from "../types";
-
-// Re-export so consumers can grab the type from the institutional-depts
-// module alongside the catalog and projections. Canonical declaration
-// lives in ../types alongside DeptCode + BasisKey.
-export type { InstDeptCode };
-
-export type IndirectDeptCode =
-  | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"
-  | "ATTY" | "INS" | "CMTE";
+import type { DeptCode } from "../types";
 
 /** Direct receivers. Every DeptCode lives here; "PW" is the one direct
  *  InstDept that isn't fee-modeled (isFeeDept: false). */
 export type DirectDeptCode = DeptCode | "PW";
 
-export interface InstDept {
-  code: InstDeptCode;
-  /** Display name; matches the name used as the lookup key in
-   *  capCenterTotals / pool.center for indirect entries. */
-  name: string;
-  kind: "indirect" | "direct";
-  /** True when the dept is one of the FBHR/fee-modeled depts (i.e. a
-   *  DeptCode). Always false for indirect entries. */
-  isFeeDept: boolean;
-}
-
 /** The canonical 16-entry institutional dept catalog. Indirect entries
  *  are listed in the same order as the legacy INDIRECT_DEPTS array so
- *  any downstream sort-stable consumers keep their existing ordering. */
-export const INST_DEPTS: readonly InstDept[] = [
+ *  any downstream sort-stable consumers keep their existing ordering.
+ *
+ *  `as const` is load-bearing: it preserves the literal types of every
+ *  `code` and `kind` field, which is what lets the InstDeptCode /
+ *  IndirectDeptCode types below derive from this array. Any new entry
+ *  appended here flows out to those unions automatically — there is no
+ *  longer a separate union to keep in sync. */
+export const INST_DEPTS = [
   // Indirect cost centers
   { code: "BLDG_USE", name: "Building Use",                       kind: "indirect", isFeeDept: false },
   { code: "EQUIP",    name: "Equipment Use",                      kind: "indirect", isFeeDept: false },
@@ -65,7 +51,18 @@ export const INST_DEPTS: readonly InstDept[] = [
   { code: "PARKS",    name: "Parks & Recreation",                 kind: "direct",   isFeeDept: true },
   { code: "PD",       name: "Police Services",                    kind: "direct",   isFeeDept: true },
   { code: "FIRE",     name: "Fire Prevention",                    kind: "direct",   isFeeDept: true },
-];
+] as const;
+
+/** One row of the catalog. Derived so the field types reflect the
+ *  literal values (e.g. `kind: "indirect" | "direct"`). */
+export type InstDept = (typeof INST_DEPTS)[number];
+
+/** Union of every code in INST_DEPTS. Removing an entry above turns
+ *  every reference to that code into a compile error at the use site —
+ *  no separately-maintained union to drift. */
+export type InstDeptCode = InstDept["code"];
+
+export type IndirectDeptCode = Extract<InstDept, { kind: "indirect" }>["code"];
 
 // ---------------------------------------------------------------------------
 // Derived projections — every map / set below is computed from INST_DEPTS so

@@ -115,19 +115,19 @@ export interface OperatingLine {
 // CAP step-down primitives
 //
 // InstDeptCode is the full institutional dept list (indirect cost centers
-// + direct fee-eligible depts). BasisKey is the denominator the step-down
-// engine uses to split a pool across receiving depts. Both live here so
-// AllocationBasis can reference them without a circular dep into capStepDown.
-// The institutional dept catalog itself (display names, kind, isFeeDept) is
-// in lib/data/institutionalDepts.ts.
+// + direct fee-eligible depts). Its source of truth is INST_DEPTS in
+// lib/data/institutionalDepts.ts — the union is derived from the catalog
+// so a single edit there flows through every consumer that types against
+// the union. Re-exported here so callers can keep importing the type
+// alongside DeptCode + BasisKey from one module.
+//
+// BasisKey is the denominator the step-down engine uses to split a pool
+// across receiving depts; it lives here so AllocationBasis can reference
+// it without a circular dep into capStepDown.
 // ---------------------------------------------------------------------------
 
-export type InstDeptCode =
-  // Indirect cost centers
-  | "BLDG_USE" | "EQUIP" | "COUNCIL" | "CMGR" | "CLERK" | "FAS"
-  | "ATTY" | "INS" | "CMTE"
-  // Direct (fee-modeled or otherwise receiving final allocation)
-  | "PLAN" | "BLDG" | "ENG" | "PW" | "PARKS" | "PD" | "FIRE";
+import type { InstDeptCode } from "./data/institutionalDepts";
+export type { InstDeptCode };
 
 export type BasisKey =
   | "FTE" | "EXPEND" | "EXPEND_X" | "EXPEND_PW" | "PAYROLL" | "ACCT" | "AGENDA"

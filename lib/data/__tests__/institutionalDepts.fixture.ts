@@ -14,7 +14,15 @@ import {
   INST_DEPT_CODE_LIST,
   NAME_BY_DEPT_CODE,
   INDIRECT_CODE_BY_NAME,
+  type InstDeptCode,
 } from "../institutionalDepts";
+
+// ── 0. Type-level: InstDeptCode is derived from INST_DEPTS ───────────────
+// If this line stops compiling, the derivation broke — there is no second
+// place to update; the union IS the catalog. Picking any catalog entry's
+// code must be assignable to InstDeptCode, and vice versa.
+const _derivedCode: InstDeptCode = INST_DEPTS[0].code;
+void _derivedCode;
 
 // ── 1. Catalog covers all 16 institutional depts ──────────────────────────
 assert.equal(INST_DEPTS.length, 16, "catalog size");
