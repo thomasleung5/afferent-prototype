@@ -79,9 +79,11 @@ export function CapCentersTable() {
       width: "110px",
       sortable: true,
       render: (r) => (
-        <span className="mono" style={{ fontSize: 12, color: "var(--ink-2)" }}>
-          {r.code}
-        </span>
+        <span className="mono" style={{
+          fontSize: "var(--t-l4)",
+          color: r.code === "—" ? "var(--ink-4)" : "var(--ink-3)",
+          letterSpacing: "0.02em", fontWeight: 400,
+        }}>{r.code}</span>
       ),
     },
     {
