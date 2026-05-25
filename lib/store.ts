@@ -24,6 +24,9 @@ import {
   type DeptLabor, type DeptOperating, type FBHR, type FeeComparison,
   type PolicyImpact, type ServiceCost,
 } from "@/lib/calc";
+import {
+  allocatedHoursByDept, utilizationByDept, type DeptUtilization,
+} from "@/lib/capacity";
 import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
@@ -1361,6 +1364,11 @@ interface BuildDerived {
   /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
    *  seed:* key). Source of truth for the matrix tabs + cell traces. */
   capStepDown: GlStepDownModel;
+  /** Per-dept capacity reconciliation: allocated demand hours (rolled up
+   *  from service × role allocations, routed by role.dept) ÷ productive
+   *  supply hours (from the productiveHours roster). Drives the Cost of
+   *  Service FBHR table's Allocated Hrs + Utilization columns. */
+  utilization: Record<DeptCode, DeptUtilization>;
 }
 
 export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
@@ -1431,11 +1439,18 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   );
   const impact = policyImpact(comparisons);
   const deptRollup = buildDeptRollup(comparisons);
+
+  const allocated = allocatedHoursByDept(
+    state.services, state.serviceRoleAllocations, state.productiveHours,
+  );
+  const utilization = utilizationByDept(allocated, hoursByDept);
+
   return {
     labor, operatingByDept, fbhr, costs, comparisons, impact,
     deptRollup,
     capAllocated, capDrivers: graph.drivers,
     capStepDown: stepDown,
+    utilization,
   };
 }
 
@@ -1502,7 +1517,8 @@ export function useBuildState() {
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.capBasisUnits, state.capDirectAllocations,
     state.allocationBases, state.capCenterSources, state.studyContext,
-    state.services, state.policyTargets, state.policyExceptions,
+    state.services, state.serviceRoleAllocations,
+    state.policyTargets, state.policyExceptions,
   ]);
 
   return { ...state, derived };

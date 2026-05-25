@@ -7,10 +7,13 @@
 
 import assert from "node:assert/strict";
 import {
+  allocatedHoursByDept,
+  allocatedRoleHours,
   defaultRoleAllocationsForService,
   effectiveRoleAllocations,
+  utilizationByDept,
 } from "../capacity";
-import type { ProductiveHoursRow, Service } from "../types";
+import type { DeptCode, ProductiveHoursRow, Service } from "../types";
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 const ph = (
@@ -19,8 +22,11 @@ const ph = (
   id, title: id, dept, fte, hours: 1720, source: "seed",
 });
 
-const svc = (id: string, dept: Service["dept"]): Service => ({
-  id, name: id, dept, volume: 0, hours: 0, cost: 0, fee: 0, peer: 0,
+const svc = (
+  id: string, dept: Service["dept"],
+  volume = 0, hours = 0,
+): Service => ({
+  id, name: id, dept, volume, hours, cost: 0, fee: 0, peer: 0,
   target: 100, source: "seed",
 });
 
@@ -118,6 +124,97 @@ const svc = (id: string, dept: Service["dept"]): Service => ({
   assert.equal(allocs[0].productiveHoursId, "pos-a",
     "PR-K1: empty override array treated as 'no override' — re-derives default");
   console.log("  ✓ empty override re-derives default");
+}
+
+// ── 7. allocatedRoleHours: volume × hours × pct/100 ─────────────────────
+{
+  const hrs = allocatedRoleHours({ volume: 100, hours: 5 }, { pct: 30 });
+  assert.equal(hrs, 150, "PR-K2: 100 × 5 × 0.30 = 150");
+  console.log("  ✓ allocatedRoleHours basic math");
+}
+
+// ── 8. allocatedHoursByDept: single-dept reconciliation ─────────────────
+{
+  const roster = [
+    ph("pos-plan-a", "PLAN", 1.0),
+    ph("pos-plan-b", "PLAN", 1.0),
+  ];
+  // 1 service, volume 100, hours 5/inst → 500 demand hrs split 60/40.
+  const overrides = {
+    "plan-x": [
+      { productiveHoursId: "pos-plan-a", pct: 60 },
+      { productiveHoursId: "pos-plan-b", pct: 40 },
+    ],
+  };
+  const services = [svc("plan-x", "PLAN", 100, 5)];
+  const byDept = allocatedHoursByDept(services, overrides, roster);
+  assert.equal(byDept.PLAN, 500, "PR-K2: 60% + 40% routed to PLAN = 500 total");
+  assert.equal(byDept.BLDG, 0, "PR-K2: untouched dept stays at 0");
+  console.log("  ✓ single-dept aggregation");
+}
+
+// ── 9. CROSS-DEPT routing — the load-bearing test for the rule ──────────
+//      "utilization MUST be calculated from role departments". A BLDG
+//      service that's actually delivered by a PLAN role must contribute
+//      to PLAN demand, NOT BLDG. If this assertion ever fails, someone
+//      has reverted the role-dept routing to use service.dept.
+{
+  const roster = [
+    ph("pos-bldg-insp", "BLDG", 1.0),
+    ph("pos-plan-srpln", "PLAN", 1.0),
+  ];
+  // BLDG service: 200 instances × 2 hrs = 400 total demand hrs. Splits
+  // 70/30 between a BLDG inspector (280 hrs) and a PLAN senior planner
+  // (120 hrs). Capacity must see PLAN demand of 120, not 0.
+  const overrides = {
+    "bldg-shared": [
+      { productiveHoursId: "pos-bldg-insp", pct: 70 },
+      { productiveHoursId: "pos-plan-srpln", pct: 30 },
+    ],
+  };
+  const services = [svc("bldg-shared", "BLDG", 200, 2)];
+  const byDept = allocatedHoursByDept(services, overrides, roster);
+  assert.equal(byDept.BLDG, 280,
+    "PR-K2: BLDG-role portion of a BLDG service lands in BLDG");
+  assert.equal(byDept.PLAN, 120,
+    "PR-K2: PLAN-role portion of a BLDG service lands in PLAN (NOT BLDG) — " +
+    "this is the conceptual rule the capacity layer exists to enforce");
+  console.log("  ✓ cross-dept allocations routed by role.dept, not service.dept");
+}
+
+// ── 10. Dangling-allocation: removed position silently dropped ──────────
+{
+  const roster = [ph("pos-plan", "PLAN", 1.0)];
+  const overrides = {
+    "plan-x": [
+      { productiveHoursId: "pos-plan", pct: 50 },
+      // pos-ghost no longer in roster — silently dropped, not crashed.
+      { productiveHoursId: "pos-ghost", pct: 50 },
+    ],
+  };
+  const services = [svc("plan-x", "PLAN", 10, 10)];
+  const byDept = allocatedHoursByDept(services, overrides, roster);
+  // 10 × 10 × 0.5 = 50 routed to PLAN; the ghost half drops on the floor.
+  // PR-K4's warning surface is the right place to flag this; capacity
+  // math itself must not crash.
+  assert.equal(byDept.PLAN, 50,
+    "PR-K2: dangling allocations drop silently (warning surface handles UX)");
+  console.log("  ✓ dangling productiveHoursId silently dropped");
+}
+
+// ── 11. utilizationByDept: pct = allocated / productive ─────────────────
+{
+  const allocated = { PLAN: 5880, BLDG: 4910, ENG: 0 } as Record<DeptCode, number>;
+  const productive = { PLAN: 4902, BLDG: 6450, ENG: 0 } as Record<DeptCode, number>;
+  const u = utilizationByDept(allocated, productive);
+  // Spec example: PLAN ≈ 120%, BLDG ≈ 76%.
+  assert.equal(Math.round(u.PLAN.pct), 120,
+    "PR-K2: PLAN utilization matches the spec example (120%)");
+  assert.equal(Math.round(u.BLDG.pct), 76,
+    "PR-K2: BLDG utilization matches the spec example (76%)");
+  assert.equal(u.ENG.pct, 0,
+    "PR-K2: 0 productive hours → 0% utilization (not NaN, not Infinity)");
+  console.log("  ✓ utilization math matches spec example + 0-divisor guard");
 }
 
 console.log("\nAll capacity assertions passed.");
