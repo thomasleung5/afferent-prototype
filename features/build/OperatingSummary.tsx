@@ -20,8 +20,7 @@ export function OperatingSummary() {
   const excludedTotal = excluded.reduce((a, l) => a + l.amount, 0);
 
   // Only emit a row when the department actually has operating data in
-  // the active jurisdiction. Avoids 3 dead "$0" rows on LAH for the
-  // additional depts that aren't populated there.
+  // the active jurisdiction.
   const activeDepts = ORDER.filter((d) => {
     const r = byDept[d];
     return r && (r.total > 0 || operating.some((l) => l.dept === d));
