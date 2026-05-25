@@ -1,57 +1,17 @@
-/* CAP step-down — shared types, seed DRIVERS, and basis routing.
+/* CAP step-down — basis routing + seed DRIVERS matrix.
  *
  * The engine itself lives in capStepDownGl.ts (glCode-native). This file
- * exposes the constants and helpers that engine uses:
- *   - INDIRECT_DEPTS — indirect MatrixDept catalog used by the graph
- *     builder when seeding driver values onto synth seed:center:* nodes.
- *   - CENTER_NAME_TO_CODE — receiver-fallback classification map for the
- *     legacy LAH center names.
+ * exposes the helpers and constants that engine uses:
  *   - basisForPool / inferBasis — resolves a pool's basis key + directTo.
  *   - DRIVERS — per-MatrixDeptCode seed driver values used as fallback
  *     when no imports cover a given node.
+ *
+ * The institutional dept catalog (the registry that INDIRECT_DEPTS and
+ * CENTER_NAME_TO_CODE used to encode) lives in ./institutionalDepts.ts.
  */
 
 import type { AllocationBasis, BasisKey, CapPool, MatrixDeptCode } from "../types";
 import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
-
-// ---------------------------------------------------------------------------
-// Departments (matrix-only)
-// ---------------------------------------------------------------------------
-
-interface MatrixDept {
-  code: MatrixDeptCode;
-  name: string;
-  kind: "indirect" | "direct";
-}
-
-/** Step-down order is set by the user by dragging rows in the Cost
- *  Centers table (see BuildContext.capCenterOrder). The names below are
- *  the human-readable center names that order references; the codes are
- *  the matrix dept IDs. */
-export const INDIRECT_DEPTS: MatrixDept[] = [
-  { code: "BLDG_USE", name: "Building Use",                       kind: "indirect" },
-  { code: "EQUIP",    name: "Equipment Use",                      kind: "indirect" },
-  { code: "COUNCIL",  name: "City Council",                       kind: "indirect" },
-  { code: "CMGR",     name: "City Manager",                       kind: "indirect" },
-  { code: "CLERK",    name: "City Clerk",                         kind: "indirect" },
-  { code: "FAS",      name: "Finance & Administrative Services",  kind: "indirect" },
-  { code: "ATTY",     name: "City Attorney",                      kind: "indirect" },
-  { code: "INS",      name: "Insurance",                          kind: "indirect" },
-  { code: "CMTE",     name: "Committees",                         kind: "indirect" },
-];
-
-/** Center-name → indirect-dept code (matches CAP_POOLS.center text). */
-export const CENTER_NAME_TO_CODE: Record<string, MatrixDeptCode> = {
-  "Building Use":                      "BLDG_USE",
-  "Equipment Use":                     "EQUIP",
-  "City Council":                      "COUNCIL",
-  "City Manager":                      "CMGR",
-  "City Clerk":                        "CLERK",
-  "Finance & Administrative Services": "FAS",
-  "City Attorney":                     "ATTY",
-  "Insurance":                         "INS",
-  "Committees":                        "CMTE",
-};
 
 // ---------------------------------------------------------------------------
 // Bases

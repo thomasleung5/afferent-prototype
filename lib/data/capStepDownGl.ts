@@ -30,8 +30,9 @@ import type {
   DirectAllocationRow, MatrixDeptCode,
 } from "../types";
 import {
-  basisForPool, CENTER_NAME_TO_CODE, DRIVERS, INDIRECT_DEPTS,
+  basisForPool, DRIVERS,
 } from "./capStepDown";
+import { INST_DEPTS, INDIRECT_CODE_BY_NAME } from "./institutionalDepts";
 import type { ReceiverEntry } from "./capReceiverRegistry";
 
 /** Internal per-pool per-receiver share derived from the pool's basis
@@ -181,7 +182,7 @@ export function buildEngineGraph(args: {
     const key = importedGl ?? seedCenterKey(centerName);
     addNode({
       key, glCode: key, name: centerName, role: "indirect",
-      classification: CENTER_NAME_TO_CODE[centerName],
+      classification: INDIRECT_CODE_BY_NAME.get(centerName),
     });
     indirectNodeByCenter.set(centerName, key);
   }
@@ -274,16 +275,13 @@ export function buildEngineGraph(args: {
   // Seed indirect drivers onto synth seed:center:* nodes (centers with no
   // imported glCode). Imported indirect glCodes get their units later from
   // receiver-aggregation, so seeding them here would double-count.
-  for (const indirectDept of INDIRECT_DEPTS) {
-    const centerEntry = Object.entries(CENTER_NAME_TO_CODE)
-      .find(([, code]) => code === indirectDept.code);
-    if (!centerEntry) continue;
-    const [centerName] = centerEntry;
-    const nodeKey = indirectNodeByCenter.get(centerName);
+  for (const dept of INST_DEPTS) {
+    if (dept.kind !== "indirect") continue;
+    const nodeKey = indirectNodeByCenter.get(dept.name);
     if (!nodeKey) continue;
     const node = nodeByKey.get(nodeKey)!;
     if (node.key.startsWith("seed:")) {
-      drivers[nodeKey] = { ...(DRIVERS[indirectDept.code] ?? {}) };
+      drivers[nodeKey] = { ...(DRIVERS[dept.code] ?? {}) };
     }
   }
 
