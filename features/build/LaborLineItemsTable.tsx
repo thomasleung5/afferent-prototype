@@ -1,5 +1,4 @@
 import { useMemo, useState } from "react";
-import { Link } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter,
   type Column, type FilterGroup,
@@ -18,13 +17,13 @@ const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
  *  to costType === "Labor". This is the Direct Labor page's view onto
  *  the budget-classification table — not a separate dataset. */
 export function LaborLineItemsTable() {
-  const { operating, activeFiscalYear, updateOperating, addOperatingLine } = useBuildState();
+  const { operating, updateOperating, addOperatingLine } = useBuildState();
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [laborTypeFilter, setLaborTypeFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
 
   // Master labor scope before per-filter narrowing — used for filter
-  // option counts and the metadata banner.
+  // option counts.
   const labor = useMemo(
     () => operating.filter((r) => r.costType === "Labor"),
     [operating],
@@ -213,39 +212,6 @@ export function LaborLineItemsTable() {
       <SectionLabel right={`${labor.length} line${labor.length === 1 ? "" : "s"}`}>
         Labor Line Items
       </SectionLabel>
-      {/* Compact metadata banner */}
-      <div style={{
-        marginBottom: 6, fontSize: 12, color: "var(--ink-3)",
-      }}>
-        Labor dollars are sourced from budget GL/account lines.
-        Productive hours are modeled separately below.
-      </div>
-      <div style={{
-        display: "flex", alignItems: "baseline", justifyContent: "space-between",
-        gap: 12, marginBottom: 10,
-        fontSize: 12, color: "var(--ink-3)",
-      }}>
-        <span>
-          Derived from Operating budget classifications · {labor.length}{" "}
-          labor-classified line{labor.length === 1 ? "" : "s"} · FY {activeFiscalYear}
-        </span>
-        <Link to="/build/operating" style={{
-          fontSize: 12, color: "var(--accent)",
-          textDecoration: "underline", textUnderlineOffset: 3,
-        }}>
-          View in Operating →
-        </Link>
-      </div>
-      {labor.some((r) => r.notReconciled) && (
-        <div style={{
-          marginBottom: 10, padding: "8px 12px",
-          background: "var(--paper-2)", border: "1px solid var(--rule)",
-          fontSize: 12, color: "var(--warn, var(--ink-2))",
-        }}>
-          ⚠ Manual labor estimate, not reconciled to budget. Import labor
-          GL/account lines via Operating to replace these fallback rows.
-        </div>
-      )}
       <DataTable
         cols={cols}
         rows={rows}
