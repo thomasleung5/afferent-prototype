@@ -1,7 +1,8 @@
 import type {
   BasisUnitRow, CapPool, DirectAllocationRow, InstDeptCode,
 } from "../types";
-import { ALLOCATION_BASIS_ROWS, type AllocationBasisKey } from "./allocationBases";
+import { BASIS_DRIVERS, type AllocationBasisKey } from "./allocationBases";
+import { INST_DEPTS } from "./institutionalDepts";
 import { SEED_ALLOCATION_BASES } from "./allocationBasesCatalog";
 
 /* Source: data-extended.jsx CAP_POOLS (Town of Los Altos Hills CAP,
@@ -97,12 +98,15 @@ const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
 
 /** Seed per-basis allocation schedules. One BasisUnitRow per non-DIRECT
  *  seed basis that a CAP_POOLS entry references; receivers + units are
- *  pulled from ALLOCATION_BASIS_ROWS so the seed step-down has a
- *  ready-to-run schedule with GL codes attached — no AI import needed
- *  to see end-to-end routing. */
+ *  pulled from BASIS_DRIVERS (in INST_DEPTS order) and stamped with the
+ *  display name from the institutional-dept registry, so the seed
+ *  step-down has a ready-to-run schedule with GL codes attached — no
+ *  AI import needed to see end-to-end routing. */
 export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
   const usedBasisIds = new Set(CAP_POOLS.map((p) => p.basisId));
-  const seedDriverKeys = new Set<string>(ALLOCATION_BASIS_ROWS.flatMap((row) => Object.keys(row.values)));
+  const seedDriverKeys = new Set<string>(
+    Object.values(BASIS_DRIVERS).flatMap((cell) => Object.keys(cell)),
+  );
   const isSeedDriverKey = (key: string): key is AllocationBasisKey => seedDriverKeys.has(key);
   const rows: BasisUnitRow[] = [];
   for (const basis of SEED_ALLOCATION_BASES) {
@@ -110,13 +114,12 @@ export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
     if (basis.driverKey === "DIRECT") continue;
     if (!isSeedDriverKey(basis.driverKey)) continue;
     const driverKey: AllocationBasisKey = basis.driverKey;
-    const receivers = ALLOCATION_BASIS_ROWS.flatMap((row) => {
-      const v = row.values[driverKey];
+    const receivers = INST_DEPTS.flatMap((dept) => {
+      const v = BASIS_DRIVERS[dept.code]?.[driverKey];
       if (v == null || v <= 0) return [];
-      const code = row.code as InstDeptCode;
-      const glCode = SEED_DEPT_GLCODES[code];
+      const glCode = SEED_DEPT_GLCODES[dept.code];
       if (!glCode) return [];
-      return [{ glCode, dept: row.name, deptCode: code, units: v }];
+      return [{ glCode, dept: dept.name, deptCode: dept.code, units: v }];
     });
     if (receivers.length === 0) continue;
     rows.push({

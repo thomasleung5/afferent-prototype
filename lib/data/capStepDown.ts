@@ -11,7 +11,7 @@
  */
 
 import type { AllocationBasis, BasisKey, CapPool, InstDeptCode } from "../types";
-import { ALLOCATION_BASIS_ROWS } from "./allocationBases";
+import { BASIS_DRIVERS } from "./allocationBases";
 
 // ---------------------------------------------------------------------------
 // Bases
@@ -70,10 +70,9 @@ type DriverMatrix = Record<InstDeptCode, Partial<Record<BasisKey, number>>>;
  *  stepped down to City Attorney if Attorney comes later in the sequence. */
 export const DRIVERS: DriverMatrix = (() => {
   const out: DriverMatrix = {} as DriverMatrix;
-  for (const row of ALLOCATION_BASIS_ROWS) {
-    const code = row.code as InstDeptCode;
+  for (const [code, values] of Object.entries(BASIS_DRIVERS) as [InstDeptCode, Partial<Record<BasisKey, number>>][]) {
     const cell: Partial<Record<BasisKey, number>> = {};
-    for (const [k, v] of Object.entries(row.values)) {
+    for (const [k, v] of Object.entries(values)) {
       if (v != null) cell[k as BasisKey] = v as number;
     }
     out[code] = cell;
