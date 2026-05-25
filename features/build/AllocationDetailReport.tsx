@@ -468,8 +468,9 @@ function PoolPicker({
               title={`${p.allocationPercent.toFixed(2)}% of ${p.center}'s budget`}
             >
               <span className="mono" style={{
-                color: gl ? "var(--ink-2)" : "var(--ink-4)",
-                fontSize: "var(--t-l8)", letterSpacing: "0.02em",
+                fontSize: "var(--t-l4)",
+                color: gl ? "var(--ink-3)" : "var(--ink-4)",
+                letterSpacing: "0.02em", fontWeight: 400,
               }}>{gl ?? "—"}</span>
               <span style={{
                 color: "var(--ink-2)",
