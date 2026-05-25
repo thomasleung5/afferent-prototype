@@ -50,33 +50,23 @@ export const CAP_CENTER_TOTALS: Record<string, number> = (() => {
   return map;
 })();
 
-/** Indirect-center GL codes (fund-division). Used as each center's
- *  routing identity in the step-down engine — without these, centers
- *  resolve to synth `seed:center:*` keys and can't reconcile against
- *  imported per-center allocations. Pattern: General Fund (011)
+/** Canonical jurisdiction-scoped GL codes — LAH only. One entry per
+ *  InstDeptCode covers every role the engine needs: indirect codes are
+ *  the center's routing identity (mirrored into CAP_CENTER_GLCODES
+ *  below), direct codes stamp glCode onto the generated BasisUnitRow +
+ *  DirectAllocationRow receivers further down.
+ *
+ *  Pattern: General Fund (011)
  *  · administrative-services range (11xx) for governance + finance
- *  · internal-service range (19xx) for facilities-style centers. */
-export const CAP_CENTER_GLCODES: Record<string, string> = {
-  "City Council":                       "011-1100",
-  "City Manager":                       "011-1200",
-  "City Clerk":                         "011-1300",
-  "Finance & Administrative Services":  "011-1400",
-  "City Attorney":                      "011-1500",
-  "Insurance":                          "011-1600",
-  "Committees":                         "011-1700",
-  "Building Use":                       "011-1800",
-  "Equipment Use":                      "011-1900",
-};
-
-/** Seed-only GL codes used at module-init time to stamp glCode onto the
- *  generated BasisUnitRow + DirectAllocationRow receivers below. Indirect
- *  codes mirror CAP_CENTER_GLCODES so a center's identity is consistent
- *  whether it appears as a pool source or a pool receiver. Direct codes
- *  live in the General Fund operating range (3xxx), numbered in step-
- *  down-receiving order. Not exported — once the seed runs, the engine
- *  reads glCode off the persisted receivers, never this map. */
+ *  · internal-service range (19xx) for facilities-style centers
+ *  · operating range (3xxx) for direct divisions, in step-down-receiving order.
+ *
+ *  Not exported — every consumer that needs a glCode either reads it
+ *  off persisted receivers (post-seed) or goes through CAP_CENTER_GLCODES
+ *  (centers). When a second jurisdiction lands this map forks per
+ *  jurisdiction; InstDeptCode itself stays universal. */
 const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
-  // Indirect — mirror CAP_CENTER_GLCODES
+  // Indirect cost centers
   BLDG_USE: "011-1800",
   EQUIP:    "011-1900",
   COUNCIL:  "011-1100",
@@ -86,7 +76,7 @@ const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
   ATTY:     "011-1500",
   INS:      "011-1600",
   CMTE:     "011-1700",
-  // Direct (operating divisions)
+  // Direct operating divisions
   PLAN:  "011-3100",
   BLDG:  "011-3200",
   ENG:   "011-3300",
@@ -95,6 +85,20 @@ const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
   PD:    "011-3600",
   FIRE:  "011-3700",
 };
+
+/** Indirect-center GL codes, keyed by display name. The persisted store
+ *  is still name-keyed (capCenterGlCodes is `Record<centerName, glCode>`),
+ *  so this projection bridges the canonical code-keyed map above to the
+ *  name-keyed shape every store consumer expects. Without it, centers
+ *  resolve to synth `seed:center:*` keys and can't reconcile against
+ *  imported per-center allocations. */
+export const CAP_CENTER_GLCODES: Record<string, string> = (() => {
+  const out: Record<string, string> = {};
+  for (const dept of INST_DEPTS) {
+    if (dept.kind === "indirect") out[dept.name] = SEED_DEPT_GLCODES[dept.code];
+  }
+  return out;
+})();
 
 /** Seed per-basis allocation schedules. One BasisUnitRow per non-DIRECT
  *  seed basis that a CAP_POOLS entry references; receivers + units are
