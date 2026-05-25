@@ -79,11 +79,18 @@ export type GlDriverMatrix = Record<NodeKey, Partial<Record<BasisKey, number>>>;
 interface GlEngineGraph {
   nodes: GlNode[];
   drivers: GlDriverMatrix;
-  /** centerName → indirect node key. The only resolver the engine needs
-   *  — DIRECT pools route via their DirectAllocationRow receivers (each
-   *  receiver has a glCode); non-DIRECT pools route via the basis's
-   *  BasisUnitRow. */
+  /** centerName → indirect node key. Used by stepOrder construction in
+   *  computeStepDownGl (centerOrder is still name-keyed). Pool home
+   *  resolution should use resolvePoolHome instead so glCode-stamped
+   *  pools route via glCode. */
   resolveCenterNode: (centerName: string) => NodeKey | undefined;
+  /** Pool → indirect node key. Prefers pool.centerGlCode (glCode → node
+   *  via the centerNodeByGlCode index) and falls back to pool.center
+   *  (name → node via indirectNodeByCenter). The glCode path is the
+   *  load-bearing routing identity; the name path is the legacy
+   *  fallback for pools whose centerGlCode wasn't backfilled (manually-
+   *  added centers, etc.). */
+  resolvePoolHome: (pool: CapPool) => NodeKey | undefined;
 }
 
 /** Per-pool diagnostic surfaced when the engine can't route a pool's
@@ -332,7 +339,23 @@ export function buildEngineGraph(args: {
   const resolveCenterNode = (centerName: string): NodeKey | undefined =>
     indirectNodeByCenter.get(centerName);
 
-  return { nodes, drivers, resolveCenterNode };
+  // Build the by-glCode index AFTER step 2's defensive seed-center →
+  // real-glCode promotion has settled, so a promoted center is found
+  // under its real glCode (not its old synth seed:center:* key).
+  const centerNodeByGlCode = new Map<string, NodeKey>();
+  for (const n of nodes) {
+    if (n.role === "indirect") centerNodeByGlCode.set(n.glCode, n.key);
+  }
+
+  const resolvePoolHome = (pool: CapPool): NodeKey | undefined => {
+    if (pool.centerGlCode) {
+      const byGl = centerNodeByGlCode.get(pool.centerGlCode);
+      if (byGl) return byGl;
+    }
+    return indirectNodeByCenter.get(pool.center);
+  };
+
+  return { nodes, drivers, resolveCenterNode, resolvePoolHome };
 }
 
 // ---------------------------------------------------------------------------
@@ -397,7 +420,7 @@ export function computeStepDownGl(args: {
     pools, centerOrder, bases, basisUnits, directAllocations, graph,
     directBills = {},
   } = args;
-  const { nodes, drivers, resolveCenterNode } = graph;
+  const { nodes, drivers, resolveCenterNode, resolvePoolHome } = graph;
   const diagnostics: PoolDiagnostic[] = [];
 
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
@@ -506,7 +529,7 @@ export function computeStepDownGl(args: {
   // Pre-bucket each center's own pools (used for Round 2 weighting).
   const ownPoolsByCenter = new Map<NodeKey, CapPool[]>();
   for (const p of pools) {
-    const homeKey = resolveCenterNode(p.center);
+    const homeKey = resolvePoolHome(p);
     if (!homeKey) continue;
     const list = ownPoolsByCenter.get(homeKey) ?? [];
     list.push(p);
@@ -610,7 +633,7 @@ export function computeStepDownGl(args: {
     // to centerKey, finalized in earlier loop iterations.
     let firstInc = 0;
     for (const p of pools) {
-      const ph = resolveCenterNode(p.center);
+      const ph = resolvePoolHome(p);
       if (!ph || !upstreamKeys.has(ph)) continue;
       firstInc += firstAllocation[p.id]?.[centerKey] ?? 0;
     }
@@ -673,7 +696,7 @@ export function computeStepDownGl(args: {
   // shouldn't happen, but covers any legacy data).
   const stepOrderSet = new Set(stepOrder);
   for (const p of pools) {
-    const homeKey = resolveCenterNode(p.center);
+    const homeKey = resolvePoolHome(p);
     if (homeKey && stepOrderSet.has(homeKey)) continue;
     if (p.amount <= 0) continue;
     const { basis } = basisForPool(p, bases);
@@ -706,7 +729,7 @@ export function computeStepDownGl(args: {
     let totalReceived = 0;
     for (const p of pools) {
       totalReceived += firstAllocation[p.id]?.[centerKey] ?? 0;
-      const ph = resolveCenterNode(p.center);
+      const ph = resolvePoolHome(p);
       if (ph && upstreamKeys.has(ph)) {
         totalReceived += secondAllocation[p.id]?.[centerKey] ?? 0;
       }

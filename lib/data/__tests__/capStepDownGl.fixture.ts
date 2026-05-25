@@ -591,4 +591,67 @@ assert.equal(Math.round(badFirst["DOES-NOT-EXIST"] ?? 0), 50000,
 assert.equal(directBadModel.diagnostics.length, 0,
   "DIRECT receiver with a glCode: no diagnostic, allocation routes to the new node");
 
+// ── glCode-first pool home resolution ───────────────────────────────────
+//
+// A pool whose centerGlCode is set should route via the glCode index even
+// when pool.center is wrong. This guards the engine flip in PR-10:
+// resolvePoolHome must prefer centerGlCode over center name. The reverse
+// path (no centerGlCode → fall back to center name) is exercised by every
+// other test in this file.
+
+console.log("\n== glCode-first pool home resolution ==");
+
+const glRouteBases: AllocationBasis[] = [{
+  id: "bas-fte-route", name: "Route FTE", source: "HRIS",
+  driverKey: "FTE", createdAt: NOW, createdBy: "fixture",
+  validationStatus: "verified",
+}];
+const glRouteCenters = { "City Manager": 100000 };
+const glRouteGl = { "City Manager": "011-1200" };
+const glRouteBasisUnits: BasisUnitRow[] = [{
+  basisId: "bas-fte-route",
+  basis: "Route FTE",
+  receivers: [
+    { dept: "Planning Admin", glCode: "011-3100", deptCode: "PLAN", units: 100 },
+  ],
+}];
+const glRoutePools: CapPool[] = [
+  // Bogus center name but a real centerGlCode that matches the indirect
+  // node "011-1200". Engine must route via the glCode index, NOT fail
+  // over to the name lookup.
+  {
+    id: "gl-route-pool",
+    center: "NOT THE REAL CENTER NAME",
+    centerGlCode: "011-1200",
+    pool: "Test",
+    allocationPercent: 100, amount: 100000,
+    basisId: "bas-fte-route", basis: "Route FTE",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+];
+const { entries: glRouteReceivers } = buildReceiverRegistry(
+  glRouteBasisUnits, [], glRouteBases, DEFAULT_STUDY_CONTEXT,
+);
+const glRouteGraph = buildEngineGraph({
+  allocationBases: glRouteBases,
+  basisUnits: glRouteBasisUnits,
+  directAllocations: [],
+  capCenterTotals: glRouteCenters,
+  capCenterGlCodes: glRouteGl,
+  capReceivers: glRouteReceivers,
+});
+const glRouteModel = computeStepDownGl({
+  pools: glRoutePools,
+  // centerOrder is still name-keyed in this PR — must list the real
+  // center name so stepOrder finds the node.
+  centerOrder: ["City Manager"],
+  bases: glRouteBases, basisUnits: glRouteBasisUnits,
+  directAllocations: [], graph: glRouteGraph,
+});
+
+const glRouteFirst = glRouteModel.firstAllocation["gl-route-pool"] ?? {};
+console.log(`  Bogus name + real glCode → PLAN: ${fmt(glRouteFirst["011-3100"] ?? 0)} (expect 100000)`);
+assert.equal(Math.round(glRouteFirst["011-3100"] ?? 0), 100000,
+  "Pool routed via centerGlCode even when pool.center doesn't match any known center");
+
 console.log("\nAll CAP step-down assertions passed.");
