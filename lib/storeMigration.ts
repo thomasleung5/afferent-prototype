@@ -202,7 +202,16 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     state.positions = state.positions.map((p: Position) => ({ ...p, source: coerceSource(p.source) }));
   }
   if (Array.isArray(state.operating)) {
-    state.operating = state.operating.map((o: OperatingLine) => ({ ...o, source: coerceSource(o.source) }));
+    // PR-A: backfill costType on legacy rows. Existing persisted
+    // operating data is non-labor (positions held labor cost before
+    // this PR); stamping "Operating" lets the Direct Labor / Operating
+    // filtered views work without a redundant null-check at every
+    // read. Imports that pre-date the field get the same default.
+    state.operating = state.operating.map((o: OperatingLine) => ({
+      ...o,
+      source: coerceSource(o.source),
+      costType: o.costType ?? "Operating",
+    }));
   }
   if (Array.isArray(state.volume)) {
     state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));

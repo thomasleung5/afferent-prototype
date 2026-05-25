@@ -63,7 +63,10 @@ import { IMPORTS } from "../data/imports";
       { id: "p1", source: undefined },
       { id: "p2", source: "manual" },
     ],
-    operating: [{ id: "o1", source: "not-a-tag" }],
+    operating: [
+      { id: "o1", source: "not-a-tag" },                         // no costType — backfill
+      { id: "o2", source: "seed", costType: "Labor" },           // existing value preserved
+    ],
     volume: [{ id: "w1", source: 42 }],
   };
   migratePersistedState(state as never);
@@ -76,9 +79,14 @@ import { IMPORTS } from "../data/imports";
     (state.positions as { source: string }[]).map((p) => p.source),
     ["seed", "manual"],
   );
-  assert.equal((state.operating as { source: string }[])[0].source, "seed");
+  const op = state.operating as { id: string; source: string; costType: string }[];
+  assert.equal(op[0].source, "seed");
+  assert.equal(op[0].costType, "Operating",
+    "PR-A: legacy operating rows without costType get backfilled to 'Operating'");
+  assert.equal(op[1].costType, "Labor",
+    "PR-A: existing costType value preserved");
   assert.equal((state.volume as { source: string }[])[0].source, "seed");
-  console.log("  ✓ SourceTag coercion normalizes legacy values");
+  console.log("  ✓ SourceTag coercion normalizes legacy values + costType backfill");
 }
 
 // ── 3. allocationPercent backfill ─────────────────────────────────────────

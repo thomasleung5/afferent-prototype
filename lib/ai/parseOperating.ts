@@ -1,4 +1,4 @@
-import type { OperatingLine, OpCategory, OpDept } from "@/lib/types";
+import type { CostType, OperatingLine, OpCategory, OpDept } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import type { SourceLineage } from "@/lib/parse/types";
 
@@ -77,6 +77,7 @@ export function operatingToExtractionResult(
       dept,
       ...(row.sourceDept?.trim() ? { sourceDept: row.sourceDept.trim() } : {}),
       category: normCategory(row.category),
+      costType: classifyCostType(row),
       line: row.line,
       amount: row.amount ?? 0,
       source: "imported",
@@ -131,4 +132,37 @@ function normCategory(v: string): OpCategory {
   const s = v.trim();
   const match = OP_CATEGORIES.find((c) => c.toLowerCase() === s.toLowerCase());
   return match ?? "Other";
+}
+
+/** Keyword pattern matching the labor-burden vocabulary cities use in
+ *  budget books — salaries/benefits/overtime/payroll tax/workers' comp/
+ *  wellness/temp labor/burden. Conservative: if the line text doesn't
+ *  hit any of these tokens, classify as Operating. Reviewers can flip
+ *  the field by editing the row. */
+const LABOR_PATTERNS: RegExp[] = [
+  /\bsalar(?:y|ies)\b/i,
+  /\bwages?\b/i,
+  /\bbenefits?\b/i,
+  /\bfringe\b/i,
+  /\bovertime\b/i,
+  /\bpayroll\s*tax(?:es)?\b/i,
+  /\bfica\b/i,
+  /\bmedicare\b/i,
+  /\boasdi\b/i,
+  /\bworkers?(?:'|’)?\s*comp(?:ensation)?\b/i,
+  /\bwellness\b/i,
+  /\b(?:temp(?:orary)?|part[-\s]?time|seasonal)\s+labor\b/i,
+  /\blabor\s+burden\b/i,
+  /\bretirement\b/i,
+  /\bpension\b/i,
+  /\bpers\b/i,
+];
+
+function classifyCostType(row: OperatingRow): CostType {
+  const text = `${row.line ?? ""} ${row.category ?? ""}`.trim();
+  if (!text) return "Operating";
+  for (const re of LABOR_PATTERNS) {
+    if (re.test(text)) return "Labor";
+  }
+  return "Operating";
 }

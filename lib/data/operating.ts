@@ -4,9 +4,13 @@ import type { OperatingLine } from "../types";
  * `include: false` greys the row out of the rate calc but keeps it in audit.
  * `dept: "SHARED:CDS"` splits across PLAN / BLDG / ENG by productive hours.
  * `sourceDept` mirrors how the line would appear in a small California
- * city's adopted budget so the seed exercises the Source Dept column. */
+ * city's adopted budget so the seed exercises the Source Dept column.
+ *
+ * Every row in the seed is non-labor — the costType: "Operating" stamp at
+ * the bottom of this file is what splits them off from the future
+ * labor-classified rows that will surface on the Direct Labor page. */
 
-export const OPERATING: OperatingLine[] = [
+export const OPERATING: OperatingLine[] = ([
   // Planning
   { id: "OP-PL-01", code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",     category: "Software & subscriptions", line: "Planning permit system (share)",   amount: 18400, source: "seed", include: true },
   { id: "OP-PL-02", code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",     category: "Professional services",    line: "On-call planning consultants",     amount: 42000, source: "seed", include: true },
@@ -34,4 +38,4 @@ export const OPERATING: OperatingLine[] = [
   // Shared CDS (split across PLAN/BLDG/ENG by productive hours)
   { id: "OP-SH-01", code: "011-2400", dept: "SHARED:CDS", sourceDept: "Community Development", category: "Software & subscriptions", line: "Citywide permit/agenda system", amount: 32400, source: "seed", include: true },
   { id: "OP-SH-02", code: "011-2400", dept: "SHARED:CDS", sourceDept: "Community Development", category: "Office & supplies",        line: "Front-counter & printing",     amount:  6800, source: "seed", include: true },
-];
+] as Omit<OperatingLine, "costType">[]).map((row) => ({ ...row, costType: "Operating" as const }));

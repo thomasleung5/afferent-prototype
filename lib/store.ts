@@ -445,6 +445,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           operating: [
             ...s.operating,
             { id: `op-${Date.now()}`, code: "—", dept: "PLAN", category: "Other",
+              costType: "Operating",
               line: "New line item", amount: 0, source: "manual", include: true },
           ],
         })),
