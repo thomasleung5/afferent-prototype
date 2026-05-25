@@ -14,7 +14,7 @@ export function useExport() {
 
   const downloadExcel = useCallback(async () => {
     const payload = buildExportPayload({
-      positions:    state.positions,
+      productiveHours: state.productiveHours,
       operating:    state.operating,
       capPools:     state.capPools,
       volume:       state.volume,

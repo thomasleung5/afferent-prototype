@@ -12,7 +12,7 @@ const labelOf = deptName;
 /** Per-dept direct labor rollup. Each row expands inline to a position ledger
  *  + method/formula/source metadata grid — the audit trail. */
 export function LaborSummary() {
-  const { positions, derived } = useBuildState();
+  const { productiveHours, operating, derived } = useBuildState();
   const labor = derived.labor;
 
   const totalComp = ORDER.reduce((a, d) => a + labor[d].totalComp, 0);
@@ -20,18 +20,32 @@ export function LaborSummary() {
   const totalFte  = ORDER.reduce((a, d) => a + labor[d].fte, 0);
   const totalPositions = ORDER.reduce((a, d) => a + labor[d].positions, 0);
 
-  // Only show depts with at least one position in the active
-  // jurisdiction. Avoids zero-data rows for depts the current
-  // jurisdiction doesn't model.
+  // Only show depts with at least one role in the active jurisdiction.
+  // Avoids zero-data rows for depts the current jurisdiction doesn't model.
   const activeDepts = ORDER.filter((d) => labor[d].positions > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = labor[d];
-    const directs = positions.filter((p) => p.dept === d);
-    const ledger = [...directs]
-      .map((p) => ({
-        title: p.title,
-        fte: p.fte,
-        comp: (p.salary + p.benefits) * p.fte,
+    // PR-F: per-role comp now comes from operating-labor rows grouped
+    // by sourceDept (the role title written by
+    // buildLaborLinesFromPositions). FTE comes from the matching
+    // productiveHours row by title.
+    const fteByTitle = new Map<string, number>();
+    for (const ph of productiveHours) {
+      if (ph.dept !== d) continue;
+      fteByTitle.set(ph.title, (fteByTitle.get(ph.title) ?? 0) + ph.fte);
+    }
+    const compByTitle = new Map<string, number>();
+    for (const o of operating) {
+      if (o.costType !== "Labor") continue;
+      if (o.dept !== d) continue;
+      const title = o.sourceDept ?? o.line;
+      compByTitle.set(title, (compByTitle.get(title) ?? 0) + o.amount);
+    }
+    const ledger = [...compByTitle.entries()]
+      .map(([title, comp]) => ({
+        title,
+        fte: fteByTitle.get(title) ?? 0,
+        comp,
       }))
       .sort((a, b) => b.comp - a.comp)
       .slice(0, 8);

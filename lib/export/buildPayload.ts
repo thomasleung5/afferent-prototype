@@ -4,7 +4,7 @@
 
 import type {
   DeptCode, OperatingLine, PolicyException, PolicyTarget,
-  Position, Service, VolumeRow, CapPool,
+  ProductiveHoursRow, Service, VolumeRow, CapPool,
 } from "@/lib/types";
 import type {
   FeeComparison, PolicyImpact, ServiceCost,
@@ -135,7 +135,7 @@ export interface ExportPayload {
  * accept a plain object instead of useBuildState() so this stays a pure
  * function (callable from anywhere — server, tests, the print route). */
 interface ExportInput {
-  positions: Position[];
+  productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   capPools: CapPool[];
   volume: VolumeRow[];
@@ -218,12 +218,12 @@ const DOMAIN_LABEL: Record<Domain, string> = {
 };
 
 export function buildExportPayload(input: ExportInput): ExportPayload {
-  const { positions, services, derived, policyTargets, policyExceptions, capPools } = input;
+  const { productiveHours, services, derived, policyTargets, policyExceptions, capPools } = input;
 
   const totalCost = derived.costs.reduce((a, c) => a + c.annualCost, 0);
   const totalRevenue = derived.costs.reduce((a, c) => a + c.annualRevenue, 0);
   const potentialUplift = derived.comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
-  const fte = positions.reduce((a, p) => a + p.fte, 0);
+  const fte = productiveHours.reduce((a, p) => a + p.fte, 0);
 
   const cover: ExportCover = {
     cityName: input.jurisdiction.name,
@@ -235,7 +235,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
 
   const summary: ExportSummary = {
     services: services.length,
-    positions: positions.length,
+    positions: productiveHours.length,
     fte,
     totalCost,
     currentRevenue: totalRevenue,
@@ -355,7 +355,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
 
   const lineage: ExportLineageRow[] = Object.entries(input.lineage).map(([id, l]) => {
     const svc = services.find((s) => s.id === id);
-    const pos = positions.find((p) => p.id === id);
+    const pos = productiveHours.find((p) => p.id === id);
     const opLine = input.operating.find((o) => o.id === id);
     const pool = capPools.find((p) => p.id === id);
     const label = svc?.name ?? pos?.title ?? opLine?.line ?? pool?.pool ?? id;

@@ -9,7 +9,7 @@ export default function AnnualRefreshPage() {
   const state = useBuildState();
   const summary = deriveRefreshSummary({
     imports: state.imports,
-    positions: state.positions,
+    productiveHours: state.productiveHours,
     operating: state.operating,
     volume: state.volume,
     services: state.services,

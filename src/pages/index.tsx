@@ -10,7 +10,7 @@ import { FEE_DEPTS } from "@/lib/data/departments";
 
 
 export default function HomePage() {
-  const { services, positions, capPools, policyTargets, imports, derived } = useBuildState();
+  const { services, productiveHours, capPools, policyTargets, imports, derived } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const { impact, comparisons } = derived;
 
@@ -126,7 +126,7 @@ export default function HomePage() {
           href="/build/services"
           checklist={[
             { l: "Services", v: `${services.length} mapped` },
-            { l: "Labor",    v: `${positions.length} positions` },
+            { l: "Labor",    v: `${productiveHours.length} roles` },
             { l: "Overhead", v: `${capPools.length} pools` },
           ]}
         />

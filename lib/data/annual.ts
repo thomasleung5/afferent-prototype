@@ -9,7 +9,7 @@
 //   - Packet:   a recovery / opportunity summary built from comparisons.
 
 import type {
-  CapPool, OperatingLine, Position, Service, VolumeRow,
+  CapPool, OperatingLine, ProductiveHoursRow, Service, VolumeRow,
 } from "../types";
 import type { BuildImportLog, Domain } from "../store";
 import { deriveBuildDerived, type BuildSnapshot, type StudyVersion } from "../store";
@@ -109,7 +109,10 @@ export interface FeeChangeExplanation {
 
 interface AnnualInput {
   imports: BuildImportLog[];
-  positions: Position[];
+  /** Productive-hours rows (one per role). Replaces the legacy
+   *  `positions` slice — wire-side imports still use the "positions"
+   *  domain label, but the storage is the productiveHours array. */
+  productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   volume: VolumeRow[];
   services: Service[];
@@ -184,7 +187,7 @@ const SECTION_NAMES: Record<Domain, string> = {
 
 function seedCountFor(domain: Domain, input: AnnualInput): number {
   switch (domain) {
-    case "positions": return input.positions.length;
+    case "positions": return input.productiveHours.length;
     case "operating": return input.operating.length;
     case "volume":    return input.volume.length;
     case "services":  return input.services.length;

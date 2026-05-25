@@ -79,7 +79,7 @@ export function ChangeReviewTable() {
 
   const input = useMemo(() => ({
     imports: state.imports,
-    positions: state.positions,
+    productiveHours: state.productiveHours,
     operating: state.operating,
     volume: state.volume,
     services: state.services,

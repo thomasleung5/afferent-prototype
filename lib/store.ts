@@ -57,11 +57,10 @@ export interface BuildImportLog {
 export type StudyVersionStatus = "draft" | "review" | "published" | "adopted" | "archived";
 
 export interface BuildSnapshot {
-  positions: Position[];
   /** Per-role productive-hours slice. Carries FTE × hrs-per-FTE inputs
-   *  for the FBHR denominator, derived from positions during migration
-   *  and editable in its own UI section (PR-C: read-only mirror; PR-F:
-   *  becomes the canonical store after positions retires). */
+   *  for the FBHR denominator. Replaced the former `positions` slice
+   *  in PR-F; salary/benefits now live as `costType: "Labor"` rows in
+   *  the operating dataset. */
   productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   capPools: CapPool[];
@@ -110,7 +109,6 @@ export interface StudyVersion {
 /* ── State & action interfaces ── */
 
 export interface BuildState {
-  positions: Position[];
   /** Per-role productive-hours rows. See BuildSnapshot.productiveHours. */
   productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
@@ -179,7 +177,10 @@ export interface BuildState {
 }
 
 interface BuildActions {
-  updatePosition: (id: string, patch: Partial<Position>) => void;
+  /** Edit a productive-hours row (title, dept, FTE, hours, breakdown). */
+  updateProductiveHours: (id: string, patch: Partial<ProductiveHoursRow>) => void;
+  addProductiveHours: () => void;
+  removeProductiveHours: (id: string) => void;
   updateOperating: (id: string, patch: Partial<OperatingLine>) => void;
   updateVolume: (id: string, patch: Partial<VolumeRow>) => void;
   updateService: (id: string, patch: Partial<Service>) => void;
@@ -188,7 +189,6 @@ interface BuildActions {
   addPolicyException: () => void;
   removePolicyException: (id: string) => void;
   addService: () => void;
-  addPosition: () => void;
   /** Append a new operating row. costType defaults to "Operating"; the
    *  Direct Labor page passes "Labor" so newly-added rows surface in its
    *  filtered view rather than the Operating page's. */
@@ -376,18 +376,16 @@ export function synthCenterKey(name: string): string {
 
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
-  const seedPositions = POSITIONS.map((p) => ({ ...p }));
-  // Seed operating includes the legacy non-labor OPERATING rows plus a
-  // labor-classified row pair per position (Salaries + Benefits). PR-D
-  // ships them as a mirror of positions; PR-E flips FBHR to read labor
-  // cost from these rows.
+  // POSITIONS is now a seed-only convenience: each row fans out into one
+  // productiveHours row + two operating-labor rows (Salaries + Benefits).
+  // The Position[] slice itself is no longer stored on state (PR-F).
+  const seedRoster = POSITIONS.map((p) => ({ ...p }));
   const seedOperating: OperatingLine[] = [
     ...OPERATING.map((o) => ({ ...o })),
-    ...buildLaborLinesFromPositions(seedPositions),
+    ...buildLaborLinesFromPositions(seedRoster),
   ];
   const state: BuildSnapshot = {
-    positions: seedPositions,
-    productiveHours: buildProductiveHoursFromPositions(seedPositions),
+    productiveHours: buildProductiveHoursFromPositions(seedRoster),
     operating: seedOperating,
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
@@ -492,8 +490,26 @@ export const useBuildStore = create<BuildState & BuildActions>()(
     (set) => ({
       ...initialState(),
 
-      updatePosition: (id, patch) =>
-        set((s) => ({ positions: s.positions.map((p) => p.id === id ? { ...p, ...patch } : p) })),
+      updateProductiveHours: (id, patch) =>
+        set((s) => ({
+          productiveHours: s.productiveHours.map((r) =>
+            r.id === id ? { ...r, ...patch } : r,
+          ),
+        })),
+
+      addProductiveHours: () =>
+        set((s) => ({
+          productiveHours: [
+            ...s.productiveHours,
+            { id: `ph-${Date.now()}`, title: "New role", dept: "PLAN",
+              fte: 1, hours: 1720, source: "manual" },
+          ],
+        })),
+
+      removeProductiveHours: (id) =>
+        set((s) => ({
+          productiveHours: s.productiveHours.filter((r) => r.id !== id),
+        })),
 
       updateOperating: (id, patch) =>
         set((s) => ({ operating: s.operating.map((o) => o.id === id ? { ...o, ...patch } : o) })),
@@ -531,15 +547,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           ],
         })),
 
-      addPosition: () =>
-        set((s) => ({
-          positions: [
-            ...s.positions,
-            { id: `pos-${Date.now()}`, title: "New position", dept: "PLAN",
-              fte: 1, salary: 0, benefits: 0, hours: 1720,
-              source: "manual" },
-          ],
-        })),
 
       addOperatingLine: (costType = "Operating") =>
         set((s) => ({
@@ -731,9 +738,42 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergePositions: (r, fileName) => {
         const result = toApplyResult("positions", fileName, r);
         set((s) => {
-          const { merged, lineagePatch } = mergeRows(s.positions, r);
+          // PR-F: an imported Position is no longer a stored entity; it
+          // splits into one productiveHours row (id mirrors the import)
+          // and two labor operating rows (Salaries + Benefits, with
+          // deterministic ids from buildLaborLinesFromPositions). All
+          // three are upserted into their respective slices. Lineage is
+          // keyed on the position id so the import drawer's summary
+          // counts stay consistent with the wire payload.
+          const incoming = [...r.mapped, ...r.lowConfidence, ...r.duplicates];
+          const lineagePatch: Record<string, SourceLineage> = {};
+          const phById = new Map(s.productiveHours.map((row) => [row.id, row]));
+          const opById = new Map(s.operating.map((row) => [row.id, row]));
+
+          for (const { entity, lineage } of incoming) {
+            const phRow: ProductiveHoursRow = {
+              id: entity.id,
+              title: entity.title,
+              dept: entity.dept,
+              fte: entity.fte,
+              hours: entity.hours,
+              ...(entity.productiveHoursBreakdown
+                ? { productiveHoursBreakdown: entity.productiveHoursBreakdown }
+                : {}),
+              source: entity.source,
+              ...(entity.sourceFile ? { sourceFile: entity.sourceFile } : {}),
+            };
+            phById.set(entity.id, phRow);
+
+            for (const laborRow of buildLaborLinesFromPositions([entity])) {
+              opById.set(laborRow.id, laborRow);
+            }
+            lineagePatch[entity.id] = lineage;
+          }
+
           return {
-            positions: merged,
+            productiveHours: [...phById.values()],
+            operating: [...opById.values()],
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, positions: [...s.pendingReview.positions, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "positions", result, at: new Date().toISOString() }],
@@ -1113,7 +1153,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       clearAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set({
-          positions: [],
           productiveHours: [],
           operating: [],
           capPools: [],
@@ -1211,7 +1250,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   // phantom receivers (e.g. PARKS / PD / FIRE on a Planning/Building/Eng-
   // only jurisdiction).
   const modeledFeeDepts: DeptCode[] = Array.from(new Set<DeptCode>([
-    ...state.positions.map((p) => p.dept),
+    ...state.productiveHours.map((r) => r.dept),
     ...state.services.map((s) => s.dept),
   ]));
 
@@ -1327,7 +1366,7 @@ export function useBuildState() {
   const state = useBuildStore();
 
   const derived: BuildDerived = useMemo(() => deriveBuildDerived(state), [
-    state.positions, state.productiveHours, state.operating,
+    state.productiveHours, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.capBasisUnits, state.capDirectAllocations,
     state.allocationBases, state.capCenterSources, state.studyContext,

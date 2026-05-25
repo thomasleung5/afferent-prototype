@@ -24,7 +24,7 @@ export default function FeeStudyExportPage() {
     return () => { document.title = prev; };
   }, [jurisdiction.name, fiscalYear]);
   const payload = useMemo<ExportPayload>(() => buildExportPayload({
-    positions:    state.positions,
+    productiveHours: state.productiveHours,
     operating:    state.operating,
     capPools:     state.capPools,
     volume:       state.volume,

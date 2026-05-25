@@ -75,10 +75,11 @@ import { IMPORTS } from "../data/imports";
     (state.services as { id: string; source: string }[]).map((s) => s.source),
     ["seed", "imported", "manual", "seed", "seed"],
   );
-  assert.deepEqual(
-    (state.positions as { source: string }[]).map((p) => p.source),
-    ["seed", "manual"],
-  );
+  // PR-F: legacy state.positions is consumed by translateLegacyPositions
+  // and then deleted; downstream slices (productiveHours, labor operating
+  // rows) carry the data.
+  assert.equal((state as Record<string, unknown>).positions, undefined,
+    "PR-F: state.positions removed after consumption");
   const op = state.operating as { id: string; source: string; costType: string }[];
   assert.equal(op[0].source, "seed");
   assert.equal(op[0].costType, "Operating",

@@ -4,7 +4,7 @@ import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
 import { LaborSummary } from "@/features/build/LaborSummary";
 import { LaborLineItemsTable } from "@/features/build/LaborLineItemsTable";
-import { PositionsTable } from "@/features/build/PositionsTable";
+import { ProductiveHoursTable } from "@/features/build/ProductiveHoursTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
 import {
   createJsonImportHandler, createPdfImportHandler,
@@ -77,7 +77,7 @@ export default function DirectLaborPage() {
 
       <LaborLineItemsTable/>
 
-      <PositionsTable/>
+      <ProductiveHoursTable/>
 
       <PageImportDrawer
         open={importerOpen}

@@ -13,7 +13,6 @@ function cloneJson<T>(value: T): T {
  *  or fields added to `BuildState` that shouldn't survive a version cut. */
 export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
   return cloneJson({
-    positions: state.positions,
     productiveHours: state.productiveHours,
     operating: state.operating,
     capPools: state.capPools,

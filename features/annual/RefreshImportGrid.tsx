@@ -8,7 +8,7 @@ export function RefreshImportGrid() {
   const state = useBuildState();
   const input = {
     imports: state.imports,
-    positions: state.positions,
+    productiveHours: state.productiveHours,
     operating: state.operating,
     volume: state.volume,
     services: state.services,

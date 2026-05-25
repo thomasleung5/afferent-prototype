@@ -201,15 +201,31 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (Array.isArray(state.services)) {
     state.services = state.services.map((s: Service) => ({ ...s, source: coerceSource(s.source) }));
   }
-  if (Array.isArray(state.positions)) {
-    state.positions = state.positions.map((p: Position) => ({ ...p, source: coerceSource(p.source) }));
-  }
-  // PR-C: derive the productive-hours slice from positions if it's
-  // missing on the persisted blob. Always runs after positions has been
-  // SourceTag-coerced so the derived rows pick up the cleaned values.
-  // Pre-existing productiveHours arrays pass through untouched.
-  if (!state.productiveHours && Array.isArray(state.positions)) {
-    state.productiveHours = buildProductiveHoursFromPositions(state.positions);
+  // PR-F: state.positions is no longer part of BuildState. Persisted
+  // blobs from earlier sessions still carry the slice — consume it
+  // here (derive productiveHours + labor operating rows when those
+  // haven't already been populated), then delete the legacy field so
+  // it doesn't pollute future snapshots. Idempotent: re-running on
+  // already-migrated state is a no-op.
+  const legacyPos = state as Partial<BuildState> & { positions?: Position[] };
+  if (Array.isArray(legacyPos.positions)) {
+    const coercedPositions: Position[] = legacyPos.positions.map((p: Position) => ({
+      ...p, source: coerceSource(p.source),
+    }));
+    if (!state.productiveHours) {
+      state.productiveHours = buildProductiveHoursFromPositions(coercedPositions);
+    }
+    const existingOperating = Array.isArray(state.operating) ? state.operating : [];
+    const hasLaborRows = existingOperating.some(
+      (o) => (o as OperatingLine).costType === "Labor",
+    );
+    if (!hasLaborRows) {
+      state.operating = [
+        ...existingOperating,
+        ...buildLaborLinesFromPositions(coercedPositions),
+      ];
+    }
+    delete legacyPos.positions;
   }
   if (state.productiveHours == null) {
     state.productiveHours = [];
@@ -220,23 +236,13 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     // this PR); stamping "Operating" lets the Direct Labor / Operating
     // filtered views work without a redundant null-check at every
     // read. Imports that pre-date the field get the same default.
+    // The labor-row derivation now lives in the PR-F block above
+    // because state.positions is consumed (and deleted) there.
     state.operating = state.operating.map((o: OperatingLine) => ({
       ...o,
       source: coerceSource(o.source),
       costType: o.costType ?? "Operating",
     }));
-    // PR-D: derive labor-classified operating rows from positions when
-    // the persisted state has positions but no Labor rows yet. Skipped
-    // when any Labor row already exists (idempotent — also avoids
-    // clobbering a future labor-import flow). Pool ids are
-    // deterministic so re-running this branch can't double-insert.
-    const hasLaborRows = state.operating.some((o) => o.costType === "Labor");
-    if (!hasLaborRows && Array.isArray(state.positions) && state.positions.length > 0) {
-      state.operating = [
-        ...state.operating,
-        ...buildLaborLinesFromPositions(state.positions),
-      ];
-    }
   }
   if (Array.isArray(state.volume)) {
     state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));
