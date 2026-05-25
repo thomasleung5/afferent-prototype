@@ -4,6 +4,7 @@ import type {
 } from "@/lib/types";
 import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
+import { INST_DEPT_CODE_LIST } from "@/lib/data/institutionalDepts";
 
 // ---------------------------------------------------------------------------
 // Wire types (what the model returns over /api/ai/parse-cap)
@@ -524,16 +525,10 @@ function inferBasisKey(row: BasisRow): BasisKey | null {
   return null;
 }
 
-const MATRIX_DEPTS: MatrixDeptCode[] = [
-  "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS",
-  "ATTY", "INS", "CMTE",
-  "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE",
-];
-
 function normMatrixDept(v: string | undefined): MatrixDeptCode | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
-  return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
+  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as MatrixDeptCode) : null;
 }
 
 /** Coerce a receiver row's deptCode. Receivers may legitimately point at a
@@ -546,7 +541,7 @@ function normReceiverDeptCode(v: string | undefined): MatrixDeptCode | "OTHER" |
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   if (s === "OTHER") return "OTHER";
-  return (MATRIX_DEPTS as readonly string[]).includes(s) ? (s as MatrixDeptCode) : "OTHER";
+  return (INST_DEPT_CODE_LIST as readonly string[]).includes(s) ? (s as MatrixDeptCode) : "OTHER";
 }
 
 /** Resolve a free-text basis name to a catalog entry. */

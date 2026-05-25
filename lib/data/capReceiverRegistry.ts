@@ -22,6 +22,7 @@ import type {
   BasisUnitRow, DirectAllocationRow, MatrixDeptCode,
 } from "@/lib/types";
 import type { BasisKey, AllocationBasis } from "@/lib/types";
+import { INDIRECT_DEPT_CODES } from "./institutionalDepts";
 import type { StudyContext } from "./studyContext";
 
 type ReceiverRole = "receiver" | "center";
@@ -119,10 +120,9 @@ export function buildReceiverRegistry(
   return { entries };
 }
 
-/** Indirect-class deptCodes; used only for ordering, not identity. */
-const INDIRECT_CODES = new Set<MatrixDeptCode | "OTHER">([
-  "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE",
-]);
+/** True for the indirect-class deptCodes; used only for ordering, not
+ *  identity. Reads the registry via INDIRECT_DEPT_CODES so the indirect set
+ *  has exactly one source of truth (institutionalDepts.ts). */
 function isIndirectCode(c: MatrixDeptCode | "OTHER"): boolean {
-  return INDIRECT_CODES.has(c);
+  return c !== "OTHER" && INDIRECT_DEPT_CODES.has(c);
 }
