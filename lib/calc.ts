@@ -1,6 +1,6 @@
 import type {
-  CapAllocation, DeptCode, OperatingLine, Position,
-  PolicyException, PolicyTarget, Service,
+  CapAllocation, DeptCode, OperatingLine,
+  PolicyException, PolicyTarget, ProductiveHoursRow, Service,
 } from "./types";
 import { FEE_DEPTS } from "./data/departments";
 
@@ -25,21 +25,41 @@ export interface DeptLabor {
   directRate: number;
 }
 
-export function deptLabor(positions: Position[]): Record<DeptCode, DeptLabor> {
+/** Per-dept labor cost + productive-hours roll-up.
+ *
+ *  PR-E flipped the cost source from positions to operating-labor rows.
+ *  Cost (totalComp) is now `Σ operatingLine.amount where costType="Labor"
+ *  && include && dept=D` — the labor row amounts already bake in
+ *  salary × fte (per PR-D's buildLaborLinesFromPositions) so no further
+ *  weighting is needed.
+ *
+ *  Hours come from the productiveHours slice: `Σ row.hours × row.fte`
+ *  per dept. `fte` and `positions` (role count) are also rolled up from
+ *  productiveHours so the DeptLabor shape stays meaningful for display
+ *  surfaces that still show roster-style metrics. */
+export function deptLabor(
+  operatingLines: OperatingLine[],
+  productiveHours: ProductiveHoursRow[],
+): Record<DeptCode, DeptLabor> {
   const out = {} as Record<DeptCode, DeptLabor>;
   for (const d of FEE_DEPTS) {
     out[d] = { dept: d, fte: 0, positions: 0, totalComp: 0, productiveHours: 0, directRate: 0 };
   }
-  for (const p of positions) {
-    const row = out[p.dept];
-    // Defensive: imports may carry an unrecognized dept code (e.g. a typo
-    // from an AI-accepted row). Skip rather than crash — the row stays in
-    // the roster table but doesn't roll up.
+  // Cost: labor-classified, included rows only.
+  for (const line of operatingLines) {
+    if (line.costType !== "Labor") continue;
+    if (!line.include) continue;
+    const row = out[line.dept as DeptCode];
+    if (!row) continue;
+    row.totalComp += line.amount;
+  }
+  // Hours: from the productive-hours slice. Defensive on unknown depts.
+  for (const ph of productiveHours) {
+    const row = out[ph.dept];
     if (!row) continue;
     row.positions += 1;
-    row.fte += p.fte;
-    row.totalComp += (p.salary + p.benefits) * p.fte;
-    row.productiveHours += p.hours * p.fte;
+    row.fte += ph.fte;
+    row.productiveHours += ph.hours * ph.fte;
   }
   for (const d of FEE_DEPTS) {
     const r = out[d];

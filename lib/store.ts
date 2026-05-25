@@ -1193,7 +1193,7 @@ interface BuildDerived {
 }
 
 export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
-  const labor = deptLabor(state.positions);
+  const labor = deptLabor(state.operating, state.productiveHours);
   const hoursByDept = {} as Record<DeptCode, number>;
   for (const d of FEE_DEPTS) hoursByDept[d] = labor[d].productiveHours;
   const operatingByDept = deptOperating(state.operating, hoursByDept);
@@ -1327,7 +1327,7 @@ export function useBuildState() {
   const state = useBuildStore();
 
   const derived: BuildDerived = useMemo(() => deriveBuildDerived(state), [
-    state.positions, state.operating,
+    state.positions, state.productiveHours, state.operating,
     state.capPools, state.capCenterTotals, state.capCenterOrder,
     state.capBasisUnits, state.capDirectAllocations,
     state.allocationBases, state.capCenterSources, state.studyContext,
