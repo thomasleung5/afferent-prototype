@@ -67,12 +67,14 @@ export const CAP_CENTER_GLCODES: Record<string, string> = {
   "Equipment Use":                      "011-1900",
 };
 
-/** Receiver-side GL codes for every MatrixDeptCode the step-down engine
- *  can route to. Indirect codes mirror CAP_CENTER_GLCODES so a center's
- *  identity is consistent whether it appears as a pool source or a
- *  pool receiver. Direct codes live in the General Fund operating range
- *  (3xxx), numbered in step-down-receiving order. */
-const CAP_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
+/** Seed-only GL codes used at module-init time to stamp glCode onto the
+ *  generated BasisUnitRow + DirectAllocationRow receivers below. Indirect
+ *  codes mirror CAP_CENTER_GLCODES so a center's identity is consistent
+ *  whether it appears as a pool source or a pool receiver. Direct codes
+ *  live in the General Fund operating range (3xxx), numbered in step-
+ *  down-receiving order. Not exported — once the seed runs, the engine
+ *  reads glCode off the persisted receivers, never this map. */
+const SEED_DEPT_GLCODES: Record<MatrixDeptCode, string> = {
   // Indirect — mirror CAP_CENTER_GLCODES
   BLDG_USE: "011-1800",
   EQUIP:    "011-1900",
@@ -112,7 +114,7 @@ export const CAP_BASIS_UNITS: BasisUnitRow[] = (() => {
       const v = row.values[driverKey];
       if (v == null || v <= 0) return [];
       const code = row.code as MatrixDeptCode;
-      const glCode = CAP_DEPT_GLCODES[code];
+      const glCode = SEED_DEPT_GLCODES[code];
       if (!glCode) return [];
       return [{ glCode, dept: row.name, deptCode: code, units: v }];
     });
@@ -133,7 +135,7 @@ export const CAP_DIRECT_ALLOCATIONS: DirectAllocationRow[] = [
     pool: "Parks and Recreation",
     receivers: [
       {
-        glCode: CAP_DEPT_GLCODES.PARKS,
+        glCode: SEED_DEPT_GLCODES.PARKS,
         dept: "Parks & Recreation",
         deptCode: "PARKS",
         percent: 100,
