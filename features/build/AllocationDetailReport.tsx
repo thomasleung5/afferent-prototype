@@ -160,7 +160,7 @@ export function AllocationDetailReport() {
 
     if (totalIncoming <= 0.5 && departmental <= 0.5) return null;
 
-    const COL = "minmax(220px, 1.8fr) 120px 120px 120px";
+    const COL = "80px minmax(180px, 1.6fr) 120px 120px 120px";
     const centerGl = glCodeByCenterKey.get(centerKey);
     return (
       <div>
@@ -178,6 +178,7 @@ export function AllocationDetailReport() {
             fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
+            <div>GL Code</div>
             <div>Source</div>
             <div style={{ textAlign: "right" }}>First</div>
             <div style={{ textAlign: "right" }}>Second</div>
@@ -376,7 +377,7 @@ function CostsRow({
   return (
     <div className={emphasis ? undefined : "tbl-row-hover-grid"} style={{
       display: "grid",
-      gridTemplateColumns: "minmax(220px, 1.8fr) 120px 120px 120px",
+      gridTemplateColumns: "80px minmax(180px, 1.6fr) 120px 120px 120px",
       gap: 12,
       padding: emphasis ? "10px 18px" : "6px 18px",
       borderTop: divider === "top" ? "2px solid var(--ink)"
@@ -391,16 +392,15 @@ function CostsRow({
       fontWeight: emphasis ? 600 : 400,
       alignItems: "baseline",
     }}>
+      <div className="mono" style={{
+        fontSize: "var(--t-l4)",
+        color: glCode ? "var(--ink-3)" : "var(--ink-4)",
+        letterSpacing: "0.02em", fontWeight: 400,
+      }}>{glCode ?? ""}</div>
       <div style={{
         fontFamily: "var(--ff-ui)",
         color: emphasis ? "var(--ink)" : "var(--ink-2)",
       }}>
-        {glCode && (
-          <span className="mono" style={{
-            fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
-            letterSpacing: "0.02em",
-          }}>{glCode}</span>
-        )}
         {label}
         {isSelf && (
           <span className="mono" style={{
@@ -499,7 +499,7 @@ function PoolPicker({
 // First / Second / Total columns share the 120px width used by the
 // Costs to be Allocated table above so the two schedules line up
 // visually when stacked.
-const COL_GRID = "minmax(220px, 1.6fr) 80px 90px 100px 100px 120px 120px 120px";
+const COL_GRID = "80px minmax(180px, 1.4fr) 80px 90px 100px 100px 120px 120px 120px";
 
 function ColumnHeaders() {
   return (
@@ -511,6 +511,7 @@ function ColumnHeaders() {
       fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
       letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
     }}>
+      <div>GL Code</div>
       <div>Budget Unit</div>
       <div style={{ textAlign: "right" }}>Units</div>
       <div style={{ textAlign: "right" }}>%</div>
@@ -590,15 +591,17 @@ function DetailRow({
       fontSize: "var(--t-l7)",
       alignItems: "baseline",
     }}>
-      <div style={{ fontFamily: "var(--ff-ui)", color: "var(--ink-2)", minWidth: 0 }}>
-        <span className="mono" style={{
-          color: "var(--ink-3)", fontSize: "var(--t-l4)",
-          letterSpacing: "0.02em", marginRight: 6,
-        }}>
-          {row.node.glCode.startsWith("seed:") ? "—" : row.node.glCode}
-        </span>
-        <span style={{ color: "var(--ink)" }}>{row.node.name}</span>
+      <div className="mono" style={{
+        fontSize: "var(--t-l4)",
+        color: row.node.glCode.startsWith("seed:") ? "var(--ink-4)" : "var(--ink-3)",
+        letterSpacing: "0.02em", fontWeight: 400,
+      }}>
+        {row.node.glCode.startsWith("seed:") ? "—" : row.node.glCode}
       </div>
+      <div style={{
+        fontFamily: "var(--ff-ui)", color: "var(--ink)", minWidth: 0,
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }}>{row.node.name}</div>
       <div className="num" style={{
         textAlign: "right",
         color: row.units == null ? "var(--ink-4)" : "var(--ink-2)",
@@ -677,6 +680,7 @@ function TotalRow({
       fontVariantNumeric: "tabular-nums",
       fontSize: "var(--t-l7)", fontWeight: 600,
     }}>
+      <div/>
       <div className="mono" style={{
         fontFamily: "var(--ff-mono)",
         fontSize: "var(--t-l4)", letterSpacing: "0.1em",

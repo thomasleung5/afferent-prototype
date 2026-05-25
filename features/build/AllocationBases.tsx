@@ -233,9 +233,10 @@ function Matrix({
   const indirect = rows.filter((r) => r.group === "indirect");
   const direct   = rows.filter((r) => r.group === "direct");
 
-  const NODE_W = 280;
+  const GLCODE_W = 90;
+  const NAME_W = 220;
   const COL_W = 88;
-  const tableWidth = NODE_W + columns.length * COL_W;
+  const tableWidth = GLCODE_W + NAME_W + columns.length * COL_W;
 
   const cellPad = "9px 12px";
   const stickyEllipsis = {
@@ -244,17 +245,34 @@ function Matrix({
     textOverflow: "ellipsis" as const,
     boxSizing: "border-box" as const,
   };
-  const stickyLeftBody = {
+  // Two sticky-left columns: glCode pinned at left:0, name pinned at
+  // left:GLCODE_W. Shadow only on the rightmost sticky cell so the
+  // border between sticky columns stays clean.
+  const stickyGlBody = {
     ...stickyEllipsis,
     position: "sticky" as const, left: 0, zIndex: 2,
+    background: "var(--paper)",
+    padding: cellPad,
+    textAlign: "left" as const,
+  };
+  const stickyNameBody = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: GLCODE_W, zIndex: 2,
     background: "var(--paper)",
     padding: cellPad,
     boxShadow: "1px 0 0 var(--rule)",
     textAlign: "left" as const,
   };
-  const stickyLeftBand = {
+  const stickyGlBand = {
     ...stickyEllipsis,
     position: "sticky" as const, left: 0, zIndex: 4,
+    background: "var(--paper-2)",
+    padding: cellPad,
+    textAlign: "left" as const,
+  };
+  const stickyNameBand = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: GLCODE_W, zIndex: 4,
     background: "var(--paper-2)",
     padding: cellPad,
     boxShadow: "1px 0 0 var(--rule)",
@@ -263,7 +281,7 @@ function Matrix({
 
   const groupRow = (label: string, withTopBorder: boolean) => (
     <tr>
-      <td colSpan={1 + columns.length} style={{
+      <td colSpan={2 + columns.length} style={{
         padding: 0,
         background: "var(--paper-2)",
         borderTop: withTopBorder ? "1px solid var(--rule)" : undefined,
@@ -298,13 +316,20 @@ function Matrix({
           fontVariantNumeric: "tabular-nums",
         }}>
           <colgroup>
-            <col style={{ width: NODE_W }}/>
+            <col style={{ width: GLCODE_W }}/>
+            <col style={{ width: NAME_W }}/>
             {columns.map((b) => <col key={b.key} style={{ width: COL_W }}/>)}
           </colgroup>
           <thead>
             <tr>
               <th style={{
-                ...stickyLeftBand,
+                ...stickyGlBand,
+                borderBottom: "1px solid var(--rule-strong)",
+                fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
+                letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
+              }}>GL Code</th>
+              <th style={{
+                ...stickyNameBand,
                 borderBottom: "1px solid var(--rule-strong)",
                 fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                 letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
@@ -326,20 +351,24 @@ function Matrix({
             {indirect.map((r) => (
               <MatrixRow key={r.code} row={r} columns={columns}
                 openCell={openCell} setOpenCell={setOpenCell}
-                stickyLeftBody={stickyLeftBody}/>
+                stickyGlBody={stickyGlBody} stickyNameBody={stickyNameBody}/>
             ))}
 
             {groupRow("Direct receivers", true)}
             {direct.map((r) => (
               <MatrixRow key={r.code} row={r} columns={columns}
                 openCell={openCell} setOpenCell={setOpenCell}
-                stickyLeftBody={stickyLeftBody}/>
+                stickyGlBody={stickyGlBody} stickyNameBody={stickyNameBody}/>
             ))}
           </tbody>
           <tfoot>
             <tr>
+              <td style={{
+                ...stickyGlBand,
+                borderTop: "2px solid var(--ink)",
+              }}/>
               <td className="mono" style={{
-                ...stickyLeftBand,
+                ...stickyNameBand,
                 borderTop: "2px solid var(--ink)",
                 fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.1em",
                 textTransform: "uppercase", color: "var(--ink-2)",
@@ -359,7 +388,11 @@ function Matrix({
             </tr>
             <tr>
               <td style={{
-                ...stickyLeftBand,
+                ...stickyGlBand,
+                borderTop: "1px solid var(--rule)",
+              }}/>
+              <td style={{
+                ...stickyNameBand,
                 borderTop: "1px solid var(--rule)",
                 fontFamily: "var(--ff-mono)", fontSize: "var(--t-l9)",
                 letterSpacing: "0.1em", color: "var(--ink-3)",
@@ -383,29 +416,29 @@ function Matrix({
 }
 
 function MatrixRow({
-  row, columns, openCell, setOpenCell, stickyLeftBody,
+  row, columns, openCell, setOpenCell, stickyGlBody, stickyNameBody,
 }: {
   row: EffectiveRow; columns: BasisColumn[];
   openCell: OpenCell | null;
   setOpenCell: (c: OpenCell | null) => void;
-  stickyLeftBody: CSSProperties;
+  stickyGlBody: CSSProperties;
+  stickyNameBody: CSSProperties;
 }) {
   const caption = row.glCode ?? "";
   return (
     <tr className="tbl-row-hover">
+      <td className="mono" style={{
+        ...stickyGlBody,
+        borderBottom: "1px solid var(--rule)",
+        fontSize: "var(--t-l4)", color: caption ? "var(--ink-3)" : "var(--ink-4)",
+        letterSpacing: "0.02em", fontWeight: 400,
+      }}>{caption || ""}</td>
       <td style={{
-        ...stickyLeftBody,
+        ...stickyNameBody,
         borderBottom: "1px solid var(--rule)",
         fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)", color: "var(--ink)",
-      }}>
-        {caption && (
-          <span className="mono" style={{
-            fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
-            letterSpacing: "0.02em", fontWeight: 400,
-          }}>{caption}</span>
-        )}
-        <span style={{ fontWeight: 500 }}>{row.name}</span>
-      </td>
+        fontWeight: 500,
+      }}>{row.name}</td>
       {columns.map((b) => {
         const v = row.values[b.key];
         const empty = v == null || v === 0;

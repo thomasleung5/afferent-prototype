@@ -50,10 +50,11 @@ export function AllocationMatrixByCenter() {
   // Real <table> + <colgroup> own the column widths; sticky behavior is
   // applied to actual <th>/<td> cells. One table inside one horizontal
   // scroll container — no overlay tables, no cloned columns, no transforms.
-  const CENTER_W = 260;       // px — sticky left
+  const GLCODE_W = 90;        // px — sticky left, glCode column
+  const NAME_W = 180;         // px — sticky left, cost center name
   const COL_W = 96;           // px — every non-frozen matrix column
   const ROW_TOTAL_W = 110;    // px — sticky right
-  const tableWidth = CENTER_W + cols.length * COL_W + ROW_TOTAL_W;
+  const tableWidth = GLCODE_W + NAME_W + cols.length * COL_W + ROW_TOTAL_W;
 
   // Sticky cells must clip with ellipsis so long Center names never bleed
   // past the column edge into scrolling cells underneath.
@@ -68,9 +69,19 @@ export function AllocationMatrixByCenter() {
   // z-index layering:
   //   2 — sticky body cells (above scrolling body cells beneath them)
   //   4 — sticky header/footer corner cells (above everything)
-  const stickyLeftBody = {
+  // Two left sticky columns: glCode at left:0, name at left:GLCODE_W.
+  // Shadow only on the rightmost sticky cell so the inter-column rule
+  // stays clean.
+  const stickyGlBody = {
     ...stickyEllipsis,
     position: "sticky" as const, left: 0, zIndex: 2,
+    background: "var(--paper)",
+    padding: cellPad,
+    textAlign: "left" as const,
+  };
+  const stickyNameBody = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: GLCODE_W, zIndex: 2,
     background: "var(--paper)",
     padding: cellPad,
     boxShadow: "1px 0 0 var(--rule)",
@@ -84,9 +95,16 @@ export function AllocationMatrixByCenter() {
     boxShadow: "-1px 0 0 var(--rule)",
     textAlign: "right" as const,
   };
-  const stickyLeftBand = {
+  const stickyGlBand = {
     ...stickyEllipsis,
     position: "sticky" as const, left: 0, zIndex: 4,
+    background: "var(--paper-2)",
+    padding: cellPad,
+    textAlign: "left" as const,
+  };
+  const stickyNameBand = {
+    ...stickyEllipsis,
+    position: "sticky" as const, left: GLCODE_W, zIndex: 4,
     background: "var(--paper-2)",
     padding: cellPad,
     boxShadow: "1px 0 0 var(--rule)",
@@ -145,14 +163,21 @@ export function AllocationMatrixByCenter() {
             fontVariantNumeric: "tabular-nums",
           }}>
             <colgroup>
-              <col style={{ width: CENTER_W }}/>
+              <col style={{ width: GLCODE_W }}/>
+              <col style={{ width: NAME_W }}/>
               {cols.map((n) => <col key={n.key} style={{ width: COL_W }}/>)}
               <col style={{ width: ROW_TOTAL_W }}/>
             </colgroup>
             <thead>
               <tr>
                 <th style={{
-                  ...stickyLeftBand,
+                  ...stickyGlBand,
+                  borderBottom: "1px solid var(--rule-strong)",
+                  fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
+                  letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
+                }}>GL Code</th>
+                <th style={{
+                  ...stickyNameBand,
                   borderBottom: "1px solid var(--rule-strong)",
                   fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                   letterSpacing: "0.06em", color: "var(--ink-3)", textTransform: "uppercase",
@@ -198,20 +223,19 @@ export function AllocationMatrixByCenter() {
                 const rowBorder = isLast ? "none" : "1px solid var(--rule)";
                 return (
                   <tr key={centerKey} className="tbl-row-hover">
+                    <td className="mono" style={{
+                      ...stickyGlBody,
+                      borderBottom: rowBorder,
+                      fontSize: "var(--t-l4)",
+                      color: showGl ? "var(--ink-3)" : "var(--ink-4)",
+                      letterSpacing: "0.02em", fontWeight: 400,
+                    }}>{showGl ? indirectNode!.glCode : ""}</td>
                     <td style={{
-                      ...stickyLeftBody,
+                      ...stickyNameBody,
                       borderBottom: rowBorder,
                       fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)", lineHeight: 1.3,
                       fontWeight: 500, color: "var(--ink)",
-                    }}>
-                      {showGl && (
-                        <span className="mono" style={{
-                          fontSize: "var(--t-l4)", color: "var(--ink-3)", marginRight: 6,
-                          letterSpacing: "0.02em", fontWeight: 400,
-                        }}>{indirectNode!.glCode}</span>
-                      )}
-                      {centerName}
-                    </td>
+                    }}>{centerName}</td>
                     {cols.map((n) => {
                       const v = centerCell(centerKey, n.key);
                       const zero = v < 0.5;
@@ -257,8 +281,12 @@ export function AllocationMatrixByCenter() {
             </tbody>
             <tfoot>
               <tr>
+                <td style={{
+                  ...stickyGlBand,
+                  borderTop: "2px solid var(--ink)",
+                }}/>
                 <td className="mono" style={{
-                  ...stickyLeftBand,
+                  ...stickyNameBand,
                   borderTop: "2px solid var(--ink)",
                   fontSize: "var(--t-l4)", fontWeight: 700, letterSpacing: "0.1em",
                   textTransform: "uppercase", color: "var(--ink-3)",
