@@ -5,7 +5,7 @@ import { basisForPool } from "@/lib/data/capStepDown";
 import type { GlNode } from "@/lib/data/capStepDownGl";
 import { useBuildState } from "@/lib/store";
 
-/** Per-pool Allocation Detail report in NBS published format.
+/** Per-pool Allocation Detail report in the standard published CAP format.
  *
  *  For the selected pool, lists every node split into ALLOCABLE BUDGET UNITS
  *  (indirect — other cost centers) and RECEIVING BUDGET UNITS (direct
@@ -15,7 +15,7 @@ import { useBuildState } from "@/lib/store";
  *
  *  First Allocation = pool's own eligible × receiver percent (or pool's R1
  *  incoming × receiver percent for zero-eligible internal-service units —
- *  matches NBS's "Gross Allocation" column).
+ *  matches the published "Gross Allocation" column).
  *  Second Allocation = pool's R2 incoming × receiver percent, self
  *  excluded and renormalized.
  *
@@ -103,13 +103,13 @@ export function AllocationDetailReport() {
       .filter((p) => p.center === centerName)
       .reduce((a, p) => a + p.amount, 0);
 
-    // NBS column labeling rule: a source pool's contribution to this center
-    // counts as Incoming FIRST iff the source's home center is UPSTREAM
-    // (= earlier in stepOrder) of this center AND the contribution is in
-    // Round 1. Everything else (upstream Round 2, self R1+R2, downstream
-    // R1+R2) counts as Incoming SECOND. Self-allocations and downstream
-    // cross-flows all land in the Second column even though they originated
-    // in their own Round 1 — matches NBS's "Costs to be Allocated" report.
+    // Column labeling rule for the "Costs to be Allocated" report: a source
+    // pool's contribution to this center counts as Incoming FIRST iff the
+    // source's home center is UPSTREAM (= earlier in stepOrder) of this
+    // center AND the contribution is in Round 1. Everything else (upstream
+    // Round 2, self R1+R2, downstream R1+R2) counts as Incoming SECOND.
+    // Self-allocations and downstream cross-flows all land in the Second
+    // column even though they originated in their own Round 1.
     const stepIndexByCenter = new Map<string, number>();
     model.stepOrder.forEach((k, i) => {
       const n = model.nodes.find((nn) => nn.key === k);
@@ -118,7 +118,7 @@ export function AllocationDetailReport() {
     const targetStepIndex = stepIndexByCenter.get(centerName) ?? -1;
 
     // Seed every indirect center as a potential source row so the table
-    // matches NBS's "Costs to be Allocated" layout (every allocable budget
+    // matches the "Costs to be Allocated" layout (every allocable budget
     // unit listed, with "—" for zero contributions). Then sum each pool's
     // First/Second contributions into its source-center row.
     const sources = new Map<string, { first: number; second: number }>();
@@ -259,7 +259,7 @@ export function AllocationDetailReport() {
       }
     }
 
-    // Build per-receiver rows. NBS shows every allocable + receiving node,
+    // Build per-receiver rows. Every allocable + receiving node is listed,
     // including 0% rows (— in the cells). Gross / Direct Billed / First come
     // straight from the engine: First = Gross − Direct Billed, with any
     // user-entered direct bill already clamped to [0, Gross] inside the

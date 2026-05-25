@@ -24,8 +24,9 @@ export function AllocationMatrixByCenter() {
 
   const model = derived.capStepDown;
   // Columns = direct receiver nodes, sorted by glCode so the x-axis reads
-  // in fund-program order (matches NBS publications). Seed nodes (no real
-  // glCode) sort last so the imported receivers stay grouped on the left.
+  // in fund-program order (matches the published CAP layout). Seed nodes
+  // (no real glCode) sort last so the imported receivers stay grouped on
+  // the left.
   const cols: GlNode[] = [...model.nodes.filter((n) => n.role === "direct")]
     .sort((a, b) => {
       const aSeed = a.glCode.startsWith("seed:");

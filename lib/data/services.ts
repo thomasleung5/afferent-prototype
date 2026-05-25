@@ -1,6 +1,6 @@
 import type { Service } from "../types";
 
-/* Source: NBS final draft Development Services Fee Study, March 30, 2026.
+/* Source: final draft Development Services Fee Study, March 30, 2026.
  * Tables 2, 4, 7; Appendices A.1–A.3. */
 
 export const SERVICES: Service[] = [

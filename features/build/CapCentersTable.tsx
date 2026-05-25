@@ -41,7 +41,7 @@ export function CapCentersTable() {
     const disallowed = capCenterDisallowed[c.name] ?? 0;
     const netAllocable = Math.max(0, totalCost - disallowed);
     // Use the imported glCode (e.g. "011-1100" for City Council, "BLDG"
-    // for Building Use) — matches NBS published format. Falls back to the
+    // for Building Use) — matches the published CAP format. Falls back to the
     // legacy per-pool synthesized prefix only when no glCode was imported.
     const importedGl = capCenterGlCodes[c.name];
     const samplePool = capPools.find((p) => p.center === c.name);

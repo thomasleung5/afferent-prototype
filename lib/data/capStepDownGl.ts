@@ -102,12 +102,12 @@ export interface GlStepDownModel {
   /** Per-pool distribution after sequential closure. Each pool row shows
    *  what THAT pool distributed to each receiver via its own schedule —
    *  pool's own eligible + pool's share of any incoming $ at its home
-   *  center. Matches NBS per-pool "Allocation Detail" attribution.
+   *  center. Matches the standard per-pool "Allocation Detail" attribution.
    *  Σ over pools of alloc2[*][node] = total $ landing on the node. */
   alloc2: Record<string, Record<NodeKey, number>>;
   /** Per-pool gross first-round allocation — pool's own eligible × receiver
-   *  percent, BEFORE any direct-bill carve-out. This is what NBS publishes
-   *  as the "Gross Allocation" column. firstAllocation = grossAllocation −
+   *  percent, BEFORE any direct-bill carve-out. This is the published
+   *  "Gross Allocation" column. firstAllocation = grossAllocation −
    *  directBillAllocation per (pool, receiver). */
   grossAllocation: Record<string, Record<NodeKey, number>>;
   /** Per-pool direct-bill carve-out, sourced from BuildState.directBills.
@@ -120,7 +120,7 @@ export interface GlStepDownModel {
   firstAllocation: Record<string, Record<NodeKey, number>>;
   /** Per-pool Second Allocation — pool's share of upstream incoming at
    *  its home center × receiver percent (self excluded, renormalized).
-   *  Single pass per the NBS two-step methodology — no iteration past
+   *  Single pass per the standard two-step methodology — no iteration past
    *  Round 2. */
   secondAllocation: Record<string, Record<NodeKey, number>>;
   /** Indirect-node keys in step order. */
@@ -341,8 +341,8 @@ export function buildEngineGraph(args: {
 // Step-down compute
 // ---------------------------------------------------------------------------
 
-/** Sequential two-phase CAP allocation over the glCode graph — matches NBS
- *  published full-cost methodology.
+/** Sequential two-phase CAP allocation over the glCode graph — implements
+ *  the standard full-cost step-down methodology.
  *
  *  Step ordering matters: each center sits at a position in stepOrder, and
  *  "upstream" = centers at earlier positions.
@@ -353,7 +353,7 @@ export function buildEngineGraph(args: {
  *      For each pool p at C:
  *        firstPool[p]     = p.eligible + p.weight × firstIncoming[C]
  *        distribute firstPool[p] via p's schedule, NO exclusions
- *        (= NBS's "Gross Allocation" / "First Allocation" column total)
+ *        (= published "Gross Allocation" / "First Allocation" column total)
  *
  *  Each pool's First Allocation column thus equals (own + share of upstream
  *  contributions) × schedule percent. Self-allocation rows are populated
@@ -375,12 +375,12 @@ export function buildEngineGraph(args: {
  *  totalReceived. No further iteration.
  *
  *  alloc2[pool.id][receiver] = First + Second per pool per receiver.
- *  Matches the per-pool "Allocation Detail" page in the NBS PDF cell-for-
- *  cell. DIRECT-basis pools route their full eligible via their imported
- *  receivers list (each receiver's glCode is the routing target). If a
- *  DIRECT pool has no valid receivers, its eligible $ leaks and the pool
- *  is added to model.diagnostics — never silently rerouted by deptCode.
- *  DIRECT pools skip Phase 2.
+ *  Matches the per-pool "Allocation Detail" page in the published CAP PDF
+ *  cell-for-cell. DIRECT-basis pools route their full eligible via their
+ *  imported receivers list (each receiver's glCode is the routing target).
+ *  If a DIRECT pool has no valid receivers, its eligible $ leaks and the
+ *  pool is added to model.diagnostics — never silently rerouted by
+ *  deptCode. DIRECT pools skip Phase 2.
  */
 export function computeStepDownGl(args: {
   pools: CapPool[];
@@ -594,8 +594,8 @@ export function computeStepDownGl(args: {
   };
 
   // incomingRound1 will hold per-center First Incoming (= upstream Phase 1
-  // contributions to center). NBS reports this as the "First Allocation"
-  // column in the receiving center's "Costs to be Allocated" view.
+  // contributions to center). Surfaces as the "First Allocation" column in
+  // the receiving center's "Costs to be Allocated" view.
   const incomingRound1: Record<NodeKey, number> = {};
   for (const n of indirectNodes) incomingRound1[n.key] = 0;
 
@@ -627,7 +627,7 @@ export function computeStepDownGl(args: {
     // internal-service centers (e.g. Town Center Operations) where the
     // pools publish only personnel + operating, this routes incoming
     // dollars in proportion to each pool's cost breakdown — which is the
-    // ratio the NBS published worksheets compute against.
+    // ratio the published worksheets compute against.
     //
     // Fall back to allocationPercent when no pool has effective dollars
     // (defensive), and to an even split only when allocationPercent is
