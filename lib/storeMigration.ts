@@ -8,7 +8,10 @@ import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictio
 import type {
   CapPool, OperatingLine, Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
-import { buildProductiveHoursFromPositions, defaultCenterOrder, synthCenterKey } from "./store";
+import {
+  buildLaborLinesFromPositions, buildProductiveHoursFromPositions,
+  defaultCenterOrder, synthCenterKey,
+} from "./store";
 import type { BuildSnapshot, BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
 
@@ -222,6 +225,18 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       source: coerceSource(o.source),
       costType: o.costType ?? "Operating",
     }));
+    // PR-D: derive labor-classified operating rows from positions when
+    // the persisted state has positions but no Labor rows yet. Skipped
+    // when any Labor row already exists (idempotent — also avoids
+    // clobbering a future labor-import flow). Pool ids are
+    // deterministic so re-running this branch can't double-insert.
+    const hasLaborRows = state.operating.some((o) => o.costType === "Labor");
+    if (!hasLaborRows && Array.isArray(state.positions) && state.positions.length > 0) {
+      state.operating = [
+        ...state.operating,
+        ...buildLaborLinesFromPositions(state.positions),
+      ];
+    }
   }
   if (Array.isArray(state.volume)) {
     state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));

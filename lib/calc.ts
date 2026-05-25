@@ -64,7 +64,11 @@ export function deptOperating(
   lines: OperatingLine[],
   hoursByDept: Record<DeptCode, number>,
 ): Record<DeptCode, DeptOperating> {
-  const included = lines.filter((l) => l.include);
+  // PR-D: labor-classified rows live in the same OperatingLine[] but
+  // feed the labor numerator (deptLabor → directRate), not the
+  // operating denominator. Skip them here so FBHR doesn't double-count
+  // salaries/benefits.
+  const included = lines.filter((l) => l.include && l.costType !== "Labor");
   const sharedTotal = included
     .filter((l) => l.dept === "SHARED:CDS")
     .reduce((a, l) => a + l.amount, 0);

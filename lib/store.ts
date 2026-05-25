@@ -285,6 +285,66 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
     .map(([key]) => key);
 }
 
+/** Per-dept payroll GL code stamped on derived labor operating rows.
+ *  Mirrors the non-labor operating seed's per-dept code so labor and
+ *  non-labor rows for the same dept share a GL prefix in the table.
+ *  Fall-through is a generic "—" placeholder. */
+const LABOR_CODE_BY_DEPT: Partial<Record<DeptCode, string>> = {
+  PLAN: "011-2410",
+  BLDG: "011-2420",
+  ENG:  "011-3100",
+};
+
+/** Derive labor-classified OperatingLine[] from a Position[]. Each
+ *  position emits two rows — a Salaries row and a Benefits row — both
+ *  `costType: "Labor"`. Amounts are weighted by FTE so the dept-level
+ *  totals match `deptLabor`'s totalComp calc to the cent. Ids are
+ *  deterministic (`op-labor-<positionId>-{salary|benefits}`) so
+ *  re-running the conversion stays idempotent — the row-id collision
+ *  is what lets storeMigration safely re-derive without duplicating. */
+export function buildLaborLinesFromPositions(
+  positions: Position[],
+): OperatingLine[] {
+  const out: OperatingLine[] = [];
+  for (const p of positions) {
+    const code = LABOR_CODE_BY_DEPT[p.dept] ?? "—";
+    const sourceFile = p.sourceFile;
+    const salaryAmount = p.salary * p.fte;
+    const benefitsAmount = p.benefits * p.fte;
+    if (salaryAmount > 0) {
+      out.push({
+        id: `op-labor-${p.id}-salary`,
+        code,
+        dept: p.dept,
+        sourceDept: p.title,
+        category: "Other",
+        costType: "Labor",
+        line: `${p.title} · Salaries`,
+        amount: salaryAmount,
+        source: p.source,
+        ...(sourceFile ? { sourceFile } : {}),
+        include: true,
+      });
+    }
+    if (benefitsAmount > 0) {
+      out.push({
+        id: `op-labor-${p.id}-benefits`,
+        code,
+        dept: p.dept,
+        sourceDept: p.title,
+        category: "Other",
+        costType: "Labor",
+        line: `${p.title} · Benefits`,
+        amount: benefitsAmount,
+        source: p.source,
+        ...(sourceFile ? { sourceFile } : {}),
+        include: true,
+      });
+    }
+  }
+  return out;
+}
+
 /** Derive a ProductiveHoursRow[] from a Position[] (seed init, legacy
  *  migration). One row per position, carrying the FTE × hrs-per-FTE
  *  inputs plus the optional breakdown. id mirrors position.id so audit
@@ -317,10 +377,18 @@ export function synthCenterKey(name: string): string {
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
   const seedPositions = POSITIONS.map((p) => ({ ...p }));
+  // Seed operating includes the legacy non-labor OPERATING rows plus a
+  // labor-classified row pair per position (Salaries + Benefits). PR-D
+  // ships them as a mirror of positions; PR-E flips FBHR to read labor
+  // cost from these rows.
+  const seedOperating: OperatingLine[] = [
+    ...OPERATING.map((o) => ({ ...o })),
+    ...buildLaborLinesFromPositions(seedPositions),
+  ];
   const state: BuildSnapshot = {
     positions: seedPositions,
     productiveHours: buildProductiveHoursFromPositions(seedPositions),
-    operating: OPERATING.map((o) => ({ ...o })),
+    operating: seedOperating,
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},

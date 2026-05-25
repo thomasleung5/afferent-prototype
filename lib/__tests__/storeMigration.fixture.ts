@@ -97,6 +97,36 @@ import { IMPORTS } from "../data/imports";
   console.log("  ✓ SourceTag coercion normalizes legacy values + costType + productiveHours backfill");
 }
 
+// ── 2b. PR-D: labor-classified operating rows derived from positions ─────
+{
+  const state: Record<string, unknown> = {
+    positions: [
+      { id: "pos-x", title: "Planner", dept: "PLAN", fte: 0.5, salary: 200000, benefits: 60000, hours: 1720, source: "seed" },
+    ],
+    operating: [
+      { id: "OP-1", code: "—", dept: "PLAN", category: "Other", line: "Existing op row", amount: 100, source: "seed", include: true },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  const op = state.operating as { id: string; costType: string; dept: string; amount: number; line: string }[];
+  const labor = op.filter((o) => o.costType === "Labor");
+  assert.equal(labor.length, 2, "PR-D: each position produces 2 labor rows (salary + benefits)");
+  const salary = labor.find((o) => o.id === "op-labor-pos-x-salary");
+  const benefits = labor.find((o) => o.id === "op-labor-pos-x-benefits");
+  assert.ok(salary && benefits, "deterministic ids on derived labor rows");
+  assert.equal(salary!.amount, 100000, "salary amount = salary × fte (200000 × 0.5)");
+  assert.equal(benefits!.amount, 30000, "benefits amount = benefits × fte (60000 × 0.5)");
+  assert.equal(salary!.dept, "PLAN");
+  assert.equal(salary!.line, "Planner · Salaries");
+
+  // Re-running migration must be idempotent (no duplicate labor rows).
+  migratePersistedState(state as never);
+  const laborAfter = (state.operating as { costType: string }[]).filter((o) => o.costType === "Labor");
+  assert.equal(laborAfter.length, 2, "PR-D: re-migration does not duplicate labor rows");
+  console.log("  ✓ labor operating rows derived from positions (idempotent)");
+}
+
 // ── 3. allocationPercent backfill ─────────────────────────────────────────
 {
   const state = {
