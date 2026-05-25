@@ -26,6 +26,8 @@ interface Row {
   capRate: number;
   fbhrTotal: number;
   productiveHours: number;
+  allocatedHours: number;
+  utilizationPct: number;
 }
 
 export function RateDerivation() {
@@ -38,6 +40,7 @@ export function RateDerivation() {
   const activeDepts = ORDER.filter((d) => derived.fbhr[d].productiveHours > 0);
   const rows: Row[] = activeDepts.map((d) => {
     const f = derived.fbhr[d];
+    const u = derived.utilization[d];
     return {
       id: d,
       dept: d,
@@ -48,6 +51,8 @@ export function RateDerivation() {
       capRate: f.capRate,
       fbhrTotal: f.fbhr,
       productiveHours: f.productiveHours,
+      allocatedHours: u.allocated,
+      utilizationPct: u.pct,
     };
   });
 
@@ -101,6 +106,41 @@ export function RateDerivation() {
       width: "110px",
       align: "right",
       render: (r) => <span className="num">{fmt.int(r.productiveHours)}</span>,
+    },
+    {
+      key: "allocatedHours",
+      label: "Allocated hrs",
+      width: "120px",
+      align: "right",
+      render: (r) => (
+        <span className="num" style={{ color: "var(--ink-2)" }}>
+          {fmt.int(r.allocatedHours)}
+        </span>
+      ),
+    },
+    {
+      key: "utilizationPct",
+      label: "Utilization",
+      width: "110px",
+      align: "right",
+      render: (r) => {
+        // Subtle semantic styling per spec:
+        //   <85%   → underutilized, muted ink-3
+        //   85–100 → healthy, neutral ink
+        //   >100%  → over capacity, subtle warn (not bright red)
+        // Productive hrs == 0 falls into the <85% bucket and shows
+        // muted; that case is also the "missing productive hours"
+        // warning surface PR-K4 will flag explicitly.
+        const pct = r.utilizationPct;
+        const color = pct > 100 ? "var(--warn)"
+          : pct >= 85 ? "var(--ink)"
+          : "var(--ink-3)";
+        return (
+          <span className="num" style={{ color }}>
+            {Math.round(pct)}%
+          </span>
+        );
+      },
     },
   ];
 
