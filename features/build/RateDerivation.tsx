@@ -1,5 +1,5 @@
 ﻿
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import {
   DataTable, type Column,
 } from "@/components/table";
@@ -12,6 +12,9 @@ import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { FBHR } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
+import {
+  deptCapacityWarnings, type DeptCapacityWarning,
+} from "@/lib/capacity";
 
 const ORDER: DeptCode[] = FEE_DEPTS;
 const labelOf = deptName;
@@ -34,6 +37,20 @@ export function RateDerivation() {
   const { derived, capPools } = useBuildState();
   const stepModel = derived.capStepDown;
   const [openId, setOpenId] = useState<string | undefined>();
+
+  // Capacity warnings grouped by dept so the Department cell can render
+  // an inline ⚠ glyph with a hover-readable tooltip. Same severity
+  // language as the spec — "intervention" at >125%, "missing supply"
+  // when productive=0 with real demand.
+  const warningsByDept = useMemo(() => {
+    const m = new Map<DeptCode, DeptCapacityWarning[]>();
+    for (const w of deptCapacityWarnings(derived.utilization)) {
+      const list = m.get(w.dept) ?? [];
+      list.push(w);
+      m.set(w.dept, list);
+    }
+    return m;
+  }, [derived.utilization]);
 
   // Skip depts that aren't actually modeled in the active jurisdiction
   // (no positions / no productive hours → no derivable rate).
@@ -61,12 +78,21 @@ export function RateDerivation() {
       key: "deptName",
       label: "Department",
       width: "minmax(220px, 2fr)",
-      render: (r) => (
-        <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <DeptChip code={r.dept}/>
-          <span style={{ fontSize: "var(--fs-ui)", fontWeight: 500 }}>{r.deptName}</span>
-        </div>
-      ),
+      render: (r) => {
+        const warns = warningsByDept.get(r.dept);
+        return (
+          <div style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+            <DeptChip code={r.dept}/>
+            <span style={{ fontSize: "var(--fs-ui)", fontWeight: 500 }}>{r.deptName}</span>
+            {warns && warns.length > 0 && (
+              <span
+                title={warns.map(formatDeptWarning).join(" · ")}
+                style={{ color: "var(--warn)", fontSize: 13, lineHeight: 1 }}
+              >⚠</span>
+            )}
+          </div>
+        );
+      },
     },
     {
       key: "directRate",
@@ -253,4 +279,15 @@ export function RateDerivation() {
       />
     </div>
   );
+}
+
+/** Tooltip text for the ⚠ glyph next to a dept name on the FBHR table.
+ *  Phrasing is intentionally diagnostic, not alarming — the inline
+ *  utilization cell already carries the severity color; this just
+ *  explains the why on hover. */
+function formatDeptWarning(w: DeptCapacityWarning): string {
+  if (w.kind === "utilization-critical") {
+    return `Utilization ${Math.round(w.pct)}% — over capacity (>125%)`;
+  }
+  return `${fmt.int(w.allocated)} demand hrs against 0 productive hours`;
 }

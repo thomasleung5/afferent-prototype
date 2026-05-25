@@ -12,7 +12,10 @@ import {
 } from "@/components/ui";
 import type { DeptCode, ProductiveHoursRow, RoleAllocation, Service } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { effectiveRoleAllocations } from "@/lib/capacity";
+import {
+  effectiveRoleAllocations, serviceCapacityWarnings,
+  type ServiceCapacityWarning,
+} from "@/lib/capacity";
 
 import { FEE_DEPTS } from "@/lib/data/departments";
 
@@ -72,10 +75,24 @@ export function ServicesTable() {
     return m;
   }, [productiveHours]);
 
+  // Capacity warnings (alloc pcts ≠ 100, dangling productiveHoursId).
+  // Grouped by serviceId so each row can render its own warnings inline
+  // and the flag system picks affected services into "Needs review".
+  const warningsByService = useMemo(() => {
+    const all = serviceCapacityWarnings(services, serviceRoleAllocations, productiveHours);
+    const m = new Map<string, ServiceCapacityWarning[]>();
+    for (const w of all) {
+      const list = m.get(w.serviceId) ?? [];
+      list.push(w);
+      m.set(w.serviceId, list);
+    }
+    return m;
+  }, [services, serviceRoleAllocations, productiveHours]);
+
   const allRows: Row[] = useMemo(() => services.map((s) => ({
     ...s,
-    flag: !s.hours || !s.volume,
-  })), [services]);
+    flag: !s.hours || !s.volume || warningsByService.has(s.id),
+  })), [services, warningsByService]);
 
   const rows = useMemo(() => {
     const filtered = applyFilter(allRows, "dept", dept);
@@ -128,17 +145,28 @@ export function ServicesTable() {
       label: "Service",
       width: "minmax(280px, 2fr)",
       sortable: true,
-      render: (r) => (
-        <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
-          <CellInput
-            value={r.name}
-            onChange={(v) => updateService(r.id, { name: String(v) })}
-          />
-          <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", letterSpacing: "0.04em", paddingLeft: 6 }}>
-            {r.id}
-          </span>
-        </div>
-      ),
+      render: (r) => {
+        const warnings = warningsByService.get(r.id) ?? [];
+        return (
+          <div style={{ display: "flex", flexDirection: "column", gap: 2 }}>
+            <CellInput
+              value={r.name}
+              onChange={(v) => updateService(r.id, { name: String(v) })}
+            />
+            <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", letterSpacing: "0.04em", paddingLeft: 6 }}>
+              {r.id}
+            </span>
+            {warnings.map((w, i) => (
+              <div key={i} style={{
+                fontSize: "var(--t-l8)", color: "var(--warn)",
+                marginTop: 2, paddingLeft: 6,
+              }}>
+                ⚠ {formatServiceWarning(w)}
+              </div>
+            ))}
+          </div>
+        );
+      },
     },
     {
       key: "dept",
@@ -322,6 +350,16 @@ export function ServicesTable() {
       />
     </div>
   );
+}
+
+/** Inline human-readable copy for a per-service capacity warning. Kept
+ *  short so it fits in the service name cell's secondary line under
+ *  the service id, matching VolumeTable's inline warning pattern. */
+function formatServiceWarning(w: ServiceCapacityWarning): string {
+  if (w.kind === "alloc-not-100") {
+    return `Role allocation totals ${Math.round(w.actual)}% (should be 100%)`;
+  }
+  return `Role references missing position (${w.productiveHoursId})`;
 }
 
 /** Build the position picker options from the full productiveHours roster.

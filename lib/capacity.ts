@@ -130,3 +130,62 @@ export function utilizationByDept(
   }
   return out;
 }
+
+/** Per-service capacity warnings. Tolerance on the alloc-total check is
+ *  0.5 to absorb pct values entered as whole numbers that legitimately
+ *  sum to 99 or 101 after rounding — anything bigger than that is a
+ *  real modeling error worth flagging. */
+export type ServiceCapacityWarning =
+  | { serviceId: string; kind: "alloc-not-100"; actual: number }
+  | { serviceId: string; kind: "dangling-position"; productiveHoursId: string };
+
+export function serviceCapacityWarnings(
+  services: Service[],
+  overrides: Record<string, RoleAllocation[]>,
+  productiveHours: ProductiveHoursRow[],
+): ServiceCapacityWarning[] {
+  const phIds = new Set(productiveHours.map((p) => p.id));
+  const out: ServiceCapacityWarning[] = [];
+  for (const svc of services) {
+    const mix = effectiveRoleAllocations(svc, productiveHours, overrides);
+    if (mix.length === 0) continue; // no roles → not a misallocation, separate concern
+    const total = mix.reduce((a, m) => a + m.pct, 0);
+    if (Math.abs(total - 100) > 0.5) {
+      out.push({ serviceId: svc.id, kind: "alloc-not-100", actual: total });
+    }
+    for (const m of mix) {
+      if (!phIds.has(m.productiveHoursId)) {
+        out.push({
+          serviceId: svc.id, kind: "dangling-position",
+          productiveHoursId: m.productiveHoursId,
+        });
+      }
+    }
+  }
+  return out;
+}
+
+/** Per-dept capacity warnings. Critical-utilization threshold (125%)
+ *  is the spec's "this department cannot realistically deliver" line —
+ *  the >100% color in the FBHR table is "review", the >125% glyph is
+ *  "intervention". `missing-productive-hours` fires only when there's
+ *  real demand against zero supply (no allocated hours = no concern). */
+export type DeptCapacityWarning =
+  | { dept: DeptCode; kind: "utilization-critical"; pct: number }
+  | { dept: DeptCode; kind: "missing-productive-hours"; allocated: number };
+
+export function deptCapacityWarnings(
+  utilization: Record<DeptCode, DeptUtilization>,
+): DeptCapacityWarning[] {
+  const out: DeptCapacityWarning[] = [];
+  for (const d of FEE_DEPTS) {
+    const u = utilization[d];
+    if (!u) continue;
+    if (u.productive === 0 && u.allocated > 0) {
+      out.push({ dept: d, kind: "missing-productive-hours", allocated: u.allocated });
+    } else if (u.pct > 125) {
+      out.push({ dept: d, kind: "utilization-critical", pct: u.pct });
+    }
+  }
+  return out;
+}

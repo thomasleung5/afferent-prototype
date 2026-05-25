@@ -10,7 +10,9 @@ import {
   allocatedHoursByDept,
   allocatedRoleHours,
   defaultRoleAllocationsForService,
+  deptCapacityWarnings,
   effectiveRoleAllocations,
+  serviceCapacityWarnings,
   utilizationByDept,
 } from "../capacity";
 import type { DeptCode, ProductiveHoursRow, Service } from "../types";
@@ -215,6 +217,124 @@ const svc = (
   assert.equal(u.ENG.pct, 0,
     "PR-K2: 0 productive hours → 0% utilization (not NaN, not Infinity)");
   console.log("  ✓ utilization math matches spec example + 0-divisor guard");
+}
+
+// ── 12. serviceCapacityWarnings: alloc total ≠ 100 ─────────────────────
+{
+  const roster = [
+    ph("pos-a", "PLAN", 1.0),
+    ph("pos-b", "PLAN", 1.0),
+  ];
+  const overrides = {
+    "plan-x": [
+      { productiveHoursId: "pos-a", pct: 60 },
+      { productiveHoursId: "pos-b", pct: 35 }, // total = 95
+    ],
+  };
+  const warns = serviceCapacityWarnings(
+    [svc("plan-x", "PLAN", 10, 10)], overrides, roster,
+  );
+  assert.equal(warns.length, 1, "PR-K4: exactly one warning for off-total mix");
+  assert.equal(warns[0].kind, "alloc-not-100");
+  if (warns[0].kind === "alloc-not-100") {
+    assert.equal(warns[0].actual, 95);
+  }
+  console.log("  ✓ alloc-not-100 detected");
+}
+
+// ── 13. serviceCapacityWarnings: dangling productiveHoursId ────────────
+//        The position rolled out from under the allocation. We emit the
+//        dangling warning AND the alloc-not-100 (since the ghost row's
+//        pct still counts toward the user-entered total — they'd see
+//        both flags simultaneously and know they need to pick a real
+//        position OR drop the row).
+{
+  const roster = [ph("pos-a", "PLAN", 1.0)];
+  const overrides = {
+    "plan-x": [
+      { productiveHoursId: "pos-a", pct: 50 },
+      { productiveHoursId: "pos-ghost", pct: 50 },
+    ],
+  };
+  const warns = serviceCapacityWarnings(
+    [svc("plan-x", "PLAN", 10, 10)], overrides, roster,
+  );
+  // Two warnings expected: one alloc-not-100 (well, the user total IS
+  // 100 here — 50+50; so actually no), plus the dangling.
+  // Wait: total here IS 100. So only the dangling warning fires.
+  assert.equal(warns.length, 1, "PR-K4: dangling productiveHoursId fires its own warning");
+  assert.equal(warns[0].kind, "dangling-position");
+  if (warns[0].kind === "dangling-position") {
+    assert.equal(warns[0].productiveHoursId, "pos-ghost");
+  }
+  console.log("  ✓ dangling-position detected");
+}
+
+// ── 14. serviceCapacityWarnings: strict 100% with 0.5 tolerance ────────
+//        Exactly 100 passes; 99 and 101 fire. The 0.5 tolerance only
+//        absorbs sub-integer drift like 99.7 / 100.4 (which shouldn't
+//        happen with whole-pct inputs from the UI but could from
+//        future fractional editors).
+{
+  const roster = [
+    ph("pos-a", "PLAN", 1.0),
+    ph("pos-b", "PLAN", 1.0),
+  ];
+  const cases: Array<[number, number]> = [
+    [100, 0], // exact → no warning
+    [ 99, 1], // off-by-1 → warning
+    [101, 1], // off-by-1 → warning
+  ];
+  for (const [total, expected] of cases) {
+    const overrides = {
+      "plan-x": [
+        { productiveHoursId: "pos-a", pct: total - 50 },
+        { productiveHoursId: "pos-b", pct: 50 },
+      ],
+    };
+    const warns = serviceCapacityWarnings(
+      [svc("plan-x", "PLAN", 10, 10)], overrides, roster,
+    );
+    assert.equal(warns.length, expected,
+      `PR-K4: total=${total} → expected ${expected} warning(s), got ${warns.length}`);
+  }
+  console.log("  ✓ alloc-not-100 strict at integer-pct boundary");
+}
+
+// ── 15. deptCapacityWarnings: utilization > 125% → critical ────────────
+{
+  const u = {
+    PLAN: { allocated: 7000, productive: 4000, pct: 175 },
+    BLDG: { allocated: 3000, productive: 4000, pct: 75 },
+    ENG:  { allocated: 5000, productive: 4000, pct: 125 }, // exactly 125 — not critical
+    PARKS:{ allocated: 0,    productive: 0,    pct: 0 },
+    PD:   { allocated: 0,    productive: 0,    pct: 0 },
+    FIRE: { allocated: 0,    productive: 0,    pct: 0 },
+  } as Record<DeptCode, { allocated: number; productive: number; pct: number }>;
+  const warns = deptCapacityWarnings(u);
+  assert.equal(warns.length, 1, "PR-K4: only depts strictly > 125% trigger critical");
+  assert.equal(warns[0].dept, "PLAN");
+  assert.equal(warns[0].kind, "utilization-critical");
+  console.log("  ✓ utilization-critical (>125% strict)");
+}
+
+// ── 16. deptCapacityWarnings: missing productive hours ─────────────────
+//        Only fires when there's real demand against zero supply —
+//        depts with no allocation AND no supply are simply unmodeled.
+{
+  const u = {
+    PLAN: { allocated: 500,  productive: 0, pct: 0 }, // ← warn
+    BLDG: { allocated: 0,    productive: 0, pct: 0 }, // unmodeled — no warn
+    ENG:  { allocated: 100,  productive: 1000, pct: 10 }, // fine
+    PARKS:{ allocated: 0, productive: 0, pct: 0 },
+    PD:   { allocated: 0, productive: 0, pct: 0 },
+    FIRE: { allocated: 0, productive: 0, pct: 0 },
+  } as Record<DeptCode, { allocated: number; productive: number; pct: number }>;
+  const warns = deptCapacityWarnings(u);
+  assert.equal(warns.length, 1, "PR-K4: missing-productive only when allocated > 0");
+  assert.equal(warns[0].dept, "PLAN");
+  assert.equal(warns[0].kind, "missing-productive-hours");
+  console.log("  ✓ missing-productive-hours (demand vs zero supply)");
 }
 
 console.log("\nAll capacity assertions passed.");
