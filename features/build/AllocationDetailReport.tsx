@@ -178,7 +178,7 @@ export function AllocationDetailReport() {
             fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
             letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
           }}>
-            <div>GL Code</div>
+            <div>Code</div>
             <div>Source</div>
             <div style={{ textAlign: "right" }}>First</div>
             <div style={{ textAlign: "right" }}>Second</div>
@@ -511,7 +511,7 @@ function ColumnHeaders() {
       fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
       letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
     }}>
-      <div>GL Code</div>
+      <div>Code</div>
       <div>Budget Unit</div>
       <div style={{ textAlign: "right" }}>Units</div>
       <div style={{ textAlign: "right" }}>%</div>

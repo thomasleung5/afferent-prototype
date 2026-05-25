@@ -466,7 +466,7 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
         <thead>
           <tr>
             <th className="num">#</th>
-            <th>glCode</th>
+            <th>Code</th>
             <th>Center</th>
             <th className="num">Total Expenses</th>
             <th className="num">Disallowed</th>
@@ -846,7 +846,7 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
       <table>
         <thead>
           <tr>
-            <th>glCode</th>
+            <th>Code</th>
             <th>Center</th>
             <th>Pool</th>
             <th>Basis</th>

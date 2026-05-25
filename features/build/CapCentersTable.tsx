@@ -75,7 +75,7 @@ export function CapCentersTable() {
     },
     {
       key: "code",
-      label: "Fund-Program",
+      label: "Code",
       width: "110px",
       sortable: true,
       render: (r) => (

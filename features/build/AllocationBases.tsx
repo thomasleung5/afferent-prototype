@@ -327,7 +327,7 @@ function Matrix({
                 borderBottom: "1px solid var(--rule-strong)",
                 fontFamily: "var(--ff-mono)", fontSize: "var(--t-l4)", fontWeight: 600,
                 letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
-              }}>GL Code</th>
+              }}>Code</th>
               <th style={{
                 ...stickyNameBand,
                 borderBottom: "1px solid var(--rule-strong)",

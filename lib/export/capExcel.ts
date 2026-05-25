@@ -111,7 +111,7 @@ function buildSummary(p: CapExportPayload): Cell[][] {
 
 function buildCenters(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("#"), h("glCode"), h("Center"), h("Total Expenses"), h("Disallowed"), h("Net Allocable"), h("Pools")],
+    [h("#"), h("Code"), h("Center"), h("Total Expenses"), h("Disallowed"), h("Net Allocable"), h("Pools")],
   ];
   const poolCountByKey = new Map<string, number>();
   for (const pl of p.capPools) {
@@ -175,7 +175,7 @@ function buildBases(p: CapExportPayload): Cell[][] {
 
 function buildPools(p: CapExportPayload): Cell[][] {
   const rows: Cell[][] = [
-    [h("glCode"), h("Center"), h("Pool"), h("Basis"), h("Net allocable $")],
+    [h("Code"), h("Center"), h("Pool"), h("Basis"), h("Net allocable $")],
   ];
   const meta = centerMeta(p);
   let total = 0;
@@ -203,7 +203,7 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
   // Re-using the same 10-column grid keeps everything in one sheet and lets
   // Excel filters / freezes apply uniformly.
   const rows: Cell[][] = [
-    [h("#"), h("Center / Pool"), h("Source / Receiver glCode"), h("Receiver Name"),
+    [h("#"), h("Center / Pool"), h("Source / Receiver Code"), h("Receiver Name"),
      h("Section"), h("Pct"), h("Gross"), h("First"), h("Second"), h("Total")],
   ];
 
@@ -357,7 +357,7 @@ function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
   const meta = centerMeta(p);
 
   const header: Cell[] = [
-    h("glCode"), h("Center"), h("Pool"),
+    h("Code"), h("Center"), h("Pool"),
     ...directNodes.map((n) => h(`${n.glCode.startsWith("seed:") ? "—" : n.glCode} · ${n.name}`)),
     h("Row total"),
   ];
