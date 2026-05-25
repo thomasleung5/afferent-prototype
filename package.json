@@ -15,6 +15,7 @@
     "test:productive-hours": "tsx lib/__tests__/productiveHours.fixture.ts",
     "test:store-migration": "tsx lib/__tests__/storeMigration.fixture.ts",
     "test:capacity": "tsx lib/__tests__/capacity.fixture.ts",
+    "test:fee-display": "tsx lib/__tests__/feeDisplay.fixture.ts",
     "test:ai-parser": "tsx server/__tests__/aiParseRunner.fixture.ts"
   },
   "dependencies": {

@@ -13,6 +13,9 @@ import type { DeptCode } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 import { StateChip, type FeeState } from "@/components/ui";
+import {
+  displayCurrentFee, displayFullCostFee, displayRecommendedFee,
+} from "@/lib/feeDisplay";
 
 type Confidence = "high" | "med" | "low";
 
@@ -71,6 +74,16 @@ export function FeeScheduleTable() {
   // the drilldown's `svc.peer`.
   const peerById = useMemo(
     () => new Map(services.map((s) => [s.id, s.peer])),
+    [services],
+  );
+  // Full Service lookup for the PR-L2 display helpers (currentFeeText,
+  // recommendedFeeText, fullCostRecoveryFeeText overrides). The
+  // FeeComparison rows in `enriched` don't carry these text overrides,
+  // so each fee/cost/recommended cell looks the Service up by id at
+  // render time. Math (annualUplift, recoveryPct, etc.) still uses the
+  // numeric fields off FeeComparison — display routing only.
+  const svcById = useMemo(
+    () => new Map(services.map((s) => [s.id, s])),
     [services],
   );
 
@@ -158,7 +171,14 @@ export function FeeScheduleTable() {
       width: "90px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num">{fmt.dollars(r.fee)}</span>,
+      render: (r) => {
+        const svc = svcById.get(r.id);
+        return (
+          <span className="num">
+            {svc ? displayCurrentFee(svc) : fmt.dollars(r.fee)}
+          </span>
+        );
+      },
     },
     {
       key: "unitCost",
@@ -166,7 +186,14 @@ export function FeeScheduleTable() {
       width: "90px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num">{fmt.dollars(r.unitCost)}</span>,
+      render: (r) => {
+        const svc = svcById.get(r.id);
+        return (
+          <span className="num">
+            {svc ? displayFullCostFee(svc, r.unitCost) : fmt.dollars(r.unitCost)}
+          </span>
+        );
+      },
     },
     {
       key: "recommended",
@@ -174,11 +201,14 @@ export function FeeScheduleTable() {
       width: "120px",
       align: "right",
       sortable: true,
-      render: (r) => (
-        <span className="num" style={{ color: "var(--accent)" }}>
-          {fmt.dollars(r.recommended)}
-        </span>
-      ),
+      render: (r) => {
+        const svc = svcById.get(r.id);
+        return (
+          <span className="num" style={{ color: "var(--accent)" }}>
+            {svc ? displayRecommendedFee(svc, r.recommended) : fmt.dollars(r.recommended)}
+          </span>
+        );
+      },
     },
     {
       key: "peer",
@@ -311,10 +341,10 @@ export function FeeScheduleTable() {
                 fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
               }}>
                 <div>{svc.hours} hrs × {fmt.dollars(fbhr)}/hr</div>
-                <div style={{ color: "var(--ink-3)" }}>= {fmt.dollars(r.unitCost)} unit cost</div>
+                <div style={{ color: "var(--ink-3)" }}>= {displayFullCostFee(svc, r.unitCost)} unit cost</div>
                 <div style={{ color: "var(--ink-3)" }}>× {r.target}% recovery target</div>
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
-                  recommended: <b>{fmt.dollars(r.recommended)}</b>
+                  recommended: <b>{displayRecommendedFee(svc, r.recommended)}</b>
                 </div>
               </div>
               {Math.abs(delta) >= 1 && (

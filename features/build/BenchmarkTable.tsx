@@ -12,6 +12,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { useActiveJurisdiction } from "@/lib/active";
+import { displayCurrentFee, displayFullCostFee } from "@/lib/feeDisplay";
 
 interface Row {
   id: string;
@@ -104,6 +105,15 @@ export function BenchmarkTable() {
 
   const rows = useMemo(() => applyFilter(all, "dept", dept), [all, dept]);
 
+  // Service lookup for the PR-L2 fee-display helpers (currentFeeText /
+  // fullCostRecoveryFeeText overrides). The Row precomputes numeric
+  // fee/cost for math + sortKey; cell display routes through the
+  // helper when the matching Service carries a text override.
+  const svcById = useMemo(
+    () => new Map(services.map((s) => [s.id, s])),
+    [services],
+  );
+
   const filters: FilterGroup[] = [{
     id: "dept", label: "Dept",
     options: deriveDeptFilter(all),
@@ -136,7 +146,14 @@ export function BenchmarkTable() {
       width: "90px",
       align: "right",
       sortable: true,
-      render: (r) => <span className="num">{fmt.dollars(r.fee)}</span>,
+      render: (r) => {
+        const svc = svcById.get(r.id);
+        return (
+          <span className="num">
+            {svc ? displayCurrentFee(svc) : fmt.dollars(r.fee)}
+          </span>
+        );
+      },
     },
     {
       key: "peerMedian",
@@ -220,6 +237,7 @@ export function BenchmarkTable() {
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
         drilldownIndicator
         renderDrilldown={(r) => {
+          const svc = svcById.get(r.id);
           const sorted = peers.slice(0, 5)
             .map((city, i) => ({ city, value: r.peerValues[i] }))
             .sort((a, b) => b.value - a.value);
@@ -230,7 +248,7 @@ export function BenchmarkTable() {
                   padding: "12px 14px", background: "var(--paper)", border: "1px solid var(--rule)",
                   fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
                 }}>
-                  <Line label="our fee" value={fmt.dollars(r.fee)}/>
+                  <Line label="our fee" value={svc ? displayCurrentFee(svc) : fmt.dollars(r.fee)}/>
                   <Line
                     label="peer median"
                     value={r.peerMedian > 0 ? fmt.dollars(r.peerMedian) : "—"}
@@ -245,7 +263,7 @@ export function BenchmarkTable() {
                   <div style={{
                     borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
                   }}>
-                    <Line label="our unit cost" value={fmt.dollars(Math.round(r.cost))}/>
+                    <Line label="our unit cost" value={svc ? displayFullCostFee(svc, Math.round(r.cost)) : fmt.dollars(Math.round(r.cost))}/>
                     <Line
                       label="vs cost"
                       value={r.cost > 0 ? `${r.varianceVsCost > 0 ? "+" : ""}${Math.round(r.varianceVsCost)}%` : "—"}
