@@ -25,7 +25,6 @@ export function CapStepNav({ current, onJump }: Props) {
       borderBottom: "1px solid var(--rule)",
       background: "var(--paper)",
       display: "flex", gap: 0, alignItems: "stretch",
-      overflowX: "auto",
     }}>
       {CAP_STEPS.map((s, i) => {
         const on = s.id === current;
