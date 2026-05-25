@@ -311,7 +311,14 @@ const initialState = (): BuildState => {
     policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
     lineage: {},
     pendingReview: { ...emptyPending },
-    capCenterOrder: defaultCenterOrder(pools),
+    // Preserve the bundle's published step-down sequence rather than
+    // re-sorting by total $. Object.keys returns insertion order, and
+    // CAP_CENTER_TOTALS is written in cap.ts in the bundle's published
+    // order — same behavior as mergeCapBundle's import path (pushes
+    // centers in source order). defaultCenterOrder remains the fallback
+    // for state that arrives without an explicit order (post-rehydration
+    // backfill in storeMigration).
+    capCenterOrder: Object.keys(CAP_CENTER_TOTALS),
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
     activeFiscalYear:
