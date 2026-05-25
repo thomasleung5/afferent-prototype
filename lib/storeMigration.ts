@@ -6,11 +6,12 @@ import { IMPORTS } from "@/lib/data/imports";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  CapPool, OperatingLine, Position, Service, SourceTag, VolumeRow,
+  CapPool, DeptCode, OperatingLine, Position, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import {
-  buildLaborLinesFromPositions, buildProductiveHoursFromPositions,
-  defaultCenterOrder, synthCenterKey,
+  buildLaborLinesFromBuckets, buildLaborLinesFromPositions,
+  buildProductiveHoursFromPositions, defaultCenterOrder, synthCenterKey,
+  type LaborBucket,
 } from "./store";
 import { classifyLaborType } from "./ai/parseOperating";
 import type { BuildSnapshot, BuildState, StudyVersion } from "./store";
@@ -256,53 +257,37 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       }
       return next;
     });
-    // PR-H: coalesce legacy per-position labor row ids
-    // (`op-labor-<positionId>-{salary|benefits}` from PR-D) into per-dept
-    // aggregates (`op-labor-<dept>-{salary|benefits}`). Sums amounts per
-    // (dept, laborType) bucket. Marks the new rows notReconciled since
-    // they came from position estimates. The check is conservative: it
-    // only fires if any row matches the old per-position id pattern,
-    // so re-running on already-migrated state is a no-op.
-    const legacyPerPositionPattern = /^op-labor-(?!PLAN-|BLDG-|ENG-|PARKS-|PD-|FIRE-|PW-)/;
+    // PR-I: coalesce both flavors of legacy labor row ids into per-dept
+    // GL-account-level aggregates (`op-labor-<dept>-<glCode>`).
+    //   - PR-D ids: `op-labor-<positionId>-{salary|benefits}` (per role)
+    //   - PR-H ids: `op-labor-<DEPT>-{salary|benefits}` (per dept × laborType)
+    // Both end in `-salary` / `-benefits`; the new PR-I ids end in a
+    // numeric GL object code (`51110`, `51220`, …), so the pattern is
+    // conservatively "labor row whose id ends in -salary or -benefits".
+    // Idempotent — once the rows are on the new id pattern, this block
+    // is a no-op.
+    const legacyLaborIdPattern = /-(salary|benefits)$/i;
     const legacyLaborRows = state.operating.filter(
-      (o) => o.costType === "Labor" && legacyPerPositionPattern.test(o.id),
+      (o) => o.costType === "Labor" && legacyLaborIdPattern.test(o.id),
     );
     if (legacyLaborRows.length > 0) {
-      type Bucket = { amount: number; laborType: OperatingLine["laborType"]; sourceFile?: string; source: OperatingLine["source"] };
-      const byKey = new Map<string, Bucket>();
+      const byDept = new Map<DeptCode, LaborBucket>();
       for (const row of legacyLaborRows) {
-        const key = `${row.dept}|${row.laborType ?? "Benefits"}`;
-        const cur = byKey.get(key) ?? {
-          amount: 0, laborType: row.laborType ?? "Benefits", source: row.source,
-        };
-        cur.amount += row.amount;
+        // SHARED:CDS isn't a fee dept so it can't bucket-feed the GL
+        // expansion; skip defensively (no seeded labor row ever carries
+        // SHARED:CDS, but a hand-edited persisted state could).
+        if (row.dept === "SHARED:CDS") continue;
+        const dept = row.dept as DeptCode;
+        const cur = byDept.get(dept) ?? { salary: 0, benefits: 0, source: row.source };
+        if ((row.laborType ?? "Benefits") === "Salary") cur.salary   += row.amount;
+        else                                            cur.benefits += row.amount;
         if (row.sourceFile && !cur.sourceFile) cur.sourceFile = row.sourceFile;
-        byKey.set(key, cur);
+        byDept.set(dept, cur);
       }
       const survivors = state.operating.filter(
-        (o) => !(o.costType === "Labor" && legacyPerPositionPattern.test(o.id)),
+        (o) => !(o.costType === "Labor" && legacyLaborIdPattern.test(o.id)),
       );
-      const coalesced: OperatingLine[] = [];
-      for (const [key, bucket] of byKey) {
-        const dept = key.split("|")[0] as OperatingLine["dept"];
-        const lt = bucket.laborType;
-        coalesced.push({
-          id: `op-labor-${dept}-${lt === "Salary" ? "salary" : "benefits"}`,
-          code: dept === "PLAN" ? "011-2410" : dept === "BLDG" ? "011-2420" : dept === "ENG" ? "011-3100" : "—",
-          dept,
-          sourceDept: dept === "PLAN" ? "Planning Division" : dept === "BLDG" ? "Building & Safety" : dept === "ENG" ? "Public Works — Engineering" : String(dept),
-          category: "Other",
-          costType: "Labor",
-          laborType: lt,
-          notReconciled: true,
-          line: lt === "Salary" ? "Regular Salaries" : "Benefits",
-          amount: bucket.amount,
-          source: bucket.source,
-          ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
-          include: true,
-        });
-      }
-      state.operating = [...survivors, ...coalesced];
+      state.operating = [...survivors, ...buildLaborLinesFromBuckets(byDept)];
     }
   }
   if (Array.isArray(state.volume)) {

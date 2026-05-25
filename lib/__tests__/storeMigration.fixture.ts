@@ -106,7 +106,8 @@ import { IMPORTS } from "../data/imports";
   console.log("  ✓ SourceTag coercion normalizes legacy values + costType + productiveHours backfill");
 }
 
-// ── 2b. PR-D: labor-classified operating rows derived from positions ─────
+// ── 2b. PR-I: labor-classified operating rows derived from positions, ────
+//          expanded to per-(dept, GL-account) granularity.
 {
   const state: Record<string, unknown> = {
     positions: [
@@ -118,23 +119,84 @@ import { IMPORTS } from "../data/imports";
   };
   migratePersistedState(state as never);
 
-  const op = state.operating as { id: string; costType: string; dept: string; amount: number; line: string; notReconciled?: boolean }[];
+  type Row = { id: string; costType: string; dept: string; amount: number; line: string; laborType?: string; notReconciled?: boolean; code: string };
+  const op = state.operating as Row[];
   const labor = op.filter((o) => o.costType === "Labor");
-  assert.equal(labor.length, 2, "PR-H: per-dept aggregation = 2 labor rows per dept (salary + benefits)");
-  const salary = labor.find((o) => o.id === "op-labor-PLAN-salary");
-  const benefits = labor.find((o) => o.id === "op-labor-PLAN-benefits");
-  assert.ok(salary && benefits, "PR-H: dept-keyed deterministic ids");
-  assert.equal(salary!.amount, 100000, "salary amount = salary × fte (200000 × 0.5)");
-  assert.equal(benefits!.amount, 30000, "benefits amount = benefits × fte (60000 × 0.5)");
-  assert.equal(salary!.dept, "PLAN");
-  assert.equal(salary!.line, "Regular Salaries", "PR-H: line text is GL-level, not role-level");
-  assert.equal(salary!.notReconciled, true, "PR-H: position-derived rows flagged as fallback");
+  assert.equal(labor.length, 8,
+    "PR-I: per-dept expansion = 4 salary accounts + 4 benefits accounts per dept");
 
-  // Re-running migration must be idempotent (no duplicate labor rows).
+  const salaryRows   = labor.filter((o) => o.laborType === "Salary");
+  const benefitsRows = labor.filter((o) => o.laborType === "Benefits");
+  assert.equal(salaryRows.length, 4,
+    "PR-I: salary bucket fans out across SALARY_ACCOUNTS");
+  assert.equal(benefitsRows.length, 4,
+    "PR-I: benefits bucket fans out across BENEFITS_ACCOUNTS");
+
+  // Reconciliation: Σ Salary rows === salary × fte (200000 × 0.5 = 100000);
+  // Σ Benefits rows === benefits × fte (60000 × 0.5 = 30000). The first
+  // account in each list absorbs the rounding residual.
+  const salarySum   = salaryRows.reduce((a, r) => a + r.amount, 0);
+  const benefitsSum = benefitsRows.reduce((a, r) => a + r.amount, 0);
+  assert.equal(salarySum, 100000,   "PR-I: salary rows reconcile to bucket exactly");
+  assert.equal(benefitsSum, 30000,  "PR-I: benefits rows reconcile to bucket exactly");
+
+  const regSalaries = labor.find((o) => o.id === "op-labor-PLAN-51110");
+  const overtime    = labor.find((o) => o.id === "op-labor-PLAN-51120");
+  const retirement  = labor.find((o) => o.id === "op-labor-PLAN-51210");
+  assert.ok(regSalaries && overtime && retirement,
+    "PR-I: deterministic ids `op-labor-<dept>-<glCode>`");
+  assert.equal(regSalaries!.line, "Regular Salaries");
+  assert.equal(overtime!.line, "Overtime");
+  assert.equal(retirement!.line, "Retirement");
+  assert.equal(regSalaries!.code, "011-2410",
+    "displayed code matches the dept program code used by non-labor Operating rows");
+  assert.equal(regSalaries!.notReconciled, true,
+    "PR-I: position-derived rows flagged as fallback");
+
+  // Re-running migration must be idempotent (the new id pattern doesn't
+  // match the legacy `-salary` / `-benefits` suffix detector).
   migratePersistedState(state as never);
-  const laborAfter = (state.operating as { costType: string }[]).filter((o) => o.costType === "Labor");
-  assert.equal(laborAfter.length, 2, "PR-D: re-migration does not duplicate labor rows");
-  console.log("  ✓ labor operating rows aggregated per dept (PR-H)");
+  const laborAfter = (state.operating as Row[]).filter((o) => o.costType === "Labor");
+  assert.equal(laborAfter.length, 8, "PR-I: re-migration does not duplicate labor rows");
+  console.log("  ✓ labor operating rows expanded to per-(dept, account) (PR-I)");
+}
+
+// ── 2c. PR-I: legacy PR-H per-dept labor rows get re-expanded to accounts.
+{
+  const state: Record<string, unknown> = {
+    operating: [
+      // Pre-PR-I shape: one salary row + one benefits row per dept, ids end
+      // in `-salary` / `-benefits`. Migration should bucket and re-expand.
+      { id: "op-labor-PLAN-salary",   code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
+        category: "Other", costType: "Labor", laborType: "Salary",   line: "Regular Salaries",
+        amount: 500000, source: "seed", include: true, notReconciled: true },
+      { id: "op-labor-PLAN-benefits", code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
+        category: "Other", costType: "Labor", laborType: "Benefits", line: "Benefits",
+        amount: 200000, source: "seed", include: true, notReconciled: true },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  const labor = (state.operating as { id: string; costType: string; amount: number; laborType?: string }[])
+    .filter((o) => o.costType === "Labor");
+  assert.equal(labor.length, 8,
+    "PR-I: legacy PR-H rows coalesce + expand to 8 account-level rows");
+  assert.equal(
+    labor.filter((o) => o.laborType === "Salary").reduce((a, r) => a + r.amount, 0),
+    500000,
+    "PR-I: legacy salary bucket preserved exactly across the new account split",
+  );
+  assert.equal(
+    labor.filter((o) => o.laborType === "Benefits").reduce((a, r) => a + r.amount, 0),
+    200000,
+    "PR-I: legacy benefits bucket preserved exactly across the new account split",
+  );
+  assert.equal(
+    labor.filter((o) => /^op-labor-PLAN-(salary|benefits)$/.test(o.id)).length,
+    0,
+    "PR-I: no legacy `-salary` / `-benefits` ids survive the migration",
+  );
+  console.log("  ✓ legacy PR-H per-dept labor rows re-expanded to account level (PR-I)");
 }
 
 // ── 3. allocationPercent backfill ─────────────────────────────────────────

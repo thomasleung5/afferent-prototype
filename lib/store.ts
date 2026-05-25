@@ -285,10 +285,11 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
     .map(([key]) => key);
 }
 
-/** Per-dept payroll GL code stamped on derived labor operating rows.
- *  Mirrors the non-labor operating seed's per-dept code so labor and
- *  non-labor rows for the same dept share a GL prefix in the table. */
-const LABOR_CODE_BY_DEPT: Partial<Record<DeptCode, string>> = {
+/** Per-dept payroll program code stamped on derived labor rows. Mirrors
+ *  the non-labor operating seed's per-dept program code so labor and
+ *  non-labor rows for the same dept read with the same code in the
+ *  Operating / Labor Line Items tables. */
+const PROGRAM_CODE_BY_DEPT: Partial<Record<DeptCode, string>> = {
   PLAN: "011-2410",
   BLDG: "011-2420",
   ENG:  "011-3100",
@@ -303,43 +304,84 @@ const SOURCE_DEPT_BY_DEPT: Partial<Record<DeptCode, string>> = {
   ENG:  "Public Works — Engineering",
 };
 
-/** Derive labor-classified OperatingLine[] from a Position[],
- *  aggregated at the GL/account/dept level — one Salaries row + one
- *  Benefits row PER DEPT, summing FTE-weighted comp across every
- *  position in that dept. This matches what a real labor budget book
- *  looks like (per-account totals, not per-person line items) and
- *  decouples the labor cost from the position roster: editing a
- *  productive-role's FTE doesn't change labor cost unless the user
- *  explicitly edits the labor row.
- *
- *  Rows are marked `notReconciled: true` — they're a fallback derived
- *  from position estimates, not pulled from an actual budget import.
- *  The UI surfaces a banner reminding the user to import real budget
- *  labor lines.
- *
- *  Ids are deterministic at the (dept, laborType) level
- *  (`op-labor-<dept>-{salary|benefits}`) so re-running the conversion
- *  in migration/seed produces a stable, idempotent result. */
-export function buildLaborLinesFromPositions(
-  positions: Position[],
-): OperatingLine[] {
-  type Bucket = { salary: number; benefits: number; sourceFile?: string; source: Position["source"] };
-  const byDept = new Map<DeptCode, Bucket>();
-  for (const p of positions) {
-    const cur = byDept.get(p.dept) ?? { salary: 0, benefits: 0, source: p.source };
-    cur.salary   += p.salary   * p.fte;
-    cur.benefits += p.benefits * p.fte;
-    if (p.sourceFile && !cur.sourceFile) cur.sourceFile = p.sourceFile;
-    byDept.set(p.dept, cur);
-  }
+interface LaborAccount {
+  /** GL object code — the per-account distinguisher used in the
+   *  deterministic row id (`op-labor-<dept>-<glCode>`). Not displayed
+   *  in the `code` column on the Labor Line Items table; that column
+   *  carries the dept's program code (e.g. "011-2410") to stay
+   *  consistent with the non-labor Operating rows. */
+  glCode: string;
+  /** Display name shown in the Line item column. */
+  line: string;
+  /** Share of the dept's (laborType) bucket, 0–1. Sum within each list
+   *  is 1.0; the first entry absorbs any rounding residual so Σ row.amount
+   *  reconciles exactly to the bucket total. */
+  share: number;
+}
 
+/** Normalized Salary-type GL accounts a small-city budget would publish
+ *  under direct compensation. The first entry (Regular Salaries) absorbs
+ *  the rounding residual so the four rows reconcile to the dept's total
+ *  salary bucket exactly. */
+export const SALARY_ACCOUNTS: LaborAccount[] = [
+  { glCode: "51110", line: "Regular Salaries",          share: 0.93 },
+  { glCode: "51120", line: "Overtime",                  share: 0.03 },
+  { glCode: "51130", line: "Temporary / Part-Time Pay", share: 0.02 },
+  { glCode: "51140", line: "Premium Pay",               share: 0.02 },
+];
+
+/** Normalized Benefits-type GL accounts a small-city budget would publish
+ *  under labor burden. The first entry (Retirement) absorbs the rounding
+ *  residual so the four rows reconcile to the dept's total benefits
+ *  bucket exactly. */
+export const BENEFITS_ACCOUNTS: LaborAccount[] = [
+  { glCode: "51210", line: "Retirement",           share: 0.52 },
+  { glCode: "51220", line: "Health Insurance",     share: 0.30 },
+  { glCode: "51230", line: "Payroll Taxes",        share: 0.15 },
+  { glCode: "51240", line: "Workers Compensation", share: 0.03 },
+];
+
+/** Split a dept's labor bucket across the canonical GL accounts, rounding
+ *  each share to whole dollars and absorbing the residual into the first
+ *  entry so Σ amount === bucket exactly. */
+function splitBucket(bucket: number, accounts: LaborAccount[]): number[] {
+  if (bucket <= 0) return accounts.map(() => 0);
+  const rounded = accounts.map((a) => Math.round(bucket * a.share));
+  const residual = bucket - rounded.reduce((a, n) => a + n, 0);
+  rounded[0] += residual;
+  return rounded;
+}
+
+/** Per-dept labor bucket — total salary + total benefits, with provenance
+ *  threaded through so derived rows can stamp source/sourceFile. */
+export interface LaborBucket {
+  salary: number;
+  benefits: number;
+  source: OperatingLine["source"];
+  sourceFile?: string;
+}
+
+/** Build labor-classified OperatingLine[] from per-dept (salary, benefits)
+ *  buckets. Each bucket fans out into 4 Salary rows + 4 Benefits rows via
+ *  SALARY_ACCOUNTS / BENEFITS_ACCOUNTS; the first entry in each list
+ *  absorbs the rounding residual so Σ row.amount === bucket exactly.
+ *  Shared by buildLaborLinesFromPositions (seed/import path) and the
+ *  migration coalescer (legacy persisted state). */
+export function buildLaborLinesFromBuckets(
+  byDept: Map<DeptCode, LaborBucket>,
+): OperatingLine[] {
   const out: OperatingLine[] = [];
   for (const [dept, bucket] of byDept) {
-    const code = LABOR_CODE_BY_DEPT[dept] ?? "—";
+    const code = PROGRAM_CODE_BY_DEPT[dept] ?? "—";
     const sourceDept = SOURCE_DEPT_BY_DEPT[dept] ?? dept;
-    if (bucket.salary > 0) {
+    const salarySplit   = splitBucket(bucket.salary,   SALARY_ACCOUNTS);
+    const benefitsSplit = splitBucket(bucket.benefits, BENEFITS_ACCOUNTS);
+    for (let i = 0; i < SALARY_ACCOUNTS.length; i++) {
+      const acct = SALARY_ACCOUNTS[i];
+      const amount = salarySplit[i];
+      if (amount <= 0) continue;
       out.push({
-        id: `op-labor-${dept}-salary`,
+        id: `op-labor-${dept}-${acct.glCode}`,
         code,
         dept,
         sourceDept,
@@ -347,16 +389,19 @@ export function buildLaborLinesFromPositions(
         costType: "Labor",
         laborType: "Salary",
         notReconciled: true,
-        line: "Regular Salaries",
-        amount: bucket.salary,
+        line: acct.line,
+        amount,
         source: bucket.source,
         ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
         include: true,
       });
     }
-    if (bucket.benefits > 0) {
+    for (let i = 0; i < BENEFITS_ACCOUNTS.length; i++) {
+      const acct = BENEFITS_ACCOUNTS[i];
+      const amount = benefitsSplit[i];
+      if (amount <= 0) continue;
       out.push({
-        id: `op-labor-${dept}-benefits`,
+        id: `op-labor-${dept}-${acct.glCode}`,
         code,
         dept,
         sourceDept,
@@ -364,8 +409,8 @@ export function buildLaborLinesFromPositions(
         costType: "Labor",
         laborType: "Benefits",
         notReconciled: true,
-        line: "Benefits",
-        amount: bucket.benefits,
+        line: acct.line,
+        amount,
         source: bucket.source,
         ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
         include: true,
@@ -373,6 +418,39 @@ export function buildLaborLinesFromPositions(
     }
   }
   return out;
+}
+
+/** Derive labor-classified OperatingLine[] from a Position[],
+ *  aggregated at the GL/account/dept level — one row per (dept, GL
+ *  account) pair, summing FTE-weighted comp across every position in
+ *  that dept and then splitting each bucket across the normalized
+ *  Salary/Benefits sub-account schedule (Regular Salaries, Overtime,
+ *  Retirement, Health Insurance, etc.). This matches what a real labor
+ *  budget book looks like (per-account totals, not per-person line
+ *  items) and decouples the labor cost from the position roster:
+ *  editing a productive-role's FTE doesn't change labor cost unless
+ *  the user explicitly edits the labor row.
+ *
+ *  Rows are marked `notReconciled: true` — they're a fallback derived
+ *  from position estimates, not pulled from an actual budget import.
+ *  The UI surfaces a banner reminding the user to import real budget
+ *  labor lines.
+ *
+ *  Ids are deterministic at the (dept, GL-code) level
+ *  (`op-labor-<dept>-<glCode>`) so re-running the conversion in
+ *  migration/seed produces a stable, idempotent result. */
+export function buildLaborLinesFromPositions(
+  positions: Position[],
+): OperatingLine[] {
+  const byDept = new Map<DeptCode, LaborBucket>();
+  for (const p of positions) {
+    const cur = byDept.get(p.dept) ?? { salary: 0, benefits: 0, source: p.source };
+    cur.salary   += p.salary   * p.fte;
+    cur.benefits += p.benefits * p.fte;
+    if (p.sourceFile && !cur.sourceFile) cur.sourceFile = p.sourceFile;
+    byDept.set(p.dept, cur);
+  }
+  return buildLaborLinesFromBuckets(byDept);
 }
 
 /** Derive a ProductiveHoursRow[] from a Position[] (seed init, legacy

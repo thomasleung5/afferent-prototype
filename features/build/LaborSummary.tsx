@@ -12,7 +12,7 @@ const labelOf = deptName;
 /** Per-dept direct labor rollup. Each row expands inline to a position ledger
  *  + method/formula/source metadata grid — the audit trail. */
 export function LaborSummary() {
-  const { productiveHours, operating, derived } = useBuildState();
+  const { operating, derived } = useBuildState();
   const labor = derived.labor;
 
   const totalComp = ORDER.reduce((a, d) => a + labor[d].totalComp, 0);
@@ -25,30 +25,18 @@ export function LaborSummary() {
   const activeDepts = ORDER.filter((d) => labor[d].positions > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = labor[d];
-    // PR-F: per-role comp now comes from operating-labor rows grouped
-    // by sourceDept (the role title written by
-    // buildLaborLinesFromPositions). FTE comes from the matching
-    // productiveHours row by title.
-    const fteByTitle = new Map<string, number>();
-    for (const ph of productiveHours) {
-      if (ph.dept !== d) continue;
-      fteByTitle.set(ph.title, (fteByTitle.get(ph.title) ?? 0) + ph.fte);
-    }
-    const compByTitle = new Map<string, number>();
+    // PR-I: labor lives at GL/account granularity, not per-role. The
+    // drilldown ledger groups by account name (Regular Salaries,
+    // Retirement, etc.); FTE has no per-account meaning so it's omitted.
+    const compByAccount = new Map<string, number>();
     for (const o of operating) {
       if (o.costType !== "Labor") continue;
       if (o.dept !== d) continue;
-      const title = o.sourceDept ?? o.line;
-      compByTitle.set(title, (compByTitle.get(title) ?? 0) + o.amount);
+      compByAccount.set(o.line, (compByAccount.get(o.line) ?? 0) + o.amount);
     }
-    const ledger = [...compByTitle.entries()]
-      .map(([title, comp]) => ({
-        title,
-        fte: fteByTitle.get(title) ?? 0,
-        comp,
-      }))
-      .sort((a, b) => b.comp - a.comp)
-      .slice(0, 8);
+    const ledger = [...compByAccount.entries()]
+      .map(([account, comp]) => ({ account, comp }))
+      .sort((a, b) => b.comp - a.comp);
 
     return {
       key: d,
@@ -75,31 +63,28 @@ export function LaborSummary() {
         <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
           <Ledger
             cols={[
-              { key: "title", label: "Position",       width: "1fr" },
-              { key: "fte",   label: "FTE",            width: "90px",  align: "right" },
-              { key: "share", label: "Share",          width: "80px",  align: "right" },
-              { key: "comp",  label: "Comp",           width: "130px", align: "right" },
+              { key: "account", label: "Account", width: "1fr" },
+              { key: "share",   label: "Share",   width: "90px",  align: "right" },
+              { key: "comp",    label: "Comp",    width: "130px", align: "right" },
             ]}
             rows={ledger.map((p) => {
               const pct = r.totalComp > 0 ? Math.round((p.comp / r.totalComp) * 100) : 0;
               return {
-                key: p.title,
+                key: p.account,
                 cells: {
-                  title: <span style={{ color: "var(--ink-2)" }}>{p.title}</span>,
-                  fte:   <span className="num" style={{ color: "var(--ink-3)" }}>{p.fte.toFixed(2)}</span>,
-                  share: <span className="num" style={{ color: "var(--ink-3)" }}>{pct}%</span>,
-                  comp:  <span className="num" style={{ fontWeight: 600 }}>{fmt.dollars(p.comp)}</span>,
+                  account: <span style={{ color: "var(--ink-2)" }}>{p.account}</span>,
+                  share:   <span className="num" style={{ color: "var(--ink-3)" }}>{pct}%</span>,
+                  comp:    <span className="num" style={{ fontWeight: 600 }}>{fmt.dollars(p.comp)}</span>,
                 },
               };
             })}
             total={{
-              title: (
+              account: (
                 <span style={{
                   color: "var(--ink-3)", textTransform: "uppercase",
                   letterSpacing: "0.06em", fontSize: "var(--t-l9)",
                 }}>Total to {labelOf(d)}</span>
               ),
-              fte:   <span className="num">{r.fte.toFixed(1)}</span>,
               share: <span className="num">100%</span>,
               comp:  <span className="num">{fmt.dollars(r.totalComp)}</span>,
             }}
