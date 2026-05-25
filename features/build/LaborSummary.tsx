@@ -120,7 +120,7 @@ export function LaborSummary() {
       <DeptSummaryTable
         cols={[
         { key: "dept",      label: "Department",  width: "1.5fr" },
-        { key: "positions", label: "Positions",   width: "160px", mono: true },
+        { key: "positions", label: "Positions",   width: "160px" },
         { key: "avgRate",   label: "Avg $/hr",    width: "110px", align: "right", mono: true },
         { key: "hrs",       label: "Prod hrs",    width: "110px", align: "right", mono: true },
         { key: "total",     label: "Total labor", width: "160px", align: "right", mono: true },

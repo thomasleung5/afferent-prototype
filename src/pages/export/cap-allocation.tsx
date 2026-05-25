@@ -510,17 +510,6 @@ function CostCenters({ payload }: { payload: CapExportPayload }) {
   );
 }
 
-/** Center name → imported glCode for PDF use; seed centers return undefined. */
-function pdfGlCodeByCenter(payload: CapExportPayload): Map<string, string> {
-  const m = new Map<string, string>();
-  for (const nn of payload.model.nodes) {
-    if (nn.role !== "indirect") continue;
-    if (nn.glCode.startsWith("seed:")) continue;
-    m.set(nn.name, nn.glCode);
-  }
-  return m;
-}
-
 /** Center identity key → {name, glCode} pair used by every step-order
  *  iteration in this file. glCode is undefined for synth `seed:center:*`
  *  keys. Reads from the engine's indirect-node list (which carries the

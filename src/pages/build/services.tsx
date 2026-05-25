@@ -64,7 +64,7 @@ export default function ServicesPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="services"/>}
         title="Services"
-        subtitle="Hours per instance, role mix."
+        subtitle="Hours per instance, role allocation."
         actions={
           <Btn kind="ghost" onClick={() => setImporterOpen(true)}>
             <Icon name="arrow-up-to-line" size={13}/> Import
