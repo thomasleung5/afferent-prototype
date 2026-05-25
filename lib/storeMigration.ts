@@ -80,6 +80,9 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       ...da, receivers: da.receivers.map((r) => ({ ...r })),
     }));
   }
+  if (state.directBills == null) {
+    state.directBills = {};
+  }
 
   // Backfill seed imports if the persisted store has an empty log. The
   // Annual Update tab needs at least one import to render the Refresh

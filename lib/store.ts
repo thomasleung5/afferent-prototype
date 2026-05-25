@@ -68,6 +68,12 @@ export interface BuildSnapshot {
   allocationBases: AllocationBasis[];
   capBasisUnits: BasisUnitRow[];
   capDirectAllocations: DirectAllocationRow[];
+  /** Per-pool per-receiver direct-bill carve-outs (dollars). When set, the
+   *  step-down engine subtracts the amount from that receiver's gross
+   *  first-round share before propagating Phase 2. Sparse — missing pools
+   *  / missing receivers default to zero. Cleared (key deleted) when the
+   *  user blanks or zeros the cell. */
+  directBills: Record<string, Record<string, number>>;
   volume: VolumeRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
@@ -130,6 +136,12 @@ export interface BuildState {
   /** Per-DIRECT-pool explicit allocations. DIRECT pools skip the
    *  basis-driven split and route to the receivers listed here. */
   capDirectAllocations: DirectAllocationRow[];
+  /** Per-pool per-receiver direct-bill carve-outs (dollars). When set, the
+   *  step-down engine subtracts the amount from that receiver's gross
+   *  first-round share before propagating Phase 2. Sparse — missing pools
+   *  / missing receivers default to zero. Cleared (key deleted) when the
+   *  user blanks or zeros the cell. */
+  directBills: Record<string, Record<string, number>>;
   volume: VolumeRow[];
   services: Service[];
   policyTargets: PolicyTarget[];
@@ -172,6 +184,11 @@ interface BuildActions {
   addCapCenter: () => void;
   updateCapPool: (id: string, patch: Partial<CapPool>) => void;
   renameCapCenter: (oldName: string, newName: string) => void;
+  /** Set the direct-bill carve-out for one (pool, receiver) cell. amount
+   *  is clamped to ≥ 0; the caller is responsible for the upper bound
+   *  (Gross) since only the UI knows it. Passing 0 (or NaN) clears the
+   *  entry — display reverts to "—" and the engine treats it as absent. */
+  setDirectBill: (poolId: string, nodeKey: string, amount: number) => void;
   /** Set a cost center's source-department total cost. Rescales every pool
    *  in that center: pool.amount = totalCost × pool.allocationPercent / 100. */
   updateCenterTotal: (centerName: string, totalCost: number) => void;
@@ -261,6 +278,7 @@ const initialState = (): BuildState => {
     capDirectAllocations: CAP_DIRECT_ALLOCATIONS.map((da) => ({
       ...da, receivers: da.receivers.map((r) => ({ ...r })),
     })),
+    directBills: {},
     volume: VOLUME.map((w) => ({ ...w })),
     services: SERVICES.map((s) => ({ ...s })),
     policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
@@ -515,6 +533,26 @@ export const useBuildStore = create<BuildState & BuildActions>()(
                 : p,
             ),
           };
+        }),
+
+      setDirectBill: (poolId, nodeKey, amount) =>
+        set((s) => {
+          const next = { ...s.directBills };
+          const poolRow = { ...(next[poolId] ?? {}) };
+          // Zero / NaN / negative → clear the entry so the engine sees it as
+          // absent and the UI reverts to "—". Upper-bound clamping lives in
+          // the UI (CellInput's `max` prop) since only the UI knows Gross.
+          if (!Number.isFinite(amount) || amount <= 0) {
+            delete poolRow[nodeKey];
+          } else {
+            poolRow[nodeKey] = amount;
+          }
+          if (Object.keys(poolRow).length === 0) {
+            delete next[poolId];
+          } else {
+            next[poolId] = poolRow;
+          }
+          return { directBills: next };
         }),
 
       updateCenterDisallowed: (centerName, disallowed) =>
@@ -926,6 +964,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
           capBasisUnits: [],
           capDirectAllocations: [],
+          directBills: {},
           volume: [],
           services: [],
           policyTargets: [],
@@ -1032,6 +1071,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     bases: state.allocationBases,
     basisUnits: state.capBasisUnits,
     directAllocations: state.capDirectAllocations,
+    directBills: state.directBills,
     graph,
   });
 

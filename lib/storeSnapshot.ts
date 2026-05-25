@@ -24,6 +24,7 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     allocationBases: state.allocationBases,
     capBasisUnits: state.capBasisUnits,
     capDirectAllocations: state.capDirectAllocations,
+    directBills: state.directBills,
     volume: state.volume,
     services: state.services,
     policyTargets: state.policyTargets,

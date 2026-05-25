@@ -105,8 +105,18 @@ export interface GlStepDownModel {
    *  center. Matches NBS per-pool "Allocation Detail" attribution.
    *  Σ over pools of alloc2[*][node] = total $ landing on the node. */
   alloc2: Record<string, Record<NodeKey, number>>;
-  /** Per-pool First Allocation — pool's own eligible × receiver percent.
-   *  Matches the "First Allocation" column on a CAP PDF. */
+  /** Per-pool gross first-round allocation — pool's own eligible × receiver
+   *  percent, BEFORE any direct-bill carve-out. This is what NBS publishes
+   *  as the "Gross Allocation" column. firstAllocation = grossAllocation −
+   *  directBillAllocation per (pool, receiver). */
+  grossAllocation: Record<string, Record<NodeKey, number>>;
+  /** Per-pool direct-bill carve-out, sourced from BuildState.directBills.
+   *  Subtracted from grossAllocation to produce firstAllocation; rolled
+   *  into alloc2 so totals still reconcile to the receiver. */
+  directBillAllocation: Record<string, Record<NodeKey, number>>;
+  /** Per-pool First Allocation — pool's own eligible × receiver percent,
+   *  MINUS the per-receiver direct-bill amount. Matches the "First
+   *  Allocation" column on a CAP PDF (post-direct-bill). */
   firstAllocation: Record<string, Record<NodeKey, number>>;
   /** Per-pool Second Allocation — pool's share of upstream incoming at
    *  its home center × receiver percent (self excluded, renormalized).
@@ -379,8 +389,16 @@ export function computeStepDownGl(args: {
   basisUnits: BasisUnitRow[];
   directAllocations: DirectAllocationRow[];
   graph: GlEngineGraph;
+  /** Per-pool per-receiver direct-bill carve-outs. Clamped to
+   *  [0, grossAllocation] per (pool, receiver) so a stale or oversized
+   *  entry can never produce a negative first allocation. Omit / pass {}
+   *  when no direct bills are in play (default behaviour). */
+  directBills?: Record<string, Record<NodeKey, number>>;
 }): GlStepDownModel {
-  const { pools, centerOrder, bases, basisUnits, directAllocations, graph } = args;
+  const {
+    pools, centerOrder, bases, basisUnits, directAllocations, graph,
+    directBills = {},
+  } = args;
   const { nodes, drivers, resolveCenterNode } = graph;
   const diagnostics: PoolDiagnostic[] = [];
 
@@ -472,11 +490,19 @@ export function computeStepDownGl(args: {
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
+  // grossAllocation captures Phase 1's per-receiver first-round shares
+  // BEFORE any direct-bill carve-out. firstAllocation is derived from it
+  // below once Phase 1 has settled. Phase 2 reads firstAllocation so
+  // direct-billed dollars do not propagate downstream.
+  const grossAllocation: Record<string, Record<NodeKey, number>> = {};
   const firstAllocation: Record<string, Record<NodeKey, number>> = {};
   const secondAllocation: Record<string, Record<NodeKey, number>> = {};
+  const directBillAllocation: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
+    grossAllocation[p.id] = zeroRow();
     firstAllocation[p.id] = zeroRow();
     secondAllocation[p.id] = zeroRow();
+    directBillAllocation[p.id] = zeroRow();
   }
 
   // Pre-bucket each center's own pools (used for Round 2 weighting).
@@ -550,6 +576,23 @@ export function computeStepDownGl(args: {
     return new Set(idx > 0 ? stepOrder.slice(0, idx) : []);
   };
 
+  // Materialise a pool's post-direct-bill firstAllocation from its just-
+  // computed grossAllocation. Called incrementally inside the Phase 1
+  // loop so downstream centers' firstInc calculations see post-direct-bill
+  // upstream values — direct-billed dollars must not propagate.
+  const settleDirectBills = (poolId: string): void => {
+    const gross = grossAllocation[poolId];
+    const first = firstAllocation[poolId];
+    const db    = directBillAllocation[poolId];
+    const userDb = directBills[poolId] ?? {};
+    for (const k of Object.keys(gross)) {
+      const g = gross[k] ?? 0;
+      const dbAmt = Math.max(0, Math.min(userDb[k] ?? 0, g));
+      db[k] = dbAmt;
+      first[k] = g - dbAmt;
+    }
+  };
+
   // incomingRound1 will hold per-center First Incoming (= upstream Phase 1
   // contributions to center). NBS reports this as the "First Allocation"
   // column in the receiving center's "Costs to be Allocated" view.
@@ -613,16 +656,18 @@ export function computeStepDownGl(args: {
       // for review tooling (per the strict glCode-routing rule).
       if (basis === "DIRECT") {
         if (hasValidReceivers(p)) {
-          distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
+          distributeAmount(p, firstPool, grossAllocation[p.id], new Set());
         } else {
           noteDiagnostic(
             p, "no-valid-glcodes", firstPool,
             `DIRECT pool has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(firstPool)} leaks; add a receiver row with a real glCode to route this pool.`,
           );
         }
+        settleDirectBills(p.id);
         continue;
       }
-      distributeAmount(p, firstPool, firstAllocation[p.id], new Set());
+      distributeAmount(p, firstPool, grossAllocation[p.id], new Set());
+      settleDirectBills(p.id);
     }
   }
 
@@ -636,16 +681,18 @@ export function computeStepDownGl(args: {
     const { basis } = basisForPool(p, bases);
     if (basis === "DIRECT") {
       if (hasValidReceivers(p)) {
-        distributeAmount(p, p.amount, firstAllocation[p.id], new Set());
+        distributeAmount(p, p.amount, grossAllocation[p.id], new Set());
       } else {
         noteDiagnostic(
           p, "no-valid-glcodes", p.amount,
           `DIRECT pool (orphaned home center) has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(p.amount)} leaks.`,
         );
       }
+      settleDirectBills(p.id);
       continue;
     }
-    distributeAmount(p, p.amount, firstAllocation[p.id], new Set());
+    distributeAmount(p, p.amount, grossAllocation[p.id], new Set());
+    settleDirectBills(p.id);
   }
 
   // -----------------------------------------------------------------------
@@ -700,14 +747,18 @@ export function computeStepDownGl(args: {
     }
   }
 
-  // === alloc2 = First + Second per pool per receiver ===
+  // === alloc2 = First + Second + DirectBilled per pool per receiver.
+  // Direct-billed dollars land at the receiver even though they bypassed
+  // the basis math, so they must show up in the receiver's total (and in
+  // the rolled-up matrix). Equivalent to Gross + Second.
   const alloc2: Record<string, Record<NodeKey, number>> = {};
   for (const p of pools) {
     const row = zeroRow();
     const f = firstAllocation[p.id] ?? {};
     const s = secondAllocation[p.id] ?? {};
+    const d = directBillAllocation[p.id] ?? {};
     for (const n of nodes) {
-      row[n.key] = (f[n.key] ?? 0) + (s[n.key] ?? 0);
+      row[n.key] = (f[n.key] ?? 0) + (s[n.key] ?? 0) + (d[n.key] ?? 0);
     }
     alloc2[p.id] = row;
   }
@@ -721,7 +772,9 @@ export function computeStepDownGl(args: {
   }
 
   return {
-    alloc2, firstAllocation, secondAllocation,
+    alloc2,
+    grossAllocation, directBillAllocation,
+    firstAllocation, secondAllocation,
     stepOrder, directTotals, nodes,
     diagnostics,
   };

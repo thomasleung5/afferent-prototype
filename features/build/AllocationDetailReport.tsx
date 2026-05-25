@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { SectionLabel } from "@/components/ui";
+import { CellInput, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { basisForPool } from "@/lib/data/capStepDown";
 import type { GlNode } from "@/lib/data/capStepDownGl";
@@ -22,7 +22,8 @@ import { useBuildState } from "@/lib/store";
  *  Cross-checks the engine output against the source CAP PDF row-by-row. */
 export function AllocationDetailReport() {
   const {
-    capPools, allocationBases, capBasisUnits, capDirectAllocations, derived,
+    capPools, allocationBases, capBasisUnits, capDirectAllocations,
+    setDirectBill, derived,
   } = useBuildState();
   const model = derived.capStepDown;
   const basisUnitsByBasisId = useMemo(
@@ -234,7 +235,7 @@ export function AllocationDetailReport() {
     const directNodes   = model.nodes.filter((n) => n.role === "direct");
     const sortByGlCode = (a: GlNode, b: GlNode) => a.glCode.localeCompare(b.glCode);
 
-    const { basis, directTo } = basisForPool(pool, allocationBases);
+    const { basis } = basisForPool(pool, allocationBases);
     const isDirectCharge = basis === "DIRECT";
     const eligibleAmount = pool.amount;
 
@@ -259,16 +260,20 @@ export function AllocationDetailReport() {
     }
 
     // Build per-receiver rows. NBS shows every allocable + receiving node,
-    // including 0% rows (— in the cells).
+    // including 0% rows (— in the cells). Gross / Direct Billed / First come
+    // straight from the engine: First = Gross − Direct Billed, with any
+    // user-entered direct bill already clamped to [0, Gross] inside the
+    // engine. Total reconciles to (First + Second + Direct Billed) — the
+    // dollars the receiver actually sees, regardless of which channel
+    // delivered them.
     const buildRow = (node: GlNode) => {
       const sched = schedule.get(node.key);
       const units = sched?.units;
       const percent = sched?.percent ?? 0;
+      const gross  = model.grossAllocation[pool.id]?.[node.key] ?? 0;
+      const directBilled = model.directBillAllocation[pool.id]?.[node.key] ?? 0;
       const first  = model.firstAllocation[pool.id]?.[node.key] ?? 0;
       const second = model.secondAllocation[pool.id]?.[node.key] ?? 0;
-      const directBilled = isDirectCharge && directTo && node.feeDept === directTo
-        ? eligibleAmount : 0;
-      const gross = first; // NBS publishes gross = first for non-DIRECT pools
       return {
         node, units, percent, gross, directBilled, first, second,
         total: first + second + directBilled,
@@ -325,11 +330,21 @@ export function AllocationDetailReport() {
           <ColumnHeaders/>
           <SectionHeader label="Allocable Budget Units"/>
           {allocableRows.map((r) => (
-            <DetailRow key={r.node.key} row={r}/>
+            <DetailRow
+              key={r.node.key}
+              row={r}
+              poolId={pool.id}
+              onSetDirectBill={setDirectBill}
+            />
           ))}
           <SectionHeader label="Receiving Budget Units"/>
           {receivingRows.map((r) => (
-            <DetailRow key={r.node.key} row={r}/>
+            <DetailRow
+              key={r.node.key}
+              row={r}
+              poolId={pool.id}
+              onSetDirectBill={setDirectBill}
+            />
           ))}
           <TotalRow totals={totals}/>
         </div>
@@ -525,13 +540,39 @@ interface Row {
   total: number;
 }
 
-function DetailRow({ row }: { row: Row }) {
+function DetailRow({
+  row, poolId, onSetDirectBill,
+}: {
+  row: Row;
+  poolId: string;
+  onSetDirectBill: (poolId: string, nodeKey: string, amount: number) => void;
+}) {
   const dim = (v: number) => v < 0.5;
   const fmtMoney = (v: number) => dim(v) ? "—" : fmt.dollars(v);
   const fmtUnits = (v: number | undefined) =>
     v == null ? "—" : fmt.units(v);
   const fmtPct = (v: number) =>
     v <= 0 ? "—" : `${v.toFixed(3)}%`;
+  // Brief inline error when the user tries to enter a value > Gross. Clears
+  // itself after a moment so the input returns to its quiet state.
+  const [error, setError] = useState<string | null>(null);
+  const editable = row.gross >= 0.5;
+  const commitDirectBill = (next: number) => {
+    if (!Number.isFinite(next) || next < 0) {
+      onSetDirectBill(poolId, row.node.key, 0);
+      return;
+    }
+    if (next > row.gross + 0.005) {
+      setError("Direct billed cannot exceed gross");
+      window.setTimeout(() => setError(null), 2400);
+      // Revert: re-broadcast the current committed value so CellInput's
+      // internal draft snaps back to it.
+      onSetDirectBill(poolId, row.node.key, row.directBilled);
+      return;
+    }
+    setError(null);
+    onSetDirectBill(poolId, row.node.key, next);
+  };
   return (
     <div className="tbl-row-hover-grid" style={{
       display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
@@ -563,10 +604,40 @@ function DetailRow({ row }: { row: Row }) {
         textAlign: "right",
         color: dim(row.gross) ? "var(--ink-4)" : "var(--ink-2)",
       }}>{fmtMoney(row.gross)}</div>
-      <div className="num" style={{
+      <div style={{
         textAlign: "right",
-        color: dim(row.directBilled) ? "var(--ink-4)" : "var(--ink-2)",
-      }}>{fmtMoney(row.directBilled)}</div>
+        position: "relative",
+      }}>
+        {editable ? (
+          <CellInput
+            type="currency"
+            prefix="$"
+            value={row.directBilled > 0 ? row.directBilled : ""}
+            placeholder="—"
+            align="right"
+            min={0}
+            onChange={(v) => commitDirectBill(typeof v === "number" ? v : Number(v))}
+          />
+        ) : (
+          <span className="num" style={{ color: "var(--ink-4)" }}>—</span>
+        )}
+        {error && (
+          <div role="alert" style={{
+            position: "absolute", right: 0, top: "100%",
+            marginTop: 2, zIndex: 5,
+            background: "var(--paper)",
+            border: "1px solid var(--neg)",
+            color: "var(--neg)",
+            fontFamily: "var(--ff-ui)",
+            fontSize: "var(--t-l8)",
+            padding: "4px 8px",
+            whiteSpace: "nowrap",
+            boxShadow: "0 4px 10px rgba(29,34,54,0.08)",
+          }}>
+            {error}
+          </div>
+        )}
+      </div>
       <div className="num" style={{
         textAlign: "right",
         color: dim(row.first) ? "var(--ink-4)" : "var(--ink)",
