@@ -6,10 +6,10 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode, PeerSurveyValue } from "@/lib/types";
+import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { useActiveJurisdiction } from "@/lib/active";
 import { displayCurrentFee, displayFullCostFee } from "@/lib/feeDisplay";
@@ -50,7 +50,7 @@ function classify(variance: number, hasPeer: boolean): Row["status"] {
 }
 
 export function BenchmarkTable() {
-  const { services, derived, updateService } = useBuildState();
+  const { services, derived } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const peers = jurisdiction.peers;
   const [dept, setDept] = useState("ALL");
@@ -308,13 +308,6 @@ export function BenchmarkTable() {
                   View fee →
                 </Link>
               </DrilldownColumn>
-
-              <DrilldownColumn marker="③" title="Peer survey">
-                <PeerSurveyEditor
-                  value={svc?.peerSurvey}
-                  onChange={(next) => updateService(r.id, { peerSurvey: next })}
-                />
-              </DrilldownColumn>
             </DrilldownShell>
           );
         }}
@@ -370,119 +363,3 @@ function Line({ label, value, color }: { label: string; value: string; color?: s
   );
 }
 
-/** PR-M1: editor for service.peerSurvey, moved from the Services drilldown
- *  to its rightful home on the Fee Benchmark page. Per-row Agency / value
- *  text / numeric ($) / comparable (checkbox) / × remove. Empty array
- *  clears the field back to undefined so the Service stays clean when
- *  the analyst removes all rows. The `comparable` flag is the gate the
- *  median / range rollups will eventually use (PR-L8 wiring deferred);
- *  non-comparable rows stay in the array for audit but won't pollute
- *  math once the display layer is wired through. */
-function PeerSurveyEditor({
-  value, onChange,
-}: {
-  value: PeerSurveyValue[] | undefined;
-  onChange: (next: PeerSurveyValue[] | undefined) => void;
-}) {
-  const rows = value ?? [];
-  const patch = (i: number, p: Partial<PeerSurveyValue>) => {
-    onChange(rows.map((r, idx) => idx === i ? { ...r, ...p } : r));
-  };
-  const remove = (i: number) => {
-    const next = rows.filter((_, idx) => idx !== i);
-    onChange(next.length > 0 ? next : undefined);
-  };
-  const add = () => {
-    onChange([...rows, { agency: "", comparable: true }]);
-  };
-
-  const COLS = "minmax(110px, 1.4fr) minmax(90px, 1.1fr) 90px 22px 22px";
-
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {rows.length === 0 ? (
-        <span style={{ color: "var(--ink-4)", fontSize: 12 }}>(no entries)</span>
-      ) : (
-        <div style={{ border: "1px solid var(--rule)", background: "var(--paper-2)" }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: COLS, gap: 8,
-            padding: "5px 8px", borderBottom: "1px solid var(--rule)",
-            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-            color: "var(--ink-3)", textTransform: "uppercase",
-          }}>
-            <span>Agency</span>
-            <span>Value text</span>
-            <span style={{ textAlign: "right" }}>Numeric</span>
-            <span title="Comparable — included in median/range rollups">Cmp</span>
-            <span/>
-          </div>
-          {rows.map((r, i) => (
-            <div key={i} style={{
-              display: "grid", gridTemplateColumns: COLS, gap: 8,
-              padding: "4px 8px",
-              borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : "none",
-              alignItems: "baseline",
-            }}>
-              <CellInput
-                value={r.agency}
-                onChange={(v) => patch(i, { agency: String(v) })}
-                placeholder="e.g. Atherton"
-                fontSize={12}
-              />
-              <CellInput
-                value={r.valueText ?? ""}
-                onChange={(v) => patch(i, { valueText: String(v) || undefined })}
-                placeholder="(numeric only)"
-                fontSize={12}
-              />
-              <CellInput
-                type="currency"
-                value={r.valueNumber ?? ""}
-                onChange={(v) => patch(i, { valueNumber: v === "" ? undefined : Number(v) })}
-                prefix="$" placeholder="—"
-                align="right" fontSize={12}
-              />
-              <input
-                type="checkbox"
-                checked={r.comparable}
-                onChange={(e) => patch(i, { comparable: e.target.checked })}
-                onClick={(e) => e.stopPropagation()}
-                title="Include this agency in median / range rollups"
-                style={{ accentColor: "var(--accent)", cursor: "pointer" }}
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); remove(i); }}
-                title="Remove agency"
-                style={{
-                  color: "var(--ink-4)", fontSize: 14, lineHeight: 1, padding: "0 4px",
-                  background: "transparent", border: 0, cursor: "pointer",
-                }}
-              >×</button>
-            </div>
-          ))}
-          {rows.some((r) => r.sourceNote) && (
-            <div style={{
-              padding: "5px 8px", borderTop: "1px solid var(--rule)",
-              fontSize: "var(--t-l8)", color: "var(--ink-3)", lineHeight: 1.5,
-            }}>
-              {rows.filter((r) => r.sourceNote).map((r, i) => (
-                <div key={i}>
-                  <span style={{ color: "var(--ink-2)", fontWeight: 500 }}>{r.agency}:</span>{" "}
-                  {r.sourceNote}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <button
-        onClick={(e) => { e.stopPropagation(); add(); }}
-        style={{
-          fontSize: 12, color: "var(--accent)",
-          background: "transparent", border: 0, cursor: "pointer", padding: 0,
-          alignSelf: "flex-start",
-        }}
-      >+ Add agency</button>
-    </div>
-  );
-}
