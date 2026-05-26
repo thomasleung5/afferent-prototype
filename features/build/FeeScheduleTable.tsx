@@ -9,7 +9,7 @@ import {
   CellInput, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode } from "@/lib/types";
+import type { DeptCode, Service } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 import { StateChip, type FeeState } from "@/components/ui";
@@ -149,14 +149,32 @@ export function FeeScheduleTable() {
       label: "Fee item",
       width: "minmax(220px, 1.8fr)",
       sortable: true,
-      render: (r) => (
-        <div>
-          <div style={{ fontSize: "var(--fs-ui)" }}>{r.name}</div>
-          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
-            {r.id}
+      render: (r) => {
+        const svc = svcById.get(r.id);
+        const chip = svc ? nonCountableChipLabel(svc) : null;
+        return (
+          <div>
+            <div style={{ display: "flex", alignItems: "baseline", gap: 6, flexWrap: "wrap" }}>
+              <span style={{ fontSize: "var(--fs-ui)" }}>{r.name}</span>
+              {chip && (
+                <span
+                  className="mono"
+                  title="Excluded from recovery aggregates (see PR-L3 isCountableFee)"
+                  style={{
+                    fontSize: "var(--t-l9)", letterSpacing: "0.08em",
+                    color: "var(--ink-3)", textTransform: "uppercase",
+                    padding: "1px 5px", border: "1px solid var(--rule)",
+                    background: "var(--paper-2)",
+                  }}
+                >{chip}</span>
+              )}
+            </div>
+            <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
+              {r.id}
+            </div>
           </div>
-        </div>
-      ),
+        );
+      },
     },
     {
       key: "dept",
@@ -203,8 +221,12 @@ export function FeeScheduleTable() {
       sortable: true,
       render: (r) => {
         const svc = svcById.get(r.id);
+        // Dim non-countable rows — recommended is per-row computed but
+        // doesn't roll into the recovery aggregates, so it shouldn't
+        // read as "the answer".
+        const color = r.countable ? "var(--accent)" : "var(--ink-4)";
         return (
-          <span className="num" style={{ color: "var(--accent)" }}>
+          <span className="num" style={{ color }}>
             {svc ? displayRecommendedFee(svc, r.recommended) : fmt.dollars(r.recommended)}
           </span>
         );
@@ -239,6 +261,12 @@ export function FeeScheduleTable() {
       align: "right",
       sortable: true,
       render: (r) => {
+        // Non-countable rows: this number is computed for display but
+        // doesn't roll into the recovery aggregate, so render it muted
+        // with an em dash hint that it's informational only.
+        if (!r.countable) {
+          return <span className="num" style={{ color: "var(--ink-4)" }}>—</span>;
+        }
         const color = r.annualUplift > 0 ? "var(--pos)" : r.annualUplift < 0 ? "var(--neg)" : "var(--ink-3)";
         return (
           <span className="num" style={{ color }}>
@@ -417,4 +445,21 @@ export function FeeScheduleTable() {
       />
     </div>
   );
+}
+
+/** Compact chip label for the non-countable badge next to fee item names.
+ *  Returns null when the row is countable (flat/formula + existing/new/
+ *  renamed/moved) — the caller hides the chip in that case. Lifecycle
+ *  status takes precedence over rowKind in the display because deleted
+ *  / not-evaluated is more consequential to flag than the pricing model. */
+function nonCountableChipLabel(service: Service): string | null {
+  const status = service.status;
+  if (status === "deleted")       return "deleted";
+  if (status === "not-evaluated") return "not evaluated";
+  const kind = service.rowKind;
+  if (kind === "deposit")            return "deposit";
+  if (kind === "time-and-materials") return "T&M";
+  if (kind === "pass-through")       return "pass-through";
+  if (kind === "statutory")          return "statutory";
+  return null;
 }

@@ -1,5 +1,5 @@
 ﻿
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -10,7 +10,10 @@ import {
   DrilldownColumn, DrilldownLabel, DrilldownShell,
   SectionLabel, SourcePill,
 } from "@/components/ui";
-import type { DeptCode, ProductiveHoursRow, RoleAllocation, Service } from "@/lib/types";
+import type {
+  DeptCode, FeeRowKind, FeeScheduleStatus,
+  ProductiveHoursRow, RoleAllocation, Service,
+} from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
   effectiveRoleAllocations, serviceCapacityWarnings,
@@ -141,9 +144,23 @@ export function ServicesTable() {
 
   const cols: Column<Row>[] = [
     {
+      key: "feeNo",
+      label: "Fee #",
+      width: "90px",
+      sortable: true,
+      sortKey: (r) => r.feeNo ?? "",
+      render: (r) => (
+        <CellInput
+          value={r.feeNo ?? ""}
+          onChange={(v) => updateService(r.id, { feeNo: String(v) || undefined })}
+          placeholder="—"
+        />
+      ),
+    },
+    {
       key: "name",
       label: "Service",
-      width: "minmax(280px, 2fr)",
+      width: "minmax(240px, 2fr)",
       sortable: true,
       render: (r) => {
         const warnings = warningsByService.get(r.id) ?? [];
@@ -171,13 +188,27 @@ export function ServicesTable() {
     {
       key: "dept",
       label: "Dept",
-      width: "90px",
+      width: "80px",
       sortable: true,
       render: (r) => (
         <CellSelect
           value={r.dept}
           options={DEPT_OPTIONS}
           onChange={(v) => updateService(r.id, { dept: v as DeptCode })}
+        />
+      ),
+    },
+    {
+      key: "unit",
+      label: "Unit",
+      width: "110px",
+      sortable: true,
+      sortKey: (r) => r.unit ?? "",
+      render: (r) => (
+        <CellInput
+          value={r.unit ?? ""}
+          onChange={(v) => updateService(r.id, { unit: String(v) || undefined })}
+          placeholder="each"
         />
       ),
     },
@@ -344,6 +375,13 @@ export function ServicesTable() {
                   </div>
                 </div>
               </DrilldownColumn>
+
+              <DrilldownColumn marker="②" title="Fee schedule metadata">
+                <FeeMetadataPanel
+                  service={r}
+                  onPatch={(patch) => updateService(r.id, patch)}
+                />
+              </DrilldownColumn>
             </DrilldownShell>
           );
         }}
@@ -351,6 +389,147 @@ export function ServicesTable() {
     </div>
   );
 }
+
+/** PR-L4: Fee-schedule metadata editor that sits in the second drilldown
+ *  column on ServicesTable. Wires every PR-L1 optional field on Service
+ *  that's a scalar string / enum: rowKind, status, category, subcategory,
+ *  legalAuthority, the three *Text display overrides, and notes. The
+ *  more complex sub-editors (peerSurvey, formula) are stubbed as
+ *  read-only summaries — full editors deferred to later PRs. */
+function FeeMetadataPanel({
+  service, onPatch,
+}: {
+  service: Service;
+  onPatch: (patch: Partial<Service>) => void;
+}) {
+  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
+    <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, alignItems: "baseline" }}>
+      <span className="mono" style={{
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em",
+        color: "var(--ink-3)", textTransform: "uppercase",
+      }}>{label}</span>
+      <div>{children}</div>
+    </div>
+  );
+
+  const notesText = (service.notes ?? []).join("\n");
+  const peerCount = service.peerSurvey?.length ?? 0;
+  const formulaSummary = service.formula
+    ? `${service.formula.kind}${"basis" in service.formula ? ` · ${service.formula.basis}` : ""}`
+    : null;
+
+  return (
+    <div style={{
+      border: "1px solid var(--rule)", background: "var(--paper)",
+      padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10,
+      fontSize: 12,
+    }}>
+      <Field label="Row kind">
+        <CellSelect
+          value={service.rowKind ?? "flat"}
+          options={ROW_KIND_OPTIONS}
+          onChange={(v) => onPatch({ rowKind: v as FeeRowKind })}
+        />
+      </Field>
+      <Field label="Status">
+        <CellSelect
+          value={service.status ?? "existing"}
+          options={STATUS_OPTIONS}
+          onChange={(v) => onPatch({ status: v as FeeScheduleStatus })}
+        />
+      </Field>
+      <Field label="Category">
+        <CellInput
+          value={service.category ?? ""}
+          onChange={(v) => onPatch({ category: String(v) || undefined })}
+          placeholder="e.g. Planning & Zoning"
+        />
+      </Field>
+      <Field label="Subcategory">
+        <CellInput
+          value={service.subcategory ?? ""}
+          onChange={(v) => onPatch({ subcategory: String(v) || undefined })}
+          placeholder="e.g. Discretionary Permits"
+        />
+      </Field>
+      <Field label="Current fee text">
+        <CellInput
+          value={service.currentFeeText ?? ""}
+          onChange={(v) => onPatch({ currentFeeText: String(v) === "" && service.currentFeeText == null ? undefined : String(v) })}
+          placeholder={`(numeric: $${service.fee})`}
+        />
+      </Field>
+      <Field label="Recommended text">
+        <CellInput
+          value={service.recommendedFeeText ?? ""}
+          onChange={(v) => onPatch({ recommendedFeeText: String(v) === "" && service.recommendedFeeText == null ? undefined : String(v) })}
+          placeholder="(computed)"
+        />
+      </Field>
+      <Field label="Full-cost text">
+        <CellInput
+          value={service.fullCostRecoveryFeeText ?? ""}
+          onChange={(v) => onPatch({ fullCostRecoveryFeeText: String(v) === "" && service.fullCostRecoveryFeeText == null ? undefined : String(v) })}
+          placeholder="(computed)"
+        />
+      </Field>
+      <Field label="Legal authority">
+        <CellInput
+          value={service.legalAuthority ?? ""}
+          onChange={(v) => onPatch({ legalAuthority: String(v) || undefined })}
+          placeholder="e.g. CA Gov Code §66014"
+        />
+      </Field>
+      <Field label="Notes">
+        <textarea
+          value={notesText}
+          onChange={(e) => {
+            const lines = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean);
+            onPatch({ notes: lines.length > 0 ? lines : undefined });
+          }}
+          onClick={(e) => e.stopPropagation()}
+          placeholder="One note per line"
+          rows={3}
+          style={{
+            width: "100%", resize: "vertical",
+            padding: "4px 6px", fontSize: 12, lineHeight: 1.4,
+            fontFamily: "inherit", color: "var(--ink)",
+            background: "var(--paper-2)", border: "1px solid var(--rule)",
+            outline: "none",
+          }}
+        />
+      </Field>
+      <Field label="Formula">
+        <span style={{ color: formulaSummary ? "var(--ink-2)" : "var(--ink-4)" }}>
+          {formulaSummary ?? "(none — flat row)"}
+        </span>
+      </Field>
+      <Field label="Peer survey">
+        <span style={{ color: peerCount > 0 ? "var(--ink-2)" : "var(--ink-4)" }}>
+          {peerCount > 0 ? `${peerCount} agency value${peerCount === 1 ? "" : "s"}` : "(no entries)"}
+        </span>
+      </Field>
+    </div>
+  );
+}
+
+const ROW_KIND_OPTIONS = [
+  { value: "flat",               label: "Flat" },
+  { value: "formula",            label: "Formula" },
+  { value: "deposit",            label: "Deposit" },
+  { value: "time-and-materials", label: "T&M" },
+  { value: "pass-through",       label: "Pass-through" },
+  { value: "statutory",          label: "Statutory" },
+];
+
+const STATUS_OPTIONS = [
+  { value: "existing",      label: "Existing" },
+  { value: "new",           label: "New" },
+  { value: "renamed",       label: "Renamed" },
+  { value: "moved",         label: "Moved" },
+  { value: "deleted",       label: "Deleted" },
+  { value: "not-evaluated", label: "Not evaluated" },
+];
 
 /** Inline human-readable copy for a per-service capacity warning. Kept
  *  short so it fits in the service name cell's secondary line under
