@@ -683,6 +683,16 @@ function Methodology({ payload }: { payload: ExportPayload }) {
           a published fee schedule.
         </p>
       </div>
+
+      <h3 className="h3" style={{ marginTop: 18 }}>Reliance, data sources, and limitations</h3>
+      {payload.disclaimers.map((d) => (
+        <div key={d.heading} className="body" style={{ marginTop: 6 }}>
+          <p>
+            <b>{d.heading}.</b>{" "}
+            <span style={{ color: "var(--ink-2)" }}>{d.body}</span>
+          </p>
+        </div>
+      ))}
     </section>
   );
 }
@@ -712,6 +722,17 @@ function MethodologyUnitCostExample({ payload }: { payload: ExportPayload }) {
 function SummaryOfFindings({ payload }: { payload: ExportPayload }) {
   const s = payload.summary;
   const findings = deriveFindings(payload);
+  const totals = payload.deptSummaries.reduce(
+    (a, d) => ({
+      totalCost: a.totalCost + d.totalCost,
+      currentRevenue: a.currentRevenue + d.currentRevenue,
+      recommendedRevenue: a.recommendedRevenue + d.recommendedRevenue,
+    }),
+    { totalCost: 0, currentRevenue: 0, recommendedRevenue: 0 },
+  );
+  const totalCurrentRecovery = totals.totalCost > 0 ? (totals.currentRevenue / totals.totalCost) * 100 : 0;
+  const totalRecommendedRecovery = totals.totalCost > 0 ? (totals.recommendedRevenue / totals.totalCost) * 100 : 0;
+
   return (
     <section className="section section-break" style={{ marginBottom: 40 }}>
       <div className="eyebrow">Section 6</div>
@@ -727,44 +748,78 @@ function SummaryOfFindings({ payload }: { payload: ExportPayload }) {
           approximately <b>{fmt.dollarsK(s.annualSubsidy)}</b>.
         </p>
         <p>
-          The table below summarizes estimated annual service costs, current
-          fee revenues, current recovery levels, and projected recovery under
-          the recommended fee schedule.
+          The summary table below compares estimated annual service costs,
+          current fee revenues, the revenue level that would be collected
+          at full cost recovery, and the projected revenue and recovery
+          level under the recommended fee schedule.
         </p>
       </div>
 
-      <table style={{ marginTop: 8 }}>
+      <h3 className="h3" style={{ marginTop: 14 }}>Summary by department</h3>
+      <table style={{ marginTop: 4 }}>
         <thead>
           <tr>
             <th>Department</th>
-            <th className="num">Annual cost</th>
             <th className="num">Current revenue</th>
-            <th className="num">Current recovery</th>
-            <th className="num">Policy target</th>
-            <th className="num">Annual subsidy</th>
+            <th className="num">Full cost recovery</th>
+            <th className="num">Surplus / (subsidy)</th>
+            <th className="num">Existing recovery %</th>
+            <th className="num">Recommended revenue</th>
+            <th className="num">Recommended recovery %</th>
           </tr>
         </thead>
         <tbody>
-          {payload.deptSummaries.map((d) => {
-            const recovery = d.totalCost > 0 ? (d.currentRevenue / d.totalCost) * 100 : 0;
-            return (
-              <tr key={d.dept}>
-                <td>
-                  <b>{deptDisplayName(d.dept)}</b>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--ink-3)", marginLeft: 6 }}>
-                    {d.dept}
-                  </span>
-                </td>
-                <td className="num">{fmt.dollarsK(d.totalCost)}</td>
-                <td className="num">{fmt.dollarsK(d.currentRevenue)}</td>
-                <td className="num"><b>{recovery.toFixed(0)}%</b></td>
-                <td className="num" style={{ color: "var(--ink-3)" }}>{d.target}%</td>
-                <td className="num">{fmt.dollarsK(Math.max(0, d.totalCost - d.currentRevenue))}</td>
-              </tr>
-            );
-          })}
+          {payload.deptSummaries.map((d) => (
+            <tr key={d.dept}>
+              <td>
+                <b>{deptDisplayName(d.dept)}</b>
+                <span className="mono" style={{ fontSize: 10, color: "var(--ink-3)", marginLeft: 6 }}>
+                  {d.dept}
+                </span>
+              </td>
+              <td className="num">{fmt.dollarsK(d.currentRevenue)}</td>
+              <td className="num">{fmt.dollarsK(d.fullCostRevenue)}</td>
+              <td className="num" style={{
+                color: d.surplusSubsidy < 0 ? "var(--neg)" : "var(--pos)",
+              }}>
+                {parens(d.surplusSubsidy)}
+              </td>
+              <td className="num"><b>{d.recoveryPct.toFixed(0)}%</b></td>
+              <td className="num">{fmt.dollarsK(d.recommendedRevenue)}</td>
+              <td className="num">
+                <b style={{ color: "var(--accent)" }}>{d.recommendedRecoveryPct.toFixed(0)}%</b>
+              </td>
+            </tr>
+          ))}
+          <tr className="total">
+            <td>
+              <span className="mono" style={{
+                color: "var(--ink-3)", textTransform: "uppercase",
+                letterSpacing: "0.06em", fontSize: 9.5,
+              }}>Citywide</span>
+            </td>
+            <td className="num">{fmt.dollarsK(totals.currentRevenue)}</td>
+            <td className="num">{fmt.dollarsK(totals.totalCost)}</td>
+            <td className="num" style={{
+              color: totals.currentRevenue - totals.totalCost < 0 ? "var(--neg)" : "var(--pos)",
+            }}>
+              {parens(totals.currentRevenue - totals.totalCost)}
+            </td>
+            <td className="num"><b>{totalCurrentRecovery.toFixed(0)}%</b></td>
+            <td className="num">{fmt.dollarsK(totals.recommendedRevenue)}</td>
+            <td className="num">
+              <b style={{ color: "var(--accent)" }}>{totalRecommendedRecovery.toFixed(0)}%</b>
+            </td>
+          </tr>
         </tbody>
       </table>
+
+      <div className="body footnote">
+            Surplus/subsidy is presented from the General Fund perspective:
+            negative values indicate the General Fund underwrites a portion
+            of the cost of service. Recommended revenue applies the adopted
+            recovery target to the calculated cost of service.
+      </div>
 
       <div className="body" style={{ marginTop: 14 }}>
         {findings.map((line, i) => (
@@ -812,13 +867,10 @@ function DepartmentSubsection({
   const dept = payload.deptSummaries.find((d) => d.dept === deptCode);
   if (!dept) return null;
   const fees = payload.feeSchedule.filter((f) => f.dept === deptCode);
-  const recommendedRevenue = fees.reduce(
-    (a, f) => a + (f.recommended * f.volume), 0,
-  );
-  const projectedRecoveryPct = dept.totalCost > 0
-    ? (recommendedRevenue / dept.totalCost) * 100
-    : 0;
-  const recovery = dept.totalCost > 0 ? (dept.currentRevenue / dept.totalCost) * 100 : 0;
+  const buckets = payload.deptBuckets.find((b) => b.dept === deptCode)?.buckets ?? [];
+  const recommendedRevenue = dept.recommendedRevenue;
+  const projectedRecoveryPct = dept.recommendedRecoveryPct;
+  const recovery = dept.recoveryPct;
   const driverNarrative = DEPT_DRIVER_NARRATIVE[deptCode] ?? "";
 
   return (
@@ -835,6 +887,77 @@ function DepartmentSubsection({
         <p>{DEPT_OVERVIEWS[deptCode] ?? ""}</p>
       </div>
 
+      <h3 className="h3" style={{ marginTop: 12 }}>Cost of service</h3>
+      <div className="body">
+        <p>
+          The {deptDisplayName(dept.dept).toLowerCase()} division was staffed
+          by approximately <b>{dept.fte.toFixed(1)} full-time equivalent</b>{" "}
+          positions during the study period, supported by approximately{" "}
+          <b>{fmt.dollarsK(dept.directDollars)}</b> in direct labor cost,{" "}
+          <b>{fmt.dollarsK(dept.operatingDollars)}</b> in departmental
+          operating cost, and <b>{fmt.dollarsK(dept.capDollars)}</b> in
+          allocated indirect overhead. Total annualized cost of providing
+          fee-related services within the division is approximately{" "}
+          <b>{fmt.dollarsK(dept.totalCost)}</b>.
+        </p>
+        <p>
+          Distributed across {fmt.int(dept.productiveHours * dept.fte)}{" "}
+          productive hours of staff availability, the resulting Fully Burdened
+          Hourly Rate is approximately <b>${Math.round(dept.fbhr)} per hour</b>,
+          comprised of <b>${Math.round(dept.directRate)}</b> direct labor,{" "}
+          <b>${Math.round(dept.operatingRate)}</b> departmental operating, and{" "}
+          <b>${Math.round(dept.capRate)}</b> allocated indirect overhead.
+        </p>
+      </div>
+
+      <h3 className="h3" style={{ marginTop: 12 }}>Functional cost buckets</h3>
+      {buckets.length > 0 ? (
+        <table>
+          <thead>
+            <tr>
+              <th>Functional bucket</th>
+              <th className="num">Services</th>
+              <th className="num">Annual hours</th>
+              <th className="num">Annual cost</th>
+              <th className="num">Current revenue</th>
+              <th className="num">Recovery %</th>
+              <th className="num">Recommended revenue</th>
+            </tr>
+          </thead>
+          <tbody>
+            {buckets.map((b) => (
+              <tr key={b.bucket}>
+                <td><b>{b.bucket}</b></td>
+                <td className="num">{b.serviceCount}</td>
+                <td className="num">{fmt.int(b.hours)}</td>
+                <td className="num">{fmt.dollarsK(b.annualCost)}</td>
+                <td className="num">{fmt.dollarsK(b.currentRevenue)}</td>
+                <td className="num"><b>{b.recoveryPct.toFixed(0)}%</b></td>
+                <td className="num">
+                  <b style={{ color: "var(--accent)" }}>{fmt.dollarsK(b.recommendedRevenue)}</b>
+                </td>
+              </tr>
+            ))}
+            <tr className="total">
+              <td>
+                <span className="mono" style={{
+                  color: "var(--ink-3)", textTransform: "uppercase",
+                  letterSpacing: "0.06em", fontSize: 9.5,
+                }}>Division total</span>
+              </td>
+              <td className="num">{buckets.reduce((a, b) => a + b.serviceCount, 0)}</td>
+              <td className="num">{fmt.int(buckets.reduce((a, b) => a + b.hours, 0))}</td>
+              <td className="num">{fmt.dollarsK(dept.totalCost)}</td>
+              <td className="num">{fmt.dollarsK(dept.currentRevenue)}</td>
+              <td className="num"><b>{recovery.toFixed(0)}%</b></td>
+              <td className="num"><b>{fmt.dollarsK(recommendedRevenue)}</b></td>
+            </tr>
+          </tbody>
+        </table>
+      ) : (
+        <div className="body"><p>Not available.</p></div>
+      )}
+
       <h3 className="h3" style={{ marginTop: 12 }}>Cost recovery findings</h3>
       <div className="body">
         <p>
@@ -849,14 +972,7 @@ function DepartmentSubsection({
 
       <h3 className="h3" style={{ marginTop: 12 }}>Key cost drivers</h3>
       <div className="body">
-        <p>
-          The department&apos;s Fully Burdened Hourly Rate is approximately{" "}
-          <b>${Math.round(dept.fbhr)} per hour</b>, comprised of approximately{" "}
-          ${Math.round(dept.directRate)} in direct labor,{" "}
-          ${Math.round(dept.operatingRate)} in departmental operating costs,
-          and ${Math.round(dept.capRate)} in allocated indirect overhead per
-          productive hour. {driverNarrative}
-        </p>
+        <p>{driverNarrative}</p>
       </div>
 
       <h3 className="h3" style={{ marginTop: 12 }}>Recommended adjustments</h3>
@@ -1029,6 +1145,86 @@ function CostRecoveryPolicyConsiderations({ payload }: { payload: ExportPayload 
         <div className="body"><p>Not available.</p></div>
       )}
 
+      <h3 className="h3" style={{ marginTop: 18 }}>Cost recovery outcomes by department</h3>
+      <div className="body" style={{ marginBottom: 8 }}>
+        <p>
+          The table below summarizes projected recovery outcomes under the
+          recommended fee schedule, with the residual subsidy required to
+          fund services at the adopted policy level shown for each
+          department.
+        </p>
+      </div>
+      <table>
+        <thead>
+          <tr>
+            <th>Department</th>
+            <th className="num">Total cost</th>
+            <th className="num">Current revenue</th>
+            <th className="num">Current recovery</th>
+            <th className="num">Policy target</th>
+            <th className="num">Recommended revenue</th>
+            <th className="num">Recommended recovery</th>
+            <th className="num">Net change</th>
+            <th className="num">Residual subsidy</th>
+          </tr>
+        </thead>
+        <tbody>
+          {payload.costRecoveryOutcomes.map((o) => (
+            <tr key={o.dept}>
+              <td><b>{deptDisplayName(o.dept)}</b></td>
+              <td className="num">{fmt.dollarsK(o.totalCost)}</td>
+              <td className="num">{fmt.dollarsK(o.currentRevenue)}</td>
+              <td className="num">{o.currentRecoveryPct.toFixed(0)}%</td>
+              <td className="num" style={{ color: "var(--ink-3)" }}>{o.policyTarget}%</td>
+              <td className="num">{fmt.dollarsK(o.recommendedRevenue)}</td>
+              <td className="num">
+                <b style={{ color: "var(--accent)" }}>{o.recommendedRecoveryPct.toFixed(0)}%</b>
+              </td>
+              <td className="num" style={{
+                color: o.netChange > 0 ? "var(--pos)" : o.netChange < 0 ? "var(--neg)" : "var(--ink-3)",
+              }}>
+                <b>{signed(o.netChange)}</b>
+              </td>
+              <td className="num">{fmt.dollarsK(o.residualSubsidy)}</td>
+            </tr>
+          ))}
+          {(() => {
+            const t = payload.costRecoveryOutcomes.reduce(
+              (a, o) => ({
+                totalCost: a.totalCost + o.totalCost,
+                currentRevenue: a.currentRevenue + o.currentRevenue,
+                recommendedRevenue: a.recommendedRevenue + o.recommendedRevenue,
+                netChange: a.netChange + o.netChange,
+                residualSubsidy: a.residualSubsidy + o.residualSubsidy,
+              }),
+              { totalCost: 0, currentRevenue: 0, recommendedRevenue: 0, netChange: 0, residualSubsidy: 0 },
+            );
+            const cur = t.totalCost > 0 ? (t.currentRevenue / t.totalCost) * 100 : 0;
+            const rec = t.totalCost > 0 ? (t.recommendedRevenue / t.totalCost) * 100 : 0;
+            return (
+              <tr className="total">
+                <td>
+                  <span className="mono" style={{
+                    color: "var(--ink-3)", textTransform: "uppercase",
+                    letterSpacing: "0.06em", fontSize: 9.5,
+                  }}>Citywide</span>
+                </td>
+                <td className="num">{fmt.dollarsK(t.totalCost)}</td>
+                <td className="num">{fmt.dollarsK(t.currentRevenue)}</td>
+                <td className="num">{cur.toFixed(0)}%</td>
+                <td/>
+                <td className="num">{fmt.dollarsK(t.recommendedRevenue)}</td>
+                <td className="num">
+                  <b style={{ color: "var(--accent)" }}>{rec.toFixed(0)}%</b>
+                </td>
+                <td className="num"><b>{signed(t.netChange)}</b></td>
+                <td className="num">{fmt.dollarsK(t.residualSubsidy)}</td>
+              </tr>
+            );
+          })()}
+        </tbody>
+      </table>
+
       <h3 className="h3" style={{ marginTop: 18 }}>Policy questions for Council consideration</h3>
       <div className="body">
         <ul>
@@ -1068,6 +1264,9 @@ function RecommendedFeeSchedule({ payload }: { payload: ExportPayload }) {
       <div className="eyebrow">Section 9</div>
       <h2 className="h2">Recommended fee schedule</h2>
 
+      <FeeEstablishmentNarrative payload={payload}/>
+
+      <h3 className="h3" style={{ marginTop: 18 }}>Recommended fee schedule</h3>
       <div className="body" style={{ marginBottom: 12 }}>
         <p>
           The following table summarizes the calculated full cost of service,
@@ -1119,6 +1318,101 @@ function RecommendedFeeSchedule({ payload }: { payload: ExportPayload }) {
         </tbody>
       </table>
     </section>
+  );
+}
+
+function FeeEstablishmentNarrative({ payload }: { payload: ExportPayload }) {
+  const fe = payload.feeEstablishment;
+  const empty = fe.added.length + fe.deleted.length + fe.moved.length + fe.restructured.length;
+  if (empty === 0) {
+    return (
+      <>
+        <h3 className="h3" style={{ marginTop: 4 }}>Fee schedule establishment</h3>
+        <div className="body">
+          <p>
+            The recommended schedule retains the existing fee structure
+            without adding, removing, moving, or restructuring fee items
+            relative to the schedule in effect for the study period. The
+            following fee schedule reflects updated calculated cost of
+            service applied to the unchanged fee inventory.
+          </p>
+        </div>
+      </>
+    );
+  }
+  const buckets: { key: string; label: string; rows: typeof fe.added }[] = [
+    { key: "added",        label: "New fee items",                rows: fe.added },
+    { key: "deleted",      label: "Deleted fee items",            rows: fe.deleted },
+    { key: "moved",        label: "Moved between departments",    rows: fe.moved },
+    { key: "restructured", label: "Restructured pricing",         rows: fe.restructured },
+  ];
+
+  return (
+    <>
+      <h3 className="h3" style={{ marginTop: 4 }}>Fee schedule establishment</h3>
+      <div className="body">
+        <p>
+          The recommended schedule reflects the following changes to the fee
+          inventory relative to the schedule in effect for the study period:
+          new fee items established to recover existing service costs,
+          existing items removed where the underlying service is no longer
+          provided or no longer separately billed, items moved between
+          departments to reflect current organizational responsibility, and
+          items restructured to a pricing form (formula, deposit,
+          time-and-materials, pass-through, or statutory cap) that better
+          fits the underlying service.
+        </p>
+      </div>
+      {buckets.filter((b) => b.rows.length > 0).map((b) => (
+        <div className="row" key={b.key} style={{ marginTop: 12 }}>
+          <h3 className="h3" style={{ fontSize: 12.5 }}>
+            {b.label}{" "}
+            <span className="mono" style={{
+              fontSize: 10, color: "var(--ink-3)", marginLeft: 6, fontWeight: 400,
+            }}>
+              {b.rows.length} item{b.rows.length === 1 ? "" : "s"}
+            </span>
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: "12%" }}>Fee #</th>
+                <th>Fee item</th>
+                <th>Dept</th>
+                <th style={{ width: "44%" }}>Rationale</th>
+              </tr>
+            </thead>
+            <tbody>
+              {b.rows.map((r) => (
+                <tr key={r.id}>
+                  <td>
+                    <span className="mono" style={{
+                      fontSize: 10, color: "var(--ink-2)",
+                    }}>{r.feeNo ?? "—"}</span>
+                  </td>
+                  <td>
+                    <div>{r.name}</div>
+                    {r.category && (
+                      <div className="mono" style={{
+                        fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
+                      }}>{r.category}</div>
+                    )}
+                  </td>
+                  <td>
+                    <span className="mono" style={{
+                      fontSize: 10, color: "var(--ink-2)",
+                    }}>
+                      {r.dept}{r.movedToDept ? ` → ${r.movedToDept}` : ""}
+                    </span>
+                  </td>
+                  <td style={{ color: "var(--ink-2)" }}>{r.rationale}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+    </>
   );
 }
 
@@ -1385,9 +1679,15 @@ function Appendices({ payload }: { payload: ExportPayload }) {
 // ---------------------------------------------------------------------------
 
 function AppendixA({ payload }: { payload: ExportPayload }) {
-  const totalCost = payload.costOfService.reduce((a, c) => a + c.annualCost, 0);
-  const totalRev = payload.costOfService.reduce((a, c) => a + c.annualRevenue, 0);
-  const totalUplift = payload.feeSchedule.reduce((a, f) => a + f.uplift, 0);
+  const totals = payload.feeDetailByDept.reduce(
+    (a, g) => ({
+      annualCost: a.annualCost + g.total.annualCost,
+      annualRevenue: a.annualRevenue + g.total.annualRevenue,
+      annualRecommendedRevenue: a.annualRecommendedRevenue + g.total.annualRecommendedRevenue,
+      uplift: a.uplift + g.total.uplift,
+    }),
+    { annualCost: 0, annualRevenue: 0, annualRecommendedRevenue: 0, uplift: 0 },
+  );
 
   return (
     <div className="section">
@@ -1396,79 +1696,138 @@ function AppendixA({ payload }: { payload: ExportPayload }) {
       </h3>
       <div className="body" style={{ marginBottom: 10 }}>
         <p>
-          The following table presents the full per-fee detail underlying
-          the recommended fee schedule, including staff time estimates,
-          annual service volume, calculated unit cost, current adopted fee,
-          recommended fee, adopted recovery target, calculated recovery
-          percentage, and estimated annualized fiscal impact.
+          The following tables present the full per-fee detail underlying
+          the recommended fee schedule, grouped by department and category
+          to match the structure of the published fee resolution. For each
+          row the appendix presents staff time, annual service volume,
+          calculated unit cost, current adopted fee, recommended fee,
+          adopted recovery target, calculated recovery, annual revenue
+          under current and recommended pricing, and estimated annualized
+          fiscal impact.
         </p>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Fee item</th>
-            <th>Dept</th>
-            <th className="num">Hrs</th>
-            <th className="num">Vol/yr</th>
-            <th className="num">Unit cost</th>
-            <th className="num">Annual cost</th>
-            <th className="num">Current fee</th>
-            <th className="num">Annual rev</th>
-            <th className="num">Recommended</th>
-            <th className="num">Target</th>
-            <th className="num">Recovery</th>
-            <th className="num">Annual impact</th>
-          </tr>
-        </thead>
-        <tbody>
-          {payload.feeSchedule.map((f) => {
-            const annualCost = f.unitCost * f.volume;
-            const annualRev = f.fee * f.volume;
-            return (
-              <tr key={f.id}>
-                <td>
-                  <div>{f.name}</div>
-                  <div className="mono" style={{
-                    fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
-                  }}>{f.id}</div>
-                </td>
-                <td>
+
+      {payload.feeDetailByDept.map((g) => (
+        <div className="row" key={g.dept} style={{ marginTop: 16 }}>
+          <h3 className="h3" style={{ fontSize: 13, marginBottom: 6 }}>
+            {g.deptName}{" "}
+            <span className="mono" style={{
+              fontSize: 10, color: "var(--ink-3)", marginLeft: 6, fontWeight: 400,
+            }}>{g.dept}</span>
+          </h3>
+          {g.categories.map((c) => (
+            <div key={c.category} style={{ marginTop: 10 }}>
+              <div className="eyebrow" style={{ marginBottom: 4 }}>
+                {c.category}
+              </div>
+              <table>
+                <thead>
+                  <tr>
+                    <th style={{ width: "8%" }}>Fee #</th>
+                    <th>Fee item</th>
+                    <th className="num">Hrs</th>
+                    <th className="num">Vol/yr</th>
+                    <th className="num">Unit cost</th>
+                    <th className="num">Annual cost</th>
+                    <th className="num">Current fee</th>
+                    <th className="num">Annual rev</th>
+                    <th className="num">Recommended</th>
+                    <th className="num">Target</th>
+                    <th className="num">Recovery</th>
+                    <th className="num">Annual impact</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {c.rows.map((f) => (
+                    <tr key={f.id}>
+                      <td>
+                        <span className="mono" style={{
+                          fontSize: 10, color: "var(--ink-2)",
+                        }}>{f.feeNo ?? "—"}</span>
+                      </td>
+                      <td>
+                        <div>{f.name}</div>
+                        <div className="mono" style={{
+                          fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
+                        }}>
+                          {f.subcategory ?? f.id}
+                          {f.unit ? ` · ${f.unit}` : ""}
+                          {f.status && f.status !== "existing" ? ` · ${f.status}` : ""}
+                        </div>
+                      </td>
+                      <td className="num">{f.hours}</td>
+                      <td className="num">{fmt.int(f.volume)}</td>
+                      <td className="num">{fmt.dollars(f.unitCost)}</td>
+                      <td className="num">{fmt.dollarsK(f.annualCost)}</td>
+                      <td className="num">{fmt.dollars(f.fee)}</td>
+                      <td className="num">{fmt.dollarsK(f.annualRevenue)}</td>
+                      <td className="num">
+                        <b style={{ color: "var(--accent)" }}>{fmt.dollars(f.recommended)}</b>
+                      </td>
+                      <td className="num">{f.target}%</td>
+                      <td className="num">{f.recoveryPct.toFixed(0)}%</td>
+                      <td className="num" style={{
+                        color: f.uplift > 0 ? "var(--pos)" : f.uplift < 0 ? "var(--neg)" : "var(--ink-3)",
+                      }}>
+                        <b>{f.uplift > 0 ? "+" : ""}{fmt.dollarsK(f.uplift)}</b>
+                      </td>
+                    </tr>
+                  ))}
+                  <tr className="total">
+                    <td colSpan={5}>
+                      <span className="mono" style={{
+                        color: "var(--ink-3)", textTransform: "uppercase",
+                        letterSpacing: "0.06em", fontSize: 9.5,
+                      }}>{c.category} subtotal</span>
+                    </td>
+                    <td className="num">{fmt.dollarsK(c.subtotal.annualCost)}</td>
+                    <td/>
+                    <td className="num">{fmt.dollarsK(c.subtotal.annualRevenue)}</td>
+                    <td className="num">{fmt.dollarsK(c.subtotal.annualRecommendedRevenue)}</td>
+                    <td colSpan={2}/>
+                    <td className="num">
+                      <b>{c.subtotal.uplift > 0 ? "+" : ""}{fmt.dollarsK(c.subtotal.uplift)}</b>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          ))}
+          <table style={{ marginTop: 6 }}>
+            <tbody>
+              <tr className="total">
+                <td style={{ width: "32%" }}>
                   <span className="mono" style={{
-                    fontSize: 10, color: "var(--ink-2)",
-                  }}>{f.dept}</span>
+                    color: "var(--ink-3)", textTransform: "uppercase",
+                    letterSpacing: "0.06em", fontSize: 9.5,
+                  }}>{g.deptName} total</span>
                 </td>
-                <td className="num">{f.hours}</td>
-                <td className="num">{fmt.int(f.volume)}</td>
-                <td className="num">{fmt.dollars(f.unitCost)}</td>
-                <td className="num">{fmt.dollarsK(annualCost)}</td>
-                <td className="num">{fmt.dollars(f.fee)}</td>
-                <td className="num">{fmt.dollarsK(annualRev)}</td>
+                <td className="num">Annual cost {fmt.dollarsK(g.total.annualCost)}</td>
+                <td className="num">Current rev {fmt.dollarsK(g.total.annualRevenue)}</td>
+                <td className="num">Recommended rev {fmt.dollarsK(g.total.annualRecommendedRevenue)}</td>
                 <td className="num">
-                  <b style={{ color: "var(--accent)" }}>{fmt.dollars(f.recommended)}</b>
-                </td>
-                <td className="num">{f.target}%</td>
-                <td className="num">{f.recoveryPct.toFixed(0)}%</td>
-                <td className="num" style={{
-                  color: f.uplift > 0 ? "var(--pos)" : f.uplift < 0 ? "var(--neg)" : "var(--ink-3)",
-                }}>
-                  <b>{f.uplift > 0 ? "+" : ""}{fmt.dollarsK(f.uplift)}</b>
+                  <b>Net impact {g.total.uplift > 0 ? "+" : ""}{fmt.dollarsK(g.total.uplift)}</b>
                 </td>
               </tr>
-            );
-          })}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      <table style={{ marginTop: 14 }}>
+        <tbody>
           <tr className="total">
-            <td colSpan={5}>
+            <td style={{ width: "32%" }}>
               <span className="mono" style={{
                 color: "var(--ink-3)", textTransform: "uppercase",
                 letterSpacing: "0.06em", fontSize: 9.5,
               }}>Citywide</span>
             </td>
-            <td className="num">{fmt.dollarsK(totalCost)}</td>
-            <td/>
-            <td className="num">{fmt.dollarsK(totalRev)}</td>
-            <td colSpan={3}/>
+            <td className="num">Annual cost {fmt.dollarsK(totals.annualCost)}</td>
+            <td className="num">Current rev {fmt.dollarsK(totals.annualRevenue)}</td>
+            <td className="num">Recommended rev {fmt.dollarsK(totals.annualRecommendedRevenue)}</td>
             <td className="num">
-              <b>{totalUplift > 0 ? "+" : ""}{fmt.dollarsK(totalUplift)}</b>
+              <b>Net impact {totals.uplift > 0 ? "+" : ""}{fmt.dollarsK(totals.uplift)}</b>
             </td>
           </tr>
         </tbody>
@@ -1489,14 +1848,19 @@ function AppendixB({ payload }: { payload: ExportPayload }) {
       </h3>
       <div className="body" style={{ marginBottom: 10 }}>
         <p>
-          The following table presents the calculated Fully Burdened Hourly
-          Rate for each direct fee department, including the underlying
-          composition of direct labor, departmental operating costs, and
-          allocated indirect overhead. Hourly rates are derived from
-          annualized cost components divided by total productive hours
-          available within the department.
+          The following tables present the calculated Fully Burdened Hourly
+          Rate for each direct fee department broken into the functional
+          cost buckets that compose it: direct labor (salaries and
+          benefits), departmental operating cost (presented by operating
+          category and an allocated share of shared development-services
+          operating cost), and allocated indirect overhead from the City&apos;s
+          Cost Allocation Plan. Hourly rates are derived from annualized
+          cost components divided by total productive hours available
+          within the department.
         </p>
       </div>
+
+      <h3 className="h3" style={{ marginTop: 12 }}>Summary by department</h3>
       <table>
         <thead>
           <tr>
@@ -1504,9 +1868,6 @@ function AppendixB({ payload }: { payload: ExportPayload }) {
             <th className="num">Pos.</th>
             <th className="num">FTE</th>
             <th className="num">Productive hrs</th>
-            <th className="num">Direct labor</th>
-            <th className="num">Operating</th>
-            <th className="num">Overhead</th>
             <th className="num">Direct $/hr</th>
             <th className="num">Op $/hr</th>
             <th className="num">Overhead $/hr</th>
@@ -1527,9 +1888,6 @@ function AppendixB({ payload }: { payload: ExportPayload }) {
                 <td className="num">{d.positions}</td>
                 <td className="num">{d.fte.toFixed(1)}</td>
                 <td className="num">{fmt.int(productive)}</td>
-                <td className="num">{fmt.dollarsK(d.directDollars)}</td>
-                <td className="num">{fmt.dollarsK(d.operatingDollars)}</td>
-                <td className="num">{fmt.dollarsK(d.capDollars)}</td>
                 <td className="num">${Math.round(d.directRate)}</td>
                 <td className="num">${Math.round(d.operatingRate)}</td>
                 <td className="num">${Math.round(d.capRate)}</td>
@@ -1541,13 +1899,72 @@ function AppendixB({ payload }: { payload: ExportPayload }) {
           })}
         </tbody>
       </table>
+
+      {payload.fbhrDetail.map((d) => (
+        <div className="row" key={d.dept} style={{ marginTop: 18 }}>
+          <h3 className="h3" style={{ fontSize: 13 }}>
+            {d.deptName}{" "}
+            <span className="mono" style={{
+              fontSize: 10, color: "var(--ink-3)", marginLeft: 6, fontWeight: 400,
+            }}>{d.dept}</span>
+          </h3>
+          <div className="body" style={{ marginBottom: 6 }}>
+            <p style={{ marginBottom: 6 }}>
+              {d.positions} position{d.positions === 1 ? "" : "s"} ·{" "}
+              {d.fte.toFixed(1)} FTE ·{" "}
+              {fmt.int(d.productiveHoursPerFte)} productive hours per FTE ·{" "}
+              {fmt.int(d.totalProductiveHours)} total productive hours
+            </p>
+          </div>
+          <table>
+            <thead>
+              <tr>
+                <th>Functional cost bucket</th>
+                <th className="num">Annual $</th>
+                <th className="num">Share</th>
+                <th className="num">$ / productive hr</th>
+              </tr>
+            </thead>
+            <tbody>
+              {d.buckets.map((b, i) => (
+                <tr key={`${b.label}-${i}`}>
+                  <td>{b.label}</td>
+                  <td className="num">{fmt.dollarsK(b.dollars)}</td>
+                  <td className="num" style={{ color: "var(--ink-3)" }}>
+                    {d.totalCost > 0 ? `${Math.round((b.dollars / d.totalCost) * 100)}%` : "—"}
+                  </td>
+                  <td className="num">${b.perHour.toFixed(2)}</td>
+                </tr>
+              ))}
+              <tr className="total">
+                <td>
+                  <span className="mono" style={{
+                    color: "var(--ink-3)", textTransform: "uppercase",
+                    letterSpacing: "0.06em", fontSize: 9.5,
+                  }}>Total ÷ {fmt.int(d.totalProductiveHours)} hrs</span>
+                </td>
+                <td className="num">{fmt.dollarsK(d.totalCost)}</td>
+                <td className="num">100%</td>
+                <td className="num">
+                  <b style={{ color: "var(--accent)" }}>${d.fbhr.toFixed(2)}</b>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      ))}
+
       <div className="body" style={{
         marginTop: 12, fontSize: 11.5, color: "var(--ink-3)",
       }}>
         FBHR components are presented in dollars per productive hour.
         Productive hours represent paid hours net of holidays, leave,
         training, and other non-billable activities, as described in
-        Section 5.
+        Section 5. Departmental operating buckets are derived from the
+        City&apos;s adopted budget operating appropriations net of
+        line-level exclusions documented in Section 4. Shared
+        development-services operating cost is allocated to direct fee
+        departments on a productive-hours-share basis.
       </div>
     </div>
   );
@@ -1558,14 +1975,19 @@ function AppendixB({ payload }: { payload: ExportPayload }) {
 // ---------------------------------------------------------------------------
 
 function AppendixC({ payload }: { payload: ExportPayload }) {
-  const rows = payload.feeSchedule.map((f) => {
-    const peer = f.peerMedian > 0 ? f.peerMedian : null;
-    const vsMedian = peer != null ? ((f.fee - peer) / peer) * 100 : null;
-    const vsCost = f.unitCost > 0 ? ((f.fee - f.unitCost) / f.unitCost) * 100 : null;
-    return { ...f, peer, vsMedian, vsCost };
-  });
-
   const peers = payload.cover.peers;
+  const groups = payload.peerSurveyByDept;
+
+  if (groups.length === 0) {
+    return (
+      <div className="section" style={{ marginTop: 22 }}>
+        <h3 className="h3" style={{ fontSize: 14 }}>
+          Appendix C — Peer Comparison Survey
+        </h3>
+        <div className="body"><p>Not available.</p></div>
+      </div>
+    );
+  }
 
   return (
     <div className="section" style={{ marginTop: 22 }}>
@@ -1575,65 +1997,130 @@ function AppendixC({ payload }: { payload: ExportPayload }) {
       <div className="body" style={{ marginBottom: 10 }}>
         <p>
           The comparative fee survey below extends Section 11 to present
-          the full per-fee detail across all services modeled in this
-          study. Peer medians are sourced from publicly adopted fee
-          schedules of comparator jurisdictions in effect as of the study
-          period. Peer fees are listed prices and may understate full cost
-          recovery where peer jurisdictions subsidize the cost of service
-          from their general funds.
+          the full per-fee detail across services modeled in this study
+          where comparator data is available. Peer values are sourced from
+          publicly adopted fee schedules of the comparator jurisdictions
+          listed below, as in effect during the study period. Peer fees are
+          listed prices and may understate full cost recovery where peer
+          jurisdictions subsidize the cost of service from their general
+          funds. Rows marked &ldquo;N/A&rdquo; indicate that the
+          corresponding peer jurisdiction does not separately publish the
+          fee or that its pricing structure is not directly comparable.
         </p>
         <p>
           Comparator jurisdictions:{" "}
           {peers.length > 0 ? peers.join(", ") : "Not available."}
         </p>
       </div>
-      <table>
-        <thead>
-          <tr>
-            <th>Fee item</th>
-            <th>Dept</th>
-            <th className="num">Current fee</th>
-            <th className="num">Peer median</th>
-            <th className="num">vs peer median</th>
-            <th className="num">vs full cost</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((r) => (
-            <tr key={r.id}>
-              <td>
-                <div>{r.name}</div>
-                <div className="mono" style={{
-                  fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
-                }}>{r.id}</div>
-              </td>
-              <td>
-                <span className="mono" style={{
-                  fontSize: 10, color: "var(--ink-2)",
-                }}>{r.dept}</span>
-              </td>
-              <td className="num">{fmt.dollars(r.fee)}</td>
-              <td className="num">
-                {r.peer != null ? fmt.dollars(r.peer) : <span style={{ color: "var(--ink-3)" }}>Not available.</span>}
-              </td>
-              <td className="num" style={{
-                color: r.vsMedian == null ? "var(--ink-3)" :
-                  r.vsMedian > 5 ? "var(--neg)" :
-                  r.vsMedian < -5 ? "var(--warn)" : "var(--pos)",
-              }}>
-                {r.vsMedian == null ? "—" : `${r.vsMedian > 0 ? "+" : ""}${Math.round(r.vsMedian)}%`}
-              </td>
-              <td className="num" style={{
-                color: r.vsCost == null ? "var(--ink-3)" :
-                  r.vsCost < -10 ? "var(--neg)" : "var(--ink)",
-              }}>
-                {r.vsCost == null ? "—" : `${r.vsCost > 0 ? "+" : ""}${Math.round(r.vsCost)}%`}
-              </td>
-            </tr>
-          ))}
-        </tbody>
-      </table>
+
+      {groups.map((g) => (
+        <div className="row" key={g.dept} style={{ marginTop: 14 }}>
+          <h3 className="h3" style={{ fontSize: 13 }}>
+            {g.deptName}{" "}
+            <span className="mono" style={{
+              fontSize: 10, color: "var(--ink-3)", marginLeft: 6, fontWeight: 400,
+            }}>{g.dept}</span>
+          </h3>
+          <table>
+            <thead>
+              <tr>
+                <th style={{ width: "8%" }}>Fee #</th>
+                <th>Fee item</th>
+                <th className="num">Our fee</th>
+                {peers.map((p) => (
+                  <th key={p} className="num" style={{ minWidth: 70 }}>{p}</th>
+                ))}
+                <th className="num">Peer median</th>
+                <th className="num">vs median</th>
+              </tr>
+            </thead>
+            <tbody>
+              {g.rows.map((r) => (
+                <PeerSurveyRow key={r.id} row={r} peers={peers}/>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      ))}
+
+      <div className="body" style={{
+        marginTop: 12, fontSize: 11.5, color: "var(--ink-3)",
+      }}>
+        Per-agency values reflect adopted fee schedules as compiled during
+        the study period. Where an agency&apos;s fee is not reducible to a
+        single dollar amount comparable to ours (for example, deposit
+        plus actual time, or formula based on construction valuation),
+        the agency&apos;s phrasing is reproduced in lieu of a numeric value
+        and is excluded from the median.
+      </div>
     </div>
+  );
+}
+
+function PeerSurveyRow({
+  row, peers,
+}: {
+  row: ExportPayload["peerSurveyByDept"][number]["rows"][number];
+  peers: string[];
+}) {
+  const valueByAgency = new Map(row.values.map((v) => [v.agency, v]));
+  return (
+    <tr>
+      <td>
+        <span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>
+          {row.feeNo ?? "—"}
+        </span>
+      </td>
+      <td>
+        <div>{row.name}</div>
+        <div className="mono" style={{
+          fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
+        }}>
+          {row.category}
+          {row.unit ? ` · ${row.unit}` : ""}
+        </div>
+        {row.notes.length > 0 && (
+          <div style={{
+            fontSize: 10, color: "var(--ink-3)", marginTop: 2,
+          }}>
+            {row.notes[0]}
+          </div>
+        )}
+      </td>
+      <td className="num"><b>{fmt.dollars(row.ourFee)}</b></td>
+      {peers.map((p) => {
+        const v = valueByAgency.get(p);
+        if (!v) {
+          return <td key={p} className="num" style={{ color: "var(--ink-3)" }}>N/A</td>;
+        }
+        if (v.value != null) {
+          return (
+            <td key={p} className="num" title={v.note ?? ""}
+              style={{ color: v.comparable ? "var(--ink)" : "var(--ink-3)" }}
+            >{fmt.dollars(v.value)}</td>
+          );
+        }
+        return (
+          <td key={p} className="num" title={v.note ?? ""}
+            style={{ color: "var(--ink-3)", fontSize: 10 }}
+          >
+            {v.valueText ?? "N/A"}
+          </td>
+        );
+      })}
+      <td className="num">
+        {row.peerMedian > 0 ? fmt.dollars(row.peerMedian) : <span style={{ color: "var(--ink-3)" }}>—</span>}
+      </td>
+      <td className="num" style={{
+        color: row.varianceVsMedian == null ? "var(--ink-3)" :
+          row.varianceVsMedian > 5 ? "var(--neg)" :
+          row.varianceVsMedian < -5 ? "var(--warn)" : "var(--pos)",
+      }}>
+        {row.varianceVsMedian == null
+          ? "—"
+          : `${row.varianceVsMedian > 0 ? "+" : ""}${Math.round(row.varianceVsMedian)}%`}
+      </td>
+    </tr>
   );
 }
 
@@ -1827,6 +2314,15 @@ function deptDisplayName(code: string): string {
 function signed(v: number): string {
   if (Math.abs(v) < 500) return "$0";
   return `${v > 0 ? "+" : "−"}${fmt.dollarsK(Math.abs(v))}`;
+}
+
+/** Render a positive/negative dollar amount in accounting style:
+ *  positives unsigned, negatives wrapped in parentheses. Used in
+ *  summary tables where a column carries both surplus and subsidy. */
+function parens(v: number): string {
+  if (Math.abs(v) < 500) return fmt.dollarsK(0);
+  if (v < 0) return `(${fmt.dollarsK(Math.abs(v))})`;
+  return fmt.dollarsK(v);
 }
 
 /** Build the post-table interpretation in Summary of Findings. Generates
