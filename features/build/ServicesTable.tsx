@@ -273,7 +273,6 @@ export function ServicesTable() {
           const totalPct = mix.reduce((a, m) => a + m.pct, 0);
           const COLS = "minmax(220px, 1.5fr) 70px 80px 80px 28px";
           return (
-            <>
             <DrilldownShell>
               <DrilldownColumn marker="①" title="Role allocation">
                 <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
@@ -375,23 +374,17 @@ export function ServicesTable() {
                     >+ Add role</button>
                   </div>
                 </div>
+                <Link
+                  to="/build/feestudy"
+                  search={{ serviceId: r.id }}
+                  onClick={(e) => e.stopPropagation()}
+                  style={{
+                    display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
+                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  }}
+                >Open fee schedule →</Link>
               </DrilldownColumn>
             </DrilldownShell>
-            <div style={{
-              marginTop: 12, textAlign: "right",
-              fontSize: "var(--t-l8)",
-            }}>
-              <Link
-                to="/build/feestudy"
-                search={{ serviceId: r.id }}
-                onClick={(e) => e.stopPropagation()}
-                style={{
-                  color: "var(--ink-3)",
-                  textDecoration: "underline", textUnderlineOffset: 3,
-                }}
-              >Open fee schedule →</Link>
-            </div>
-          </>
           );
         }}
       />
