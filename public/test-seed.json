@@ -544,60 +544,630 @@
       "source": "FY27 Budget",
       "include": true
     },
-
-    { "id": "op-labor-PLAN-51110", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount": 628912,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51120", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":  20288,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51130", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":  13525,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51140", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":  13525,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51210", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount": 128700,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51220", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":  74250,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51230", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":  37125,  "source": "seed", "include": true },
-    { "id": "op-labor-PLAN-51240", "code": "012-2410", "dept": "PLAN", "sourceDept": "Planning Division",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":   7425,  "source": "seed", "include": true },
-
-    { "id": "op-labor-BLDG-51110", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount": 1062990, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51120", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":   34290, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51130", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":   22860, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51140", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":   22860, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51210", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount":  215280, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51220", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":  124200, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51230", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":   62100, "source": "seed", "include": true },
-    { "id": "op-labor-BLDG-51240", "code": "012-2420", "dept": "BLDG", "sourceDept": "Building & Safety",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":   12420, "source": "seed", "include": true },
-
-    { "id": "op-labor-ENG-51110",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount":  499410, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51120",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":   16110, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51130",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":   10740, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51140",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":   10740, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51210",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount":  101504, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51220",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":   58560, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51230",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":   29280, "source": "seed", "include": true },
-    { "id": "op-labor-ENG-51240",  "code": "012-3100", "dept": "ENG",  "sourceDept": "Public Works — Engineering", "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":    5856, "source": "seed", "include": true },
-
-    { "id": "op-labor-PARKS-51110","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount":  536796, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51120","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":   17316, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51130","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":   11544, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51140","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":   11544, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51210","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount":  109304, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51220","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":   63060, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51230","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":   31530, "source": "seed", "include": true },
-    { "id": "op-labor-PARKS-51240","code": "012-5100", "dept": "PARKS","sourceDept": "Parks & Recreation",         "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":    6306, "source": "seed", "include": true },
-
-    { "id": "op-labor-PD-51110",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount":  252030, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51120",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":    8130, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51130",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":    5420, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51140",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":    5420, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51210",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount":   51688, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51220",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":   29820, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51230",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":   14910, "source": "seed", "include": true },
-    { "id": "op-labor-PD-51240",   "code": "012-6100", "dept": "PD",   "sourceDept": "Police Services",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":    2982, "source": "seed", "include": true },
-
-    { "id": "op-labor-FIRE-51110", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Regular Salaries",          "amount":  333405, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51120", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Overtime",                  "amount":   10755, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51130", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Temporary / Part-Time Pay", "amount":    7170, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51140", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Salary",   "line": "Premium Pay",               "amount":    7170, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51210", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Retirement",                "amount":   68120, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51220", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Health Insurance",          "amount":   39300, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51230", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Payroll Taxes",             "amount":   19650, "source": "seed", "include": true },
-    { "id": "op-labor-FIRE-51240", "code": "012-7100", "dept": "FIRE", "sourceDept": "Fire Prevention",            "category": "Other", "costType": "Labor", "laborType": "Benefits", "line": "Workers Compensation",      "amount":    3930, "source": "seed", "include": true }
+    {
+      "id": "op-labor-PLAN-51110",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 628912,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51120",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 20288,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51130",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 13525,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51140",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 13525,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51210",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 128700,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51220",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 74250,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51230",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 37125,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PLAN-51240",
+      "code": "012-2410",
+      "dept": "PLAN",
+      "sourceDept": "Planning Division",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 7425,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51110",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 1062990,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51120",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 34290,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51130",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 22860,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51140",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 22860,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51210",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 215280,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51220",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 124200,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51230",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 62100,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-BLDG-51240",
+      "code": "012-2420",
+      "dept": "BLDG",
+      "sourceDept": "Building & Safety",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 12420,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51110",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 499410,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51120",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 16110,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51130",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 10740,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51140",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 10740,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51210",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 101504,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51220",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 58560,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51230",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 29280,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-ENG-51240",
+      "code": "012-3100",
+      "dept": "ENG",
+      "sourceDept": "Public Works — Engineering",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 5856,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51110",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 536796,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51120",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 17316,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51130",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 11544,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51140",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 11544,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51210",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 109304,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51220",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 63060,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51230",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 31530,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PARKS-51240",
+      "code": "012-5100",
+      "dept": "PARKS",
+      "sourceDept": "Parks & Recreation",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 6306,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51110",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 252030,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51120",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 8130,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51130",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 5420,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51140",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 5420,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51210",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 51688,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51220",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 29820,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51230",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 14910,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-PD-51240",
+      "code": "012-6100",
+      "dept": "PD",
+      "sourceDept": "Police Services",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 2982,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51110",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Regular Salaries",
+      "amount": 333405,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51120",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Overtime",
+      "amount": 10755,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51130",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Temporary / Part-Time Pay",
+      "amount": 7170,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51140",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Salary",
+      "line": "Premium Pay",
+      "amount": 7170,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51210",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Retirement",
+      "amount": 68120,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51220",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Health Insurance",
+      "amount": 39300,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51230",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Payroll Taxes",
+      "amount": 19650,
+      "source": "seed",
+      "include": true
+    },
+    {
+      "id": "op-labor-FIRE-51240",
+      "code": "012-7100",
+      "dept": "FIRE",
+      "sourceDept": "Fire Prevention",
+      "category": "Other",
+      "costType": "Labor",
+      "laborType": "Benefits",
+      "line": "Workers Compensation",
+      "amount": 3930,
+      "source": "seed",
+      "include": true
+    }
   ],
   "capAllocation": {
     "PLAN": {
@@ -717,7 +1287,11 @@
       "fee": 4500,
       "peer": 14200,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-1",
+      "category": "Planning & Zoning",
+      "subcategory": "Discretionary Permits",
+      "unit": "each"
     },
     {
       "id": "plan-fth",
@@ -729,7 +1303,11 @@
       "fee": 5200,
       "peer": 17000,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-2",
+      "category": "Planning & Zoning",
+      "subcategory": "Discretionary Permits",
+      "unit": "each"
     },
     {
       "id": "plan-minor",
@@ -741,7 +1319,11 @@
       "fee": 1800,
       "peer": 8500,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-3",
+      "category": "Planning & Zoning",
+      "subcategory": "Administrative Permits",
+      "unit": "each"
     },
     {
       "id": "plan-major",
@@ -753,7 +1335,11 @@
       "fee": 3200,
       "peer": 9900,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-4",
+      "category": "Planning & Zoning",
+      "subcategory": "Administrative Permits",
+      "unit": "each"
     },
     {
       "id": "plan-cup",
@@ -765,7 +1351,11 @@
       "fee": 6500,
       "peer": 22000,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-6",
+      "category": "Planning & Zoning",
+      "subcategory": "Discretionary Permits",
+      "unit": "each"
     },
     {
       "id": "plan-fence",
@@ -777,7 +1367,11 @@
       "fee": 580,
       "peer": 1400,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-9",
+      "category": "Planning & Zoning",
+      "subcategory": "Administrative Permits",
+      "unit": "each"
     },
     {
       "id": "plan-oak",
@@ -789,7 +1383,11 @@
       "fee": 280,
       "peer": 810,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-10",
+      "category": "Planning & Zoning",
+      "subcategory": "Administrative Permits",
+      "unit": "per tree"
     },
     {
       "id": "plan-preap",
@@ -801,7 +1399,11 @@
       "fee": 550,
       "peer": 580,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-11",
+      "category": "Planning & Zoning",
+      "subcategory": "Pre-Application Services",
+      "unit": "per meeting"
     },
     {
       "id": "plan-adu",
@@ -813,7 +1415,11 @@
       "fee": 420,
       "peer": 560,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-12",
+      "category": "Planning & Zoning",
+      "subcategory": "Pre-Application Services",
+      "unit": "per meeting"
     },
     {
       "id": "plan-mod",
@@ -825,7 +1431,11 @@
       "fee": 1550,
       "peer": 2500,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-13",
+      "category": "Planning & Zoning",
+      "subcategory": "Administrative Permits",
+      "unit": "each"
     },
     {
       "id": "plan-mvar",
@@ -837,7 +1447,11 @@
       "fee": 5400,
       "peer": 5400,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PLN-15",
+      "category": "Planning & Zoning",
+      "subcategory": "Discretionary Permits",
+      "unit": "each"
     },
     {
       "id": "bldg-apr",
@@ -849,7 +1463,11 @@
       "fee": 380,
       "peer": 530,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-1",
+      "category": "Building & Safety",
+      "subcategory": "Plan Check",
+      "unit": "per hour"
     },
     {
       "id": "bldg-ext",
@@ -861,7 +1479,11 @@
       "fee": 210,
       "peer": 360,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-2",
+      "category": "Building & Safety",
+      "subcategory": "Administrative",
+      "unit": "each"
     },
     {
       "id": "bldg-tco",
@@ -873,7 +1495,11 @@
       "fee": 520,
       "peer": 360,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-3",
+      "category": "Building & Safety",
+      "subcategory": "Administrative",
+      "unit": "each"
     },
     {
       "id": "bldg-pc",
@@ -885,7 +1511,11 @@
       "fee": 320,
       "peer": 1000,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-4",
+      "category": "Building & Safety",
+      "subcategory": "Plan Check",
+      "unit": "each"
     },
     {
       "id": "bldg-sfr",
@@ -897,7 +1527,54 @@
       "fee": 14500,
       "peer": 14500,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-5",
+      "category": "Building & Safety",
+      "subcategory": "New Construction",
+      "unit": "per $1,000 valuation",
+      "rowKind": "formula",
+      "currentFeeText": "Tiered (typ. $13,500 @ $1.5M valuation)",
+      "formula": {
+        "kind": "tiered-valuation",
+        "basis": "construction valuation",
+        "tiers": [
+          {
+            "upTo": 25000,
+            "baseFee": 0,
+            "perUnit": 12,
+            "unitSize": 1000
+          },
+          {
+            "upTo": 100000,
+            "baseFee": 300,
+            "perUnit": 10,
+            "unitSize": 1000
+          },
+          {
+            "upTo": 500000,
+            "baseFee": 1050,
+            "perUnit": 9,
+            "unitSize": 1000
+          },
+          {
+            "upTo": 1000000,
+            "baseFee": 4650,
+            "perUnit": 8,
+            "unitSize": 1000
+          },
+          {
+            "upTo": 3000000,
+            "baseFee": 8650,
+            "perUnit": 9.7,
+            "unitSize": 1000
+          },
+          {
+            "baseFee": 28050,
+            "perUnit": 8,
+            "unitSize": 1000
+          }
+        ]
+      }
     },
     {
       "id": "bldg-rem",
@@ -909,7 +1586,11 @@
       "fee": 4500,
       "peer": 5300,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-6",
+      "category": "Building & Safety",
+      "subcategory": "Remodel & Additions",
+      "unit": "each"
     },
     {
       "id": "bldg-pool",
@@ -921,7 +1602,11 @@
       "fee": 2100,
       "peer": 3200,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-7",
+      "category": "Building & Safety",
+      "subcategory": "Specialty Permits",
+      "unit": "each"
     },
     {
       "id": "bldg-solar",
@@ -933,7 +1618,16 @@
       "fee": 475,
       "peer": 420,
       "target": 80,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-8",
+      "category": "Building & Safety",
+      "subcategory": "Specialty Permits",
+      "unit": "each",
+      "rowKind": "statutory",
+      "legalAuthority": "CA Gov Code §66015",
+      "notes": [
+        "Capped at $450 by state law; full-cost recovery not achievable for this row."
+      ]
     },
     {
       "id": "bldg-mep",
@@ -945,7 +1639,11 @@
       "fee": 350,
       "peer": 700,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "BLD-9",
+      "category": "Building & Safety",
+      "subcategory": "Specialty Permits",
+      "unit": "each"
     },
     {
       "id": "eng-bldg",
@@ -957,7 +1655,11 @@
       "fee": 0,
       "peer": 1450,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-1",
+      "category": "Engineering",
+      "subcategory": "Plan Review",
+      "unit": "each"
     },
     {
       "id": "eng-adu",
@@ -969,7 +1671,11 @@
       "fee": 0,
       "peer": 1450,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-2",
+      "category": "Engineering",
+      "subcategory": "Plan Review",
+      "unit": "each"
     },
     {
       "id": "eng-erosion",
@@ -981,7 +1687,11 @@
       "fee": 235,
       "peer": 660,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-3",
+      "category": "Engineering",
+      "subcategory": "Inspections",
+      "unit": "each"
     },
     {
       "id": "eng-ency",
@@ -993,7 +1703,11 @@
       "fee": 360,
       "peer": 845,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-4",
+      "category": "Engineering",
+      "subcategory": "Permits",
+      "unit": "each"
     },
     {
       "id": "eng-minor",
@@ -1005,7 +1719,11 @@
       "fee": 0,
       "peer": 1680,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-5",
+      "category": "Engineering",
+      "subcategory": "Plan Review",
+      "unit": "each"
     },
     {
       "id": "eng-major",
@@ -1017,7 +1735,11 @@
       "fee": 0,
       "peer": 3340,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-6",
+      "category": "Engineering",
+      "subcategory": "Plan Review",
+      "unit": "each"
     },
     {
       "id": "eng-hourly",
@@ -1029,7 +1751,11 @@
       "fee": 252,
       "peer": 320,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "ENG-7",
+      "category": "Engineering",
+      "subcategory": "Other Services",
+      "unit": "per hour"
     },
     {
       "id": "pr-recclass",
@@ -1041,7 +1767,11 @@
       "fee": 85,
       "peer": 110,
       "target": 30,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PRK-1",
+      "category": "Parks & Recreation",
+      "subcategory": "Program Registration",
+      "unit": "per registration"
     },
     {
       "id": "pr-fieldp",
@@ -1053,7 +1783,11 @@
       "fee": 95,
       "peer": 140,
       "target": 30,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PRK-2",
+      "category": "Parks & Recreation",
+      "subcategory": "Facility Rentals",
+      "unit": "per permit"
     },
     {
       "id": "pr-shelter",
@@ -1065,7 +1799,11 @@
       "fee": 65,
       "peer": 95,
       "target": 30,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PRK-3",
+      "category": "Parks & Recreation",
+      "subcategory": "Facility Rentals",
+      "unit": "per rental"
     },
     {
       "id": "pr-pool",
@@ -1077,7 +1815,11 @@
       "fee": 110,
       "peer": 135,
       "target": 30,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PRK-4",
+      "category": "Parks & Recreation",
+      "subcategory": "Program Registration",
+      "unit": "per registration"
     },
     {
       "id": "pr-roomrnt",
@@ -1089,7 +1831,11 @@
       "fee": 75,
       "peer": 120,
       "target": 30,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "PRK-5",
+      "category": "Parks & Recreation",
+      "subcategory": "Facility Rentals",
+      "unit": "per hour"
     },
     {
       "id": "pd-alarm",
@@ -1101,7 +1847,11 @@
       "fee": 45,
       "peer": 65,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "POL-1",
+      "category": "Police Services",
+      "subcategory": "Permits & Registrations",
+      "unit": "annual"
     },
     {
       "id": "pd-falsearm",
@@ -1113,7 +1863,11 @@
       "fee": 100,
       "peer": 150,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "POL-2",
+      "category": "Police Services",
+      "subcategory": "Service Charges",
+      "unit": "per occurrence"
     },
     {
       "id": "pd-fprint",
@@ -1125,7 +1879,11 @@
       "fee": 55,
       "peer": 78,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "POL-3",
+      "category": "Police Services",
+      "subcategory": "Records & Background",
+      "unit": "each"
     },
     {
       "id": "pd-evt",
@@ -1137,7 +1895,11 @@
       "fee": 425,
       "peer": 680,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "POL-4",
+      "category": "Police Services",
+      "subcategory": "Special Events",
+      "unit": "per event"
     },
     {
       "id": "pd-records",
@@ -1149,7 +1911,11 @@
       "fee": 35,
       "peer": 45,
       "target": 100,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "POL-5",
+      "category": "Police Services",
+      "subcategory": "Records & Background",
+      "unit": "per request"
     },
     {
       "id": "fr-inspbiz",
@@ -1161,7 +1927,11 @@
       "fee": 175,
       "peer": 225,
       "target": 75,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "FRE-1",
+      "category": "Fire Prevention",
+      "subcategory": "Inspections",
+      "unit": "annual"
     },
     {
       "id": "fr-planrev",
@@ -1173,7 +1943,11 @@
       "fee": 580,
       "peer": 890,
       "target": 75,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "FRE-2",
+      "category": "Fire Prevention",
+      "subcategory": "Plan Review",
+      "unit": "each"
     },
     {
       "id": "fr-hazmat",
@@ -1185,7 +1959,11 @@
       "fee": 425,
       "peer": 650,
       "target": 75,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "FRE-3",
+      "category": "Fire Prevention",
+      "subcategory": "Permits",
+      "unit": "annual"
     },
     {
       "id": "fr-occ",
@@ -1197,7 +1975,11 @@
       "fee": 260,
       "peer": 420,
       "target": 75,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "FRE-4",
+      "category": "Fire Prevention",
+      "subcategory": "Permits",
+      "unit": "annual"
     },
     {
       "id": "fr-special",
@@ -1209,7 +1991,11 @@
       "fee": 195,
       "peer": 315,
       "target": 75,
-      "source": "seed"
+      "source": "seed",
+      "feeNo": "FRE-5",
+      "category": "Fire Prevention",
+      "subcategory": "Plan Review",
+      "unit": "per event"
     }
   ],
   "volume": [
