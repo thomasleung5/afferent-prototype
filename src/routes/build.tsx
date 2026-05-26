@@ -2,15 +2,16 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SubNav, type SubNavItem } from "@/components/layout";
 
 const ITEMS: SubNavItem[] = [
-  { href: "/build/services",     label: "Services" },
-  { href: "/build/direct-labor", label: "Direct Labor" },
-  { href: "/build/operating",    label: "Operating" },
-  { href: "/build/cap",          label: "Overhead Allocation" },
-  { href: "/build/volume",       label: "Volume" },
-  { href: "/build/costs",        label: "Cost of Service" },
-  { href: "/build/policy",       label: "Recovery Policy" },
-  { href: "/build/feestudy",     label: "Fee Schedule" },
-  { href: "/build/benchmark",    label: "Fee Benchmark" },
+  { href: "/build/services",               label: "Services" },
+  { href: "/build/direct-labor",           label: "Direct Labor" },
+  { href: "/build/operating",              label: "Operating" },
+  { href: "/build/cap",                    label: "Overhead Allocation" },
+  { href: "/build/functional-allocation",  label: "Functional Allocation" },
+  { href: "/build/volume",                 label: "Volume" },
+  { href: "/build/costs",                  label: "Cost of Service" },
+  { href: "/build/policy",                 label: "Recovery Policy" },
+  { href: "/build/feestudy",               label: "Fee Schedule" },
+  { href: "/build/benchmark",              label: "Fee Benchmark" },
 ];
 
 export const Route = createFileRoute("/build")({

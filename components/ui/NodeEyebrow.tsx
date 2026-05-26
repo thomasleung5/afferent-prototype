@@ -1,19 +1,20 @@
 import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
-  | "services" | "salary" | "operating" | "cap" | "volume"
+  | "services" | "salary" | "operating" | "cap" | "functional" | "volume"
   | "costs" | "policy" | "feestudy" | "benchmark";
 
 const NODE_LABEL: Record<NodeId, string> = {
-  services:  "Services",
-  salary:    "Direct Labor",
-  operating: "Operating",
-  cap:       "Overhead Cost Allocation",
-  volume:    "Volume of Activity",
-  costs:     "Cost of Service",
-  policy:    "Recovery Policy",
-  feestudy:  "Fee Schedule",
-  benchmark: "Fee Benchmark",
+  services:   "Services",
+  salary:     "Direct Labor",
+  operating:  "Operating",
+  cap:        "Overhead Cost Allocation",
+  functional: "Functional Allocation",
+  volume:     "Volume of Activity",
+  costs:      "Cost of Service",
+  policy:     "Recovery Policy",
+  feestudy:   "Fee Schedule",
+  benchmark:  "Fee Benchmark",
 };
 
 interface Props {
