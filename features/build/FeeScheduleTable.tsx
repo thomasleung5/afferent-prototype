@@ -6,10 +6,12 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  CellInput, CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode, Service } from "@/lib/types";
+import type {
+  DeptCode, FeeRowKind, FeeScheduleStatus, Service,
+} from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 import { StateChip, type FeeState } from "@/components/ui";
@@ -361,6 +363,20 @@ export function FeeScheduleTable() {
                     prefix="$" min={0}
                   />
                 </div>
+                <div>
+                  <div
+                    className="mono"
+                    title="Cycle lifecycle of this fee row — distinct from the review state above (Pending / Ready / Adopted)."
+                    style={{
+                      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                      color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
+                    }}>Lifecycle</div>
+                  <CellSelect
+                    value={svc.status ?? "existing"}
+                    options={LIFECYCLE_OPTIONS}
+                    onChange={(v) => updateService(r.id, { status: v as FeeScheduleStatus })}
+                  />
+                </div>
               </div>
             </DrilldownColumn>
 
@@ -447,6 +463,17 @@ export function FeeScheduleTable() {
                   <div className="mono" style={{
                     fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                     color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
+                  }}>Row kind</div>
+                  <CellSelect
+                    value={svc.rowKind ?? "flat"}
+                    options={ROW_KIND_OPTIONS}
+                    onChange={(v) => updateService(r.id, { rowKind: v as FeeRowKind })}
+                  />
+                </div>
+                <div>
+                  <div className="mono" style={{
+                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                    color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                   }}>Formula</div>
                   <FormulaEditor
                     value={svc.formula}
@@ -466,6 +493,24 @@ export function FeeScheduleTable() {
     </div>
   );
 }
+
+const ROW_KIND_OPTIONS = [
+  { value: "flat",               label: "Flat" },
+  { value: "formula",            label: "Formula" },
+  { value: "deposit",            label: "Deposit" },
+  { value: "time-and-materials", label: "T&M" },
+  { value: "pass-through",       label: "Pass-through" },
+  { value: "statutory",          label: "Statutory" },
+];
+
+const LIFECYCLE_OPTIONS = [
+  { value: "existing",      label: "Existing (carried forward)" },
+  { value: "new",           label: "New (this cycle)" },
+  { value: "renamed",       label: "Renamed" },
+  { value: "moved",         label: "Moved to other dept" },
+  { value: "deleted",       label: "Deleted (removed this cycle)" },
+  { value: "not-evaluated", label: "Not evaluated" },
+];
 
 /** Compact chip label for the non-countable badge next to fee item names.
  *  Returns null when the row is countable (flat/formula + existing/new/

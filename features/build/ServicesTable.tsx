@@ -11,7 +11,7 @@ import {
   SectionLabel, SourcePill,
 } from "@/components/ui";
 import type {
-  DeptCode, FeeFormula, FeeRowKind, FeeScheduleStatus,
+  DeptCode, FeeFormula,
   ProductiveHoursRow, RoleAllocation, Service,
 } from "@/lib/types";
 import { summarizeFormula } from "./FormulaEditor";
@@ -391,16 +391,16 @@ export function ServicesTable() {
   );
 }
 
-/** PR-L4: Fee-schedule metadata editor that sits in the second drilldown
- *  column on ServicesTable. Wires every PR-L1 optional field on Service
- *  that's a scalar string / enum: rowKind, status, category, subcategory,
- *  legalAuthority, the three *Text display overrides, and notes. The
- *  Sister-page stubs: formula display + the three *Text overrides edit
- *  on the Fee Schedule page (PR-M2); peerSurvey edits on the Fee
- *  Benchmark page (PR-M1). Both surface as read-only stubs here with
- *  cross-links so analysts have catalog-side visibility into the data
- *  without the editing surface following the row's data shape into a
- *  page that's not about those decisions. */
+/** Catalog metadata editor that sits in the second drilldown column on
+ *  ServicesTable. After the M-series workflow realignment, this panel
+ *  owns the fields that genuinely belong to "what is this service" —
+ *  category, subcategory, legalAuthority, notes — and surfaces stubs
+ *  with cross-links to the fields edited on sister pages:
+ *    * formula → edited on Fee Schedule (PR-M2)
+ *    * rowKind + status → edited on Fee Schedule (PR-M3)
+ *    * currentFeeText / recommendedFeeText / fullCostRecoveryFeeText →
+ *      edited on Fee Schedule (PR-M2)
+ *    * peerSurvey → edited on Fee Benchmark (PR-M1) */
 function FeeMetadataPanel({
   service, onPatch,
 }: {
@@ -425,20 +425,6 @@ function FeeMetadataPanel({
       padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10,
       fontSize: 12,
     }}>
-      <Field label="Row kind">
-        <CellSelect
-          value={service.rowKind ?? "flat"}
-          options={ROW_KIND_OPTIONS}
-          onChange={(v) => onPatch({ rowKind: v as FeeRowKind })}
-        />
-      </Field>
-      <Field label="Status">
-        <CellSelect
-          value={service.status ?? "existing"}
-          options={STATUS_OPTIONS}
-          onChange={(v) => onPatch({ status: v as FeeScheduleStatus })}
-        />
-      </Field>
       <Field label="Category">
         <CellInput
           value={service.category ?? ""}
@@ -488,25 +474,6 @@ function FeeMetadataPanel({
     </div>
   );
 }
-
-const ROW_KIND_OPTIONS = [
-  { value: "flat",               label: "Flat" },
-  { value: "formula",            label: "Formula" },
-  { value: "deposit",            label: "Deposit" },
-  { value: "time-and-materials", label: "T&M" },
-  { value: "pass-through",       label: "Pass-through" },
-  { value: "statutory",          label: "Statutory" },
-];
-
-const STATUS_OPTIONS = [
-  { value: "existing",      label: "Existing" },
-  { value: "new",           label: "New" },
-  { value: "renamed",       label: "Renamed" },
-  { value: "moved",         label: "Moved" },
-  { value: "deleted",       label: "Deleted" },
-  { value: "not-evaluated", label: "Not evaluated" },
-];
-
 
 /** Inline human-readable copy for a per-service capacity warning. Kept
  *  short so it fits in the service name cell's secondary line under
