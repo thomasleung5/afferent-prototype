@@ -35,6 +35,10 @@ import {
   type GlDriverMatrix, type GlStepDownModel,
 } from "@/lib/data/capStepDownGl";
 import {
+  deriveFunctionalAllocation, applyFunctionalAllocationFbhr,
+  type FunctionalAllocationDerived,
+} from "@/lib/functionalAllocation";
+import {
   DEFAULT_STUDY_CONTEXT, extractStudyContext, type StudyContext,
 } from "@/lib/data/studyContext";
 import {
@@ -108,6 +112,12 @@ export interface BuildSnapshot {
    *  non-recoverable work. Persisted as raw row data; recoverable cost,
    *  hours, and implied FBHR are derived per-render (see PR-FA3). */
   functionalAllocation: FunctionalAllocationBucket[];
+  /** When true, the implied FBHR from the Functional Allocation buckets
+   *  replaces each dept's engine FBHR for downstream Cost of Service
+   *  math. Off by default — the engine FBHR is authoritative until the
+   *  analyst opts in. See lib/functionalAllocation.ts for the formula
+   *  and rationale. */
+  useFunctionalAllocationFbhr: boolean;
   activeJurisdictionId: string;
   activeFiscalYear: string;
 }
@@ -180,6 +190,8 @@ export interface BuildState {
   imports: BuildImportLog[];
   /** See BuildSnapshot.functionalAllocation. */
   functionalAllocation: FunctionalAllocationBucket[];
+  /** See BuildSnapshot.useFunctionalAllocationFbhr. */
+  useFunctionalAllocationFbhr: boolean;
   versions: StudyVersion[];
   comparisonVersionId: string | null;
   /** Active demo jurisdiction the UI is bound to. Read via
@@ -294,6 +306,10 @@ interface BuildActions {
   updateFunctionalAllocation: (id: string, patch: Partial<FunctionalAllocationBucket>) => void;
   addFunctionalAllocation: (dept: DeptCode) => void;
   removeFunctionalAllocation: (id: string) => void;
+  /** Toggle the implied-FBHR override. Off by default; flip on to let
+   *  the Functional Allocation page drive downstream Cost of Service
+   *  math. */
+  setUseFunctionalAllocationFbhr: (on: boolean) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -559,6 +575,7 @@ const initialState = (): BuildState => {
     capCenterOrder: Object.keys(CAP_CENTER_TOTALS),
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
     functionalAllocation: FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
+    useFunctionalAllocationFbhr: false,
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
@@ -1324,6 +1341,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           functionalAllocation: s.functionalAllocation.filter((b) => b.id !== id),
         })),
 
+      setUseFunctionalAllocationFbhr: (on) => set({ useFunctionalAllocationFbhr: on }),
+
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -1353,6 +1372,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capCenterOrder: [],
           imports: [],
           functionalAllocation: [],
+          useFunctionalAllocationFbhr: false,
           versions: [],
           comparisonVersionId: null,
         });
@@ -1415,6 +1435,10 @@ interface BuildDerived {
    *  supply hours (from the productiveHours roster). Drives the Cost of
    *  Service FBHR table's Allocated Hrs + Utilization columns. */
   utilization: Record<DeptCode, DeptUtilization>;
+  /** Functional Allocation derivation (per-bucket + per-dept implied
+   *  FBHR). Always computed; the implied FBHR only drives downstream
+   *  cost math when state.useFunctionalAllocationFbhr is true. */
+  functionalAllocation: FunctionalAllocationDerived;
 }
 
 export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
@@ -1478,7 +1502,19 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     derivedCapAllocation[d] = { dept: d, allocated: capAllocated[d] };
   }
 
-  const fbhr = deptFBHR(labor, operatingByDept, derivedCapAllocation);
+  const engineFbhr = deptFBHR(labor, operatingByDept, derivedCapAllocation);
+  const functionalAllocation = deriveFunctionalAllocation(
+    state.functionalAllocation, engineFbhr,
+  );
+  // Override the engine FBHR with the implied FBHR from Functional
+  // Allocation only when the flag is on. The component rates
+  // (directRate / operatingRate / capRate) are not rewritten — they
+  // stay as the engine's decomposition so the Cost of Service breakdown
+  // still reads correctly; the headline `fbhr` is the one downstream
+  // serviceCosts / feeComparisons consume.
+  const fbhr = state.useFunctionalAllocationFbhr
+    ? applyFunctionalAllocationFbhr(engineFbhr, functionalAllocation)
+    : engineFbhr;
   const costs = serviceCosts(state.services, fbhr);
   const comparisons = feeComparisons(
     costs, state.services, state.policyTargets, state.policyExceptions,
@@ -1497,6 +1533,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     capAllocated, capDrivers: graph.drivers,
     capStepDown: stepDown,
     utilization,
+    functionalAllocation,
   };
 }
 

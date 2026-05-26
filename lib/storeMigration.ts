@@ -202,6 +202,12 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (state.functionalAllocation == null) {
     state.functionalAllocation = FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b }));
   }
+  // PR-FA3: implied-FBHR override flag defaults off so persisted stores
+  // from earlier sessions get the same backward-compatible behavior
+  // they had pre-PR-FA3.
+  if (typeof state.useFunctionalAllocationFbhr !== "boolean") {
+    state.useFunctionalAllocationFbhr = false;
+  }
 
   // capCenterSources default — keyed by center identity (glCode or synth),
   // value carries the display name lifted from capCenterTotals' keys (now

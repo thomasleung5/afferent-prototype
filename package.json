@@ -17,6 +17,7 @@
     "test:capacity": "tsx lib/__tests__/capacity.fixture.ts",
     "test:fee-display": "tsx lib/__tests__/feeDisplay.fixture.ts",
     "test:calc": "tsx lib/__tests__/calc.fixture.ts",
+    "test:functional-allocation": "tsx lib/__tests__/functionalAllocation.fixture.ts",
     "test:ai-parser": "tsx server/__tests__/aiParseRunner.fixture.ts"
   },
   "dependencies": {
