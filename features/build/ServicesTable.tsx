@@ -314,7 +314,8 @@ export function ServicesTable() {
                           style={{
                             textAlign: "right",
                             color: crossDept ? "var(--warn)" : "var(--ink-3)",
-                            fontSize: "var(--t-l9)", letterSpacing: "0.04em",
+                            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                            textTransform: "uppercase",
                           }}
                         >{roleDept}</span>
                         <span style={{ textAlign: "right" }}>
@@ -351,7 +352,7 @@ export function ServicesTable() {
                     alignItems: "baseline",
                   }}>
                     <span className="mono" style={{
-                      fontSize: "var(--t-l9)", letterSpacing: "0.06em",
+                      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                       color: "var(--ink-3)", textTransform: "uppercase",
                     }}>Total</span>
                     <span/>
@@ -410,7 +411,7 @@ function FeeMetadataPanel({
   const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
     <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, alignItems: "baseline" }}>
       <span className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</span>
       <div>{children}</div>

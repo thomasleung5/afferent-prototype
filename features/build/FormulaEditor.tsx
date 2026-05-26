@@ -128,7 +128,7 @@ function TieredValuationFields({
         <div style={{
           display: "grid", gridTemplateColumns: TIER_COLS, gap: 8,
           padding: "5px 8px", borderBottom: "1px solid var(--rule)",
-          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em",
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
           color: "var(--ink-3)", textTransform: "uppercase",
         }}>
           <span>Up to</span><span>Base fee</span><span>+ per</span><span>per</span><span/>
@@ -305,7 +305,7 @@ function FormulaSubField({ label, children }: { label: string; children: React.R
   return (
     <div style={{ display: "grid", gridTemplateColumns: "80px 1fr", gap: 8, alignItems: "baseline" }}>
       <span className="mono" style={{
-        fontSize: "var(--t-l9)", letterSpacing: "0.04em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</span>
       <div>{children}</div>

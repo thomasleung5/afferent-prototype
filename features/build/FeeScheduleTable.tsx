@@ -597,7 +597,7 @@ function DisplayOverrideRow({
   return (
     <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 8, alignItems: "baseline" }}>
       <span className="mono" style={{
-        fontSize: "var(--t-l9)", letterSpacing: "0.04em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</span>
       <div>{children}</div>

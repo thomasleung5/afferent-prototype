@@ -407,7 +407,7 @@ function PeerSurveyEditor({
           <div style={{
             display: "grid", gridTemplateColumns: COLS, gap: 8,
             padding: "5px 8px", borderBottom: "1px solid var(--rule)",
-            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em",
+            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>
             <span>Agency</span>
