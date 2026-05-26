@@ -1,6 +1,6 @@
 ﻿
 import React, { useEffect, useMemo, useState } from "react";
-import { useSearch } from "@tanstack/react-router";
+import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
@@ -12,7 +12,7 @@ import {
 } from "@/components/ui";
 import type {
   DeptCode, FeeFormula, FeeFormulaTier, FeeRowKind, FeeScheduleStatus,
-  PeerSurveyValue, ProductiveHoursRow, RoleAllocation, Service,
+  ProductiveHoursRow, RoleAllocation, Service,
 } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
@@ -394,8 +394,9 @@ export function ServicesTable() {
  *  column on ServicesTable. Wires every PR-L1 optional field on Service
  *  that's a scalar string / enum: rowKind, status, category, subcategory,
  *  legalAuthority, the three *Text display overrides, and notes. The
- *  Sub-editors: FormulaEditor (PR-L6) for service.formula, PeerSurveyEditor
- *  (PR-L7) for service.peerSurvey. */
+ *  Sub-editors: FormulaEditor (PR-L6) for service.formula. The peer-
+ *  survey editor lives on the Fee Benchmark page (PR-M1) — this panel
+ *  shows a read-only summary + cross-link via PeerSurveyStub. */
 function FeeMetadataPanel({
   service, onPatch,
 }: {
@@ -502,10 +503,7 @@ function FeeMetadataPanel({
         />
       </Field>
       <Field label="Peer survey">
-        <PeerSurveyEditor
-          value={service.peerSurvey}
-          onChange={(next) => onPatch({ peerSurvey: next })}
-        />
+        <PeerSurveyStub serviceId={service.id} count={service.peerSurvey?.length ?? 0}/>
       </Field>
     </div>
   );
@@ -863,120 +861,26 @@ function buildPositionOptions(
     .map((p) => ({ value: p.id, label: `${p.title} (${p.dept})` }));
 }
 
-/** PR-L7: editor for service.peerSurvey — per-agency rows backing the
- *  numeric peer field. Each row carries valueText OR valueNumber (or
- *  both — text is for non-numeric framings like "T&M w/ $500 deposit",
- *  number for direct comparison). `comparable` is the gate the
- *  Benchmark layer uses to filter rows into median / range rollups;
- *  non-comparable rows stay in the array for audit but don't pollute
- *  the math.
- *
- *  Empty array clears the peerSurvey field entirely (sets undefined). */
-function PeerSurveyEditor({
-  value, onChange,
-}: {
-  value: PeerSurveyValue[] | undefined;
-  onChange: (next: PeerSurveyValue[] | undefined) => void;
-}) {
-  const rows = value ?? [];
-  const patch = (i: number, p: Partial<PeerSurveyValue>) => {
-    onChange(rows.map((r, idx) => idx === i ? { ...r, ...p } : r));
-  };
-  const remove = (i: number) => {
-    const next = rows.filter((_, idx) => idx !== i);
-    onChange(next.length > 0 ? next : undefined);
-  };
-  const add = () => {
-    onChange([...rows, { agency: "", comparable: true }]);
-  };
-
-  const COLS = "minmax(110px, 1.4fr) minmax(90px, 1.1fr) 90px 22px 22px";
-
+/** PR-M1: read-only summary for service.peerSurvey on the Services
+ *  drilldown. The editor itself lives on the Fee Benchmark page now —
+ *  per-agency peer rows are conceptually a benchmark concern, not a
+ *  service-catalog concern, and entering them where you can see the
+ *  median / variance refresh in real time is the better workflow. */
+function PeerSurveyStub({ serviceId, count }: { serviceId: string; count: number }) {
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
-      {rows.length === 0 ? (
-        <span style={{ color: "var(--ink-4)" }}>(no entries)</span>
-      ) : (
-        <div style={{ border: "1px solid var(--rule)", background: "var(--paper-2)" }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: COLS, gap: 8,
-            padding: "5px 8px", borderBottom: "1px solid var(--rule)",
-            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.06em",
-            color: "var(--ink-3)", textTransform: "uppercase",
-          }}>
-            <span>Agency</span>
-            <span>Value text</span>
-            <span style={{ textAlign: "right" }}>Numeric</span>
-            <span title="Comparable — included in median/range rollups">Cmp</span>
-            <span/>
-          </div>
-          {rows.map((r, i) => (
-            <div key={i} style={{
-              display: "grid", gridTemplateColumns: COLS, gap: 8,
-              padding: "4px 8px",
-              borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : "none",
-              alignItems: "baseline",
-            }}>
-              <CellInput
-                value={r.agency}
-                onChange={(v) => patch(i, { agency: String(v) })}
-                placeholder="e.g. Atherton"
-                fontSize={12}
-              />
-              <CellInput
-                value={r.valueText ?? ""}
-                onChange={(v) => patch(i, { valueText: String(v) || undefined })}
-                placeholder="(numeric only)"
-                fontSize={12}
-              />
-              <CellInput
-                type="currency"
-                value={r.valueNumber ?? ""}
-                onChange={(v) => patch(i, { valueNumber: v === "" ? undefined : Number(v) })}
-                prefix="$" placeholder="—"
-                align="right" fontSize={12}
-              />
-              <input
-                type="checkbox"
-                checked={r.comparable}
-                onChange={(e) => patch(i, { comparable: e.target.checked })}
-                onClick={(e) => e.stopPropagation()}
-                title="Include this agency in median / range rollups"
-                style={{ accentColor: "var(--accent)", cursor: "pointer" }}
-              />
-              <button
-                onClick={(e) => { e.stopPropagation(); remove(i); }}
-                title="Remove agency"
-                style={{
-                  color: "var(--ink-4)", fontSize: 14, lineHeight: 1, padding: "0 4px",
-                  background: "transparent", border: 0, cursor: "pointer",
-                }}
-              >×</button>
-            </div>
-          ))}
-          {rows.some((r) => r.sourceNote) && (
-            <div style={{
-              padding: "5px 8px", borderTop: "1px solid var(--rule)",
-              fontSize: "var(--t-l8)", color: "var(--ink-3)", lineHeight: 1.5,
-            }}>
-              {rows.filter((r) => r.sourceNote).map((r, i) => (
-                <div key={i}>
-                  <span style={{ color: "var(--ink-2)", fontWeight: 500 }}>{r.agency}:</span>{" "}
-                  {r.sourceNote}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      )}
-      <button
-        onClick={(e) => { e.stopPropagation(); add(); }}
+    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
+      <span style={{ color: count > 0 ? "var(--ink-2)" : "var(--ink-4)" }}>
+        {count > 0 ? `${count} agency value${count === 1 ? "" : "s"}` : "(no entries)"}
+      </span>
+      <Link
+        to="/build/benchmark"
+        search={{ serviceId }}
+        onClick={(e) => e.stopPropagation()}
         style={{
-          fontSize: 12, color: "var(--accent)",
-          background: "transparent", border: 0, cursor: "pointer", padding: 0,
-          alignSelf: "flex-start",
+          fontSize: "var(--t-l8)", color: "var(--accent)",
+          textDecoration: "underline", textUnderlineOffset: 3,
         }}
-      >+ Add agency</button>
-    </div>
+      >Edit in Fee Benchmark →</Link>
+    </span>
   );
 }
