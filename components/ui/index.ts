@@ -18,7 +18,6 @@ export type { PillKind } from "./StatusPill";
 export { StateChip } from "./StateChip";
 export type { FeeState } from "./StateChip";
 export { SharedChip } from "./SharedChip";
-export { ExpandIndicator } from "./ExpandIndicator";
 export { ExportCover } from "./ExportCover";
 export { ExportToolbar } from "./ExportToolbar";
 export { ExportTile, ExportTileGrid } from "./ExportTileGrid";
