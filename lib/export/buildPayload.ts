@@ -12,6 +12,7 @@ import type {
 import type { Domain } from "@/lib/store";
 import type { SourceLineage, UnmappedRow } from "@/lib/parse";
 import { DEPTS, FEE_DEPTS } from "@/lib/data/departments";
+import { fmt } from "@/lib/format";
 
 interface ExportCover {
   cityName: string;
@@ -801,7 +802,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
             : input.jurisdiction.peers.map((agency) => ({
                 agency,
                 value: null,
-                note: `Surveyed median: ${formatDollars(s.peer)} (per-agency detail not loaded)`,
+                note: `Surveyed median: ${fmt.dollars(s.peer)} (per-agency detail not loaded)`,
                 comparable: true,
               }));
           const comparableCount = values.filter(
@@ -986,8 +987,4 @@ function rowKindLabel(kind: NonNullable<Service["rowKind"]>): string {
     case "pass-through":      return "a pass-through of third-party cost";
     case "statutory":         return "a statutorily-capped fee";
   }
-}
-
-function formatDollars(n: number): string {
-  return `$${Math.round(n).toLocaleString()}`;
 }

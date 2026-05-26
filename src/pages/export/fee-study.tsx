@@ -722,16 +722,11 @@ function MethodologyUnitCostExample({ payload }: { payload: ExportPayload }) {
 function SummaryOfFindings({ payload }: { payload: ExportPayload }) {
   const s = payload.summary;
   const findings = deriveFindings(payload);
-  const totals = payload.deptSummaries.reduce(
-    (a, d) => ({
-      totalCost: a.totalCost + d.totalCost,
-      currentRevenue: a.currentRevenue + d.currentRevenue,
-      recommendedRevenue: a.recommendedRevenue + d.recommendedRevenue,
-    }),
-    { totalCost: 0, currentRevenue: 0, recommendedRevenue: 0 },
+  const recommendedRevenueTotal = payload.deptSummaries.reduce(
+    (a, d) => a + d.recommendedRevenue, 0,
   );
-  const totalCurrentRecovery = totals.totalCost > 0 ? (totals.currentRevenue / totals.totalCost) * 100 : 0;
-  const totalRecommendedRecovery = totals.totalCost > 0 ? (totals.recommendedRevenue / totals.totalCost) * 100 : 0;
+  const totalCurrentRecovery = s.recoveryPct;
+  const totalRecommendedRecovery = s.totalCost > 0 ? (recommendedRevenueTotal / s.totalCost) * 100 : 0;
 
   return (
     <section className="section section-break" style={{ marginBottom: 40 }}>
@@ -798,15 +793,15 @@ function SummaryOfFindings({ payload }: { payload: ExportPayload }) {
                 letterSpacing: "0.06em", fontSize: 9.5,
               }}>Citywide</span>
             </td>
-            <td className="num">{fmt.dollarsK(totals.currentRevenue)}</td>
-            <td className="num">{fmt.dollarsK(totals.totalCost)}</td>
+            <td className="num">{fmt.dollarsK(s.currentRevenue)}</td>
+            <td className="num">{fmt.dollarsK(s.totalCost)}</td>
             <td className="num" style={{
-              color: totals.currentRevenue - totals.totalCost < 0 ? "var(--neg)" : "var(--pos)",
+              color: s.currentRevenue - s.totalCost < 0 ? "var(--neg)" : "var(--pos)",
             }}>
-              {parens(totals.currentRevenue - totals.totalCost)}
+              {parens(s.currentRevenue - s.totalCost)}
             </td>
             <td className="num"><b>{totalCurrentRecovery.toFixed(0)}%</b></td>
-            <td className="num">{fmt.dollarsK(totals.recommendedRevenue)}</td>
+            <td className="num">{fmt.dollarsK(recommendedRevenueTotal)}</td>
             <td className="num">
               <b style={{ color: "var(--accent)" }}>{totalRecommendedRecovery.toFixed(0)}%</b>
             </td>
