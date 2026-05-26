@@ -567,6 +567,41 @@ export interface PolicyException {
   note: string;
 }
 
+/* ---------- Functional Allocation ----------
+ *
+ * After Overhead Allocation, each department's fully burdened cost
+ * (direct labor + departmental operating + allocated CAP) is broken
+ * into operational functional buckets — Plan Check, Public Counter,
+ * Long Range Planning, Code Enforcement, etc. Each bucket carries a
+ * recoverability target (0–100%) that classifies the fraction of the
+ * bucket's activity that is appropriately recovered through fees. The
+ * implied FBHR from the recoverable portion becomes the downstream rate
+ * used by Cost of Service calculations when the functional-allocation
+ * FBHR feature is enabled. Until then this layer is informational only
+ * and the existing FBHR engine continues to drive recovery math.
+ *
+ * This is intentionally distinct from CAP pools: CAP distributes shared
+ * support cost INTO departments; Functional Allocation classifies the
+ * resulting departmental cost as fee-recoverable vs. non-recoverable. */
+export interface FunctionalAllocationBucket {
+  id: string;
+  dept: DeptCode;
+  /** Operational bucket label (e.g. "Plan Check", "Public Counter").
+   *  Free-form so jurisdictions can match their organizational vocabulary. */
+  name: string;
+  /** Optional longer explanation surfaced in the drilldown. */
+  description?: string;
+  /** Fraction of this bucket's activity recovered through user fees,
+   *  as a percent (0–100). Drives recoverableCost and recoverableHours. */
+  recoverabilityPct: number;
+  /** Direct staff hours absorbed by this bucket per year. Recoverable
+   *  hours = directHours × recoverabilityPct / 100. */
+  directHours: number;
+  /** Row provenance — set at creation, not mutated by edits. */
+  source: SourceTag;
+  notes?: string;
+}
+
 /** Signal classification for recovery percent. */
 type SignalKey = "pos" | "warn" | "neg";
 
