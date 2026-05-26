@@ -1465,9 +1465,10 @@ function buildDeptRollup(comparisons: FeeComparison[]): Record<DeptCode, BuildDe
     out[d] = { totalCost: 0, currentRev: 0, intendedRev: 0, subsidy: 0, recoveryPct: 0 };
   }
   for (const c of comparisons) {
-    // PR-L3: skip non-countable rows so the per-dept rollup stays
-    // consistent with the global policyImpact aggregate.
-    if (!c.countable) continue;
+    // Skip non-recoverable rows so the per-dept rollup stays
+    // consistent with the global policyImpact aggregate. See
+    // isRecoverableFeeRow in lib/calc.ts.
+    if (!c.recoverable) continue;
     const r = out[c.dept];
     if (!r) continue;
     r.totalCost += c.annualCost;

@@ -1,7 +1,9 @@
 import type { Service } from "./types";
+import type { FeeComparison } from "./calc";
+import { isRecoverableFeeRow } from "./calc";
 import { fmt } from "./format";
 
-/* Fee-display layer (PR-L2).
+/* Fee-display layer.
  *
  * Pure helpers that route fee values to either a Service's *Text
  * override (when set) or the formatted numeric fallback. They exist so
@@ -12,36 +14,61 @@ import { fmt } from "./format";
  * the source of truth for math; these helpers only change what the
  * user sees.
  *
+ * The *Text fields these helpers read are INTERNAL INFRASTRUCTURE,
+ * not user-facing controls — they preserve imported fee-schedule
+ * wording for non-flat rows (formula / deposit / T&M / pass-through /
+ * statutory) and let the parser carry verbatim labels through to
+ * display + export without losing them. See the Service interface in
+ * lib/types.ts for the policy.
+ *
  * Empty string is treated as a deliberate display override (renders as
- * blank), not as "no override" — analysts use blank text to suppress
- * the numeric display for rows that intentionally have no published
- * fee. Use `undefined` when there's no override. */
+ * blank), not as "no override" — used to suppress a numeric display
+ * for rows that intentionally have no published fee. Use `undefined`
+ * when there's no override. */
 
-/** Display label for a service's currently-adopted fee.
- *  Falls back to `fmt.dollars(service.fee)`. */
+/** Display label for a service's currently-adopted fee. Prefers
+ *  `currentFeeText` when set, otherwise `fmt.dollars(service.fee)`. */
 export function displayCurrentFee(service: Service): string {
   if (service.currentFeeText != null) return service.currentFeeText;
   return fmt.dollars(service.fee);
 }
 
-/** Display label for the recommended fee. `computedRecommendation`
- *  is the numeric output of the cost/target math (unitCost × target/100,
- *  typically rounded), passed in because this helper doesn't recompute
- *  it from the Service. Falls back to `fmt.dollars(computedRecommendation)`. */
+/** Display label for the recommended fee. Prefers `recommendedFeeText`
+ *  when set, otherwise `fmt.dollars(comparison.recommended)`. When the
+ *  comparison is missing (or the row isn't recoverable and has no
+ *  override), renders an em-dash so the cell stays aligned without
+ *  showing a misleading numeric. */
 export function displayRecommendedFee(
   service: Service,
-  computedRecommendation: number,
+  comparison?: Pick<FeeComparison, "recommended">,
 ): string {
   if (service.recommendedFeeText != null) return service.recommendedFeeText;
-  return fmt.dollars(computedRecommendation);
+  if (!comparison) return "—";
+  // Non-flat rows with no numeric fee don't produce a meaningful
+  // recommendation; show em-dash rather than a misleading dollar
+  // figure derived from unitCost × target. Flat rows always compute
+  // a real recommendation. See isRecoverableFeeRow.
+  if (!isRecoverableFeeRow(service)) return "—";
+  return fmt.dollars(comparison.recommended);
 }
 
-/** Display label for the full-cost-recovery fee — the unit cost before
- *  policy target is applied. Falls back to `fmt.dollars(unitCost)`. */
-export function displayFullCostFee(
+/** Display label for the full-cost-of-service (unit cost before policy
+ *  target is applied). Prefers `fullCostRecoveryFeeText` when set,
+ *  otherwise `fmt.dollars(comparison.unitCost)`. Unit cost is always
+ *  meaningful (cost to deliver) regardless of recoverable status, so
+ *  this helper doesn't gate on isRecoverableFeeRow. */
+export function displayCostOfService(
   service: Service,
-  unitCost: number,
+  comparison?: Pick<FeeComparison, "unitCost">,
 ): string {
   if (service.fullCostRecoveryFeeText != null) return service.fullCostRecoveryFeeText;
-  return fmt.dollars(unitCost);
+  if (!comparison) return "—";
+  return fmt.dollars(comparison.unitCost);
+}
+
+/** @deprecated Use displayCostOfService. Kept for one cycle as an
+ *  adapter — accepts the old `(service, unitCost: number)` signature
+ *  and wraps the new helper. */
+export function displayFullCostFee(service: Service, unitCost: number): string {
+  return displayCostOfService(service, { unitCost });
 }

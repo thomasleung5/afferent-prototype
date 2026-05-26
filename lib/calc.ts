@@ -199,33 +199,51 @@ function targetFor(
   return t?.target ?? service.target ?? 100;
 }
 
-/** PR-L3 gate: does this fee row participate in recovery aggregates?
+/** Gate: does this fee row participate in recovery aggregates?
  *
- *  Returns true only for "flat" or "formula" rowKinds in lifecycle
- *  status "existing" / "new" / "renamed" / "moved". Returns false for:
- *    - rowKind "deposit" / "time-and-materials" / "pass-through" /
- *      "statutory" — `fee × volume` doesn't represent realized
- *      revenue for these, so summing them into currentRevenue /
- *      intendedRevenue / recoverableGap produces nonsense.
- *    - status "deleted" / "not-evaluated" — the row exists in the
- *      catalog for audit but shouldn't influence forward-looking
- *      recovery math.
+ *  Lifecycle gates (apply to every rowKind):
+ *    - status "deleted" / "not-evaluated" / "moved" → NOT recoverable.
+ *      Deleted and not-evaluated are obvious; "moved" rows are leaving
+ *      the source dept this cycle so their forward-looking recovery
+ *      math belongs to the destination, not the origin.
  *
- *  Undefined fields default to the legacy semantics ("flat" + "existing")
- *  so every existing seed row is countable — PR-L3 changes ZERO
- *  numbers for the current LAH / Maplewood baselines.
+ *  RowKind rules (when the lifecycle gate hasn't already excluded):
+ *    - "flat"     → recoverable. The legacy default.
+ *    - any other  → recoverable only when fee > 0 (a representative
+ *      numeric value is "explicitly present"). This is the escape
+ *      hatch: a deposit / T&M / pass-through / statutory / formula row
+ *      with an analyst-supplied fee value DOES contribute to
+ *      currentRevenue (fee × volume) because the value is real money
+ *      being collected. Without a numeric fee there's nothing
+ *      meaningful to roll up. Formula rows in particular treat their
+ *      `fee` as the representative-scenario anchor (e.g., bldg-sfr's
+ *      $13,500 typical-case fee at $1.5M valuation).
  *
- *  Non-countable rows still flow through serviceCosts / feeComparisons
- *  so per-row UI (cost, recommended, uplift) keeps rendering for
- *  display + audit. Only the policyImpact / buildDeptRollup totals
- *  filter them out. */
-export function isCountableFee(service: Service): boolean {
-  const kind = service.rowKind ?? "flat";
-  if (kind !== "flat" && kind !== "formula") return false;
+ *  Display text overrides (currentFeeText / recommendedFeeText /
+ *  fullCostRecoveryFeeText) do NOT affect this gate — they control
+ *  rendering only, never math. See displayCurrentFee /
+ *  displayRecommendedFee / displayCostOfService in lib/feeDisplay.ts.
+ *
+ *  Non-recoverable rows still flow through serviceCosts /
+ *  feeComparisons so per-row UI (cost, recommended, uplift) keeps
+ *  rendering for display + audit. Only the policyImpact /
+ *  buildDeptRollup aggregates filter on this flag. */
+export function isRecoverableFeeRow(service: Service): boolean {
   const status = service.status ?? "existing";
-  if (status === "deleted" || status === "not-evaluated") return false;
-  return true;
+  if (status === "deleted" || status === "not-evaluated" || status === "moved") {
+    return false;
+  }
+  const kind = service.rowKind ?? "flat";
+  if (kind === "flat") return true;
+  return service.fee > 0;
 }
+
+/** @deprecated Use isRecoverableFeeRow. Kept as an alias for one cycle so
+ *  any external consumer that grepped for the old PR-L3 name still
+ *  compiles. The behavior matches the new function (slightly broader
+ *  than the PR-L3 original — see isRecoverableFeeRow doc for the
+ *  refinements). */
+export const isCountableFee = isRecoverableFeeRow;
 
 export interface FeeComparison extends ServiceCost {
   recoveryPct: number;
@@ -242,12 +260,12 @@ export interface FeeComparison extends ServiceCost {
    *  when current fee exceeds target. Summing this across all rows reconciles
    *  with Recovery Policy's recoverableGap (same underlying math). */
   annualUplift: number;
-  /** PR-L3: derived from isCountableFee(service). When false, this row
-   *  is excluded from policyImpact + buildDeptRollup aggregates. Per-row
+  /** Derived from isRecoverableFeeRow(service). When false, this row is
+   *  excluded from policyImpact + buildDeptRollup aggregates. Per-row
    *  fields above (annualCost, annualRevenue, recommended, annualUplift)
    *  are still computed so per-row UI keeps working; only aggregates
    *  filter on this flag. */
-  countable: boolean;
+  recoverable: boolean;
 }
 
 export function feeComparisons(
@@ -270,7 +288,7 @@ export function feeComparisons(
       calculatedRecommendedFee,
       recommended,
       annualUplift: (calculatedRecommendedFee - c.fee) * c.volume,
-      countable: isCountableFee(svc),
+      recoverable: isRecoverableFeeRow(svc),
     };
   });
 }
@@ -292,12 +310,13 @@ export interface PolicyImpact {
 }
 
 export function policyImpact(comparisons: FeeComparison[]): PolicyImpact {
-  // PR-L3: skip non-countable rows (deposit / T&M / pass-through /
-  // statutory + deleted / not-evaluated). They flow through the
-  // per-row UI but don't pollute the aggregate recovery math.
+  // Skip non-recoverable rows (deposit/T&M/pass-through/statutory/formula
+  // without a numeric fee anchor + deleted/not-evaluated/moved). They
+  // flow through the per-row UI but don't pollute the aggregate
+  // recovery math. See isRecoverableFeeRow for the gate.
   let totalCost = 0, intendedRevenue = 0, currentRevenue = 0;
   for (const c of comparisons) {
-    if (!c.countable) continue;
+    if (!c.recoverable) continue;
     totalCost += c.annualCost;
     intendedRevenue += c.annualCost * (c.target / 100);
     currentRevenue += c.annualRevenue;

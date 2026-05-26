@@ -188,17 +188,39 @@ export interface Service {
   /** Lifecycle state of this row in the current study cycle. Defaults
    *  to "existing" semantics when undefined. */
   status?: FeeScheduleStatus;
-  /** Display label for the currently-adopted fee when it can't be
-   *  reduced to a single dollar amount. Takes display precedence over
-   *  `fee` when set. */
+  /* ── Display-text overrides — INTERNAL INFRASTRUCTURE ─────────────
+   *
+   * These three fields preserve verbatim imported fee-schedule wording
+   * for rows that don't reduce to a single dollar amount: formula
+   * (e.g., "Tiered (typ. $13,500 @ $1.5M valuation)"), statutory
+   * caps, deposit / T&M / pass-through, moved / deleted /
+   * not-evaluated rows that carry historical labels through to
+   * display + export.
+   *
+   * They are read by displayCurrentFee / displayRecommendedFee /
+   * displayCostOfService in lib/feeDisplay.ts and must continue to
+   * round-trip cleanly through imports, parser output, persisted
+   * state, and exports. The numeric `fee` / per-row computed
+   * `recommended` / `unitCost` values stay the source of truth for
+   * recovery math — these overrides never affect calculations, only
+   * rendering.
+   *
+   * NOT user-facing controls: there is no editor on the normal Fee
+   * Schedule UI for these. They are populated by the AI parser /
+   * import path or by hand-edited seed JSON, and surfaced through
+   * the display helpers. Surfacing them as form fields invites
+   * analysts to "override" computed display in ways that drift from
+   * the math, which is exactly the bug class these fields exist to
+   * solve when used correctly (as imported wording, not free
+   * editing).
+   *
+   * TODO: Reassess after pilot usage whether display override
+   * fields are still needed or can be collapsed into normalized fee
+   * display helpers. If most imports normalize cleanly without
+   * needing the override, we can shrink the type and route
+   * everything through deterministic formatters. */
   currentFeeText?: string;
-  /** Display label for the recommended fee when it can't be reduced to
-   *  a single dollar amount. Falls back to the computed recommendation
-   *  (unitCost × target/100) at display time when undefined. */
   recommendedFeeText?: string;
-  /** Display label for the full-cost-recovery fee when it can't be
-   *  reduced to a single dollar amount. Falls back to the computed
-   *  unit cost when undefined. */
   fullCostRecoveryFeeText?: string;
   /** Structured formula description for "formula" rowKind rows. When
    *  set, the display layer renders the formula breakdown instead of

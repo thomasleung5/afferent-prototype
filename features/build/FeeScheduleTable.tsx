@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, applyFilter, deriveDeptFilter,
@@ -16,7 +16,7 @@ import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 import { StateChip, type FeeState } from "@/components/ui";
 import {
-  displayCurrentFee, displayFullCostFee, displayRecommendedFee,
+  displayCostOfService, displayCurrentFee, displayRecommendedFee,
 } from "@/lib/feeDisplay";
 import { FormulaEditor } from "./FormulaEditor";
 
@@ -211,7 +211,7 @@ export function FeeScheduleTable() {
         const svc = svcById.get(r.id);
         return (
           <span className="num">
-            {svc ? displayFullCostFee(svc, r.unitCost) : fmt.dollars(r.unitCost)}
+            {svc ? displayCostOfService(svc, r) : fmt.dollars(r.unitCost)}
           </span>
         );
       },
@@ -224,13 +224,13 @@ export function FeeScheduleTable() {
       sortable: true,
       render: (r) => {
         const svc = svcById.get(r.id);
-        // Dim non-countable rows — recommended is per-row computed but
-        // doesn't roll into the recovery aggregates, so it shouldn't
-        // read as "the answer".
-        const color = r.countable ? "var(--accent)" : "var(--ink-4)";
+        // Dim non-recoverable rows — they don't roll into recovery
+        // aggregates and the display helper already returns "—" when
+        // the row is non-recoverable and has no text override.
+        const color = r.recoverable ? "var(--accent)" : "var(--ink-4)";
         return (
           <span className="num" style={{ color }}>
-            {svc ? displayRecommendedFee(svc, r.recommended) : fmt.dollars(r.recommended)}
+            {svc ? displayRecommendedFee(svc, r) : fmt.dollars(r.recommended)}
           </span>
         );
       },
@@ -264,10 +264,10 @@ export function FeeScheduleTable() {
       align: "right",
       sortable: true,
       render: (r) => {
-        // Non-countable rows: this number is computed for display but
-        // doesn't roll into the recovery aggregate, so render it muted
-        // with an em dash hint that it's informational only.
-        if (!r.countable) {
+        // Non-recoverable rows: the uplift number is computed for
+        // display but doesn't roll into the recovery aggregate, so
+        // render an em-dash to keep the column quiet.
+        if (!r.recoverable) {
           return <span className="num" style={{ color: "var(--ink-4)" }}>—</span>;
         }
         const color = r.annualUplift > 0 ? "var(--pos)" : r.annualUplift < 0 ? "var(--neg)" : "var(--ink-3)";
@@ -386,10 +386,10 @@ export function FeeScheduleTable() {
                 fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
               }}>
                 <div>{svc.hours} hrs × {fmt.dollars(fbhr)}/hr</div>
-                <div style={{ color: "var(--ink-3)" }}>= {displayFullCostFee(svc, r.unitCost)} unit cost</div>
+                <div style={{ color: "var(--ink-3)" }}>= {displayCostOfService(svc, r)} unit cost</div>
                 <div style={{ color: "var(--ink-3)" }}>× {r.target}% recovery target</div>
                 <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
-                  recommended: <b>{displayRecommendedFee(svc, r.recommended)}</b>
+                  recommended: <b>{displayRecommendedFee(svc, r)}</b>
                 </div>
               </div>
               {Math.abs(delta) >= 1 && (
@@ -480,10 +480,6 @@ export function FeeScheduleTable() {
                     onChange={(f) => updateService(r.id, { formula: f })}
                   />
                 </div>
-                <DisplayOverrides
-                  svc={svc}
-                  onPatch={(patch) => updateService(r.id, patch)}
-                />
               </div>
             </DrilldownColumn>
           </DrilldownShell>
@@ -529,78 +525,3 @@ function nonCountableChipLabel(service: Service): string | null {
   return null;
 }
 
-/** PR-M2: editors for the three *Text display overrides on Service.
- *  When set, these strings take display precedence over the numeric fee
- *  in feeDisplay helpers — used for fees that don't reduce to a single
- *  dollar amount (T&M w/ deposit, "5% of valuation", "Pass-through at
- *  actual cost"). Empty-string is a deliberate suppression (renders
- *  blank), not "no override" — that case is pinned by test:fee-display. */
-function DisplayOverrides({
-  svc, onPatch,
-}: {
-  svc: Service;
-  onPatch: (patch: Partial<Service>) => void;
-}) {
-  const setText = (
-    key: "currentFeeText" | "recommendedFeeText" | "fullCostRecoveryFeeText",
-    next: string,
-  ) => {
-    // Going from undefined → "" stays undefined so the cell renders the
-    // numeric fallback. Once set to any value (including ""), subsequent
-    // edits preserve "" as a deliberate suppression.
-    if (next === "" && svc[key] == null) {
-      onPatch({ [key]: undefined });
-    } else {
-      onPatch({ [key]: next });
-    }
-  };
-  return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>Display overrides</div>
-      <DisplayOverrideRow label="Current">
-        <CellInput
-          value={svc.currentFeeText ?? ""}
-          onChange={(v) => setText("currentFeeText", String(v))}
-          placeholder={`(numeric: $${svc.fee})`}
-          fontSize={12}
-        />
-      </DisplayOverrideRow>
-      <DisplayOverrideRow label="Recommended">
-        <CellInput
-          value={svc.recommendedFeeText ?? ""}
-          onChange={(v) => setText("recommendedFeeText", String(v))}
-          placeholder="(computed)"
-          fontSize={12}
-        />
-      </DisplayOverrideRow>
-      <DisplayOverrideRow label="Full cost">
-        <CellInput
-          value={svc.fullCostRecoveryFeeText ?? ""}
-          onChange={(v) => setText("fullCostRecoveryFeeText", String(v))}
-          placeholder="(computed)"
-          fontSize={12}
-        />
-      </DisplayOverrideRow>
-    </div>
-  );
-}
-
-function DisplayOverrideRow({
-  label, children,
-}: {
-  label: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 8, alignItems: "baseline" }}>
-      <span className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</span>
-      <div>{children}</div>
-    </div>
-  );
-}
