@@ -122,13 +122,13 @@ export function RateDerivation() {
       align: "right",
       render: (r) => (
         <span className="num" style={{ color: "var(--accent)" }}>
-          ${Math.round(r.fbhrTotal)}<span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>/hr</span>
+          ${Math.round(r.fbhrTotal)}
         </span>
       ),
     },
     {
       key: "productiveHours",
-      label: "Prod hrs/yr",
+      label: "Prd Hrs",
       width: "110px",
       align: "right",
       render: (r) => <span className="num">{fmt.int(r.productiveHours)}</span>,
@@ -149,24 +149,9 @@ export function RateDerivation() {
       label: "Utilization",
       width: "110px",
       align: "right",
-      render: (r) => {
-        // Subtle semantic styling per spec:
-        //   <85%   → underutilized, muted ink-3
-        //   85–100 → healthy, neutral ink
-        //   >100%  → over capacity, subtle warn (not bright red)
-        // Productive hrs == 0 falls into the <85% bucket and shows
-        // muted; that case is also the "missing productive hours"
-        // warning surface PR-K4 will flag explicitly.
-        const pct = r.utilizationPct;
-        const color = pct > 100 ? "var(--warn)"
-          : pct >= 85 ? "var(--ink)"
-          : "var(--ink-3)";
-        return (
-          <span className="num" style={{ color }}>
-            {Math.round(pct)}%
-          </span>
-        );
-      },
+      render: (r) => (
+        <span className="num">{Math.round(r.utilizationPct)}%</span>
+      ),
     },
   ];
 

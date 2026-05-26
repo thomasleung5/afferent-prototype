@@ -66,9 +66,3 @@ export function displayCostOfService(
   return fmt.dollars(comparison.unitCost);
 }
 
-/** @deprecated Use displayCostOfService. Kept for one cycle as an
- *  adapter — accepts the old `(service, unitCost: number)` signature
- *  and wraps the new helper. */
-export function displayFullCostFee(service: Service, unitCost: number): string {
-  return displayCostOfService(service, { unitCost });
-}

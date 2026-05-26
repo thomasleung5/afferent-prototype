@@ -79,12 +79,10 @@ export function OperatingTable() {
       width: "110px",
       sortable: true,
       render: (r) => (
-        <div style={{ opacity: r.include ? 1 : 0.45 }}>
-          <CellInput
-            value={r.code}
-            onChange={(v) => updateOperating(r.id, { code: String(v) })}
-          />
-        </div>
+        <span className="num" style={{
+          opacity: r.include ? 1 : 0.45,
+          color: "var(--ink-2)",
+        }}>{r.code}</span>
       ),
     },
     {
@@ -94,17 +92,13 @@ export function OperatingTable() {
       sortable: true,
       render: (r) => (
         <div style={{ opacity: r.include ? 1 : 0.45 }}>
-          <div style={{
+          <span style={{
+            color: "var(--ink-2)",
             textDecoration: r.include ? "none" : "line-through",
             textDecorationColor: "var(--ink-4)",
-          }}>
-            <CellInput
-              value={r.line}
-              onChange={(v) => updateOperating(r.id, { line: String(v) })}
-            />
-          </div>
+          }}>{r.line}</span>
           {!r.include && r.excludeReason && (
-            <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2, fontStyle: "italic", paddingLeft: 6 }}>
+            <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2, fontStyle: "italic" }}>
               Excluded: {r.excludeReason}
             </div>
           )}

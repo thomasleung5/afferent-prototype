@@ -10,8 +10,7 @@
 
 import assert from "node:assert/strict";
 import {
-  displayCostOfService, displayCurrentFee, displayFullCostFee,
-  displayRecommendedFee,
+  displayCostOfService, displayCurrentFee, displayRecommendedFee,
 } from "../feeDisplay";
 import type { Service } from "../types";
 
@@ -122,17 +121,7 @@ const baseService: Service = {
   console.log("  ✓ displayCostOfService comparison + override + missing-comparison");
 }
 
-// ── 7. displayFullCostFee deprecated adapter still works ────────────────
-{
-  // Old callers passing (service, unitCost: number) should still produce
-  // the right output via the back-compat adapter.
-  assert.equal(displayFullCostFee(baseService, 750), "$750");
-  const svc = { ...baseService, fullCostRecoveryFeeText: "Actual cost (T&M)" };
-  assert.equal(displayFullCostFee(svc, 750), "Actual cost (T&M)");
-  console.log("  ✓ displayFullCostFee deprecated adapter preserves old signature");
-}
-
-// ── 8. Override fields are independent of each other ────────────────────
+// ── 7. Override fields are independent of each other ───────────────────
 {
   const svc: Service = {
     ...baseService,

@@ -238,13 +238,6 @@ export function isRecoverableFeeRow(service: Service): boolean {
   return service.fee > 0;
 }
 
-/** @deprecated Use isRecoverableFeeRow. Kept as an alias for one cycle so
- *  any external consumer that grepped for the old PR-L3 name still
- *  compiles. The behavior matches the new function (slightly broader
- *  than the PR-L3 original — see isRecoverableFeeRow doc for the
- *  refinements). */
-export const isCountableFee = isRecoverableFeeRow;
-
 export interface FeeComparison extends ServiceCost {
   recoveryPct: number;
   target: number;

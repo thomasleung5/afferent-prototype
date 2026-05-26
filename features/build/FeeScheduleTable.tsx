@@ -112,7 +112,7 @@ export function FeeScheduleTable() {
               {chip && (
                 <span
                   className="mono"
-                  title="Excluded from recovery aggregates (see PR-L3 isCountableFee)"
+                  title="Excluded from recovery aggregates"
                   style={{
                     fontSize: "var(--t-l9)", letterSpacing: "0.08em",
                     color: "var(--ink-3)", textTransform: "uppercase",

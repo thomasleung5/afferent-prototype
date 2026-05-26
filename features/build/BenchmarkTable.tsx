@@ -12,7 +12,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import { useActiveJurisdiction } from "@/lib/active";
-import { displayCurrentFee, displayFullCostFee } from "@/lib/feeDisplay";
+import { displayCostOfService, displayCurrentFee } from "@/lib/feeDisplay";
 
 interface Row {
   id: string;
@@ -263,7 +263,7 @@ export function BenchmarkTable() {
                   <div style={{
                     borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
                   }}>
-                    <Line label="our unit cost" value={svc ? displayFullCostFee(svc, Math.round(r.cost)) : fmt.dollars(Math.round(r.cost))}/>
+                    <Line label="our unit cost" value={svc ? displayCostOfService(svc, { unitCost: Math.round(r.cost) }) : fmt.dollars(Math.round(r.cost))}/>
                     <Line
                       label="vs cost"
                       value={r.cost > 0 ? `${r.varianceVsCost > 0 ? "+" : ""}${Math.round(r.varianceVsCost)}%` : "—"}

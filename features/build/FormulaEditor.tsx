@@ -313,20 +313,3 @@ function FormulaSubField({ label, children }: { label: string; children: React.R
   );
 }
 
-/** Compact read-only summary of a formula. Used by both pages to
- *  describe a formula in a stub line. Returns a short label like
- *  "Tiered (5 tiers, basis: construction valuation)" or
- *  "Percentage 5% of construction valuation". */
-export function summarizeFormula(formula: FeeFormula | undefined): string {
-  if (!formula) return "(none — flat row)";
-  if (formula.kind === "tiered-valuation") {
-    return `Tiered (${formula.tiers.length} tier${formula.tiers.length === 1 ? "" : "s"}, basis: ${formula.basis})`;
-  }
-  if (formula.kind === "percentage") {
-    return `${formula.rate}% of ${formula.basis}`;
-  }
-  if (formula.kind === "per-unit") {
-    return `$${formula.rate} per ${formula.unit}`;
-  }
-  return `Expression: ${formula.text.length > 40 ? formula.text.slice(0, 37) + "…" : formula.text}`;
-}
