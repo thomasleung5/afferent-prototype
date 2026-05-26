@@ -1,5 +1,5 @@
 ﻿
-import React, { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
@@ -11,10 +11,8 @@ import {
   SectionLabel, SourcePill,
 } from "@/components/ui";
 import type {
-  DeptCode, FeeFormula,
-  ProductiveHoursRow, RoleAllocation, Service,
+  DeptCode, ProductiveHoursRow, RoleAllocation, Service,
 } from "@/lib/types";
-import { summarizeFormula } from "./FormulaEditor";
 import { useBuildState } from "@/lib/store";
 import {
   effectiveRoleAllocations, serviceCapacityWarnings,
@@ -275,6 +273,7 @@ export function ServicesTable() {
           const totalPct = mix.reduce((a, m) => a + m.pct, 0);
           const COLS = "minmax(220px, 1.5fr) 70px 80px 80px 28px";
           return (
+            <>
             <DrilldownShell>
               <DrilldownColumn marker="①" title="Role allocation">
                 <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
@@ -377,14 +376,22 @@ export function ServicesTable() {
                   </div>
                 </div>
               </DrilldownColumn>
-
-              <DrilldownColumn marker="②" title="Fee schedule metadata">
-                <FeeMetadataPanel
-                  service={r}
-                  onPatch={(patch) => updateService(r.id, patch)}
-                />
-              </DrilldownColumn>
             </DrilldownShell>
+            <div style={{
+              marginTop: 12, textAlign: "right",
+              fontSize: "var(--t-l8)",
+            }}>
+              <Link
+                to="/build/feestudy"
+                search={{ serviceId: r.id }}
+                onClick={(e) => e.stopPropagation()}
+                style={{
+                  color: "var(--ink-3)",
+                  textDecoration: "underline", textUnderlineOffset: 3,
+                }}
+              >Open fee schedule →</Link>
+            </div>
+          </>
           );
         }}
       />
@@ -392,89 +399,6 @@ export function ServicesTable() {
   );
 }
 
-/** Catalog metadata editor that sits in the second drilldown column on
- *  ServicesTable. After the M-series workflow realignment, this panel
- *  owns the fields that genuinely belong to "what is this service" —
- *  category, subcategory, legalAuthority, notes — and surfaces stubs
- *  with cross-links to the fields edited on sister pages:
- *    * formula → edited on Fee Schedule (PR-M2)
- *    * rowKind + status → edited on Fee Schedule (PR-M3)
- *    * currentFeeText / recommendedFeeText / fullCostRecoveryFeeText →
- *      edited on Fee Schedule (PR-M2)
- *    * peerSurvey → edited on Fee Benchmark (PR-M1) */
-function FeeMetadataPanel({
-  service, onPatch,
-}: {
-  service: Service;
-  onPatch: (patch: Partial<Service>) => void;
-}) {
-  const Field = ({ label, children }: { label: string; children: React.ReactNode }) => (
-    <div style={{ display: "grid", gridTemplateColumns: "120px 1fr", gap: 10, alignItems: "baseline" }}>
-      <span className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</span>
-      <div>{children}</div>
-    </div>
-  );
-
-  const notesText = (service.notes ?? []).join("\n");
-
-  return (
-    <div style={{
-      border: "1px solid var(--rule)", background: "var(--paper)",
-      padding: "12px 14px", display: "flex", flexDirection: "column", gap: 10,
-      fontSize: 12,
-    }}>
-      <Field label="Category">
-        <CellInput
-          value={service.category ?? ""}
-          onChange={(v) => onPatch({ category: String(v) || undefined })}
-          placeholder="e.g. Planning & Zoning"
-        />
-      </Field>
-      <Field label="Subcategory">
-        <CellInput
-          value={service.subcategory ?? ""}
-          onChange={(v) => onPatch({ subcategory: String(v) || undefined })}
-          placeholder="e.g. Discretionary Permits"
-        />
-      </Field>
-      <Field label="Legal authority">
-        <CellInput
-          value={service.legalAuthority ?? ""}
-          onChange={(v) => onPatch({ legalAuthority: String(v) || undefined })}
-          placeholder="e.g. CA Gov Code §66014"
-        />
-      </Field>
-      <Field label="Notes">
-        <textarea
-          value={notesText}
-          onChange={(e) => {
-            const lines = e.target.value.split("\n").map((s) => s.trim()).filter(Boolean);
-            onPatch({ notes: lines.length > 0 ? lines : undefined });
-          }}
-          onClick={(e) => e.stopPropagation()}
-          placeholder="One note per line"
-          rows={3}
-          style={{
-            width: "100%", resize: "vertical",
-            padding: "4px 6px", fontSize: 12, lineHeight: 1.4,
-            fontFamily: "inherit", color: "var(--ink)",
-            background: "var(--paper-2)", border: "1px solid var(--rule)",
-            outline: "none",
-          }}
-        />
-      </Field>
-      <Field label="Formula">
-        <FormulaStub serviceId={service.id} formula={service.formula}/>
-      </Field>
-      <Field label="Peer survey">
-        <PeerSurveyStub serviceId={service.id} count={service.peerSurvey?.length ?? 0}/>
-      </Field>
-    </div>
-  );
-}
 
 /** Inline human-readable copy for a per-service capacity warning. Kept
  *  short so it fits in the service name cell's secondary line under
@@ -506,49 +430,3 @@ function buildPositionOptions(
     .map((p) => ({ value: p.id, label: `${p.title} (${p.dept})` }));
 }
 
-/** PR-M1: read-only summary for service.peerSurvey on the Services
- *  drilldown. The editor itself lives on the Fee Benchmark page now —
- *  per-agency peer rows are conceptually a benchmark concern, not a
- *  service-catalog concern, and entering them where you can see the
- *  median / variance refresh in real time is the better workflow. */
-/** PR-M2: read-only summary for service.formula on the Services drilldown.
- *  The editor itself lives on the Fee Schedule page now — fee structure
- *  (tiered / percentage / per-unit / expression) is a policy decision, not
- *  a service-catalog concern. */
-function FormulaStub({ serviceId, formula }: { serviceId: string; formula: FeeFormula | undefined }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-      <span style={{ color: formula ? "var(--ink-2)" : "var(--ink-4)" }}>
-        {summarizeFormula(formula)}
-      </span>
-      <Link
-        to="/build/feestudy"
-        search={{ serviceId }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          fontSize: "var(--t-l8)", color: "var(--accent)",
-          textDecoration: "underline", textUnderlineOffset: 3,
-        }}
-      >Edit in Fee Schedule →</Link>
-    </span>
-  );
-}
-
-function PeerSurveyStub({ serviceId, count }: { serviceId: string; count: number }) {
-  return (
-    <span style={{ display: "inline-flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-      <span style={{ color: count > 0 ? "var(--ink-2)" : "var(--ink-4)" }}>
-        {count > 0 ? `${count} agency value${count === 1 ? "" : "s"}` : "(no entries)"}
-      </span>
-      <Link
-        to="/build/benchmark"
-        search={{ serviceId }}
-        onClick={(e) => e.stopPropagation()}
-        style={{
-          fontSize: "var(--t-l8)", color: "var(--accent)",
-          textDecoration: "underline", textUnderlineOffset: 3,
-        }}
-      >Edit in Fee Benchmark →</Link>
-    </span>
-  );
-}
