@@ -1,5 +1,5 @@
 ﻿
-import { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
   DataTable, applyFilter, deriveDeptFilter,
@@ -16,6 +16,7 @@ import { StateChip, type FeeState } from "@/components/ui";
 import {
   displayCurrentFee, displayFullCostFee, displayRecommendedFee,
 } from "@/lib/feeDisplay";
+import { FormulaEditor } from "./FormulaEditor";
 
 type Confidence = "high" | "med" | "low";
 
@@ -439,6 +440,25 @@ export function FeeScheduleTable() {
                 </Link>
               </div>
             </DrilldownColumn>
+
+            <DrilldownColumn marker="④" title="Structure & display">
+              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+                <div>
+                  <div className="mono" style={{
+                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                    color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
+                  }}>Formula</div>
+                  <FormulaEditor
+                    value={svc.formula}
+                    onChange={(f) => updateService(r.id, { formula: f })}
+                  />
+                </div>
+                <DisplayOverrides
+                  svc={svc}
+                  onPatch={(patch) => updateService(r.id, patch)}
+                />
+              </div>
+            </DrilldownColumn>
           </DrilldownShell>
         );
       }}
@@ -462,4 +482,80 @@ function nonCountableChipLabel(service: Service): string | null {
   if (kind === "pass-through")       return "pass-through";
   if (kind === "statutory")          return "statutory";
   return null;
+}
+
+/** PR-M2: editors for the three *Text display overrides on Service.
+ *  When set, these strings take display precedence over the numeric fee
+ *  in feeDisplay helpers — used for fees that don't reduce to a single
+ *  dollar amount (T&M w/ deposit, "5% of valuation", "Pass-through at
+ *  actual cost"). Empty-string is a deliberate suppression (renders
+ *  blank), not "no override" — that case is pinned by test:fee-display. */
+function DisplayOverrides({
+  svc, onPatch,
+}: {
+  svc: Service;
+  onPatch: (patch: Partial<Service>) => void;
+}) {
+  const setText = (
+    key: "currentFeeText" | "recommendedFeeText" | "fullCostRecoveryFeeText",
+    next: string,
+  ) => {
+    // Going from undefined → "" stays undefined so the cell renders the
+    // numeric fallback. Once set to any value (including ""), subsequent
+    // edits preserve "" as a deliberate suppression.
+    if (next === "" && svc[key] == null) {
+      onPatch({ [key]: undefined });
+    } else {
+      onPatch({ [key]: next });
+    }
+  };
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+      <div className="mono" style={{
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+        color: "var(--ink-3)", textTransform: "uppercase",
+      }}>Display overrides</div>
+      <DisplayOverrideRow label="Current">
+        <CellInput
+          value={svc.currentFeeText ?? ""}
+          onChange={(v) => setText("currentFeeText", String(v))}
+          placeholder={`(numeric: $${svc.fee})`}
+          fontSize={12}
+        />
+      </DisplayOverrideRow>
+      <DisplayOverrideRow label="Recommended">
+        <CellInput
+          value={svc.recommendedFeeText ?? ""}
+          onChange={(v) => setText("recommendedFeeText", String(v))}
+          placeholder="(computed)"
+          fontSize={12}
+        />
+      </DisplayOverrideRow>
+      <DisplayOverrideRow label="Full cost">
+        <CellInput
+          value={svc.fullCostRecoveryFeeText ?? ""}
+          onChange={(v) => setText("fullCostRecoveryFeeText", String(v))}
+          placeholder="(computed)"
+          fontSize={12}
+        />
+      </DisplayOverrideRow>
+    </div>
+  );
+}
+
+function DisplayOverrideRow({
+  label, children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <div style={{ display: "grid", gridTemplateColumns: "100px 1fr", gap: 8, alignItems: "baseline" }}>
+      <span className="mono" style={{
+        fontSize: "var(--t-l9)", letterSpacing: "0.04em",
+        color: "var(--ink-3)", textTransform: "uppercase",
+      }}>{label}</span>
+      <div>{children}</div>
+    </div>
+  );
 }
