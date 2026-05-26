@@ -1,7 +1,7 @@
 ﻿
 import { useMemo, useState } from "react";
 import {
-  DataTable, type Column,
+  DataTable, Ledger, type Column,
 } from "@/components/table";
 import {
   DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
@@ -135,8 +135,8 @@ export function RateDerivation() {
     },
     {
       key: "allocatedHours",
-      label: "Allocated hrs",
-      width: "120px",
+      label: "Allocated hours",
+      width: "130px",
       align: "right",
       render: (r) => (
         <span className="num" style={{ color: "var(--ink-2)" }}>
@@ -190,56 +190,60 @@ export function RateDerivation() {
         const totalCAP = allocRows.reduce((a, x) => a + x.allocated, 0);
         return (
           <DrilldownShell>
-            <DrilldownColumn marker="①" title="Direct $/hr · from salary">
+            <DrilldownColumn marker="①" title="Rate construction">
+              <Ledger
+                cols={[
+                  { key: "category", label: "Category", width: "1fr" },
+                  { key: "amount",   label: "Amount",   width: "90px",  align: "right" },
+                  { key: "rate",     label: "Rate",     width: "90px",  align: "right" },
+                ]}
+                rows={[
+                  {
+                    key: "labor",
+                    cells: {
+                      category: <span style={{ color: "var(--ink)" }}>Direct Labor</span>,
+                      amount: <span className="num">{fmt.dollarsK(f.directDollars)}</span>,
+                      rate:   <span className="num">${Math.round(f.directRate)}/hr</span>,
+                    },
+                  },
+                  {
+                    key: "operating",
+                    cells: {
+                      category: <span style={{ color: "var(--ink)" }}>Operating</span>,
+                      amount: <span className="num">{fmt.dollarsK(f.operatingDollars)}</span>,
+                      rate:   <span className="num">${Math.round(f.operatingRate)}/hr</span>,
+                    },
+                  },
+                  {
+                    key: "overhead",
+                    cells: {
+                      category: <span style={{ color: "var(--ink)" }}>Overhead Cost Allocation</span>,
+                      amount: <span className="num">{fmt.dollarsK(f.capDollars)}</span>,
+                      rate:   <span className="num">${Math.round(f.capRate)}/hr</span>,
+                    },
+                  },
+                ]}
+                total={{
+                  category: <span>FBHR</span>,
+                  amount: "",
+                  rate: (
+                    <span className="num" style={{ color: "var(--accent)" }}>
+                      ${Math.round(f.fbhr)}/hr
+                    </span>
+                  ),
+                }}
+              />
               <div style={{
-                padding: "12px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
+                marginTop: 8, fontSize: "var(--t-l8)", color: "var(--ink-3)", lineHeight: 1.5,
               }}>
-                <div>salary + benefits: <b>{fmt.dollars(Math.round(f.directDollars))}</b></div>
-                <div>÷ productive hrs: <b>{f.productiveHours.toFixed(0)}</b></div>
-                <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6 }}>
-                  direct $/hr = <b>${Math.round(f.directRate)}</b>
-                </div>
+                All rates based on {fmt.int(f.productiveHours)} productive hours.
               </div>
             </DrilldownColumn>
 
-            <DrilldownColumn marker="②" title="Rate composition">
-              <div style={{
-                padding: "12px 14px", background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.9,
-              }}>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>direct $/hr</span>
-                  <b>${Math.round(f.directRate)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ operating $/hr</span>
-                  <b>${Math.round(f.operatingRate)}</b>
-                </div>
-                <div style={{ display: "flex", justifyContent: "space-between" }}>
-                  <span style={{ color: "var(--ink-3)" }}>+ overhead cost allocation $/hr</span>
-                  <b>${Math.round(f.capRate)}</b>
-                </div>
-                <div style={{
-                  borderTop: "1px solid var(--rule)", paddingTop: 6, marginTop: 6,
-                  display: "flex", justifyContent: "space-between",
-                }}>
-                  <span>FBHR</span>
-                  <b style={{ color: "var(--accent)" }}>${Math.round(f.fbhr)}</b>
-                </div>
-              </div>
-              <div style={{ marginTop: 12, fontSize: 12, color: "var(--ink-3)", lineHeight: 1.55 }}>
-                Operating + overhead cost allocation ={" "}
-                {fmt.dollars(Math.round(f.operatingDollars + f.capDollars))} ÷{" "}
-                {f.productiveHours.toFixed(0)} hrs.
-              </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="③" title="Overhead cost allocation pools feeding this rate">
+            <DrilldownColumn marker="②" title="Overhead allocation drivers">
               <div style={{
                 background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.5,
+                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.4,
               }}>
                 {allocRows.slice(0, 6).map((ar, i) => {
                   const pool = capPools.find((p) => p.id === ar.poolId);
@@ -250,11 +254,15 @@ export function RateDerivation() {
                       borderBottom: i < Math.min(allocRows.length, 6) - 1 ? "1px solid var(--rule)" : "none",
                       alignItems: "baseline",
                     }}>
-                      <span style={{ minWidth: 0, overflowWrap: "anywhere" }}>
+                      <span
+                        title={pool?.basis ?? undefined}
+                        style={{ color: "var(--ink)", minWidth: 0, overflowWrap: "anywhere" }}
+                      >
                         {pool?.pool ?? ar.poolId}
-                        <span style={{ color: "var(--ink-4)", marginLeft: 5 }}>· {pool?.basis ?? "—"}</span>
                       </span>
-                      <span style={{ fontWeight: 500, whiteSpace: "nowrap" }}>{fmt.dollarsK(ar.allocated)}</span>
+                      <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: "var(--ink)" }}>
+                        {fmt.dollarsK(ar.allocated)}
+                      </span>
                     </div>
                   );
                 })}
@@ -268,7 +276,7 @@ export function RateDerivation() {
                   padding: "10px 12px", borderTop: "2px solid var(--ink)",
                   fontWeight: 700,
                 }}>
-                  <span>Total CAP → {r.deptName}</span>
+                  <span>Total overhead → {r.deptName}</span>
                   <span>{fmt.dollarsK(totalCAP)}</span>
                 </div>
               </div>
