@@ -27,6 +27,7 @@ import { SEED_ALLOCATION_BASES } from "../data/allocationBasesCatalog";
 import { DEFAULT_STUDY_CONTEXT } from "../data/studyContext";
 import { DEFAULT_JURISDICTION_ID } from "../data/jurisdictions";
 import { IMPORTS } from "../data/imports";
+import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
 
 // ── 1. Empty state ────────────────────────────────────────────────────────
 {
@@ -46,6 +47,13 @@ import { IMPORTS } from "../data/imports";
   assert.equal((state.imports as unknown[]).length, IMPORTS.length);
   assert.ok(Array.isArray(state.allocationBases));
   assert.equal((state.allocationBases as unknown[]).length, SEED_ALLOCATION_BASES.length);
+  assert.ok(Array.isArray(state.functionalAllocation),
+    "PR-FA2: functionalAllocation backfilled from seed when missing");
+  assert.equal(
+    (state.functionalAllocation as unknown[]).length,
+    FUNCTIONAL_ALLOCATION_SEED.length,
+    "PR-FA2: functionalAllocation seed restored in full",
+  );
   assert.ok(Array.isArray(state.versions));
   assert.equal((state.versions as unknown[]).length, 1);
   console.log("  ✓ empty state seeded across every backfill");

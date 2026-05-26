@@ -14,10 +14,12 @@ import { VOLUME } from "@/lib/data/volume";
 import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import { IMPORTS } from "@/lib/data/imports";
+import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
-  DirectAllocationRow, OperatingLine, PolicyException, PolicyTarget,
-  Position, ProductiveHoursRow, RoleAllocation, Service, SourceTag, VolumeRow,
+  DirectAllocationRow, FunctionalAllocationBucket, OperatingLine,
+  PolicyException, PolicyTarget, Position, ProductiveHoursRow,
+  RoleAllocation, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import {
   deptLabor, deptOperating, deptFBHR, feeComparisons, policyImpact, serviceCosts,
@@ -101,6 +103,11 @@ export interface BuildSnapshot {
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
+  /** Functional Allocation buckets — operational classifications of
+   *  departmental fully burdened cost into fee-recoverable vs.
+   *  non-recoverable work. Persisted as raw row data; recoverable cost,
+   *  hours, and implied FBHR are derived per-render (see PR-FA3). */
+  functionalAllocation: FunctionalAllocationBucket[];
   activeJurisdictionId: string;
   activeFiscalYear: string;
 }
@@ -171,6 +178,8 @@ export interface BuildState {
   pendingReview: Record<Domain, UnmappedRow[]>;
   capCenterOrder: string[];
   imports: BuildImportLog[];
+  /** See BuildSnapshot.functionalAllocation. */
+  functionalAllocation: FunctionalAllocationBucket[];
   versions: StudyVersion[];
   comparisonVersionId: string | null;
   /** Active demo jurisdiction the UI is bound to. Read via
@@ -277,6 +286,14 @@ interface BuildActions {
   setActiveFiscalYear: (fy: string) => void;
   createVersion: (input?: { label?: string; status?: StudyVersionStatus; notes?: string }) => StudyVersion;
   setComparisonVersion: (id: string | null) => void;
+  /** Edit one Functional Allocation bucket (name, description,
+   *  recoverabilityPct, directHours, notes). The dept is intentionally
+   *  not patchable — moving a bucket to another dept would silently
+   *  rebalance recoverable hours / cost away from the original dept's
+   *  derived FBHR, which is almost always a destructive surprise. */
+  updateFunctionalAllocation: (id: string, patch: Partial<FunctionalAllocationBucket>) => void;
+  addFunctionalAllocation: (dept: DeptCode) => void;
+  removeFunctionalAllocation: (id: string) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -541,6 +558,7 @@ const initialState = (): BuildState => {
     // backfill in storeMigration).
     capCenterOrder: Object.keys(CAP_CENTER_TOTALS),
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
+    functionalAllocation: FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
@@ -1279,6 +1297,33 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           comparisonVersionId: id && s.versions.some((v) => v.id === id) ? id : null,
         })),
 
+      updateFunctionalAllocation: (id, patch) =>
+        set((s) => ({
+          functionalAllocation: s.functionalAllocation.map((b) =>
+            b.id === id ? { ...b, ...patch, id: b.id, dept: b.dept } : b,
+          ),
+        })),
+
+      addFunctionalAllocation: (dept) =>
+        set((s) => ({
+          functionalAllocation: [
+            ...s.functionalAllocation,
+            {
+              id: `fa-${dept.toLowerCase()}-${Date.now()}`,
+              dept,
+              name: "New functional bucket",
+              recoverabilityPct: 100,
+              directHours: 0,
+              source: "manual",
+            },
+          ],
+        })),
+
+      removeFunctionalAllocation: (id) =>
+        set((s) => ({
+          functionalAllocation: s.functionalAllocation.filter((b) => b.id !== id),
+        })),
+
       resetAll: () => {
         try { localStorage.removeItem(STORAGE_KEY); } catch { /* ignore */ }
         set(initialState());
@@ -1307,6 +1352,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           pendingReview: { ...emptyPending },
           capCenterOrder: [],
           imports: [],
+          functionalAllocation: [],
           versions: [],
           comparisonVersionId: null,
         });

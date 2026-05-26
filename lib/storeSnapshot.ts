@@ -33,6 +33,7 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     pendingReview: state.pendingReview,
     capCenterOrder: state.capCenterOrder,
     imports: state.imports,
+    functionalAllocation: state.functionalAllocation,
     activeJurisdictionId: state.activeJurisdictionId,
     activeFiscalYear: state.activeFiscalYear,
   });

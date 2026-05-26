@@ -3,6 +3,7 @@ import {
 } from "@/lib/data/cap";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { IMPORTS } from "@/lib/data/imports";
+import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
@@ -192,6 +193,14 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     state.imports = IMPORTS.map((e) => ({
       ...e, result: { ...e.result, warnings: [...e.result.warnings] },
     }));
+  }
+
+  // PR-FA2: seed functional-allocation buckets on stores that pre-date
+  // the slice. Empty array is treated as a deliberate clear (consistent
+  // with the imports + allocationBases backfill pattern above) — only
+  // null / undefined triggers re-seeding.
+  if (state.functionalAllocation == null) {
+    state.functionalAllocation = FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b }));
   }
 
   // capCenterSources default — keyed by center identity (glCode or synth),
