@@ -2,7 +2,7 @@
 import { useEffect, useMemo, useState } from "react";
 import { Link, useSearch } from "@tanstack/react-router";
 import {
-  DataTable, Ledger, deriveDeptFilter, applyFilter,
+  DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
@@ -13,6 +13,7 @@ import type { DeptCode } from "@/lib/types";
 import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { ServiceCost } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
+import { RateConstruction } from "./RateDerivation";
 
 interface Row extends ServiceCost {
   rate: number;
@@ -177,53 +178,7 @@ export function CostOfServiceTable() {
             </DrilldownColumn>
 
             <DrilldownColumn marker="②" title="Rate construction">
-              <Ledger
-                cols={[
-                  { key: "category", label: "Category", width: "1fr" },
-                  { key: "amount",   label: "Amount",   width: "90px",  align: "right" },
-                  { key: "rate",     label: "Rate",     width: "90px",  align: "right" },
-                ]}
-                rows={[
-                  {
-                    key: "labor",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Direct Labor</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.directDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.directRate)}/hr</span>,
-                    },
-                  },
-                  {
-                    key: "operating",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Operating</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.operatingDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.operatingRate)}/hr</span>,
-                    },
-                  },
-                  {
-                    key: "overhead",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Overhead Cost Allocation</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.capDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.capRate)}/hr</span>,
-                    },
-                  },
-                ]}
-                total={{
-                  category: <span>FBHR</span>,
-                  amount: "",
-                  rate: (
-                    <span className="num" style={{ color: "var(--accent)" }}>
-                      ${Math.round(f.fbhr)}/hr
-                    </span>
-                  ),
-                }}
-              />
-              <div style={{
-                marginTop: 8, fontSize: "var(--t-l8)", color: "var(--ink-3)", lineHeight: 1.5,
-              }}>
-                All rates based on {fmt.int(f.productiveHours)} productive hours.
-              </div>
+              <RateConstruction fbhr={f}/>
             </DrilldownColumn>
 
             <DrilldownColumn marker="③" title="Overhead allocation drivers">

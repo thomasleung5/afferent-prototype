@@ -65,7 +65,7 @@ export function LaborSummary() {
             cols={[
               { key: "account", label: "Account", width: "1fr" },
               { key: "share",   label: "Share",   width: "90px",  align: "right" },
-              { key: "comp",    label: "Comp",    width: "130px", align: "right" },
+              { key: "comp",    label: "Amount",  width: "130px", align: "right" },
             ]}
             rows={ledger.map((p) => {
               const pct = r.totalComp > 0 ? Math.round((p.comp / r.totalComp) * 100) : 0;

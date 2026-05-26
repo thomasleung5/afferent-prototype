@@ -1,7 +1,7 @@
 ﻿
 import { useMemo, useState } from "react";
 import {
-  DataTable, Ledger, type Column,
+  DataTable, type Column,
 } from "@/components/table";
 import {
   DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
@@ -191,53 +191,7 @@ export function RateDerivation() {
         return (
           <DrilldownShell>
             <DrilldownColumn marker="①" title="Rate construction">
-              <Ledger
-                cols={[
-                  { key: "category", label: "Category", width: "1fr" },
-                  { key: "amount",   label: "Amount",   width: "90px",  align: "right" },
-                  { key: "rate",     label: "Rate",     width: "90px",  align: "right" },
-                ]}
-                rows={[
-                  {
-                    key: "labor",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Direct Labor</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.directDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.directRate)}/hr</span>,
-                    },
-                  },
-                  {
-                    key: "operating",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Operating</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.operatingDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.operatingRate)}/hr</span>,
-                    },
-                  },
-                  {
-                    key: "overhead",
-                    cells: {
-                      category: <span style={{ color: "var(--ink)" }}>Overhead Cost Allocation</span>,
-                      amount: <span className="num">{fmt.dollarsK(f.capDollars)}</span>,
-                      rate:   <span className="num">${Math.round(f.capRate)}/hr</span>,
-                    },
-                  },
-                ]}
-                total={{
-                  category: <span>FBHR</span>,
-                  amount: "",
-                  rate: (
-                    <span className="num" style={{ color: "var(--accent)" }}>
-                      ${Math.round(f.fbhr)}/hr
-                    </span>
-                  ),
-                }}
-              />
-              <div style={{
-                marginTop: 8, fontSize: "var(--t-l8)", color: "var(--ink-3)", lineHeight: 1.5,
-              }}>
-                All rates based on {fmt.int(f.productiveHours)} productive hours.
-              </div>
+              <RateConstruction fbhr={f}/>
             </DrilldownColumn>
 
             <DrilldownColumn marker="②" title="Overhead allocation drivers">
@@ -298,4 +252,47 @@ function formatDeptWarning(w: DeptCapacityWarning): string {
     return `Utilization ${Math.round(w.pct)}% — over capacity (>125%)`;
   }
   return `${fmt.int(w.allocated)} demand hrs against 0 productive hours`;
+}
+
+/** Compact three-column rate buildup (Direct Labor + Operating + Overhead
+ *  → FBHR). Visual treatment mirrors the sibling drilldown sub-tables
+ *  on this page (Overhead Allocation Drivers, Service · Hours · Rate):
+ *  mono, fontSize 12, no header row, --paper bg + --rule border, 2px
+ *  --ink top border on the total. */
+export function RateConstruction({ fbhr }: { fbhr: FBHR }) {
+  const GRID = "1fr 90px 90px";
+  const ROW_PAD = "7px 12px";
+  const rows: Array<{ category: string; amount: number; rate: number }> = [
+    { category: "Direct Labor",             amount: fbhr.directDollars,    rate: fbhr.directRate },
+    { category: "Operating",                amount: fbhr.operatingDollars, rate: fbhr.operatingRate },
+    { category: "Overhead Cost Allocation", amount: fbhr.capDollars,       rate: fbhr.capRate },
+  ];
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--rule)",
+      fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.4,
+    }}>
+      {rows.map((r, i) => (
+        <div key={r.category} style={{
+          display: "grid", gridTemplateColumns: GRID, gap: 12,
+          padding: ROW_PAD,
+          borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : "none",
+          alignItems: "baseline",
+        }}>
+          <span style={{ color: "var(--ink)" }}>{r.category}</span>
+          <span style={{ textAlign: "right" }}>{fmt.dollarsK(r.amount)}</span>
+          <span style={{ textAlign: "right" }}>${Math.round(r.rate)}/hr</span>
+        </div>
+      ))}
+      <div style={{
+        display: "grid", gridTemplateColumns: GRID, gap: 12,
+        padding: "10px 12px", borderTop: "2px solid var(--ink)",
+        fontWeight: 700, alignItems: "baseline",
+      }}>
+        <span>FBHR</span>
+        <span/>
+        <span style={{ textAlign: "right", color: "var(--accent)" }}>${Math.round(fbhr.fbhr)}/hr</span>
+      </div>
+    </div>
+  );
 }

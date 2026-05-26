@@ -14,37 +14,15 @@ import type {
 } from "@/lib/types";
 import type { FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
-import { StateChip, type FeeState } from "@/components/ui";
 import {
   displayCostOfService, displayCurrentFee, displayRecommendedFee,
 } from "@/lib/feeDisplay";
 import { FormulaEditor } from "./FormulaEditor";
 
-type Confidence = "high" | "med" | "low";
-
-interface Row extends FeeComparison {
-  confidence: Confidence;
-  state: FeeState;
-  flag: boolean;
-}
-
-const STATE_RANK: Record<FeeState, number> = {
-  PENDING: 0, REVIEWED: 1, READY: 2, ADOPTED: 3, DEFERRED: 4,
-};
-
-function confidenceFor(
-  volume: number, hours: number, recoveryNow: number, cost: number,
-): Confidence {
-  if (volume === 0 || hours === 0) return "low";
-  if (recoveryNow > 200 || hours < 0.1) return "low";
-  if (volume < 5 || cost < 50) return "med";
-  return "high";
-}
+type Row = FeeComparison;
 
 export function FeeScheduleTable() {
   const { services, derived, updateService } = useBuildState();
-  const [stateMap, setStateMap] = useState<Record<string, FeeState>>({});
-  const [filter, setFilter] = useState("ALL");
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
 
@@ -56,7 +34,6 @@ export function FeeScheduleTable() {
   useEffect(() => {
     if (!serviceId) return;
     if (!derived.comparisons.some((c) => c.id === serviceId)) return;
-    setFilter("ALL");
     setDeptFilter("ALL");
     setOpenId(serviceId);
     const handle = window.setTimeout(() => {
@@ -69,9 +46,6 @@ export function FeeScheduleTable() {
     return () => window.clearTimeout(handle);
   }, [serviceId, derived.comparisons]);
 
-  const stateFor = (id: string): FeeState => stateMap[id] ?? "PENDING";
-  const setState = (id: string, st: FeeState) => setStateMap((s) => ({ ...s, [id]: st }));
-
   // FeeComparison doesn't carry `peer`, so look it up from services — same
   // source the Fee Benchmark tab reads from. Keeps the column aligned with
   // the drilldown's `svc.peer`.
@@ -80,67 +54,28 @@ export function FeeScheduleTable() {
     [services],
   );
   // Full Service lookup for the PR-L2 display helpers (currentFeeText,
-  // recommendedFeeText, fullCostRecoveryFeeText overrides). The
-  // FeeComparison rows in `enriched` don't carry these text overrides,
-  // so each fee/cost/recommended cell looks the Service up by id at
-  // render time. Math (annualUplift, recoveryPct, etc.) still uses the
-  // numeric fields off FeeComparison — display routing only.
+  // recommendedFeeText, fullCostRecoveryFeeText overrides) plus the
+  // PR-L4 fee identity columns (feeNo, unit). The FeeComparison rows
+  // don't carry these fields, so each cell looks the Service up by id
+  // at render time. Math (annualUplift, recoveryPct, etc.) still uses
+  // the numeric fields off FeeComparison — display routing only.
   const svcById = useMemo(
     () => new Map(services.map((s) => [s.id, s])),
     [services],
   );
 
-  const enriched: Row[] = useMemo(() => derived.comparisons.map((c) => {
-    const confidence = confidenceFor(c.volume, c.hours, c.recoveryPct, c.unitCost);
-    return {
-      ...c,
-      confidence,
-      state: stateFor(c.id),
-      flag: confidence === "low",
-    };
-  }), [derived.comparisons, stateMap]);
-
-  const filtered = useMemo(() => {
-    let out = applyFilter(enriched, "dept", deptFilter);
-    if (filter === "LOW")     out = out.filter((r) => r.confidence === "low");
-    if (filter === "PENDING") out = out.filter((r) => r.state === "PENDING");
-    if (filter === "READY")   out = out.filter((r) => r.state === "READY" || r.state === "REVIEWED");
-    if (filter === "ADOPTED") out = out.filter((r) => r.state === "ADOPTED");
-    return out;
-  }, [enriched, filter, deptFilter]);
-
-  // Default ranking: low confidence first, then by annual uplift.
-  const sorted = useMemo(() => [...filtered].sort((a, b) => {
-    const aScore = a.confidence === "low" ? 3 : a.confidence === "med" ? 2 : 1;
-    const bScore = b.confidence === "low" ? 3 : b.confidence === "med" ? 2 : 1;
-    if (aScore !== bScore) return bScore - aScore;
-    return b.annualUplift - a.annualUplift;
-  }), [filtered]);
-
-  const filterCounts = useMemo(() => ({
-    ALL:     enriched.length,
-    LOW:     enriched.filter((r) => r.confidence === "low").length,
-    PENDING: enriched.filter((r) => r.state === "PENDING").length,
-    READY:   enriched.filter((r) => r.state === "READY" || r.state === "REVIEWED").length,
-    ADOPTED: enriched.filter((r) => r.state === "ADOPTED").length,
-  }), [enriched]);
+  // Sort by annual uplift descending so the rows with the largest
+  // adoption impact float to the top. Previous confidence-first ranking
+  // depended on the workflow-state UI that's been removed.
+  const sorted = useMemo(() => {
+    const filtered = applyFilter(derived.comparisons, "dept", deptFilter);
+    return [...filtered].sort((a, b) => b.annualUplift - a.annualUplift);
+  }, [derived.comparisons, deptFilter]);
 
   const filters: FilterGroup[] = [
     {
-      id: "queue",
-      options: [
-        { value: "ALL",     label: "All",            count: filterCounts.ALL },
-        { value: "LOW",     label: "Low confidence", count: filterCounts.LOW },
-        { value: "PENDING", label: "Pending",        count: filterCounts.PENDING },
-        { value: "READY",   label: "Ready",          count: filterCounts.READY },
-        { value: "ADOPTED", label: "Adopted",        count: filterCounts.ADOPTED },
-      ],
-      value: filter,
-      onChange: setFilter,
-    },
-    {
       id: "dept", label: "Dept",
-      options: deriveDeptFilter(enriched),
+      options: deriveDeptFilter(derived.comparisons),
       value: deptFilter,
       onChange: setDeptFilter,
     },
@@ -148,9 +83,24 @@ export function FeeScheduleTable() {
 
   const cols: Column<Row>[] = useMemo(() => [
     {
+      key: "feeNo",
+      label: "Fee #",
+      width: "90px",
+      sortable: true,
+      sortKey: (r) => svcById.get(r.id)?.feeNo ?? "",
+      render: (r) => {
+        const feeNo = svcById.get(r.id)?.feeNo;
+        return (
+          <span className="num" style={{
+            color: feeNo ? "var(--ink-2)" : "var(--ink-4)",
+          }}>{feeNo ?? "—"}</span>
+        );
+      },
+    },
+    {
       key: "name",
       label: "Fee item",
-      width: "minmax(220px, 1.8fr)",
+      width: "minmax(200px, 1.6fr)",
       sortable: true,
       render: (r) => {
         const svc = svcById.get(r.id);
@@ -185,6 +135,21 @@ export function FeeScheduleTable() {
       width: "70px",
       sortable: true,
       render: (r) => <DeptChip code={r.dept}/>,
+    },
+    {
+      key: "unit",
+      label: "Unit",
+      width: "100px",
+      sortable: true,
+      sortKey: (r) => svcById.get(r.id)?.unit ?? "",
+      render: (r) => {
+        const unit = svcById.get(r.id)?.unit;
+        return (
+          <span className="num" style={{
+            color: unit ? "var(--ink-2)" : "var(--ink-4)",
+          }}>{unit ?? "—"}</span>
+        );
+      },
     },
     {
       key: "fee",
@@ -278,25 +243,12 @@ export function FeeScheduleTable() {
         );
       },
     },
-    {
-      key: "state",
-      label: "Status",
-      width: "150px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => STATE_RANK[r.state],
-      render: (r) => (
-        <div onClick={(e) => e.stopPropagation()} style={{ display: "flex", justifyContent: "flex-end" }}>
-          <StateChip state={r.state} onChange={(next) => setState(r.id, next)}/>
-        </div>
-      ),
-    },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [derived.fbhr, updateService, stateMap, peerById]);
+  ], [derived.fbhr, updateService, peerById, svcById]);
 
   return (
     <div>
-      <SectionLabel right={`${enriched.length} fees`}>
+      <SectionLabel right={`${derived.comparisons.length} fees`}>
         Fee decision queue
       </SectionLabel>
       <DataTable
