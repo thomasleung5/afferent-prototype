@@ -11,8 +11,13 @@ import { useBuildState } from "@/lib/store";
 interface Row {
   id: string;
   name: string;
+  feeNo?: string;
   dept: DeptCode;
-  unit: string;
+  /** Activity label — Services is the canonical owner (Service.activity).
+   *  Falls back to the legacy VolumeRow.unit for rows whose Service has
+   *  no activity set. Distinct from the FEE PRICING unit (each / per
+   *  hour / etc.) which stays on Services + Fee Schedule. */
+  activity: string;
   prior: number | null;
   current: number | null;
   status: VolumeRow["status"];
@@ -37,8 +42,9 @@ export function VolumeTable() {
     return {
       id: w.id,
       name: svc?.name ?? w.id,
+      feeNo: svc?.feeNo,
       dept: (svc?.dept ?? "PLAN") as DeptCode,
-      unit: w.unit,
+      activity: svc?.activity ?? w.unit ?? "",
       prior: w.prior,
       current: w.current,
       status: w.status,
@@ -75,9 +81,21 @@ export function VolumeTable() {
 
   const cols: Column<Row>[] = [
     {
+      key: "feeNo",
+      label: "Fee #",
+      width: "90px",
+      sortable: true,
+      sortKey: (r) => r.feeNo ?? "",
+      render: (r) => (
+        <span className="num" style={{
+          color: r.feeNo ? "var(--ink-2)" : "var(--ink-4)",
+        }}>{r.feeNo ?? "—"}</span>
+      ),
+    },
+    {
       key: "name",
       label: "Service",
-      width: "minmax(280px, 2fr)",
+      width: "minmax(240px, 1.8fr)",
       sortable: true,
       render: (r) => (
         <div>
@@ -106,11 +124,15 @@ export function VolumeTable() {
       render: (r) => <DeptChip code={r.dept}/>,
     },
     {
-      key: "unit",
-      label: "Unit",
-      width: "100px",
+      key: "activity",
+      label: "Activity",
+      width: "110px",
       sortable: true,
-      render: (r) => <span>{r.unit}</span>,
+      render: (r) => (
+        <span style={{ color: r.activity ? "var(--ink-2)" : "var(--ink-4)" }}>
+          {r.activity || "—"}
+        </span>
+      ),
     },
     {
       key: "prior",

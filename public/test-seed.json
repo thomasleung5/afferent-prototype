@@ -1291,7 +1291,8 @@
       "feeNo": "PLN-1",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Application"
     },
     {
       "id": "plan-fth",
@@ -1307,7 +1308,8 @@
       "feeNo": "PLN-2",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Application"
     },
     {
       "id": "plan-minor",
@@ -1323,7 +1325,8 @@
       "feeNo": "PLN-3",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Application"
     },
     {
       "id": "plan-major",
@@ -1339,7 +1342,8 @@
       "feeNo": "PLN-4",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Application"
     },
     {
       "id": "plan-cup",
@@ -1355,7 +1359,8 @@
       "feeNo": "PLN-6",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Application"
     },
     {
       "id": "plan-fence",
@@ -1371,7 +1376,8 @@
       "feeNo": "PLN-9",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "plan-oak",
@@ -1387,7 +1393,8 @@
       "feeNo": "PLN-10",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "per tree"
+      "unit": "per tree",
+      "activity": "Permit"
     },
     {
       "id": "plan-preap",
@@ -1403,7 +1410,8 @@
       "feeNo": "PLN-11",
       "category": "Planning & Zoning",
       "subcategory": "Pre-Application Services",
-      "unit": "per meeting"
+      "unit": "per meeting",
+      "activity": "Meeting"
     },
     {
       "id": "plan-adu",
@@ -1419,7 +1427,8 @@
       "feeNo": "PLN-12",
       "category": "Planning & Zoning",
       "subcategory": "Pre-Application Services",
-      "unit": "per meeting"
+      "unit": "per meeting",
+      "activity": "Meeting"
     },
     {
       "id": "plan-mod",
@@ -1435,7 +1444,8 @@
       "feeNo": "PLN-13",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "plan-mvar",
@@ -1451,7 +1461,8 @@
       "feeNo": "PLN-15",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "bldg-apr",
@@ -1467,7 +1478,8 @@
       "feeNo": "BLD-1",
       "category": "Building & Safety",
       "subcategory": "Plan Check",
-      "unit": "per hour"
+      "unit": "per hour",
+      "activity": "Plan check"
     },
     {
       "id": "bldg-ext",
@@ -1483,7 +1495,8 @@
       "feeNo": "BLD-2",
       "category": "Building & Safety",
       "subcategory": "Administrative",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "bldg-tco",
@@ -1499,7 +1512,8 @@
       "feeNo": "BLD-3",
       "category": "Building & Safety",
       "subcategory": "Administrative",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "bldg-pc",
@@ -1515,7 +1529,8 @@
       "feeNo": "BLD-4",
       "category": "Building & Safety",
       "subcategory": "Plan Check",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Plan check"
     },
     {
       "id": "bldg-sfr",
@@ -1574,7 +1589,8 @@
             "unitSize": 1000
           }
         ]
-      }
+      },
+      "activity": "Permit"
     },
     {
       "id": "bldg-rem",
@@ -1590,7 +1606,8 @@
       "feeNo": "BLD-6",
       "category": "Building & Safety",
       "subcategory": "Remodel & Additions",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "bldg-pool",
@@ -1606,7 +1623,8 @@
       "feeNo": "BLD-7",
       "category": "Building & Safety",
       "subcategory": "Specialty Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "bldg-solar",
@@ -1627,7 +1645,8 @@
       "legalAuthority": "CA Gov Code §66015",
       "notes": [
         "Capped at $450 by state law; full-cost recovery not achievable for this row."
-      ]
+      ],
+      "activity": "Permit"
     },
     {
       "id": "bldg-mep",
@@ -1643,7 +1662,8 @@
       "feeNo": "BLD-9",
       "category": "Building & Safety",
       "subcategory": "Specialty Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "eng-bldg",
@@ -1659,7 +1679,8 @@
       "feeNo": "ENG-1",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Inspection"
     },
     {
       "id": "eng-adu",
@@ -1675,7 +1696,8 @@
       "feeNo": "ENG-2",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Meeting"
     },
     {
       "id": "eng-erosion",
@@ -1691,7 +1713,8 @@
       "feeNo": "ENG-3",
       "category": "Engineering",
       "subcategory": "Inspections",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Inspection"
     },
     {
       "id": "eng-ency",
@@ -1707,7 +1730,8 @@
       "feeNo": "ENG-4",
       "category": "Engineering",
       "subcategory": "Permits",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Permit"
     },
     {
       "id": "eng-minor",
@@ -1723,7 +1747,8 @@
       "feeNo": "ENG-5",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Review"
     },
     {
       "id": "eng-major",
@@ -1739,7 +1764,8 @@
       "feeNo": "ENG-6",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Review"
     },
     {
       "id": "eng-hourly",
@@ -1755,7 +1781,8 @@
       "feeNo": "ENG-7",
       "category": "Engineering",
       "subcategory": "Other Services",
-      "unit": "per hour"
+      "unit": "per hour",
+      "activity": "Review"
     },
     {
       "id": "pr-recclass",
@@ -1771,7 +1798,8 @@
       "feeNo": "PRK-1",
       "category": "Parks & Recreation",
       "subcategory": "Program Registration",
-      "unit": "per registration"
+      "unit": "per registration",
+      "activity": "Registration"
     },
     {
       "id": "pr-fieldp",
@@ -1787,7 +1815,8 @@
       "feeNo": "PRK-2",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per permit"
+      "unit": "per permit",
+      "activity": "Rental"
     },
     {
       "id": "pr-shelter",
@@ -1803,7 +1832,8 @@
       "feeNo": "PRK-3",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per rental"
+      "unit": "per rental",
+      "activity": "Rental"
     },
     {
       "id": "pr-pool",
@@ -1819,7 +1849,8 @@
       "feeNo": "PRK-4",
       "category": "Parks & Recreation",
       "subcategory": "Program Registration",
-      "unit": "per registration"
+      "unit": "per registration",
+      "activity": "Registration"
     },
     {
       "id": "pr-roomrnt",
@@ -1835,7 +1866,8 @@
       "feeNo": "PRK-5",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per hour"
+      "unit": "per hour",
+      "activity": "Rental"
     },
     {
       "id": "pd-alarm",
@@ -1851,7 +1883,8 @@
       "feeNo": "POL-1",
       "category": "Police Services",
       "subcategory": "Permits & Registrations",
-      "unit": "annual"
+      "unit": "annual",
+      "activity": "Permit"
     },
     {
       "id": "pd-falsearm",
@@ -1867,7 +1900,8 @@
       "feeNo": "POL-2",
       "category": "Police Services",
       "subcategory": "Service Charges",
-      "unit": "per occurrence"
+      "unit": "per occurrence",
+      "activity": "Service charge"
     },
     {
       "id": "pd-fprint",
@@ -1883,7 +1917,8 @@
       "feeNo": "POL-3",
       "category": "Police Services",
       "subcategory": "Records & Background",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Request"
     },
     {
       "id": "pd-evt",
@@ -1899,7 +1934,8 @@
       "feeNo": "POL-4",
       "category": "Police Services",
       "subcategory": "Special Events",
-      "unit": "per event"
+      "unit": "per event",
+      "activity": "Permit"
     },
     {
       "id": "pd-records",
@@ -1915,7 +1951,8 @@
       "feeNo": "POL-5",
       "category": "Police Services",
       "subcategory": "Records & Background",
-      "unit": "per request"
+      "unit": "per request",
+      "activity": "Request"
     },
     {
       "id": "fr-inspbiz",
@@ -1931,7 +1968,8 @@
       "feeNo": "FRE-1",
       "category": "Fire Prevention",
       "subcategory": "Inspections",
-      "unit": "annual"
+      "unit": "annual",
+      "activity": "Inspection"
     },
     {
       "id": "fr-planrev",
@@ -1947,7 +1985,8 @@
       "feeNo": "FRE-2",
       "category": "Fire Prevention",
       "subcategory": "Plan Review",
-      "unit": "each"
+      "unit": "each",
+      "activity": "Review"
     },
     {
       "id": "fr-hazmat",
@@ -1963,7 +2002,8 @@
       "feeNo": "FRE-3",
       "category": "Fire Prevention",
       "subcategory": "Permits",
-      "unit": "annual"
+      "unit": "annual",
+      "activity": "Permit"
     },
     {
       "id": "fr-occ",
@@ -1979,7 +2019,8 @@
       "feeNo": "FRE-4",
       "category": "Fire Prevention",
       "subcategory": "Permits",
-      "unit": "annual"
+      "unit": "annual",
+      "activity": "Permit"
     },
     {
       "id": "fr-special",
@@ -1995,7 +2036,8 @@
       "feeNo": "FRE-5",
       "category": "Fire Prevention",
       "subcategory": "Plan Review",
-      "unit": "per event"
+      "unit": "per event",
+      "activity": "Review"
     }
   ],
   "volume": [

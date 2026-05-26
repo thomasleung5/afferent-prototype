@@ -178,6 +178,14 @@ export interface Service {
   /** Subgrouping under category (e.g., "Discretionary Permits",
    *  "Plan Check"). Optional second-level axis. */
   subcategory?: string;
+  /** The operational thing being counted — Permit / Application /
+   *  Review / Inspection / Meeting / Plan check / etc. Services is
+   *  the canonical owner of this label; the Volume page reads it
+   *  through to its Activity column so the same value appears in both
+   *  workflows. Distinct from `unit` below, which is the FEE PRICING
+   *  unit ("each", "per hour", "per $1,000 valuation") — activity
+   *  describes WHAT is counted, unit describes HOW the fee is charged. */
+  activity?: string;
   /** Free-form unit label rendered alongside the fee value. */
   unit?: FeeUnit;
   /** Pricing structure. Defaults to "flat" semantics in display when
@@ -529,7 +537,12 @@ export interface VolumeRow {
   id: string;
   prior: number | null;
   current: number | null;
-  unit: string;
+  /** Legacy activity label kept on the row for parser / import / export
+   *  back-compat. The Volume table now reads its Activity column from
+   *  the linked `Service.activity` field (Services owns the canonical
+   *  value); this field is only consulted as a fallback when a
+   *  matching Service has no activity set. */
+  unit?: string;
   /** Row provenance — set at creation, not mutated by edits. Uses the
    *  shared SourceTag enum; "seed" was added in the source standardization. */
   source: SourceTag;
