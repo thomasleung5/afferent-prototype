@@ -63,14 +63,24 @@ export function FunctionalBucketSupport({ dept, service }: Props) {
 
   const recoverableFbhr = dd.recoverableFbhr;
 
+  // Sums across the rendered rows so the totals row reconciles
+  // exactly to what the user sees in the table. When Σ allocation
+  // share = 100% these match the dept's engine totals; otherwise
+  // they're proportionally scaled.
+  const sum = (key: keyof Pick<SupportRow, "directLabor" | "operating" | "overhead" | "fullyBurdened" | "directHours">) =>
+    supportRows.reduce((a, r) => a + r[key], 0);
+  const totals = {
+    directLabor: sum("directLabor"),
+    operating: sum("operating"),
+    overhead: sum("overhead"),
+    fullyBurdened: sum("fullyBurdened"),
+    directHours: sum("directHours"),
+    rateBasisHours: dd.rateBasisDirectHours,
+  };
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-      <BucketSupportTable rows={supportRows}
-        totals={{
-          recoverableCost: dd.recoverableCost,
-          rateBasisHours: dd.rateBasisDirectHours,
-        }}
-      />
+      <BucketSupportTable rows={supportRows} totals={totals}/>
       <EquationBlock
         recoverableCost={dd.recoverableCost}
         rateBasisHours={dd.rateBasisDirectHours}
@@ -97,7 +107,14 @@ function BucketSupportTable({
   rows, totals,
 }: {
   rows: SupportRow[];
-  totals: { recoverableCost: number; rateBasisHours: number };
+  totals: {
+    directLabor: number;
+    operating: number;
+    overhead: number;
+    fullyBurdened: number;
+    directHours: number;
+    rateBasisHours: number;
+  };
 }) {
   const cols: { key: keyof SupportRow | "rateBasisFlag"; label: string; width: string; align?: "left" | "right" }[] = [
     { key: "name",              label: "Functional bucket", width: "minmax(160px, 1.6fr)" },
@@ -176,14 +193,16 @@ function BucketSupportTable({
           fontSize: "var(--t-l4)", letterSpacing: "0.06em",
           textTransform: "uppercase", color: "var(--ink-3)",
         }}>
-          Recoverable pool · rate basis hrs
+          Total
         </span>
+        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.directLabor)}</span>
+        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.operating)}</span>
+        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.overhead)}</span>
+        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.fullyBurdened)}</span>
         <span/>
-        <span/>
-        <span/>
-        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.recoverableCost)}</span>
-        <span/>
-        <span/>
+        <span style={{ textAlign: "right" }}>
+          {totals.directHours > 0 ? fmt.int(totals.directHours) : "—"}
+        </span>
         <span style={{ textAlign: "right" }}>
           {totals.rateBasisHours > 0 ? fmt.int(totals.rateBasisHours) : "—"}
         </span>
