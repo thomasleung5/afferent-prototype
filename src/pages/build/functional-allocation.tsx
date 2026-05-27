@@ -76,8 +76,6 @@ export default function FunctionalAllocationPage() {
         subtitle={HELPER_TEXT}
       />
 
-      <ExplainerCard/>
-
       <div>
         <SectionLabel right={`${fmt.dollarsK(totalRecoverable)} recoverable · ${fmt.dollarsK(totalSubsidized)} subsidized`}>
           Summary by department
@@ -110,23 +108,6 @@ export default function FunctionalAllocationPage() {
 
       <BucketTable/>
     </Page>
-  );
-}
-
-function ExplainerCard() {
-  return (
-    <div style={{
-      marginTop: 4, marginBottom: 16,
-      padding: "12px 14px",
-      background: "var(--paper-2)", border: "1px solid var(--rule)",
-      fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
-    }}>
-      Department cost flows through allocation shares into functional
-      buckets, where a fee-recoverable percentage determines the share
-      absorbed by user fees vs. the General Fund. The Recoverable FBHR
-      computed here drives Cost of Service downstream; departments
-      without functional buckets continue to use the engine FBHR.
-    </div>
   );
 }
 
