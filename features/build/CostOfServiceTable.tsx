@@ -6,14 +6,13 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  DeptChip, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { poolToFeeDept } from "@/lib/data/capStepDownGl";
 import type { ServiceCost } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
-import { RateConstruction } from "./RateDerivation";
+import { FunctionalBucketSupport } from "./FunctionalBucketSupport";
 
 interface Row extends ServiceCost {
   rate: number;
@@ -21,8 +20,7 @@ interface Row extends ServiceCost {
 }
 
 export function CostOfServiceTable() {
-  const { derived, capPools } = useBuildState();
-  const stepModel = derived.capStepDown;
+  const { derived } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
 
@@ -136,105 +134,50 @@ export function CostOfServiceTable() {
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
       drilldownIndicator
-      renderDrilldown={(r) => {
-        const dept = r.dept as DeptCode;
-        const f = derived.fbhr[dept];
-        const allocRows = capPools
-          .map((p) => ({ poolId: p.id, allocated: poolToFeeDept(stepModel, p.id, dept) }))
-          .filter((p) => p.allocated > 0.5)
-          .sort((a, b) => b.allocated - a.allocated);
-        const totalCAPForDept = allocRows.reduce((a, x) => a + x.allocated, 0);
-        const total = Math.round(r.unitCost);
-        const annual = Math.round(r.annual);
-
-        return (
-          <DrilldownShell>
-            <DrilldownColumn marker="①" title="Service · Hours · Rate">
+      renderDrilldown={(r) => (
+        <div style={{
+          padding: "16px 20px",
+          background: "var(--paper-2)",
+          display: "flex", flexDirection: "column", gap: 12,
+        }}>
+          <div style={{
+            display: "flex", justifyContent: "space-between",
+            alignItems: "baseline", gap: 12,
+            fontSize: "var(--t-l4)",
+          }}>
+            <span className="mono" style={{
+              color: "var(--ink-3)", textTransform: "uppercase",
+              letterSpacing: "0.08em", fontWeight: 600,
+            }}>
+              Functional allocation support — {r.dept}
+            </span>
+            <span style={{ display: "inline-flex", gap: 14 }}>
               <Link
                 to="/build/services"
                 search={{ serviceId: r.id }}
                 style={{
-                  display: "inline-block", fontSize: "var(--t-l8)",
-                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  fontSize: "var(--t-l8)",
+                  color: "var(--accent)", textDecoration: "underline",
+                  textUnderlineOffset: 3,
                 }}
-              >
-                View service →
-              </Link>
-              <div style={{
-                marginTop: 12, padding: "10px 14px",
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.65,
-              }}>
-                <div>hours per unit: <b>{r.hours}</b></div>
-                <div>fully burdened rate: <b style={{ color: "var(--accent)" }}>${Math.round(r.rate)}/hr</b></div>
-                <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 5, marginTop: 5 }}>
-                  unit cost = <b>{fmt.dollars(total)}</b>
-                </div>
-                <div>× volume <b>{r.volume}</b>/yr</div>
-                <div style={{ borderTop: "1px solid var(--rule)", paddingTop: 5, marginTop: 5 }}>
-                  annual = <b>{fmt.dollars(annual)}</b>
-                </div>
-              </div>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="②" title="Rate construction">
-              <RateConstruction fbhr={f}/>
-            </DrilldownColumn>
-
-            <DrilldownColumn marker="③" title="Overhead allocation drivers">
-              <div style={{
-                background: "var(--paper)", border: "1px solid var(--rule)",
-                fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.4,
-              }}>
-                {allocRows.slice(0, 6).map((ar, i) => {
-                  const pool = capPools.find((p) => p.id === ar.poolId);
-                  return (
-                    <div key={ar.poolId} style={{
-                      display: "flex", justifyContent: "space-between", gap: 12,
-                      padding: "7px 12px",
-                      borderBottom: i < Math.min(allocRows.length, 6) - 1 ? "1px solid var(--rule)" : "none",
-                      alignItems: "baseline",
-                    }}>
-                      <span
-                        title={pool?.basis ?? undefined}
-                        style={{ color: "var(--ink)", minWidth: 0, overflowWrap: "anywhere" }}
-                      >
-                        {pool?.pool ?? ar.poolId}
-                      </span>
-                      <span style={{ fontWeight: 700, whiteSpace: "nowrap", color: "var(--ink)" }}>
-                        {fmt.dollarsK(ar.allocated)}
-                      </span>
-                    </div>
-                  );
-                })}
-                {allocRows.length > 6 && (
-                  <div style={{ padding: "7px 12px", color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-                    + {allocRows.length - 6} smaller pools
-                  </div>
-                )}
-                <div style={{
-                  display: "flex", justifyContent: "space-between",
-                  padding: "10px 12px", borderTop: "2px solid var(--ink)",
-                  fontWeight: 700,
-                }}>
-                  <span>Total overhead → {dept}</span>
-                  <span>{fmt.dollarsK(totalCAPForDept)}</span>
-                </div>
-              </div>
+              >View service →</Link>
               <Link
                 to="/build/feestudy"
                 search={{ serviceId: r.id }}
                 style={{
-                  display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
-                  color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
+                  fontSize: "var(--t-l8)",
+                  color: "var(--accent)", textDecoration: "underline",
+                  textUnderlineOffset: 3,
                 }}
-              >
-                View fee schedule →
-              </Link>
-            </DrilldownColumn>
-          </DrilldownShell>
-        );
-      }}
+              >View fee schedule →</Link>
+            </span>
+          </div>
+          <FunctionalBucketSupport
+            dept={r.dept as DeptCode}
+            service={{ name: r.name, hours: r.hours }}
+          />
+        </div>
+      )}
       />
     </div>
   );
