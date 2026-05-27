@@ -20,10 +20,7 @@ import type {
 const ORDER: DeptCode[] = FEE_DEPTS;
 
 const HELPER_TEXT =
-  "Functional Allocation classifies fully burdened departmental " +
-  "activity into fee-recoverable and non-recoverable work after " +
-  "overhead allocation. Recoverable FBHR is derived from recoverable " +
-  "costs and recoverable productive hours.";
+  "Classify departmental cost into fee-recoverable buckets and rate-basis hours.";
 
 interface BucketRow {
   id: string;
