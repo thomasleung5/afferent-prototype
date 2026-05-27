@@ -5,9 +5,9 @@ import {
   type Column, type DeptSummaryRow,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, DrilldownShell, DrilldownColumn,
-  NodeEyebrow, SectionLabel,
+  CellInput, DeptChip, NodeEyebrow, SectionLabel,
 } from "@/components/ui";
+import { FunctionalBucketSupport } from "@/features/build/FunctionalBucketSupport";
 import { useBuildActions, useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
@@ -62,6 +62,7 @@ export default function FunctionalAllocationPage() {
           ? <b style={{ color: "var(--accent)" }}>${Math.round(dd.recoverableFbhr)}</b>
           : <span style={{ color: "var(--ink-3)" }}>—</span>,
       },
+      drilldown: <FunctionalBucketSupport dept={d}/>,
     };
   });
 
@@ -173,8 +174,8 @@ function BucketTable() {
     },
     {
       key: "feeRecoverable",
-      label: "Fee Recoverable %",
-      width: "140px",
+      label: "Recovery %",
+      width: "120px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.derived.bucket.recoverabilityPct,
@@ -189,8 +190,8 @@ function BucketTable() {
     },
     {
       key: "rateBasis",
-      label: "Rate Basis Hours",
-      width: "130px",
+      label: "Rate Basis",
+      width: "100px",
       align: "center",
       sortable: true,
       sortKey: (r) => r.derived.bucket.rateBasisHours ? 1 : 0,
@@ -204,8 +205,8 @@ function BucketTable() {
       ),
     },
     {
-      key: "fully",
-      label: "Fully burdened",
+      key: "totalCost",
+      label: "Total Cost",
       width: "130px",
       align: "right",
       sortable: true,
@@ -218,8 +219,8 @@ function BucketTable() {
     },
     {
       key: "recoverable",
-      label: "Recoverable",
-      width: "130px",
+      label: "Recoverable Cost",
+      width: "140px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.derived.recoverableCost,
@@ -227,25 +228,9 @@ function BucketTable() {
         <span className="num" style={{
           fontVariantNumeric: "tabular-nums",
           fontWeight: 600,
-          color: r.derived.recoverableCost > 0 ? "var(--ink)" : "var(--ink-3)",
+          color: r.derived.recoverableCost > 0 ? "var(--accent)" : "var(--ink-3)",
         }}>
           {fmt.dollarsK(r.derived.recoverableCost)}
-        </span>
-      ),
-    },
-    {
-      key: "subsidized",
-      label: "Subsidized",
-      width: "130px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => r.derived.nonRecoverableCost,
-      render: (r) => (
-        <span className="num" style={{
-          fontVariantNumeric: "tabular-nums",
-          color: r.derived.nonRecoverableCost > 0 ? "var(--ink-2)" : "var(--ink-3)",
-        }}>
-          {fmt.dollarsK(r.derived.nonRecoverableCost)}
         </span>
       ),
     },
@@ -272,86 +257,19 @@ function BucketTable() {
       <DataTable
         cols={cols}
         rows={rows}
-        defaultSort={{ key: "fully", dir: "desc" }}
+        defaultSort={{ key: "totalCost", dir: "desc" }}
         openId={openId}
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
         drilldownIndicator
-        renderDrilldown={(r) => <BucketDrilldown row={r}/>}
+        renderDrilldown={(r) => (
+          <FunctionalBucketSupport
+            dept={r.derived.bucket.dept}
+            bucketId={r.derived.bucket.id}
+          />
+        )}
         emptyState="No functional buckets configured yet."
       />
     </div>
-  );
-}
-
-function BucketDrilldown({ row }: { row: BucketRow }) {
-  const { derived } = useBuildState();
-  const b = row.derived.bucket;
-  const dept = row.dept;
-  const fbhr = derived.fbhr[b.dept];
-
-  // Bucket's share of dept fully burdened cost. Mirrors the split rule
-  // in lib/functionalAllocation.ts; used for the cost-composition table.
-  const share = dept.fullyBurdenedCost > 0
-    ? row.derived.fullyBurdenedCost / dept.fullyBurdenedCost
-    : 0;
-  const laborContribution = (fbhr?.directDollars ?? 0) * share;
-  const operatingContribution = (fbhr?.operatingDollars ?? 0) * share;
-  const capContribution = (fbhr?.capDollars ?? 0) * share;
-
-  const bucketRateBasisHrs = b.rateBasisHours ? row.derived.directHours : 0;
-
-  return (
-    <DrilldownShell>
-      <DrilldownColumn marker="①" title="Hours">
-        <FactList
-          rows={[
-            {
-              label: "Direct hours",
-              value: row.derived.directHours > 0
-                ? fmt.int(row.derived.directHours)
-                : "—",
-            },
-            {
-              label: "Rate basis hours",
-              value: bucketRateBasisHrs > 0 ? fmt.int(bucketRateBasisHrs) : "—",
-            },
-          ]}
-        />
-      </DrilldownColumn>
-
-      <DrilldownColumn marker="②" title="FBHR">
-        <FactList
-          rows={[
-            {
-              label: "Recoverable cost pool",
-              value: fmt.dollarsK(dept.recoverableCost),
-            },
-            {
-              label: "FBHR",
-              value: dept.recoverableFbhr != null
-                ? <b style={{ color: "var(--accent)" }}>${Math.round(dept.recoverableFbhr)}/hr</b>
-                : "—",
-              divider: true,
-            },
-          ]}
-        />
-      </DrilldownColumn>
-
-      <DrilldownColumn marker="③" title="Cost composition">
-        <FactList
-          rows={[
-            { label: "Direct labor",        value: fmt.dollarsK(laborContribution) },
-            { label: "Operating",           value: fmt.dollarsK(operatingContribution) },
-            { label: "Allocated overhead",  value: fmt.dollarsK(capContribution) },
-            {
-              label: "Fully burdened",
-              value: <b>{fmt.dollarsK(row.derived.fullyBurdenedCost)}</b>,
-              divider: true,
-            },
-          ]}
-        />
-      </DrilldownColumn>
-    </DrilldownShell>
   );
 }
 
@@ -401,40 +319,6 @@ function RateBasisCheckbox({
         aria-label="Rate basis hours"
       />
     </span>
-  );
-}
-
-interface FactRow {
-  label: string;
-  value: React.ReactNode;
-  divider?: boolean;
-}
-
-function FactList({ rows }: { rows: FactRow[] }) {
-  return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.55,
-    }}>
-      {rows.map((r, i) => (
-        <div
-          key={r.label}
-          style={{
-            display: "flex", justifyContent: "space-between", gap: 12,
-            padding: "7px 12px",
-            borderTop: r.divider ? "2px solid var(--ink)" : undefined,
-            borderBottom: i < rows.length - 1 && !rows[i + 1]?.divider
-              ? "1px solid var(--rule)" : undefined,
-            alignItems: "baseline",
-          }}
-        >
-          <span style={{ color: "var(--ink-2)" }}>{r.label}</span>
-          <span style={{
-            color: "var(--ink)", fontVariantNumeric: "tabular-nums",
-          }}>{r.value}</span>
-        </div>
-      ))}
-    </div>
   );
 }
 

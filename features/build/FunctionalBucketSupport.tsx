@@ -22,12 +22,16 @@ interface Props {
     name: string;
     hours: number;
   };
+  /** Scope the bucket table to a single bucket id (the rest of the
+   *  dept's buckets are omitted). The equation block stays dept-level
+   *  so the reader still sees how this bucket contributes to the
+   *  dept's FBHR. Omit for the dept-wide workpaper view. */
+  bucketId?: string;
 }
 
-export function FunctionalBucketSupport({ dept, service }: Props) {
+export function FunctionalBucketSupport({ dept, service, bucketId }: Props) {
   const { derived } = useBuildState();
   const fa = derived.functionalAllocation;
-  const engine = derived.fbhr[dept];
   const dd = fa.byDept[dept];
 
   if (!dd) {
@@ -42,38 +46,26 @@ export function FunctionalBucketSupport({ dept, service }: Props) {
     );
   }
 
-  // Per-bucket cost splits, sized by hoursSharePct against the dept's
-  // engine-derived dollar totals. Mirrors deriveFunctionalAllocation's
-  // share rule so totals reconcile to dept fully-burdened cost when
-  // shares sum to 100%.
-  const supportRows = dd.buckets.map((b) => {
-    const share = b.bucket.hoursSharePct / 100;
-    return {
-      id: b.bucket.id,
-      name: b.bucket.name,
-      directLabor: engine.directDollars * share,
-      operating:   engine.operatingDollars * share,
-      overhead:    engine.capDollars * share,
-      fullyBurdened: b.fullyBurdenedCost,
-      recoverabilityPct: b.bucket.recoverabilityPct,
-      recoverableCost: b.recoverableCost,
-      directHours: b.directHours,
-      rateBasis: b.bucket.rateBasisHours,
-    };
-  });
+  const sourceBuckets = bucketId != null
+    ? dd.buckets.filter((b) => b.bucket.id === bucketId)
+    : dd.buckets;
+  const supportRows: SupportRow[] = sourceBuckets.map((b) => ({
+    id: b.bucket.id,
+    name: b.bucket.name,
+    fullyBurdened: b.fullyBurdenedCost,
+    recoverabilityPct: b.bucket.recoverabilityPct,
+    recoverableCost: b.recoverableCost,
+    directHours: b.directHours,
+    rateBasis: b.bucket.rateBasisHours,
+  }));
 
   const recoverableFbhr = dd.recoverableFbhr;
 
-  // Sums across the rendered rows so the totals row reconciles
-  // exactly to what the user sees in the table. When Σ allocation
-  // share = 100% these match the dept's engine totals; otherwise
-  // they're proportionally scaled.
-  const sum = (key: keyof Pick<SupportRow, "directLabor" | "operating" | "overhead" | "fullyBurdened" | "recoverableCost" | "directHours">) =>
+  // Sums across the rendered rows so the totals row reconciles exactly
+  // to what the user sees in the table.
+  const sum = (key: keyof Pick<SupportRow, "fullyBurdened" | "recoverableCost" | "directHours">) =>
     supportRows.reduce((a, r) => a + r[key], 0);
   const totals = {
-    directLabor: sum("directLabor"),
-    operating: sum("operating"),
-    overhead: sum("overhead"),
     fullyBurdened: sum("fullyBurdened"),
     recoverableCost: sum("recoverableCost"),
     directHours: sum("directHours"),
@@ -96,9 +88,6 @@ export function FunctionalBucketSupport({ dept, service }: Props) {
 interface SupportRow {
   id: string;
   name: string;
-  directLabor: number;
-  operating: number;
-  overhead: number;
   fullyBurdened: number;
   recoverabilityPct: number;
   recoverableCost: number;
@@ -111,9 +100,6 @@ function BucketSupportTable({
 }: {
   rows: SupportRow[];
   totals: {
-    directLabor: number;
-    operating: number;
-    overhead: number;
     fullyBurdened: number;
     recoverableCost: number;
     directHours: number;
@@ -122,9 +108,6 @@ function BucketSupportTable({
 }) {
   const cols: { key: keyof SupportRow | "rateBasisFlag"; label: string; width: string; align?: "left" | "right" }[] = [
     { key: "name",              label: "Functional bucket", width: "minmax(160px, 1.6fr)" },
-    { key: "directLabor",       label: "Direct labor",      width: "100px", align: "right" },
-    { key: "operating",         label: "Operating",         width: "100px", align: "right" },
-    { key: "overhead",          label: "Overhead",          width: "100px", align: "right" },
     { key: "fullyBurdened",     label: "Total cost",        width: "120px", align: "right" },
     { key: "recoverabilityPct", label: "Recovery %",        width: "90px",  align: "right" },
     { key: "recoverableCost",   label: "Recoverable cost",  width: "130px", align: "right" },
@@ -166,9 +149,6 @@ function BucketSupportTable({
           }}
         >
           <span style={{ color: "var(--ink)" }}>{r.name}</span>
-          <span style={{ textAlign: "right" }}>{fmt.dollarsK(r.directLabor)}</span>
-          <span style={{ textAlign: "right" }}>{fmt.dollarsK(r.operating)}</span>
-          <span style={{ textAlign: "right" }}>{fmt.dollarsK(r.overhead)}</span>
           <span style={{ textAlign: "right", color: "var(--ink)" }}>
             {fmt.dollarsK(r.fullyBurdened)}
           </span>
@@ -207,9 +187,6 @@ function BucketSupportTable({
         }}>
           Total
         </span>
-        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.directLabor)}</span>
-        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.operating)}</span>
-        <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.overhead)}</span>
         <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.fullyBurdened)}</span>
         <span/>
         <span style={{ textAlign: "right" }}>{fmt.dollarsK(totals.recoverableCost)}</span>
