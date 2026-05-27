@@ -1316,7 +1316,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             {
               id: `fa-${dept.toLowerCase()}-${Date.now()}`,
               dept,
-              name: "New functional bucket",
+              name: "New activity",
               recoverabilityPct: 100,
               hoursSharePct: 0,
               // Defaults to true because recoverabilityPct defaults to >0.

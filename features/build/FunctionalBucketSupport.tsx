@@ -87,15 +87,24 @@ export function FunctionalBucketSupport({ dept, service, bucketId }: Props) {
     rateBasisHours: dd.rateBasisDirectHours,
   };
 
+  // Equation block is a dept-level summary — show it on dept-wide
+  // drilldowns (Cost of Service per-service / per-dept; FA dept
+  // summary) and hide it when scoped to a single bucket (FA bucket-row
+  // drilldown). The bucket row already conveys recoverable / hours /
+  // FBHR through the table itself.
+  const showEquation = bucketId == null;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
       <BucketSupportTable rows={supportRows} totals={totals}/>
-      <EquationBlock
-        recoverableCost={dd.recoverableCost}
-        rateBasisHours={dd.rateBasisDirectHours}
-        recoverableFbhr={recoverableFbhr}
-        service={service}
-      />
+      {showEquation && (
+        <EquationBlock
+          recoverableCost={dd.recoverableCost}
+          rateBasisHours={dd.rateBasisDirectHours}
+          recoverableFbhr={recoverableFbhr}
+          service={service}
+        />
+      )}
     </div>
   );
 }
@@ -128,15 +137,15 @@ function BucketSupportTable({
   };
 }) {
   const cols: { key: keyof SupportRow | "rateBasisFlag"; label: string; width: string; align?: "left" | "right" }[] = [
-    { key: "name",              label: "Functional bucket", width: "minmax(160px, 1.6fr)" },
-    { key: "directLabor",       label: "Direct labor",      width: "100px", align: "right" },
+    { key: "name",              label: "Activity",          width: "minmax(160px, 1.6fr)" },
+    { key: "directLabor",       label: "Labor",             width: "100px", align: "right" },
     { key: "operating",         label: "Operating",         width: "100px", align: "right" },
     { key: "overhead",          label: "Overhead",          width: "100px", align: "right" },
     { key: "fullyBurdened",     label: "Total cost",        width: "120px", align: "right" },
-    { key: "recoverabilityPct", label: "Recovery %",        width: "90px",  align: "right" },
-    { key: "recoverableCost",   label: "Recoverable cost",  width: "130px", align: "right" },
+    { key: "recoverabilityPct", label: "Cost Recovery",     width: "110px", align: "right" },
+    { key: "recoverableCost",   label: "Recoverable",       width: "130px", align: "right" },
     { key: "directHours",       label: "Direct hours",      width: "110px", align: "right" },
-    { key: "rateBasisFlag",     label: "Rate basis hrs",    width: "110px", align: "right" },
+    { key: "rateBasisFlag",     label: "Fee Hours",         width: "110px", align: "right" },
   ];
   const grid = cols.map((c) => c.width).join(" ");
 
@@ -251,9 +260,9 @@ function EquationBlock({
       padding: "12px 14px",
       fontFamily: "var(--ff-mono)", fontSize: 12.5, lineHeight: 1.6,
     }}>
-      <Line label="Recoverable cost pool" value={fmt.dollars(recoverableCost)}/>
+      <Line label="Recoverable pool" value={fmt.dollars(recoverableCost)}/>
       <Divider char="÷"/>
-      <Line label="Rate basis hours" value={rateBasisHours > 0 ? fmt.int(rateBasisHours) : "0"}/>
+      <Line label="Fee Hours" value={rateBasisHours > 0 ? fmt.int(rateBasisHours) : "0"}/>
       <Divider char="="/>
       <Line label="FBHR" value={fbhrLabel} highlight/>
 

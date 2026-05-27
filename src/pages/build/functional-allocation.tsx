@@ -20,7 +20,7 @@ import type {
 const ORDER: DeptCode[] = FEE_DEPTS;
 
 const HELPER_TEXT =
-  "Classify departmental cost into fee-recoverable buckets and rate-basis hours.";
+  "Classify departmental cost into fee-recoverable activities and fee hours.";
 
 interface BucketRow {
   id: string;
@@ -79,17 +79,17 @@ export default function FunctionalAllocationPage() {
       />
 
       <div>
-        <SectionLabel right={`${fmt.dollarsK(totalRecoverable)} recoverable · ${fmt.dollarsK(totalSubsidized)} subsidized`}>
+        <SectionLabel right={`${fmt.dollarsK(totalRecoverable)} recoverable · ${fmt.dollarsK(totalSubsidized)} subsidy`}>
           Summary by department
         </SectionLabel>
         <DeptSummaryTable
           cols={[
             { key: "dept",            label: "Department",        width: "1.5fr" },
             { key: "fully",           label: "Total cost",        width: "140px", align: "right", mono: true },
-            { key: "recCost",         label: "Recoverable cost",  width: "140px", align: "right", mono: true },
-            { key: "subsidized",      label: "Subsidized",        width: "140px", align: "right", mono: true },
+            { key: "recCost",         label: "Recoverable",       width: "140px", align: "right", mono: true },
+            { key: "subsidized",      label: "Subsidy",           width: "140px", align: "right", mono: true },
             { key: "directHours",     label: "Direct hours",      width: "120px", align: "right", mono: true },
-            { key: "recovery",        label: "Recovery %",        width: "110px", align: "right", mono: true },
+            { key: "recovery",        label: "Cost Recovery",     width: "130px", align: "right", mono: true },
             { key: "recoverableFbhr", label: "FBHR",              width: "120px", align: "right", mono: true },
           ]}
           rows={deptRows}
@@ -148,8 +148,8 @@ function BucketTable() {
             color: "var(--warn)", fontWeight: 700, marginRight: 6,
           }}>NO RATE BASIS</span>
           {deptsMissingRateBasis.join(" · ")} {deptsMissingRateBasis.length === 1 ? "has" : "have"}{" "}
-          no buckets flagged as Rate Basis. FBHR renders as &mdash;
-          until at least one bucket per dept is selected.
+          no activities flagged as Fee Hours. FBHR renders as &mdash;
+          until at least one activity per dept is selected.
         </div>
       )}
 
@@ -186,26 +186,12 @@ function DeptBucketSection({
     dept: dd,
   }));
 
-  const fbhrLabel = dd.recoverableFbhr != null
-    ? `$${Math.round(dd.recoverableFbhr)}/hr`
-    : "—";
-  const sectionRight = (
-    <span className="mono" style={{
-      fontSize: "var(--t-l4)", color: "var(--ink-3)",
-      letterSpacing: "0.06em", textTransform: "uppercase",
-    }}>
-      {rows.length} bucket{rows.length === 1 ? "" : "s"}
-      <span style={{ margin: "0 6px" }}>·</span>
-      Recoverable {fmt.dollarsK(dd.recoverableCost)}
-      <span style={{ margin: "0 6px" }}>·</span>
-      FBHR <span style={{ color: "var(--accent)" }}>{fbhrLabel}</span>
-    </span>
-  );
+  const sectionRight = `${rows.length} ${rows.length === 1 ? "activity" : "activities"}`;
 
   const cols: Column<BucketRow>[] = [
     {
       key: "name",
-      label: "Bucket",
+      label: "Activity",
       width: "minmax(220px, 2fr)",
       sortable: true,
       sortKey: (r) => r.derived.bucket.name,
@@ -215,7 +201,7 @@ function DeptBucketSection({
     },
     {
       key: "allocationShare",
-      label: "Allocation Share",
+      label: "Allocation %",
       width: "130px",
       align: "right",
       sortable: true,
@@ -230,8 +216,8 @@ function DeptBucketSection({
     },
     {
       key: "feeRecoverable",
-      label: "Recovery %",
-      width: "120px",
+      label: "Cost Recovery",
+      width: "130px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.derived.bucket.recoverabilityPct,
@@ -244,7 +230,7 @@ function DeptBucketSection({
     },
     {
       key: "rateBasis",
-      label: "Rate Basis",
+      label: "Fee Hours",
       width: "100px",
       align: "center",
       sortable: true,
@@ -287,7 +273,7 @@ function DeptBucketSection({
     },
     {
       key: "recoverable",
-      label: "Recoverable Cost",
+      label: "Recoverable",
       width: "140px",
       align: "right",
       sortable: true,
@@ -319,10 +305,11 @@ function DeptBucketSection({
   return (
     <div>
       <SectionLabel right={sectionRight}>
-        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-          <DeptChip code={dept}/>
-          <span>{deptName(dept)} · Functional buckets</span>
-        </span>
+        <span style={{
+          color: "var(--ink-3)", marginRight: 8,
+          letterSpacing: "0.02em", fontWeight: 400, textTransform: "none",
+        }}>{dept}</span>
+        {deptName(dept)}
       </SectionLabel>
       <DataTable
         cols={cols}
@@ -337,7 +324,7 @@ function DeptBucketSection({
             bucketId={r.derived.bucket.id}
           />
         )}
-        emptyState="No functional buckets configured for this department."
+        emptyState="No activities configured for this department."
         footer={{
           name: (
             <span className="mono" style={{
@@ -384,7 +371,7 @@ function DeptBucketSection({
           ),
         }}
         onAdd={onAdd}
-        addLabel="Add functional bucket"
+        addLabel="Add activity"
       />
     </div>
   );
@@ -433,7 +420,7 @@ function RateBasisCheckbox({
         checked={checked}
         onChange={(e) => onChange(e.currentTarget.checked)}
         style={{ accentColor: "var(--accent)", cursor: "pointer", margin: 0 }}
-        aria-label="Rate basis hours"
+        aria-label="Fee hours"
       />
     </span>
   );
