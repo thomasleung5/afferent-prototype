@@ -299,7 +299,6 @@ interface BuildActions {
    *  derived FBHR, which is almost always a destructive surprise. */
   updateFunctionalAllocation: (id: string, patch: Partial<FunctionalAllocationBucket>) => void;
   addFunctionalAllocation: (dept: DeptCode) => void;
-  removeFunctionalAllocation: (id: string) => void;
   resetAll: () => void;
   clearAll: () => void;
 }
@@ -1326,11 +1325,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
               source: "manual",
             },
           ],
-        })),
-
-      removeFunctionalAllocation: (id) =>
-        set((s) => ({
-          functionalAllocation: s.functionalAllocation.filter((b) => b.id !== id),
         })),
 
       resetAll: () => {
