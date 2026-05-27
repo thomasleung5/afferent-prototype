@@ -84,7 +84,7 @@ export default function FunctionalAllocationPage() {
             { key: "recCost",         label: "Recoverable",       width: "140px", align: "right", mono: true },
             { key: "subsidized",      label: "Subsidized",        width: "140px", align: "right", mono: true },
             { key: "recovery",        label: "Recovery %",        width: "110px", align: "right", mono: true },
-            { key: "recoverableFbhr", label: "Recoverable FBHR",  width: "140px", align: "right", mono: true },
+            { key: "recoverableFbhr", label: "FBHR",              width: "120px", align: "right", mono: true },
           ]}
           rows={deptRows}
           footer={{
@@ -127,8 +127,8 @@ function BucketTable() {
   });
 
   // Per-dept rate-basis validation. A dept with no rate-basis buckets
-  // can't compute Recoverable FBHR — surface the offending dept(s) so
-  // the analyst knows why the rate is "—".
+  // can't compute FBHR — surface the offending dept(s) so the analyst
+  // knows why the rate is "—".
   const deptsMissingRateBasis = ORDER.filter((d) => {
     const dd = fa.byDept[d];
     if (!dd) return false;
@@ -265,9 +265,8 @@ function BucketTable() {
             color: "var(--warn)", fontWeight: 700, marginRight: 6,
           }}>NO RATE BASIS</span>
           {deptsMissingRateBasis.join(" · ")} {deptsMissingRateBasis.length === 1 ? "has" : "have"}{" "}
-          no buckets flagged as Rate Basis Hours. Recoverable FBHR
-          renders as &mdash; until at least one bucket per dept is
-          selected.
+          no buckets flagged as Rate Basis Hours. FBHR renders as
+          &mdash; until at least one bucket per dept is selected.
         </div>
       )}
       <DataTable
@@ -285,15 +284,10 @@ function BucketTable() {
 }
 
 function BucketDrilldown({ row }: { row: BucketRow }) {
-  const { updateFunctionalAllocation } = useBuildActions((s) => ({
-    updateFunctionalAllocation: s.updateFunctionalAllocation,
-  }));
   const { derived } = useBuildState();
   const b = row.derived.bucket;
   const dept = row.dept;
   const fbhr = derived.fbhr[b.dept];
-  const engineFbhr = fbhr?.fbhr ?? 0;
-  const recoverableDeptFbhr = dept.recoverableFbhr;
 
   // Bucket's share of dept fully burdened cost. Mirrors the split rule
   // in lib/functionalAllocation.ts; used for the cost-composition table.
@@ -304,69 +298,58 @@ function BucketDrilldown({ row }: { row: BucketRow }) {
   const operatingContribution = (fbhr?.operatingDollars ?? 0) * share;
   const capContribution = (fbhr?.capDollars ?? 0) * share;
 
+  const bucketRateBasisHrs = b.rateBasisHours ? row.derived.directHours : 0;
+
   return (
     <DrilldownShell>
       <DrilldownColumn marker="①" title="Hours">
         <FactList
           rows={[
-            { label: "Direct hours", value: row.derived.directHours > 0 ? fmt.int(row.derived.directHours) : "—" },
-          ]}
-        />
-        <div style={{ height: 14 }}/>
-        <div className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-          marginBottom: 8,
-        }}>FBHR comparison</div>
-        <FactList
-          rows={[
-            { label: "Engine FBHR (dept)",      value: engineFbhr > 0 ? `$${Math.round(engineFbhr)}` : "—" },
             {
-              label: "Recoverable FBHR (dept)",
-              value: recoverableDeptFbhr != null
-                ? <b style={{ color: "var(--accent)" }}>${Math.round(recoverableDeptFbhr)}</b>
+              label: "Direct hours",
+              value: row.derived.directHours > 0
+                ? fmt.int(row.derived.directHours)
                 : "—",
+            },
+            {
+              label: "Rate basis hours",
+              value: bucketRateBasisHrs > 0 ? fmt.int(bucketRateBasisHrs) : "—",
             },
           ]}
         />
       </DrilldownColumn>
 
-      <DrilldownColumn marker="②" title="Cost composition">
+      <DrilldownColumn marker="②" title="FBHR">
         <FactList
           rows={[
-            { label: "Direct labor",        value: fmt.dollarsK(laborContribution) },
-            { label: "Operating",           value: fmt.dollarsK(operatingContribution) },
-            { label: "Allocated overhead",  value: fmt.dollarsK(capContribution) },
             {
-              label: "Bucket fully burdened",
-              value: <b>{fmt.dollarsK(row.derived.fullyBurdenedCost)}</b>,
+              label: "Recoverable cost pool",
+              value: fmt.dollarsK(dept.recoverableCost),
+            },
+            {
+              label: "FBHR",
+              value: dept.recoverableFbhr != null
+                ? <b style={{ color: "var(--accent)" }}>${Math.round(dept.recoverableFbhr)}/hr</b>
+                : "—",
               divider: true,
             },
           ]}
         />
       </DrilldownColumn>
 
-      <DrilldownColumn marker="③" title="Notes & narrative">
-        <div onClick={(e) => e.stopPropagation()}>
-          <CellInput
-            value={b.notes ?? ""}
-            placeholder="Analyst notes for this bucket"
-            onChange={(v) => {
-              const next = String(v);
-              updateFunctionalAllocation(b.id, {
-                notes: next.trim() === "" ? undefined : next,
-              });
-            }}
-          />
-        </div>
-        {b.description && (
-          <div style={{
-            marginTop: 12,
-            fontSize: 11.5, color: "var(--ink-3)", lineHeight: 1.55,
-          }}>
-            {b.description}
-          </div>
-        )}
+      <DrilldownColumn marker="③" title="Cost composition">
+        <FactList
+          rows={[
+            { label: "Direct labor",        value: fmt.dollarsK(laborContribution) },
+            { label: "Operating",           value: fmt.dollarsK(operatingContribution) },
+            { label: "Allocated overhead",  value: fmt.dollarsK(capContribution) },
+            {
+              label: "Fully burdened",
+              value: <b>{fmt.dollarsK(row.derived.fullyBurdenedCost)}</b>,
+              divider: true,
+            },
+          ]}
+        />
       </DrilldownColumn>
     </DrilldownShell>
   );
