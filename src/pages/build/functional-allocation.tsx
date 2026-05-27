@@ -40,6 +40,9 @@ export default function FunctionalAllocationPage() {
     (a, d) => a + (fa.byDept[d]?.recoverableCost ?? 0), 0,
   );
   const totalSubsidized = totalFully - totalRecoverable;
+  const totalDirectHours = activeDepts.reduce(
+    (a, d) => a + (fa.byDept[d]?.directHours ?? 0), 0,
+  );
 
   const deptRows: DeptSummaryRow[] = activeDepts.map((d) => {
     const dd = fa.byDept[d]!;
@@ -55,6 +58,7 @@ export default function FunctionalAllocationPage() {
         fully: fmt.dollarsK(dd.fullyBurdenedCost),
         recCost: fmt.dollarsK(dd.recoverableCost),
         subsidized: fmt.dollarsK(dd.nonRecoverableCost),
+        directHours: dd.directHours > 0 ? fmt.int(dd.directHours) : "—",
         recovery: dd.fullyBurdenedCost > 0
           ? `${Math.round((dd.recoverableCost / dd.fullyBurdenedCost) * 100)}%`
           : "—",
@@ -81,9 +85,10 @@ export default function FunctionalAllocationPage() {
         <DeptSummaryTable
           cols={[
             { key: "dept",            label: "Department",        width: "1.5fr" },
-            { key: "fully",           label: "Fully burdened",    width: "140px", align: "right", mono: true },
-            { key: "recCost",         label: "Recoverable",       width: "140px", align: "right", mono: true },
+            { key: "fully",           label: "Total cost",        width: "140px", align: "right", mono: true },
+            { key: "recCost",         label: "Recoverable cost",  width: "140px", align: "right", mono: true },
             { key: "subsidized",      label: "Subsidized",        width: "140px", align: "right", mono: true },
+            { key: "directHours",     label: "Direct hours",      width: "120px", align: "right", mono: true },
             { key: "recovery",        label: "Recovery %",        width: "110px", align: "right", mono: true },
             { key: "recoverableFbhr", label: "FBHR",              width: "120px", align: "right", mono: true },
           ]}
@@ -98,6 +103,7 @@ export default function FunctionalAllocationPage() {
             fully: fmt.dollarsK(totalFully),
             recCost: fmt.dollarsK(totalRecoverable),
             subsidized: fmt.dollarsK(totalSubsidized),
+            directHours: totalDirectHours > 0 ? fmt.int(totalDirectHours) : "—",
             recovery: totalFully > 0 ? `${Math.round((totalRecoverable / totalFully) * 100)}%` : "—",
             recoverableFbhr: "—",
           }}
@@ -251,6 +257,22 @@ function DeptBucketSection({
       ),
     },
     {
+      key: "directHours",
+      label: "Direct Hours",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => r.derived.directHours,
+      render: (r) => (
+        <span className="num" style={{
+          fontVariantNumeric: "tabular-nums",
+          color: r.derived.directHours > 0 ? "var(--ink)" : "var(--ink-3)",
+        }}>
+          {r.derived.directHours > 0 ? fmt.int(r.derived.directHours) : "—"}
+        </span>
+      ),
+    },
+    {
       key: "totalCost",
       label: "Total Cost",
       width: "130px",
@@ -285,6 +307,7 @@ function DeptBucketSection({
   // reconcile to 100%. Totals row uses the same per-column sums that
   // already appear in the workpaper drilldown.
   const sumShare = rows.reduce((a, r) => a + r.derived.bucket.hoursSharePct, 0);
+  const sumDirectHours = rows.reduce((a, r) => a + r.derived.directHours, 0);
   const sumRateBasisHours = rows.reduce(
     (a, r) => a + (r.derived.bucket.rateBasisHours ? r.derived.directHours : 0),
     0,
@@ -339,6 +362,11 @@ function DeptBucketSection({
           rateBasis: (
             <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
               {sumRateBasisHours > 0 ? `${fmt.int(sumRateBasisHours)} hrs` : "—"}
+            </span>
+          ),
+          directHours: (
+            <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {sumDirectHours > 0 ? fmt.int(sumDirectHours) : "—"}
             </span>
           ),
           totalCost: (
