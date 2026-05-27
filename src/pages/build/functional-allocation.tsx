@@ -59,7 +59,7 @@ export default function FunctionalAllocationPage() {
           ? `${Math.round((dd.recoverableCost / dd.fullyBurdenedCost) * 100)}%`
           : "—",
         recoverableFbhr: dd.recoverableFbhr != null
-          ? <b style={{ color: "var(--accent)" }}>${Math.round(dd.recoverableFbhr)}</b>
+          ? <span style={{ color: "var(--accent)" }}>${Math.round(dd.recoverableFbhr)}</span>
           : <span style={{ color: "var(--ink-3)" }}>—</span>,
       },
       drilldown: <FunctionalBucketSupport dept={d}/>,
@@ -227,7 +227,6 @@ function BucketTable() {
       render: (r) => (
         <span className="num" style={{
           fontVariantNumeric: "tabular-nums",
-          fontWeight: 600,
           color: r.derived.recoverableCost > 0 ? "var(--accent)" : "var(--ink-3)",
         }}>
           {fmt.dollarsK(r.derived.recoverableCost)}

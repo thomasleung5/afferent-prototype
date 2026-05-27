@@ -156,7 +156,6 @@ function BucketSupportTable({
           <span style={{
             textAlign: "right",
             color: r.recoverableCost > 0 ? "var(--ink)" : "var(--ink-3)",
-            fontWeight: r.recoverableCost > 0 ? 600 : 400,
           }}>
             {fmt.dollarsK(r.recoverableCost)}
           </span>

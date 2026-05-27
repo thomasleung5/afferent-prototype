@@ -90,7 +90,7 @@ export function RateDerivation() {
       width: "120px",
       align: "right",
       render: (r) => (
-        <span className="num" style={{ color: "var(--accent)", fontWeight: 600 }}>
+        <span className="num" style={{ color: "var(--accent)" }}>
           ${Math.round(r.fbhr)}
         </span>
       ),
