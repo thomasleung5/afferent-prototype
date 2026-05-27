@@ -435,6 +435,70 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ comparisonVersionId repointed when stale, preserved when valid");
 }
 
+// ── 6b. PR-FA refinement: directHours → hoursSharePct backfill ───────────
+{
+  const state: Record<string, unknown> = {
+    productiveHours: [
+      { id: "ph-1", title: "Planner I",  dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+      { id: "ph-2", title: "Planner II", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+    ],
+    functionalAllocation: [
+      // Legacy persisted bucket with absolute directHours, no hoursSharePct.
+      // Dept productive hours = 1720 × 2 = 3440. Share = 1720/3440 = 50%.
+      { id: "fa-x", dept: "PLAN", name: "Current Planning",
+        recoverabilityPct: 100, directHours: 1720, source: "seed" },
+      // Persisted bucket already on the new shape — leave alone.
+      { id: "fa-y", dept: "PLAN", name: "Public Counter",
+        recoverabilityPct: 50, hoursSharePct: 20, source: "seed" },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  type Row = { id: string; hoursSharePct?: number; directHours?: number; rateBasisHours?: boolean };
+  const buckets = state.functionalAllocation as Row[];
+  const a = buckets.find((b) => b.id === "fa-x")!;
+  assert.equal(a.hoursSharePct, 50,
+    "PR-FA refinement: legacy directHours translates to hoursSharePct via dept productive hours");
+  assert.equal(a.directHours, undefined,
+    "PR-FA refinement: legacy directHours field dropped after translation");
+  assert.equal(a.rateBasisHours, true,
+    "PR-FA refinement: rateBasisHours defaults to true when recoverabilityPct > 0");
+  const b = buckets.find((b) => b.id === "fa-y")!;
+  assert.equal(b.hoursSharePct, 20,
+    "PR-FA refinement: already-translated buckets pass through unchanged");
+  assert.equal(b.rateBasisHours, true,
+    "PR-FA refinement: rateBasisHours backfilled for existing-shape buckets");
+  console.log("  ✓ legacy directHours translated; rateBasisHours seeded by recoverabilityPct > 0");
+}
+
+// ── 6c. PR-FA refinement: rateBasisHours backfill respects existing value
+{
+  const state: Record<string, unknown> = {
+    productiveHours: [
+      { id: "ph-1", title: "Planner I",  dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+    ],
+    functionalAllocation: [
+      // Existing rateBasisHours = false on a 100%-recoverable bucket —
+      // analyst explicitly turned it off; migration must not flip it back.
+      { id: "fa-keep", dept: "PLAN", name: "Custom",
+        recoverabilityPct: 100, hoursSharePct: 100,
+        rateBasisHours: false, source: "manual" },
+      // Recoverability 0, no rateBasisHours field → defaults to false.
+      { id: "fa-default-off", dept: "PLAN", name: "LRP",
+        recoverabilityPct: 0, hoursSharePct: 0, source: "seed" },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  type Row = { id: string; rateBasisHours: boolean };
+  const buckets = state.functionalAllocation as Row[];
+  assert.equal(buckets.find((b) => b.id === "fa-keep")!.rateBasisHours, false,
+    "existing rateBasisHours boolean preserved verbatim");
+  assert.equal(buckets.find((b) => b.id === "fa-default-off")!.rateBasisHours, false,
+    "recoverabilityPct = 0 → rateBasisHours defaults to false");
+  console.log("  ✓ rateBasisHours backfill preserves analyst toggles, defaults off when rec=0");
+}
+
 // ── 7. Idempotency ────────────────────────────────────────────────────────
 {
   const state: Record<string, unknown> = {};

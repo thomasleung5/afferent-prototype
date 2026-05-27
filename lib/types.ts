@@ -594,9 +594,22 @@ export interface FunctionalAllocationBucket {
   /** Fraction of this bucket's activity recovered through user fees,
    *  as a percent (0–100). Drives recoverableCost and recoverableHours. */
   recoverabilityPct: number;
-  /** Direct staff hours absorbed by this bucket per year. Recoverable
-   *  hours = directHours × recoverabilityPct / 100. */
-  directHours: number;
+  /** Share of the dept's total productive hours assigned to this bucket,
+   *  as a percent (0–100). Drives the derived directHours per bucket
+   *  (deptProductiveHours × hoursSharePct / 100). Σ across a dept's
+   *  buckets should normally reconcile to 100% but may temporarily
+   *  drift while the analyst is editing. */
+  hoursSharePct: number;
+  /** When true, this bucket's direct hours are included in the dept's
+   *  recoverable-FBHR denominator (Σ directHours over rate-basis
+   *  buckets). When false, the bucket's cost still contributes to the
+   *  recoverable numerator if recoverabilityPct > 0, but its hours are
+   *  excluded from the rate basis — useful for NBS-style adjustments
+   *  where non-fee-supported activity (long-range planning, CIP,
+   *  governance) is removed from the hourly rate denominator. Defaults
+   *  to true when recoverabilityPct > 0 at row creation; analysts may
+   *  override and the value persists. */
+  rateBasisHours: boolean;
   /** Row provenance — set at creation, not mutated by edits. */
   source: SourceTag;
   notes?: string;

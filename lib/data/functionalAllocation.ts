@@ -1,38 +1,43 @@
 /* Seed Functional Allocation buckets for PLAN / BLDG / ENG.
  *
- * Recoverability assumptions follow NBS-style starter ranges and are
- * intended to be edited by the analyst on the Functional Allocation
- * page. Direct hours are not seeded here — they're populated from the
- * dept's productive-hours total when the store hydrates, then split
- * across buckets by the analyst.
+ * Two analyst inputs per bucket:
+ *   - hoursSharePct: share of the dept's productive hours assigned to
+ *     this bucket. Σ across a dept's buckets should sum to 100%.
+ *   - recoverabilityPct: fee-recoverable portion of the bucket's
+ *     activity. Follows NBS-style starter ranges.
  *
- * This module is loaded by PR-FA2 (store slice) and is not referenced
- * elsewhere yet. Existing FBHR math is unaffected. */
+ * Direct hours are derived per-render (deptProductiveHours ×
+ * hoursSharePct / 100) so the splits stay reconciled to the
+ * authoritative productive-hours roster without persisted duplication.
+ *
+ * Loaded by PR-FA2 (store slice). Existing FBHR math is unaffected. */
 
 import type { FunctionalAllocationBucket } from "@/lib/types";
 
 export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
-  // ---------- Planning ----------
+  // ---------- Planning (Σ shares = 100%) ----------
   {
     id: "fa-plan-current",
     dept: "PLAN",
-    name: "Current Planning — Direct Services",
+    name: "Current Planning",
     description:
       "Discretionary review, entitlement processing, environmental review, " +
       "hearing support, applicant coordination on active project files.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 50,
+    rateBasisHours: true,
     source: "seed",
   },
   {
     id: "fa-plan-counter",
     dept: "PLAN",
-    name: "Public Counter / General Assistance",
+    name: "Public Counter",
     description:
       "Walk-in inquiries, general zoning questions, pre-application " +
       "advice not tied to a billable applicant of record.",
     recoverabilityPct: 50,
-    directHours: 0,
+    hoursSharePct: 20,
+    rateBasisHours: true,
     source: "seed",
   },
   {
@@ -44,7 +49,8 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "element work — public-benefit activity not appropriately " +
       "recovered through user fees.",
     recoverabilityPct: 0,
-    directHours: 0,
+    hoursSharePct: 20,
+    rateBasisHours: false,
     source: "seed",
   },
   {
@@ -56,11 +62,12 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "recoverable where statute permits cost recovery from the responsible " +
       "party; the unrecoverable share covers public-protection activity.",
     recoverabilityPct: 35,
-    directHours: 0,
+    hoursSharePct: 10,
+    rateBasisHours: true,
     source: "seed",
   },
 
-  // ---------- Building ----------
+  // ---------- Building (Σ shares = 100%) ----------
   {
     id: "fa-bldg-plancheck",
     dept: "BLDG",
@@ -69,7 +76,8 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "Building code review of construction documents, structural " +
       "review, energy and accessibility review.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 30,
+    rateBasisHours: true,
     source: "seed",
   },
   {
@@ -80,7 +88,8 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "Permit intake, fee calculation, issuance, and permit-record " +
       "administration.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 15,
+    rateBasisHours: true,
     source: "seed",
   },
   {
@@ -91,22 +100,24 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "Field inspections through project completion, including " +
       "scheduling and inspection-record administration.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 40,
+    rateBasisHours: true,
     source: "seed",
   },
   {
     id: "fa-bldg-counter",
     dept: "BLDG",
-    name: "General Counter",
+    name: "Public Counter",
     description:
       "Walk-in code questions, owner-builder guidance, and general " +
       "permit information not tied to a billable applicant of record.",
     recoverabilityPct: 50,
-    directHours: 0,
+    hoursSharePct: 15,
+    rateBasisHours: true,
     source: "seed",
   },
 
-  // ---------- Engineering ----------
+  // ---------- Engineering (Σ shares = 100%) ----------
   {
     id: "fa-eng-landdev",
     dept: "ENG",
@@ -115,28 +126,31 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "Engineering review of grading, drainage, frontage improvements, " +
       "and subdivision improvement plans on private development.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 40,
+    rateBasisHours: true,
     source: "seed",
   },
   {
     id: "fa-eng-cip",
     dept: "ENG",
-    name: "CIP / Capital Projects",
+    name: "CIP / Infrastructure",
     description:
       "Design and delivery of City capital projects. Funded through CIP " +
       "appropriations, not through user fees.",
     recoverabilityPct: 0,
-    directHours: 0,
+    hoursSharePct: 25,
+    rateBasisHours: false,
     source: "seed",
   },
   {
     id: "fa-eng-ency",
     dept: "ENG",
-    name: "Encroachment Permitting",
+    name: "Encroachment Permits",
     description:
       "Review and inspection of work in the public right-of-way.",
     recoverabilityPct: 100,
-    directHours: 0,
+    hoursSharePct: 20,
+    rateBasisHours: true,
     source: "seed",
   },
   {
@@ -149,7 +163,8 @@ export const FUNCTIONAL_ALLOCATION_SEED: FunctionalAllocationBucket[] = [
       "tied to private project review is recovered through fees; the " +
       "share supporting citywide traffic planning is not.",
     recoverabilityPct: 50,
-    directHours: 0,
+    hoursSharePct: 15,
+    rateBasisHours: true,
     source: "seed",
   },
 ];

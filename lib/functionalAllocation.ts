@@ -1,18 +1,41 @@
-/* Functional Allocation calc — derives per-bucket and per-dept implied
- * FBHR from FunctionalAllocationBucket rows + the dept's fully burdened
- * cost (post-overhead-allocation). All math is per-render; bucket rows
- * carry only the analyst-editable inputs (directHours, recoverabilityPct).
+/* Functional Allocation calc — derives per-bucket and per-dept
+ * recoverable cost and FBHR from FunctionalAllocationBucket rows + the
+ * dept's fully burdened cost (post-overhead-allocation).
  *
- * Policy intent — a department's full cost must be recovered through
- * fees on the recoverable share of its activity. A 50%-recoverable dept
- * has an implied FBHR roughly 2× the engine FBHR because half the hours
- * are absorbing the cost of the other half (long-range planning, CIP,
- * etc. — public-benefit work funded by the General Fund implicitly
- * across the dept's whole cost).
+ * NBS-style fee-study methodology:
  *
- * The implied FBHR is informational by default and is only routed into
- * cost-of-service math when the useFunctionalAllocationFbhr flag is on
- * (see lib/store.ts). When off, the FBHR engine is unchanged.
+ *   bucket.directHours       = deptProductiveHours × allocationSharePct
+ *   bucket.fullyBurdenedCost = deptFullyBurdenedCost × allocationSharePct
+ *   bucket.recoverableCost   = bucket.fullyBurdenedCost × feeRecoverablePct
+ *   bucket.nonRecoverableCost = bucket.fullyBurdenedCost − bucket.recoverableCost
+ *
+ *   dept.recoverableCost     = Σ bucket.recoverableCost
+ *   dept.rateBasisDirectHours = Σ bucket.directHours WHERE rateBasisHours
+ *   dept.recoverableFbhr     = dept.recoverableCost ÷ dept.rateBasisDirectHours
+ *
+ * Two independent levers:
+ *
+ *   (1) Recoverable cost contribution — Fee Recoverable %. Scales the
+ *       bucket's contribution to the FBHR numerator.
+ *
+ *   (2) Hourly rate basis contribution — Rate Basis Hours flag. When
+ *       true, the bucket's direct hours are included in the FBHR
+ *       denominator. When false, hours are excluded (NBS adjustment for
+ *       non-fee-supported activity such as long-range planning, CIP,
+ *       governance). Cost contribution is unaffected by this flag.
+ *
+ * Fee Recoverable % reduces COSTS only. Hours are an operational basis
+ * — they represent workload allocation, not a policy recovery target —
+ * so they are NOT multiplied by recoverability.
+ *
+ * Allocation shares are taken raw (no normalization). When shares sum
+ * to less than 100, the unallocated cost lands in the dept-level
+ * "subsidized" total but not in any bucket.
+ *
+ * Recoverable FBHR always drives downstream Cost of Service math via
+ * applyFunctionalAllocationFbhr() — departments where the recoverable
+ * FBHR is null (no buckets, no rate-basis hours) fall through to the
+ * engine FBHR.
  */
 
 import type { DeptCode, FunctionalAllocationBucket } from "@/lib/types";
@@ -20,21 +43,17 @@ import type { FBHR } from "@/lib/calc";
 
 export interface FunctionalAllocationBucketDerived {
   bucket: FunctionalAllocationBucket;
-  /** This bucket's share of the dept's fully burdened cost. Split by
-   *  directHours when any bucket in the dept has non-zero hours; else
-   *  an even split across the dept's buckets so the page reads sensibly
-   *  on first load. */
+  /** Direct hours assigned to this bucket:
+   *    deptProductiveHours × hoursSharePct / 100
+   *  An operational basis — NOT reduced by recoverabilityPct. */
+  directHours: number;
+  /** This bucket's share of the dept's fully burdened cost:
+   *    deptFullyBurdenedCost × hoursSharePct / 100 */
   fullyBurdenedCost: number;
   /** fullyBurdenedCost × recoverabilityPct / 100. */
   recoverableCost: number;
   /** fullyBurdenedCost − recoverableCost. */
   nonRecoverableCost: number;
-  /** directHours × recoverabilityPct / 100. */
-  recoverableHours: number;
-  /** Bucket-level $/hr — fullyBurdenedCost / directHours (or 0 when
-   *  directHours is 0). NOT the rate used by Cost of Service; that's
-   *  the dept-level impliedFbhr below. */
-  impliedFbhr: number;
 }
 
 export interface FunctionalAllocationDeptDerived {
@@ -42,24 +61,32 @@ export interface FunctionalAllocationDeptDerived {
   /** All buckets that belong to this dept, with their derived fields. */
   buckets: FunctionalAllocationBucketDerived[];
   /** Dept's fully burdened cost (direct labor + operating + allocated
-   *  overhead) — equal to the engine-derived FBHR's dollar total. The
-   *  per-bucket cost split sums to this. */
+   *  overhead) — the engine-derived dollar total. NOTE: when bucket
+   *  shares don't sum to 100, Σ bucket.fullyBurdenedCost may be less
+   *  than this — the difference is unallocated cost. */
   fullyBurdenedCost: number;
   /** Σ bucket.recoverableCost across the dept. */
   recoverableCost: number;
-  /** fullyBurdenedCost − recoverableCost. */
+  /** fullyBurdenedCost − recoverableCost. Includes both the
+   *  non-recoverable share of allocated buckets AND any unallocated
+   *  cost when Σ shares < 100. */
   nonRecoverableCost: number;
-  /** Σ bucket.directHours across the dept. */
+  /** Σ bucket.directHours across the dept. Equals deptProductiveHours
+   *  exactly when Σ hoursSharePct = 100. */
   directHours: number;
-  /** Σ bucket.recoverableHours across the dept. */
-  recoverableHours: number;
-  /** Dept-level implied FBHR for downstream cost-of-service math:
-   *  fullyBurdenedCost ÷ recoverableHours. Null when recoverableHours
-   *  is zero (no analyst input yet) — consumers fall back to the
-   *  engine FBHR in that case. */
-  impliedFbhr: number | null;
-  /** Σ (directHours × recoverabilityPct) ÷ Σ directHours, expressed as
-   *  a percent. Surfaces the dept's "recoverability ratio" in the UI. */
+  /** Σ bucket.directHours restricted to buckets with rateBasisHours = true.
+   *  The denominator used by recoverableFbhr. */
+  rateBasisDirectHours: number;
+  /** Dept-level recoverable FBHR:
+   *    Σ recoverableCost ÷ Σ directHours WHERE rateBasisHours = true
+   *  Null when no buckets are flagged as rate-basis hours (or those
+   *  buckets have zero direct hours) — the UI renders em dash. */
+  recoverableFbhr: number | null;
+  /** Σ hoursSharePct across the dept's buckets. Surfaced for the
+   *  Σ-share validation indicator. */
+  hoursSharePctTotal: number;
+  /** Σ (hoursSharePct × recoverabilityPct) ÷ Σ hoursSharePct — the
+   *  share-weighted average recoverability across the dept. */
   weightedRecoverabilityPct: number;
 }
 
@@ -67,23 +94,21 @@ export interface FunctionalAllocationDerived {
   /** Per-dept derivation, keyed by dept code. Only the depts that have
    *  at least one bucket appear here. */
   byDept: Partial<Record<DeptCode, FunctionalAllocationDeptDerived>>;
-  /** Quick lookup: dept → implied FBHR (null when not computable). */
-  impliedFbhrByDept: Partial<Record<DeptCode, number | null>>;
+  /** Quick lookup: dept → recoverable FBHR (null when not computable). */
+  recoverableFbhrByDept: Partial<Record<DeptCode, number | null>>;
 }
 
 /** Compute the Functional Allocation derived state from raw buckets +
  *  the engine-derived FBHR (which carries the dept's fully burdened
- *  cost dollars). The FBHR engine is unchanged; this just reads its
- *  per-dept dollar totals. */
+ *  cost dollars + productive hours). The FBHR engine is unchanged;
+ *  this just reads its per-dept totals. */
 export function deriveFunctionalAllocation(
   buckets: FunctionalAllocationBucket[],
   fbhr: Record<DeptCode, FBHR>,
 ): FunctionalAllocationDerived {
   const byDept: Partial<Record<DeptCode, FunctionalAllocationDeptDerived>> = {};
-  const impliedFbhrByDept: Partial<Record<DeptCode, number | null>> = {};
+  const recoverableFbhrByDept: Partial<Record<DeptCode, number | null>> = {};
 
-  // Pre-bucket by dept so we can split cost proportionally within each
-  // dept without re-filtering per bucket.
   const grouped = new Map<DeptCode, FunctionalAllocationBucket[]>();
   for (const b of buckets) {
     const arr = grouped.get(b.dept) ?? [];
@@ -96,37 +121,39 @@ export function deriveFunctionalAllocation(
     if (!deptFbhr) continue;
     const fullyBurdenedCost =
       deptFbhr.directDollars + deptFbhr.operatingDollars + deptFbhr.capDollars;
-    const totalDirectHours = list.reduce((a, b) => a + b.directHours, 0);
-    // Cost split rule: weight by directHours when any bucket has
-    // non-zero hours; else split evenly so the table reads sensibly on
-    // first load (seed defaults directHours: 0 across the board).
-    const evenSplit = totalDirectHours <= 0;
+    const deptProductiveHours = deptFbhr.productiveHours;
 
     const derivedBuckets: FunctionalAllocationBucketDerived[] = list.map((b) => {
-      const share = evenSplit
-        ? 1 / list.length
-        : b.directHours / totalDirectHours;
+      const share = b.hoursSharePct / 100;
       const bucketCost = fullyBurdenedCost * share;
+      const directHours = deptProductiveHours * share;
       const recPct = b.recoverabilityPct / 100;
       const recoverableCost = bucketCost * recPct;
-      const recoverableHours = b.directHours * recPct;
       return {
         bucket: b,
+        directHours,
         fullyBurdenedCost: bucketCost,
         recoverableCost,
         nonRecoverableCost: bucketCost - recoverableCost,
-        recoverableHours,
-        impliedFbhr: b.directHours > 0 ? bucketCost / b.directHours : 0,
       };
     });
 
     const recoverableCost = derivedBuckets.reduce((a, b) => a + b.recoverableCost, 0);
-    const recoverableHours = derivedBuckets.reduce((a, b) => a + b.recoverableHours, 0);
-    const weightedRecoverabilityPct = totalDirectHours > 0
-      ? (list.reduce((a, b) => a + b.directHours * b.recoverabilityPct, 0) / totalDirectHours)
-      : (list.reduce((a, b) => a + b.recoverabilityPct, 0) / Math.max(1, list.length));
-    const impliedFbhr = recoverableHours > 0
-      ? fullyBurdenedCost / recoverableHours
+    const totalDirectHours = derivedBuckets.reduce((a, b) => a + b.directHours, 0);
+    const rateBasisDirectHours = derivedBuckets.reduce(
+      (a, b) => a + (b.bucket.rateBasisHours ? b.directHours : 0), 0,
+    );
+    const hoursSharePctTotal = list.reduce((a, b) => a + b.hoursSharePct, 0);
+    const weightedRecoverabilityPct = hoursSharePctTotal > 0
+      ? (list.reduce((a, b) => a + b.hoursSharePct * b.recoverabilityPct, 0) / hoursSharePctTotal)
+      : 0;
+    // Dept-level recoverable FBHR denominator is the sum of direct
+    // hours for buckets flagged as rate-basis. Null when no buckets
+    // are flagged (or when those flagged buckets carry zero direct
+    // hours) so the UI can render em dash and downstream consumers
+    // fall back to the engine FBHR.
+    const recoverableFbhr = rateBasisDirectHours > 0
+      ? recoverableCost / rateBasisDirectHours
       : null;
 
     byDept[dept] = {
@@ -136,28 +163,28 @@ export function deriveFunctionalAllocation(
       recoverableCost,
       nonRecoverableCost: fullyBurdenedCost - recoverableCost,
       directHours: totalDirectHours,
-      recoverableHours,
-      impliedFbhr,
+      rateBasisDirectHours,
+      recoverableFbhr,
+      hoursSharePctTotal,
       weightedRecoverabilityPct,
     };
-    impliedFbhrByDept[dept] = impliedFbhr;
+    recoverableFbhrByDept[dept] = recoverableFbhr;
   }
 
-  return { byDept, impliedFbhrByDept };
+  return { byDept, recoverableFbhrByDept };
 }
 
-/** When the useFunctionalAllocationFbhr flag is on, replace each dept's
- *  engine FBHR with its implied FBHR from the functional-allocation
- *  derivation. Depts with no implied rate (no buckets, or zero
- *  recoverable hours) pass through unchanged so the FBHR engine remains
+/** Replace each dept's engine FBHR with its recoverable FBHR from the
+ *  functional-allocation derivation. Always called by
+ *  deriveBuildDerived so the recoverable FBHR drives downstream Cost
+ *  of Service math. Depts with no recoverable rate (no buckets, no
+ *  rate-basis hours) pass through unchanged, keeping the engine FBHR
  *  authoritative for unmodeled depts.
  *
  *  The override rewrites only the headline `fbhr` field, not the
- *  per-component rates (directRate / operatingRate / capRate). The
- *  components retain their engine values so the Appendix B
- *  decomposition still reads correctly — they just no longer sum to
- *  `fbhr` when the override is active. Document this in the UI when
- *  the flag is on. */
+ *  per-component rates (directRate / operatingRate / capRate) — those
+ *  retain their engine values so the Appendix B decomposition still
+ *  reads correctly. */
 export function applyFunctionalAllocationFbhr(
   fbhr: Record<DeptCode, FBHR>,
   fa: FunctionalAllocationDerived,
@@ -165,9 +192,9 @@ export function applyFunctionalAllocationFbhr(
   const out = {} as Record<DeptCode, FBHR>;
   for (const k of Object.keys(fbhr) as DeptCode[]) {
     const engine = fbhr[k];
-    const implied = fa.impliedFbhrByDept[k];
-    if (implied != null) {
-      out[k] = { ...engine, fbhr: implied };
+    const recoverable = fa.recoverableFbhrByDept[k];
+    if (recoverable != null) {
+      out[k] = { ...engine, fbhr: recoverable };
     } else {
       out[k] = engine;
     }

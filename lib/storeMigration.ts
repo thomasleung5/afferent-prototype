@@ -201,12 +201,66 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   // null / undefined triggers re-seeding.
   if (state.functionalAllocation == null) {
     state.functionalAllocation = FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b }));
-  }
-  // PR-FA3: implied-FBHR override flag defaults off so persisted stores
-  // from earlier sessions get the same backward-compatible behavior
-  // they had pre-PR-FA3.
-  if (typeof state.useFunctionalAllocationFbhr !== "boolean") {
-    state.useFunctionalAllocationFbhr = false;
+  } else if (Array.isArray(state.functionalAllocation)) {
+    // PR-FA refinement: directHours → hoursSharePct. Older persisted
+    // buckets carry an absolute directHours value; translate to a share
+    // of the dept's productive hours total when productive-hours data
+    // is available. Falls back to 0 if we can't compute the share —
+    // analyst can re-enter on the page.
+    const deptHours: Partial<Record<string, number>> = {};
+    if (Array.isArray(state.productiveHours)) {
+      for (const r of state.productiveHours as { dept: string; fte: number; hours: number }[]) {
+        deptHours[r.dept] = (deptHours[r.dept] ?? 0) + r.fte * r.hours;
+      }
+    }
+    const legacyBuckets = state.functionalAllocation as unknown as Record<string, unknown>[];
+    let migrated = legacyBuckets.map((raw) => {
+      if (typeof raw.hoursSharePct === "number") {
+        return raw as unknown as typeof state.functionalAllocation[number];
+      }
+      const legacyHours = typeof raw.directHours === "number" ? raw.directHours : 0;
+      const dept = typeof raw.dept === "string" ? raw.dept : "";
+      const denom = deptHours[dept] ?? 0;
+      const share = denom > 0 && legacyHours > 0
+        ? Math.min(100, Math.max(0, (legacyHours / denom) * 100))
+        : 0;
+      const { directHours: _drop, ...rest } = raw;
+      void _drop;
+      return { ...rest, hoursSharePct: share } as unknown as typeof state.functionalAllocation[number];
+    });
+
+    // Re-seed any dept whose Σ hoursSharePct is 0 — this happens when an
+    // older persisted store carried `directHours: 0` across all of a
+    // dept's buckets (the original seed defaulted to 0 before the share-%
+    // refinement). Without this, the analyst sees "0%" rows alongside
+    // populated bucket cost (driven by the cost-split even-fallback)
+    // which reads as a contradiction. Match by bucket id so analyst edits
+    // to other fields (name, recoverability, notes) survive.
+    const byDeptSum = new Map<string, number>();
+    for (const b of migrated as { dept: string; hoursSharePct: number }[]) {
+      byDeptSum.set(b.dept, (byDeptSum.get(b.dept) ?? 0) + b.hoursSharePct);
+    }
+    const seedById = new Map(FUNCTIONAL_ALLOCATION_SEED.map((s) => [s.id, s]));
+    migrated = (migrated as { id: string; dept: string; hoursSharePct: number }[]).map((b) => {
+      if ((byDeptSum.get(b.dept) ?? 0) > 0) return b;
+      const seed = seedById.get(b.id);
+      if (!seed) return b;
+      return { ...b, hoursSharePct: seed.hoursSharePct };
+    }) as typeof migrated;
+
+    // Rate Basis Hours backfill — defaults to (recoverabilityPct > 0) at
+    // creation/migration time. Persisted-true values are preserved
+    // verbatim; the user's "no automatic coupling after manual edits"
+    // contract means we never overwrite an existing boolean.
+    migrated = (migrated as unknown as Record<string, unknown>[]).map((raw) => {
+      if (typeof raw.rateBasisHours === "boolean") {
+        return raw as unknown as typeof migrated[number];
+      }
+      const recPct = typeof raw.recoverabilityPct === "number" ? raw.recoverabilityPct : 0;
+      return { ...raw, rateBasisHours: recPct > 0 } as unknown as typeof migrated[number];
+    }) as typeof migrated;
+
+    state.functionalAllocation = migrated;
   }
 
   // capCenterSources default — keyed by center identity (glCode or synth),

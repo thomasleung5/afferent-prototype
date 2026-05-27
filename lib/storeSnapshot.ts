@@ -34,7 +34,6 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     capCenterOrder: state.capCenterOrder,
     imports: state.imports,
     functionalAllocation: state.functionalAllocation,
-    useFunctionalAllocationFbhr: state.useFunctionalAllocationFbhr,
     activeJurisdictionId: state.activeJurisdictionId,
     activeFiscalYear: state.activeFiscalYear,
   });

@@ -2,9 +2,15 @@
  *
  * Run with: npm run test:functional-allocation
  *
- * Pins the implied-FBHR formula (full cost / recoverable hours), the
- * even-split fallback when no analyst has set directHours, and the
- * applyFunctionalAllocationFbhr override path. */
+ * Pins NBS-style methodology:
+ *   - bucket.directHours       = deptProductiveHours × hoursSharePct/100
+ *   - bucket.fullyBurdenedCost = deptFullBurd × hoursSharePct/100
+ *   - bucket.recoverableCost   = bucket.fullyBurdenedCost × recPct/100
+ *   - dept.recoverableFbhr     = Σ recoverableCost / Σ directHours WHERE rateBasisHours
+ *
+ * Fee Recoverable % reduces COSTS ONLY. Hours are NOT multiplied by it.
+ * Rate Basis Hours flag controls inclusion in the FBHR denominator
+ * INDEPENDENTLY of cost contribution. */
 
 import assert from "node:assert/strict";
 import {
@@ -31,103 +37,119 @@ const bucket = (overrides: Partial<FunctionalAllocationBucket> = {}): Functional
   dept: "PLAN",
   name: "Bucket",
   recoverabilityPct: 100,
-  directHours: 0,
+  hoursSharePct: 0,
+  rateBasisHours: true,
   source: "seed",
   ...overrides,
 });
 
-// ── 1. Single 100% recoverable bucket → implied FBHR equals engine FBHR ──
+// ── 1. Single 100%/100% / rate basis → matches engine FBHR ──────────────
 {
-  const buckets = [bucket({ id: "fa-1", directHours: 1000 })];
+  const buckets = [bucket({ id: "fa-1", hoursSharePct: 100, recoverabilityPct: 100, rateBasisHours: true })];
   const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
   const d = fa.byDept.PLAN!;
-  assert.equal(d.fullyBurdenedCost, 200_000);
-  assert.equal(d.recoverableHours, 1000);
   assert.equal(d.recoverableCost, 200_000);
-  assert.equal(d.nonRecoverableCost, 0);
-  assert.equal(d.impliedFbhr, 200, "100% recoverable matches engine FBHR exactly");
-  assert.equal(d.buckets[0].impliedFbhr, 200);
-  assert.equal(fa.impliedFbhrByDept.PLAN, 200);
-  console.log("  ✓ 100% recoverable single bucket → impliedFbhr equals engine FBHR");
+  assert.equal(d.rateBasisDirectHours, 1000);
+  assert.equal(d.recoverableFbhr, 200, "Σ rec / Σ rate-basis hours = engine FBHR here");
+  console.log("  ✓ 100%/100% rate-basis bucket → recoverable FBHR matches engine");
 }
 
-// ── 2. 50% recoverable bucket → implied FBHR doubles ─────────────────────
-{
-  const buckets = [bucket({ id: "fa-2", directHours: 1000, recoverabilityPct: 50 })];
-  const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
-  const d = fa.byDept.PLAN!;
-  assert.equal(d.recoverableHours, 500);
-  assert.equal(d.recoverableCost, 100_000);
-  assert.equal(d.nonRecoverableCost, 100_000);
-  assert.equal(d.impliedFbhr, 400, "50% recoverable doubles the implied FBHR");
-  console.log("  ✓ 50% recoverable → impliedFbhr is 2× engine FBHR");
-}
-
-// ── 3. Mixed buckets → cost split by directHours; weighted recovery ─────
+// ── 2. Rate Basis Hours = false drops bucket hours from denominator ─────
+// Two buckets, both 100% recoverable. One marked rate-basis, one not.
+// Cost: both contribute → $200k recoverable.
+// Denominator: only the rate-basis bucket → 500 hours.
+// → recoverable FBHR = $200k / 500 = $400.
 {
   const buckets = [
-    bucket({ id: "fa-3a", directHours: 600, recoverabilityPct: 100 }),
-    bucket({ id: "fa-3b", directHours: 400, recoverabilityPct: 0 }),
+    bucket({ id: "fa-2a", hoursSharePct: 50, recoverabilityPct: 100, rateBasisHours: true }),
+    bucket({ id: "fa-2b", hoursSharePct: 50, recoverabilityPct: 100, rateBasisHours: false }),
   ];
   const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
   const d = fa.byDept.PLAN!;
-  // 60% of cost lands on the 100%-recoverable bucket → 120k recoverable.
-  // 40% of cost lands on the 0% bucket → all non-recoverable.
-  assert.equal(d.buckets[0].fullyBurdenedCost, 120_000);
-  assert.equal(d.buckets[1].fullyBurdenedCost, 80_000);
-  assert.equal(d.recoverableCost, 120_000);
-  assert.equal(d.recoverableHours, 600);
-  // Implied FBHR = full cost / recoverable hours = 200k / 600.
-  assert.equal(d.impliedFbhr, 200_000 / 600);
-  assert.equal(d.weightedRecoverabilityPct, 60, "weighted recoverability honors hour weights");
-  console.log("  ✓ mixed buckets split cost by directHours, full cost recovered through recoverable hours");
+  assert.equal(d.recoverableCost, 200_000, "both buckets contribute to recoverable cost");
+  assert.equal(d.directHours, 1000, "directHours total unchanged");
+  assert.equal(d.rateBasisDirectHours, 500, "only rate-basis bucket counts toward denominator");
+  assert.equal(d.recoverableFbhr, 400, "denominator restriction raises the rate");
+  console.log("  ✓ rate-basis flag excludes bucket hours from denominator only");
 }
 
-// ── 4. All-zero directHours → even split fallback ────────────────────────
+// ── 3. NBS-style mixed dept: long-range / CIP excluded from rate basis ──
+// 4 buckets representing a Planning division:
+//   - Current Planning (50% share, 100% rec, rate basis)
+//   - Public Counter (20%, 50% rec, rate basis)
+//   - Long Range Planning (20%, 0% rec, NOT rate basis)
+//   - Code Enforcement (10%, 35% rec, rate basis)
+//
+// Recoverable cost:
+//   = (50% × 200k × 100%) + (20% × 200k × 50%) + 0 + (10% × 200k × 35%)
+//   = 100k + 20k + 0 + 7k = $127k
+// Rate-basis hours: 500 + 200 + 0 + 100 = 800
+// Recoverable FBHR = 127k / 800 = $158.75
 {
   const buckets = [
-    bucket({ id: "fa-4a", directHours: 0, recoverabilityPct: 100 }),
-    bucket({ id: "fa-4b", directHours: 0, recoverabilityPct: 50 }),
-    bucket({ id: "fa-4c", directHours: 0, recoverabilityPct: 0 }),
+    bucket({ id: "fa-3a", hoursSharePct: 50, recoverabilityPct: 100, rateBasisHours: true }),
+    bucket({ id: "fa-3b", hoursSharePct: 20, recoverabilityPct: 50,  rateBasisHours: true }),
+    bucket({ id: "fa-3c", hoursSharePct: 20, recoverabilityPct: 0,   rateBasisHours: false }),
+    bucket({ id: "fa-3d", hoursSharePct: 10, recoverabilityPct: 35,  rateBasisHours: true }),
   ];
   const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
   const d = fa.byDept.PLAN!;
-  // Even split: each bucket carries 1/3 of $200k = ~$66,666.67
-  assert.ok(Math.abs(d.buckets[0].fullyBurdenedCost - 200_000 / 3) < 1e-6);
-  assert.ok(Math.abs(d.buckets[1].fullyBurdenedCost - 200_000 / 3) < 1e-6);
-  // No directHours anywhere → recoverableHours is 0 → impliedFbhr is null.
-  assert.equal(d.recoverableHours, 0);
-  assert.equal(d.impliedFbhr, null, "zero recoverable hours yields null implied FBHR");
-  assert.equal(d.weightedRecoverabilityPct, 50, "weighted recovery falls back to simple mean across buckets");
-  console.log("  ✓ all-zero directHours → even cost split, null impliedFbhr");
+  assert.equal(d.recoverableCost, 127_000);
+  assert.equal(d.rateBasisDirectHours, 800);
+  assert.equal(d.recoverableFbhr, 127_000 / 800);
+  console.log("  ✓ NBS-style mixed dept: excludes non-fee activity from rate basis");
 }
 
-// ── 5. applyFunctionalAllocationFbhr only overrides when implied is set ──
+// ── 4. No rate-basis buckets → recoverable FBHR null ────────────────────
+{
+  const buckets = [
+    bucket({ id: "fa-4a", hoursSharePct: 100, recoverabilityPct: 100, rateBasisHours: false }),
+  ];
+  const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
+  const d = fa.byDept.PLAN!;
+  assert.equal(d.recoverableCost, 200_000, "cost still allocated");
+  assert.equal(d.rateBasisDirectHours, 0);
+  assert.equal(d.recoverableFbhr, null, "no rate-basis hours → null FBHR");
+  console.log("  ✓ no rate-basis buckets → null recoverable FBHR (no divide-by-zero)");
+}
+
+// ── 5. Allocation share 0% on rate-basis bucket → zero everywhere ───────
+{
+  const buckets = [
+    bucket({ id: "fa-5a", hoursSharePct: 0, recoverabilityPct: 100, rateBasisHours: true }),
+  ];
+  const fa = deriveFunctionalAllocation(buckets, { PLAN: fbhr() } as never);
+  const d = fa.byDept.PLAN!;
+  assert.equal(d.buckets[0].directHours, 0);
+  assert.equal(d.buckets[0].fullyBurdenedCost, 0);
+  assert.equal(d.buckets[0].recoverableCost, 0);
+  assert.equal(d.rateBasisDirectHours, 0);
+  assert.equal(d.recoverableFbhr, null);
+  console.log("  ✓ 0% allocation share → zero everywhere; null FBHR");
+}
+
+// ── 6. applyFunctionalAllocationFbhr override path still works ──────────
 {
   const engine: Record<DeptCode, FBHR> = {
     PLAN: fbhr({ dept: "PLAN", fbhr: 200 }),
     BLDG: fbhr({ dept: "BLDG", fbhr: 250 }),
     ENG: fbhr({ dept: "ENG", fbhr: 300 }),
-    PARKS: fbhr({ dept: "PARKS", fbhr: 0 }),
-    PD: fbhr({ dept: "PD", fbhr: 0 }),
-    FIRE: fbhr({ dept: "FIRE", fbhr: 0 }),
+    PARKS: fbhr({ dept: "PARKS", fbhr: 0, productiveHours: 0 }),
+    PD: fbhr({ dept: "PD", fbhr: 0, productiveHours: 0 }),
+    FIRE: fbhr({ dept: "FIRE", fbhr: 0, productiveHours: 0 }),
   };
   const buckets = [
-    bucket({ id: "fa-5a", dept: "PLAN", directHours: 1000, recoverabilityPct: 50 }), // → 400
-    // BLDG has a bucket but no recoverable hours → falls through to engine.
-    bucket({ id: "fa-5b", dept: "BLDG", directHours: 0, recoverabilityPct: 100 }),
-    // ENG has no buckets at all → falls through to engine.
+    bucket({ id: "fa-6a", dept: "PLAN", hoursSharePct: 100, recoverabilityPct: 50, rateBasisHours: true }),
+    bucket({ id: "fa-6b", dept: "BLDG", hoursSharePct: 100, recoverabilityPct: 100, rateBasisHours: false }),
   ];
   const fa = deriveFunctionalAllocation(buckets, engine);
   const out = applyFunctionalAllocationFbhr(engine, fa);
-  assert.equal(out.PLAN.fbhr, 400, "PLAN overridden to implied FBHR");
-  assert.equal(out.BLDG.fbhr, 250, "BLDG falls through when implied is null");
+  // PLAN: recoverableCost=100k, rate-basis hours=1000 → FBHR=100.
+  assert.equal(out.PLAN.fbhr, 100, "PLAN overridden to recoverable FBHR");
+  // BLDG: no rate-basis hours → recoverableFbhr=null → fall through to engine.
+  assert.equal(out.BLDG.fbhr, 250, "BLDG falls through when no rate-basis hours");
   assert.equal(out.ENG.fbhr, 300, "ENG falls through when no buckets present");
-  // Component rates stay engine values — they're not rewritten.
-  assert.equal(out.PLAN.directRate, 100, "directRate preserved");
-  assert.equal(out.PLAN.operatingRate, 50, "operatingRate preserved");
-  assert.equal(out.PLAN.capRate, 50, "capRate preserved");
-  console.log("  ✓ apply override only rewrites headline fbhr; missing/null falls through");
+  console.log("  ✓ override respects null recoverableFbhr; engine retained");
 }
 
 console.log("\nAll Functional Allocation assertions passed.");
