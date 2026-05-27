@@ -65,6 +65,9 @@ interface Props<Row extends DataTableRow> {
    *  should default-sort by their sequence column so the displayed
    *  indices match the underlying sequence. */
   onReorderRow?: (fromIdx: number, toIdx: number) => void;
+  /** Optional totals / summary row pinned to the bottom of the table.
+   *  Keys map to column keys; missing entries render empty. */
+  footer?: Record<string, ReactNode>;
 }
 
 function sortValue<Row>(col: Column<Row>, row: Row): unknown {
@@ -94,6 +97,7 @@ export function DataTable<Row extends DataTableRow>({
   openId, renderDrilldown,
   drilldownIndicator,
   onReorderRow,
+  footer,
 }: Props<Row>) {
   const [sortKey, setSortKey] = useState<string | null>(defaultSort?.key ?? null);
   const [sortDir, setSortDir] = useState<SortDir>(defaultSort?.dir ?? "asc");
@@ -363,6 +367,29 @@ export function DataTable<Row extends DataTableRow>({
                 </div>
               );
             })
+          )}
+
+          {footer && (
+            <div style={{
+              display: "grid", gridTemplateColumns: grid, gap: 12,
+              padding: "10px 16px 10px 13px",
+              borderTop: "2px solid var(--ink)",
+              background: "var(--paper-2)",
+              alignItems: "baseline",
+              color: "var(--ink)", fontWeight: 600,
+              fontSize: "var(--fs-ui)",
+            }}>
+              {reorderable && <div/>}
+              {cols.map((c) => (
+                <div key={c.key} style={{
+                  textAlign: c.align ?? "left",
+                  overflow: "hidden", minWidth: 0,
+                }}>
+                  {footer[c.key] ?? null}
+                </div>
+              ))}
+              {showChevron && <div/>}
+            </div>
           )}
 
           {onAdd && (

@@ -11,7 +11,7 @@ import { FunctionalBucketSupport } from "@/features/build/FunctionalBucketSuppor
 import { useBuildActions, useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
-import type { DeptCode } from "@/lib/types";
+import type { DeptCode, FunctionalAllocationBucket } from "@/lib/types";
 import type {
   FunctionalAllocationBucketDerived,
   FunctionalAllocationDeptDerived,
@@ -112,39 +112,91 @@ export default function FunctionalAllocationPage() {
 function BucketTable() {
   const { derived } = useBuildState();
   const fa = derived.functionalAllocation;
-  const { updateFunctionalAllocation } = useBuildActions((s) => ({
+  const { updateFunctionalAllocation, addFunctionalAllocation } = useBuildActions((s) => ({
     updateFunctionalAllocation: s.updateFunctionalAllocation,
+    addFunctionalAllocation: s.addFunctionalAllocation,
   }));
+  // Shared open id so only one drilldown is expanded at a time across
+  // the per-dept sections.
   const [openId, setOpenId] = useState<string | undefined>();
 
-  const rows: BucketRow[] = ORDER.flatMap((d) => {
-    const dd = fa.byDept[d];
-    if (!dd) return [];
-    return dd.buckets.map((b) => ({
-      id: b.bucket.id,
-      derived: b,
-      dept: dd,
-    }));
-  });
+  const activeDepts = ORDER.filter((d) => fa.byDept[d] != null);
 
   // Per-dept rate-basis validation. A dept with no rate-basis buckets
   // can't compute FBHR — surface the offending dept(s) so the analyst
   // knows why the rate is "—".
-  const deptsMissingRateBasis = ORDER.filter((d) => {
+  const deptsMissingRateBasis = activeDepts.filter((d) => {
     const dd = fa.byDept[d];
-    if (!dd) return false;
-    return dd.rateBasisDirectHours <= 0;
+    return dd != null && dd.rateBasisDirectHours <= 0;
   });
 
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 28 }}>
+      {deptsMissingRateBasis.length > 0 && (
+        <div style={{
+          padding: "8px 12px",
+          background: "var(--warn-tint)", border: "1px solid var(--warn)",
+          fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.55,
+        }}>
+          <span className="mono" style={{
+            color: "var(--warn)", fontWeight: 700, marginRight: 6,
+          }}>NO RATE BASIS</span>
+          {deptsMissingRateBasis.join(" · ")} {deptsMissingRateBasis.length === 1 ? "has" : "have"}{" "}
+          no buckets flagged as Rate Basis. FBHR renders as &mdash;
+          until at least one bucket per dept is selected.
+        </div>
+      )}
+
+      {activeDepts.map((d) => (
+        <DeptBucketSection
+          key={d}
+          dept={d}
+          openId={openId}
+          onToggleRow={(id) => setOpenId(openId === id ? undefined : id)}
+          onUpdate={updateFunctionalAllocation}
+          onAdd={() => addFunctionalAllocation(d)}
+        />
+      ))}
+    </div>
+  );
+}
+
+function DeptBucketSection({
+  dept, openId, onToggleRow, onUpdate, onAdd,
+}: {
+  dept: DeptCode;
+  openId?: string;
+  onToggleRow: (id: string) => void;
+  onUpdate: (id: string, patch: Partial<FunctionalAllocationBucket>) => void;
+  onAdd: () => void;
+}) {
+  const { derived } = useBuildState();
+  const dd = derived.functionalAllocation.byDept[dept];
+  if (!dd) return null;
+
+  const rows: BucketRow[] = dd.buckets.map((b) => ({
+    id: b.bucket.id,
+    derived: b,
+    dept: dd,
+  }));
+
+  const fbhrLabel = dd.recoverableFbhr != null
+    ? `$${Math.round(dd.recoverableFbhr)}/hr`
+    : "—";
+  const sectionRight = (
+    <span className="mono" style={{
+      fontSize: "var(--t-l4)", color: "var(--ink-3)",
+      letterSpacing: "0.06em", textTransform: "uppercase",
+    }}>
+      {rows.length} bucket{rows.length === 1 ? "" : "s"}
+      <span style={{ margin: "0 6px" }}>·</span>
+      Recoverable {fmt.dollarsK(dd.recoverableCost)}
+      <span style={{ margin: "0 6px" }}>·</span>
+      FBHR <span style={{ color: "var(--accent)" }}>{fbhrLabel}</span>
+    </span>
+  );
+
   const cols: Column<BucketRow>[] = [
-    {
-      key: "dept",
-      label: "Dept",
-      width: "80px",
-      sortable: true,
-      sortKey: (r) => r.derived.bucket.dept,
-      render: (r) => <DeptChip code={r.derived.bucket.dept}/>,
-    },
     {
       key: "name",
       label: "Bucket",
@@ -165,9 +217,7 @@ function BucketTable() {
       render: (r) => (
         <InlinePctInput
           value={r.derived.bucket.hoursSharePct}
-          onCommit={(v) => updateFunctionalAllocation(r.derived.bucket.id, {
-            hoursSharePct: v,
-          })}
+          onCommit={(v) => onUpdate(r.derived.bucket.id, { hoursSharePct: v })}
           dim
         />
       ),
@@ -182,9 +232,7 @@ function BucketTable() {
       render: (r) => (
         <InlinePctInput
           value={r.derived.bucket.recoverabilityPct}
-          onCommit={(v) => updateFunctionalAllocation(r.derived.bucket.id, {
-            recoverabilityPct: v,
-          })}
+          onCommit={(v) => onUpdate(r.derived.bucket.id, { recoverabilityPct: v })}
         />
       ),
     },
@@ -198,9 +246,7 @@ function BucketTable() {
       render: (r) => (
         <RateBasisCheckbox
           checked={r.derived.bucket.rateBasisHours}
-          onChange={(v) => updateFunctionalAllocation(r.derived.bucket.id, {
-            rateBasisHours: v,
-          })}
+          onChange={(v) => onUpdate(r.derived.bucket.id, { rateBasisHours: v })}
         />
       ),
     },
@@ -235,30 +281,32 @@ function BucketTable() {
     },
   ];
 
+  // Σ allocation share so the analyst can see if a dept's buckets
+  // reconcile to 100%. Totals row uses the same per-column sums that
+  // already appear in the workpaper drilldown.
+  const sumShare = rows.reduce((a, r) => a + r.derived.bucket.hoursSharePct, 0);
+  const sumRateBasisHours = rows.reduce(
+    (a, r) => a + (r.derived.bucket.rateBasisHours ? r.derived.directHours : 0),
+    0,
+  );
+  const sumTotalCost = rows.reduce((a, r) => a + r.derived.fullyBurdenedCost, 0);
+  const sumRecoverable = rows.reduce((a, r) => a + r.derived.recoverableCost, 0);
+  const shareOffTarget = Math.abs(sumShare - 100) > 0.5;
+
   return (
     <div>
-      <SectionLabel>Functional buckets</SectionLabel>
-      {deptsMissingRateBasis.length > 0 && (
-        <div style={{
-          marginBottom: 10,
-          padding: "8px 12px",
-          background: "var(--warn-tint)", border: "1px solid var(--warn)",
-          fontSize: 11.5, color: "var(--ink-2)", lineHeight: 1.55,
-        }}>
-          <span className="mono" style={{
-            color: "var(--warn)", fontWeight: 700, marginRight: 6,
-          }}>NO RATE BASIS</span>
-          {deptsMissingRateBasis.join(" · ")} {deptsMissingRateBasis.length === 1 ? "has" : "have"}{" "}
-          no buckets flagged as Rate Basis Hours. FBHR renders as
-          &mdash; until at least one bucket per dept is selected.
-        </div>
-      )}
+      <SectionLabel right={sectionRight}>
+        <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <DeptChip code={dept}/>
+          <span>{deptName(dept)} · Functional buckets</span>
+        </span>
+      </SectionLabel>
       <DataTable
         cols={cols}
         rows={rows}
         defaultSort={{ key: "totalCost", dir: "desc" }}
         openId={openId}
-        onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
+        onRowClick={(r) => onToggleRow(r.id)}
         drilldownIndicator
         renderDrilldown={(r) => (
           <FunctionalBucketSupport
@@ -266,7 +314,49 @@ function BucketTable() {
             bucketId={r.derived.bucket.id}
           />
         )}
-        emptyState="No functional buckets configured yet."
+        emptyState="No functional buckets configured for this department."
+        footer={{
+          name: (
+            <span className="mono" style={{
+              fontSize: "var(--t-l9)", letterSpacing: "0.1em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}>Total</span>
+          ),
+          allocationShare: (
+            <span
+              className="num"
+              style={{
+                fontVariantNumeric: "tabular-nums",
+                color: shareOffTarget ? "var(--warn)" : "var(--ink)",
+              }}
+              title={shareOffTarget
+                ? `Allocation drifted to ${sumShare.toFixed(1)}% — edit shares to reconcile`
+                : "Allocation sums to 100%"}
+            >
+              {Math.round(sumShare)}%
+            </span>
+          ),
+          rateBasis: (
+            <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {sumRateBasisHours > 0 ? `${fmt.int(sumRateBasisHours)} hrs` : "—"}
+            </span>
+          ),
+          totalCost: (
+            <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {fmt.dollarsK(sumTotalCost)}
+            </span>
+          ),
+          recoverable: (
+            <span className="num" style={{
+              fontVariantNumeric: "tabular-nums",
+              color: sumRecoverable > 0 ? "var(--accent)" : "var(--ink-3)",
+            }}>
+              {fmt.dollarsK(sumRecoverable)}
+            </span>
+          ),
+        }}
+        onAdd={onAdd}
+        addLabel="Add functional bucket"
       />
     </div>
   );
