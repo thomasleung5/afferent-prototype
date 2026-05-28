@@ -228,8 +228,7 @@ export function FeeScheduleTable() {
         );
       },
     },
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [derived.fbhr, updateService, svcById]);
+  ], [svcById]);
 
   return (
     <div>

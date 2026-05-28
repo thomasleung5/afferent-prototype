@@ -19,6 +19,7 @@
 
 # tanstack router (generated)
 src/routeTree.gen.ts
+.tanstack/
 
 # misc
 .DS_Store
