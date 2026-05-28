@@ -53,13 +53,6 @@ export function FeeScheduleTable() {
     setDeptFilter(searchDept);
   }, [searchDept, serviceId]);
 
-  // FeeComparison doesn't carry `peer`, so look it up from services — same
-  // source the Fee Benchmark tab reads from. Keeps the column aligned with
-  // the drilldown's `svc.peer`.
-  const peerById = useMemo(
-    () => new Map(services.map((s) => [s.id, s.peer])),
-    [services],
-  );
   // Full Service lookup for the PR-L2 display helpers (currentFeeText,
   // recommendedFeeText, fullCostRecoveryFeeText overrides) plus the
   // PR-L4 fee identity columns (feeNo, unit). The FeeComparison rows
@@ -207,20 +200,6 @@ export function FeeScheduleTable() {
       },
     },
     {
-      key: "peer",
-      label: "Peer median",
-      width: "100px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => peerById.get(r.id) ?? 0,
-      render: (r) => {
-        const peer = peerById.get(r.id) ?? 0;
-        return (
-          <span className="num">{peer > 0 ? fmt.dollars(peer) : "—"}</span>
-        );
-      },
-    },
-    {
       key: "target",
       label: "Recovery",
       width: "80px",
@@ -250,7 +229,7 @@ export function FeeScheduleTable() {
       },
     },
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  ], [derived.fbhr, updateService, peerById, svcById]);
+  ], [derived.fbhr, updateService, svcById]);
 
   return (
     <div>
