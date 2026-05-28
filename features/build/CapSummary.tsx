@@ -1,7 +1,7 @@
 ﻿
 import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula, SectionLabel } from "@/components/ui";
+import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
@@ -42,12 +42,7 @@ export function CapSummary() {
     return {
       key: d,
       cells: {
-        dept: (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <DeptChip code={d}/>
-            <span style={{ fontWeight: 500 }}>{labelOf(d)}</span>
-          </span>
-        ),
+        dept: <DeptCellHeader code={d}/>,
         alloc: <span className="num">{fmt.dollars(allocated)}</span>,
         perHr: rate > 0 ? `$${Math.round(rate)}` : "—",
         pools: sorted.length,
@@ -81,12 +76,7 @@ export function CapSummary() {
               };
             })}
             total={{
-              pool: (
-                <span style={{
-                  color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
-                }}>Total to {labelOf(d)}</span>
-              ),
+              pool: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
               basis: "",
               share: <span className="num">100%</span>,
               alloc: <span className="num">{fmt.dollars(allocated)}</span>,
@@ -95,17 +85,12 @@ export function CapSummary() {
           <MetaGrid
             rows={[
               { label: "Formula", value: (
-                <>
-                  <Formula>$/hr = allocated $ ÷ productive hrs</Formula>
-                  <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(allocated)} ÷ {fmt.int(derived.fbhr[d].productiveHours)} hrs
-                    {rate > 0 && (
-                      <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
-                        = ${Math.round(rate)}/hr
-                      </span>
-                    )}
-                  </span>
-                </>
+                <RateFormula
+                  formula="$/hr = allocated $ ÷ productive hrs"
+                  numerator={allocated}
+                  hours={derived.fbhr[d].productiveHours}
+                  rate={rate}
+                />
               )},
             ]}
           />
@@ -130,12 +115,7 @@ export function CapSummary() {
       ]}
       rows={rows}
       footer={{
-        dept: (
-          <span style={{
-            color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
-          }}>Allocated to fee depts</span>
-        ),
+        dept: <TotalEyebrow size="l8">Allocated to fee depts</TotalEyebrow>,
         alloc: fmt.dollarsK(totalAllocated),
         perHr: "—",
         pools: capPools.length,

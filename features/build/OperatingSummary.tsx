@@ -1,7 +1,7 @@
 ﻿
 import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula, SectionLabel } from "@/components/ui";
+import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
@@ -52,12 +52,7 @@ export function OperatingSummary() {
     return {
       key: d,
       cells: {
-        dept: (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <DeptChip code={d}/>
-            <span style={{ fontWeight: 500 }}>{labelOf(d)}</span>
-          </span>
-        ),
+        dept: <DeptCellHeader code={d}/>,
         opCost: fmt.dollarsK(r.total),
         perHr: r.rate > 0 ? `$${Math.round(r.rate)}` : "—",
         driver: topCat ? (
@@ -96,12 +91,7 @@ export function OperatingSummary() {
               };
             })}
             total={{
-              label: (
-                <span style={{
-                  color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
-                }}>Total to {labelOf(d)}</span>
-              ),
+              label: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
               lines: <span className="num">{direct.length + (r.shared > 0 ? shared.length : 0)}</span>,
               share: <span className="num">100%</span>,
               amt:   <span className="num">{fmt.dollars(r.total)}</span>,
@@ -110,17 +100,12 @@ export function OperatingSummary() {
           <MetaGrid
             rows={[
               { label: "Formula", value: (
-                <>
-                  <Formula>operating $/hr = operating $ ÷ productive hrs</Formula>
-                  <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(r.total)} ÷ {fmt.int(derived.fbhr[d].productiveHours)} hrs
-                    {r.rate > 0 && (
-                      <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
-                        = ${Math.round(r.rate)}/hr
-                      </span>
-                    )}
-                  </span>
-                </>
+                <RateFormula
+                  formula="operating $/hr = operating $ ÷ productive hrs"
+                  numerator={r.total}
+                  hours={derived.fbhr[d].productiveHours}
+                  rate={r.rate}
+                />
               )},
               ...((() => {
                 const excludedCount = excluded.filter((l) => l.dept === d || l.dept === "SHARED:CDS").length;
@@ -150,12 +135,7 @@ export function OperatingSummary() {
       ]}
       rows={rows}
       footer={{
-        dept: (
-          <span style={{
-            color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
-          }}>Total</span>
-        ),
+        dept: <TotalEyebrow size="l8">Total</TotalEyebrow>,
         opCost: fmt.dollarsK(includedTotal),
         perHr: "—",
         driver: (

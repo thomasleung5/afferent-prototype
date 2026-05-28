@@ -1,7 +1,7 @@
 ﻿
 import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
-import { DeptChip, Formula, SectionLabel } from "@/components/ui";
+import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
@@ -43,12 +43,7 @@ export function LaborSummary() {
     return {
       key: d,
       cells: {
-        dept: (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <DeptChip code={d}/>
-            <span style={{ fontWeight: 500 }}>{labelOf(d)}</span>
-          </span>
-        ),
+        dept: <DeptCellHeader code={d}/>,
         positions: (
           <span>
             {r.positions}
@@ -81,12 +76,7 @@ export function LaborSummary() {
               };
             })}
             total={{
-              account: (
-                <span style={{
-                  color: "var(--ink-3)", textTransform: "uppercase",
-                  letterSpacing: "0.06em", fontSize: "var(--t-l9)",
-                }}>Total to {labelOf(d)}</span>
-              ),
+              account: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
               share: <span className="num">100%</span>,
               comp:  <span className="num">{fmt.dollars(r.totalComp)}</span>,
             }}
@@ -95,17 +85,12 @@ export function LaborSummary() {
           <MetaGrid
             rows={[
               { label: "Formula", value: (
-                <>
-                  <Formula>direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs</Formula>
-                  <span style={{ marginLeft: 8, color: "var(--ink-3)" }}>
-                    = {fmt.dollarsK(r.totalComp)} ÷ {fmt.int(r.productiveHours)} hrs
-                    {r.directRate > 0 && (
-                      <span style={{ marginLeft: 6, color: "var(--ink)", fontWeight: 600 }}>
-                        = ${Math.round(r.directRate)}/hr
-                      </span>
-                    )}
-                  </span>
-                </>
+                <RateFormula
+                  formula="direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs"
+                  numerator={r.totalComp}
+                  hours={r.productiveHours}
+                  rate={r.directRate}
+                />
               )},
             ]}
           />
@@ -130,12 +115,7 @@ export function LaborSummary() {
       ]}
       rows={rows}
       footer={{
-        dept: (
-          <span style={{
-            color: "var(--ink-3)", textTransform: "uppercase",
-            letterSpacing: "0.06em", fontSize: "var(--t-l8)",
-          }}>Total</span>
-        ),
+        dept: <TotalEyebrow size="l8">Total</TotalEyebrow>,
         positions: (
           <span>
             {totalPositions}
