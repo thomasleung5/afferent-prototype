@@ -20,7 +20,7 @@ import type {
 const ORDER: DeptCode[] = FEE_DEPTS;
 
 const HELPER_TEXT =
-  "Classify departmental cost into fee-recoverable activities and fee hours.";
+  "Classify departmental cost into fee-recoverable activities and direct hours.";
 
 interface BucketRow {
   id: string;
@@ -39,7 +39,6 @@ export default function FunctionalAllocationPage() {
   const totalRecoverable = activeDepts.reduce(
     (a, d) => a + (fa.byDept[d]?.recoverableCost ?? 0), 0,
   );
-  const totalSubsidized = totalFully - totalRecoverable;
   const totalDirectHours = activeDepts.reduce(
     (a, d) => a + (fa.byDept[d]?.directHours ?? 0), 0,
   );
@@ -57,16 +56,16 @@ export default function FunctionalAllocationPage() {
         ),
         fully: fmt.dollarsK(dd.fullyBurdenedCost),
         recCost: fmt.dollarsK(dd.recoverableCost),
-        subsidized: fmt.dollarsK(dd.nonRecoverableCost),
         directHours: dd.directHours > 0 ? fmt.int(dd.directHours) : "—",
-        recovery: dd.fullyBurdenedCost > 0
-          ? `${Math.round((dd.recoverableCost / dd.fullyBurdenedCost) * 100)}%`
-          : "—",
         recoverableFbhr: dd.recoverableFbhr != null
           ? <span style={{ color: "var(--accent)" }}>${Math.round(dd.recoverableFbhr)}</span>
           : <span style={{ color: "var(--ink-3)" }}>—</span>,
       },
-      drilldown: <FunctionalBucketSupport dept={d}/>,
+      drilldown: (
+        <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
+          <FunctionalBucketSupport dept={d}/>
+        </div>
+      ),
     };
   });
 
@@ -79,17 +78,15 @@ export default function FunctionalAllocationPage() {
       />
 
       <div>
-        <SectionLabel right={`${fmt.dollarsK(totalRecoverable)} recoverable · ${fmt.dollarsK(totalSubsidized)} subsidy`}>
+        <SectionLabel right={`${fmt.dollarsK(totalRecoverable)} fee-recoverable of ${fmt.dollarsK(totalFully)}`}>
           Summary by department
         </SectionLabel>
         <DeptSummaryTable
           cols={[
             { key: "dept",            label: "Department",        width: "1.5fr" },
             { key: "fully",           label: "Total cost",        width: "140px", align: "right", mono: true },
-            { key: "recCost",         label: "Recoverable",       width: "140px", align: "right", mono: true },
-            { key: "subsidized",      label: "Subsidy",           width: "140px", align: "right", mono: true },
-            { key: "directHours",     label: "Direct hours",      width: "120px", align: "right", mono: true },
-            { key: "recovery",        label: "Cost Recovery",     width: "130px", align: "right", mono: true },
+            { key: "recCost",         label: "Fee-Recoverable Cost", width: "170px", align: "right", mono: true },
+            { key: "directHours",     label: "Direct Hours",            width: "120px", align: "right", mono: true },
             { key: "recoverableFbhr", label: "FBHR",              width: "120px", align: "right", mono: true },
           ]}
           rows={deptRows}
@@ -102,9 +99,7 @@ export default function FunctionalAllocationPage() {
             ),
             fully: fmt.dollarsK(totalFully),
             recCost: fmt.dollarsK(totalRecoverable),
-            subsidized: fmt.dollarsK(totalSubsidized),
             directHours: totalDirectHours > 0 ? fmt.int(totalDirectHours) : "—",
-            recovery: totalFully > 0 ? `${Math.round((totalRecoverable / totalFully) * 100)}%` : "—",
             recoverableFbhr: "—",
           }}
         />
@@ -148,8 +143,8 @@ function BucketTable() {
             color: "var(--warn)", fontWeight: 700, marginRight: 6,
           }}>NO RATE BASIS</span>
           {deptsMissingRateBasis.join(" · ")} {deptsMissingRateBasis.length === 1 ? "has" : "have"}{" "}
-          no activities flagged as Fee Hours. FBHR renders as &mdash;
-          until at least one activity per dept is selected.
+          no activities included in FBHR. FBHR renders as &mdash;
+          until at least one activity per dept is included.
         </div>
       )}
 
@@ -200,65 +195,6 @@ function DeptBucketSection({
       ),
     },
     {
-      key: "allocationShare",
-      label: "Allocation %",
-      width: "130px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => r.derived.bucket.hoursSharePct,
-      render: (r) => (
-        <InlinePctInput
-          value={r.derived.bucket.hoursSharePct}
-          onCommit={(v) => onUpdate(r.derived.bucket.id, { hoursSharePct: v })}
-          dim
-        />
-      ),
-    },
-    {
-      key: "feeRecoverable",
-      label: "Cost Recovery",
-      width: "130px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => r.derived.bucket.recoverabilityPct,
-      render: (r) => (
-        <InlinePctInput
-          value={r.derived.bucket.recoverabilityPct}
-          onCommit={(v) => onUpdate(r.derived.bucket.id, { recoverabilityPct: v })}
-        />
-      ),
-    },
-    {
-      key: "rateBasis",
-      label: "Fee Hours",
-      width: "100px",
-      align: "center",
-      sortable: true,
-      sortKey: (r) => r.derived.bucket.rateBasisHours ? 1 : 0,
-      render: (r) => (
-        <RateBasisCheckbox
-          checked={r.derived.bucket.rateBasisHours}
-          onChange={(v) => onUpdate(r.derived.bucket.id, { rateBasisHours: v })}
-        />
-      ),
-    },
-    {
-      key: "directHours",
-      label: "Direct Hours",
-      width: "120px",
-      align: "right",
-      sortable: true,
-      sortKey: (r) => r.derived.directHours,
-      render: (r) => (
-        <span className="num" style={{
-          fontVariantNumeric: "tabular-nums",
-          color: r.derived.directHours > 0 ? "var(--ink)" : "var(--ink-3)",
-        }}>
-          {r.derived.directHours > 0 ? fmt.int(r.derived.directHours) : "—"}
-        </span>
-      ),
-    },
-    {
       key: "totalCost",
       label: "Total Cost",
       width: "130px",
@@ -273,8 +209,8 @@ function DeptBucketSection({
     },
     {
       key: "recoverable",
-      label: "Recoverable",
-      width: "140px",
+      label: "Fee-Recoverable Cost",
+      width: "170px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.derived.recoverableCost,
@@ -287,20 +223,39 @@ function DeptBucketSection({
         </span>
       ),
     },
+    {
+      key: "directHours",
+      label: "Direct Hours",
+      width: "120px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => r.derived.directHours,
+      render: (r) => {
+        const included = r.derived.bucket.rateBasisHours;
+        return (
+          <span
+            className="num"
+            title={included
+              ? "Included in FBHR"
+              : "Excluded from FBHR"}
+            style={{
+              fontVariantNumeric: "tabular-nums",
+              color: included && r.derived.directHours > 0 ? "var(--ink)" : "var(--ink-3)",
+            }}
+          >
+            {r.derived.directHours > 0 ? fmt.int(r.derived.directHours) : "—"}
+          </span>
+        );
+      },
+    },
   ];
 
   // Σ allocation share so the analyst can see if a dept's buckets
   // reconcile to 100%. Totals row uses the same per-column sums that
   // already appear in the workpaper drilldown.
-  const sumShare = rows.reduce((a, r) => a + r.derived.bucket.hoursSharePct, 0);
   const sumDirectHours = rows.reduce((a, r) => a + r.derived.directHours, 0);
-  const sumRateBasisHours = rows.reduce(
-    (a, r) => a + (r.derived.bucket.rateBasisHours ? r.derived.directHours : 0),
-    0,
-  );
   const sumTotalCost = rows.reduce((a, r) => a + r.derived.fullyBurdenedCost, 0);
   const sumRecoverable = rows.reduce((a, r) => a + r.derived.recoverableCost, 0);
-  const shareOffTarget = Math.abs(sumShare - 100) > 0.5;
 
   return (
     <div>
@@ -319,10 +274,16 @@ function DeptBucketSection({
         onRowClick={(r) => onToggleRow(r.id)}
         drilldownIndicator
         renderDrilldown={(r) => (
-          <FunctionalBucketSupport
-            dept={r.derived.bucket.dept}
-            bucketId={r.derived.bucket.id}
-          />
+          <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
+            <ActivityConfigPanel
+              bucket={r.derived.bucket}
+              onUpdate={onUpdate}
+            />
+            <FunctionalBucketSupport
+              dept={r.derived.bucket.dept}
+              bucketId={r.derived.bucket.id}
+            />
+          </div>
         )}
         emptyState="No activities configured for this department."
         footer={{
@@ -331,25 +292,6 @@ function DeptBucketSection({
               fontSize: "var(--t-l9)", letterSpacing: "0.1em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Total</span>
-          ),
-          allocationShare: (
-            <span
-              className="num"
-              style={{
-                fontVariantNumeric: "tabular-nums",
-                color: shareOffTarget ? "var(--warn)" : "var(--ink)",
-              }}
-              title={shareOffTarget
-                ? `Allocation drifted to ${sumShare.toFixed(1)}% — edit shares to reconcile`
-                : "Allocation sums to 100%"}
-            >
-              {Math.round(sumShare)}%
-            </span>
-          ),
-          rateBasis: (
-            <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
-              {sumRateBasisHours > 0 ? `${fmt.int(sumRateBasisHours)} hrs` : "—"}
-            </span>
           ),
           directHours: (
             <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
@@ -374,6 +316,75 @@ function DeptBucketSection({
         addLabel="Add activity"
       />
     </div>
+  );
+}
+
+/** Compact methodology strip rendered above the cost-breakdown table
+ *  in each activity drilldown. Hosts the three methodology inputs
+ *  (Allocation %, Fee Recoverability %, Included in FBHR) that used
+ *  to live as columns on the main table. Styled as a thin inline
+ *  control row — secondary to the cost-breakdown table below. */
+function ActivityConfigPanel({
+  bucket, onUpdate,
+}: {
+  bucket: FunctionalAllocationBucket;
+  onUpdate: (id: string, patch: Partial<FunctionalAllocationBucket>) => void;
+}) {
+  return (
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        display: "flex", flexWrap: "wrap", alignItems: "center",
+        gap: "4px 18px",
+        padding: "4px 2px",
+        fontFamily: "var(--ff-mono)",
+        fontSize: "var(--t-l4)", letterSpacing: "0.04em",
+        color: "var(--ink-3)",
+      }}
+    >
+      <ConfigField label="Allocation %">
+        <InlinePctInput
+          value={bucket.hoursSharePct}
+          onCommit={(v) => onUpdate(bucket.id, { hoursSharePct: v })}
+        />
+      </ConfigField>
+      <ConfigField label="Fee Recoverability %">
+        <InlinePctInput
+          value={bucket.recoverabilityPct}
+          onCommit={(v) => onUpdate(bucket.id, { recoverabilityPct: v })}
+        />
+      </ConfigField>
+      <ConfigField label="Included in FBHR">
+        <RateBasisCheckbox
+          checked={bucket.rateBasisHours}
+          onChange={(v) => onUpdate(bucket.id, { rateBasisHours: v })}
+        />
+      </ConfigField>
+    </div>
+  );
+}
+
+function ConfigField({
+  label, children,
+}: {
+  label: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <label
+      style={{
+        display: "inline-flex", alignItems: "center", gap: 6,
+        textTransform: "uppercase",
+      }}
+    >
+      <span>{label}</span>
+      <span style={{
+        textTransform: "none", letterSpacing: 0,
+        fontFamily: "var(--ff-ui)", fontSize: "var(--fs-ui)",
+        fontWeight: 400, color: "var(--ink)",
+        minWidth: 90,
+      }}>{children}</span>
+    </label>
   );
 }
 
@@ -420,7 +431,7 @@ function RateBasisCheckbox({
         checked={checked}
         onChange={(e) => onChange(e.currentTarget.checked)}
         style={{ accentColor: "var(--accent)", cursor: "pointer", margin: 0 }}
-        aria-label="Fee hours"
+        aria-label="Included in FBHR"
       />
     </span>
   );
