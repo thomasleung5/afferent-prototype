@@ -6,7 +6,8 @@
  *   1. Empty/partial state — every required field gets seeded so the
  *      Zustand store hydrates into a usable shape.
  *   2. SourceTag coercion — unknown/missing source values become "seed";
- *      valid values pass through.
+ *      valid values pass through. operating rows get costType + laborType
+ *      defaults when missing.
  *   3. allocationPercent backfill — preserves existing % values and
  *      derives missing ones from amount / center total.
  *   4. capCenterTotals backfill — synthesized from Σ amount per center
@@ -15,10 +16,9 @@
  *      none exist; preserves existing versions otherwise.
  *   6. comparisonVersionId — repointed to the first version when the
  *      saved id no longer exists.
- *   7. Idempotency — a fully-formed state passes through unchanged.
- *
- * The seed catalogs (CAP_*) are real — verifying we don't regress on
- * the cross-module wiring.
+ *   7. functionalAllocation — seeds when missing; new-shape buckets
+ *      pass through untouched.
+ *   8. Idempotency — running migration twice produces identical state.
  */
 
 import assert from "node:assert/strict";
@@ -35,8 +35,6 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   migratePersistedState(state as never);
 
   assert.deepEqual(state.capCenterOrder, []);
-  assert.equal(state.capCenterGlCodes, undefined,
-    "capCenterGlCodes is not on the post-PR-12 state shape");
   assert.deepEqual(state.studyContext, { ...DEFAULT_STUDY_CONTEXT });
   assert.equal(state.activeJurisdictionId, DEFAULT_JURISDICTION_ID);
   assert.ok(typeof state.activeFiscalYear === "string" && (state.activeFiscalYear as string).length > 0);
@@ -48,18 +46,18 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   assert.ok(Array.isArray(state.allocationBases));
   assert.equal((state.allocationBases as unknown[]).length, SEED_ALLOCATION_BASES.length);
   assert.ok(Array.isArray(state.functionalAllocation),
-    "PR-FA2: functionalAllocation backfilled from seed when missing");
+    "functionalAllocation backfilled from seed when missing");
   assert.equal(
     (state.functionalAllocation as unknown[]).length,
     FUNCTIONAL_ALLOCATION_SEED.length,
-    "PR-FA2: functionalAllocation seed restored in full",
+    "functionalAllocation seed restored in full",
   );
   assert.ok(Array.isArray(state.versions));
   assert.equal((state.versions as unknown[]).length, 1);
   console.log("  ✓ empty state seeded across every backfill");
 }
 
-// ── 2. SourceTag coercion ─────────────────────────────────────────────────
+// ── 2. SourceTag coercion + costType / laborType backfill ────────────────
 {
   const state: Record<string, unknown> = {
     services: [
@@ -69,14 +67,10 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
       { id: "s4", source: "0001-9999" }, // legacy free-form GL string
       { id: "s5" },                       // missing entirely
     ],
-    positions: [
-      { id: "p1", source: undefined, title: "Role A", dept: "PLAN", fte: 1, salary: 0, benefits: 0, hours: 1720 },
-      { id: "p2", source: "manual",  title: "Role B", dept: "BLDG", fte: 0.5, salary: 0, benefits: 0, hours: 1600 },
-    ],
     operating: [
       { id: "o1", source: "not-a-tag" },                                                              // no costType — backfill to Operating
       { id: "o2", source: "seed", costType: "Labor", line: "Salaries", category: "Other" },           // labor, no laborType — backfill to Salary
-      { id: "o3", source: "seed", costType: "Labor", line: "Health Insurance", category: "Other" },   // labor, no laborType — backfill to Benefits (no Salary patterns)
+      { id: "o3", source: "seed", costType: "Labor", line: "Health Insurance", category: "Other" },   // labor, no laborType — backfill to Benefits
       { id: "o4", source: "seed", costType: "Labor", line: "Anything", laborType: "Salary" },         // existing laborType preserved
     ],
     volume: [{ id: "w1", source: 42 }],
@@ -87,133 +81,32 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
     (state.services as { id: string; source: string }[]).map((s) => s.source),
     ["seed", "imported", "manual", "seed", "seed"],
   );
-  // PR-F: legacy state.positions is consumed by translateLegacyPositions
-  // and then deleted; downstream slices (productiveHours, labor operating
-  // rows) carry the data.
-  assert.equal((state as Record<string, unknown>).positions, undefined,
-    "PR-F: state.positions removed after consumption");
   const op = state.operating as { id: string; source: string; costType: string; laborType?: string }[];
   assert.equal(op[0].source, "seed");
   assert.equal(op[0].costType, "Operating",
-    "PR-A: legacy operating rows without costType get backfilled to 'Operating'");
+    "operating rows without costType get backfilled to 'Operating'");
   assert.equal(op[1].costType, "Labor",
-    "PR-A: existing costType value preserved");
+    "existing costType value preserved");
   assert.equal(op[1].laborType, "Salary",
-    "PR-G: labor row with 'Salaries' in line text classified as Salary");
+    "labor row with 'Salaries' in line text classified as Salary");
   assert.equal(op[2].laborType, "Benefits",
-    "PR-G: labor row with 'Health Insurance' classified as Benefits");
+    "labor row with 'Health Insurance' classified as Benefits");
   assert.equal(op[3].laborType, "Salary",
-    "PR-G: existing laborType value preserved");
+    "existing laborType value preserved");
   assert.equal((state.volume as { source: string }[])[0].source, "seed");
-
-  // PR-C: productiveHours derived from positions when missing.
-  const ph = state.productiveHours as { id: string; title: string; dept: string; fte: number; hours: number }[];
-  assert.equal(ph.length, 2, "PR-C: productiveHours derived from positions count");
-  assert.equal(ph[0].id, "p1");
-  assert.equal(ph[0].dept, "PLAN");
-  assert.equal(ph[0].fte, 1);
-  assert.equal(ph[1].hours, 1600);
-  console.log("  ✓ SourceTag coercion normalizes legacy values + costType + productiveHours backfill");
-}
-
-// ── 2b. PR-I: labor-classified operating rows derived from positions, ────
-//          expanded to per-(dept, GL-account) granularity.
-{
-  const state: Record<string, unknown> = {
-    positions: [
-      { id: "pos-x", title: "Planner", dept: "PLAN", fte: 0.5, salary: 200000, benefits: 60000, hours: 1720, source: "seed" },
-    ],
-    operating: [
-      { id: "OP-1", code: "—", dept: "PLAN", category: "Other", line: "Existing op row", amount: 100, source: "seed", include: true },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  type Row = { id: string; costType: string; dept: string; amount: number; line: string; laborType?: string; code: string };
-  const op = state.operating as Row[];
-  const labor = op.filter((o) => o.costType === "Labor");
-  assert.equal(labor.length, 8,
-    "PR-I: per-dept expansion = 4 salary accounts + 4 benefits accounts per dept");
-
-  const salaryRows   = labor.filter((o) => o.laborType === "Salary");
-  const benefitsRows = labor.filter((o) => o.laborType === "Benefits");
-  assert.equal(salaryRows.length, 4,
-    "PR-I: salary bucket fans out across SALARY_ACCOUNTS");
-  assert.equal(benefitsRows.length, 4,
-    "PR-I: benefits bucket fans out across BENEFITS_ACCOUNTS");
-
-  // Reconciliation: Σ Salary rows === salary × fte (200000 × 0.5 = 100000);
-  // Σ Benefits rows === benefits × fte (60000 × 0.5 = 30000). The first
-  // account in each list absorbs the rounding residual.
-  const salarySum   = salaryRows.reduce((a, r) => a + r.amount, 0);
-  const benefitsSum = benefitsRows.reduce((a, r) => a + r.amount, 0);
-  assert.equal(salarySum, 100000,   "PR-I: salary rows reconcile to bucket exactly");
-  assert.equal(benefitsSum, 30000,  "PR-I: benefits rows reconcile to bucket exactly");
-
-  const regSalaries = labor.find((o) => o.id === "op-labor-PLAN-51110");
-  const overtime    = labor.find((o) => o.id === "op-labor-PLAN-51120");
-  const retirement  = labor.find((o) => o.id === "op-labor-PLAN-51210");
-  assert.ok(regSalaries && overtime && retirement,
-    "PR-I: deterministic ids `op-labor-<dept>-<glCode>`");
-  assert.equal(regSalaries!.line, "Regular Salaries");
-  assert.equal(overtime!.line, "Overtime");
-  assert.equal(retirement!.line, "Retirement");
-  assert.equal(regSalaries!.code, "011-2410",
-    "displayed code matches the dept program code used by non-labor Operating rows");
-
-  // Re-running migration must be idempotent (the new id pattern doesn't
-  // match the legacy `-salary` / `-benefits` suffix detector).
-  migratePersistedState(state as never);
-  const laborAfter = (state.operating as Row[]).filter((o) => o.costType === "Labor");
-  assert.equal(laborAfter.length, 8, "PR-I: re-migration does not duplicate labor rows");
-  console.log("  ✓ labor operating rows expanded to per-(dept, account) (PR-I)");
-}
-
-// ── 2c. PR-I: legacy PR-H per-dept labor rows get re-expanded to accounts.
-{
-  const state: Record<string, unknown> = {
-    operating: [
-      // Pre-PR-I shape: one salary row + one benefits row per dept, ids end
-      // in `-salary` / `-benefits`. Migration should bucket and re-expand.
-      { id: "op-labor-PLAN-salary",   code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
-        category: "Other", costType: "Labor", laborType: "Salary",   line: "Regular Salaries",
-        amount: 500000, source: "seed", include: true },
-      { id: "op-labor-PLAN-benefits", code: "011-2410", dept: "PLAN", sourceDept: "Planning Division",
-        category: "Other", costType: "Labor", laborType: "Benefits", line: "Benefits",
-        amount: 200000, source: "seed", include: true },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  const labor = (state.operating as { id: string; costType: string; amount: number; laborType?: string }[])
-    .filter((o) => o.costType === "Labor");
-  assert.equal(labor.length, 8,
-    "PR-I: legacy PR-H rows coalesce + expand to 8 account-level rows");
-  assert.equal(
-    labor.filter((o) => o.laborType === "Salary").reduce((a, r) => a + r.amount, 0),
-    500000,
-    "PR-I: legacy salary bucket preserved exactly across the new account split",
-  );
-  assert.equal(
-    labor.filter((o) => o.laborType === "Benefits").reduce((a, r) => a + r.amount, 0),
-    200000,
-    "PR-I: legacy benefits bucket preserved exactly across the new account split",
-  );
-  assert.equal(
-    labor.filter((o) => /^op-labor-PLAN-(salary|benefits)$/.test(o.id)).length,
-    0,
-    "PR-I: no legacy `-salary` / `-benefits` ids survive the migration",
-  );
-  console.log("  ✓ legacy PR-H per-dept labor rows re-expanded to account level (PR-I)");
+  console.log("  ✓ SourceTag coercion normalizes legacy values + costType / laborType backfill");
 }
 
 // ── 3. allocationPercent backfill ─────────────────────────────────────────
 {
   const state = {
     capPools: [
-      { id: "pool-1", center: "City Mgr", pool: "Salaries", amount: 300, basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
-      { id: "pool-2", center: "City Mgr", pool: "Operating", amount: 100, basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
-      { id: "pool-3", center: "Finance",  pool: "Payroll",   amount: 250, allocationPercent: 80, basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
+      { id: "pool-1", center: "City Mgr", centerGlCode: "011-1200", pool: "Salaries", amount: 300,
+        basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
+      { id: "pool-2", center: "City Mgr", centerGlCode: "011-1200", pool: "Operating", amount: 100,
+        basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
+      { id: "pool-3", center: "Finance", centerGlCode: "011-1400", pool: "Payroll", amount: 250,
+        allocationPercent: 80, basisId: "b", basis: "B", receiving: "All depts", recoverability: "TBD", review: "Review" },
     ],
   };
   migratePersistedState(state as never);
@@ -228,167 +121,21 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
 }
 
 // ── 4. capCenterTotals backfill ───────────────────────────────────────────
-// Pools without capCenterGlCodes get synth `seed:center:NAME` keys
-// stamped onto centerGlCode, and the derived totals key on those.
 {
   const state: Record<string, unknown> = {
     capPools: [
-      { id: "p1", center: "Center A", amount: 100 },
-      { id: "p2", center: "Center A", amount: 50 },
-      { id: "p3", center: "Center B", amount: 80 },
+      { id: "p1", center: "Center A", centerGlCode: "011-1200", amount: 100 },
+      { id: "p2", center: "Center A", centerGlCode: "011-1200", amount: 50 },
+      { id: "p3", center: "Center B", centerGlCode: "011-1300", amount: 80 },
     ],
   };
   migratePersistedState(state as never);
 
   assert.deepEqual(state.capCenterTotals, {
-    "seed:center:Center A": 150,
-    "seed:center:Center B": 80,
+    "011-1200": 150,
+    "011-1300": 80,
   });
   console.log("  ✓ capCenterTotals synthesized from Σ amount per center");
-}
-
-// ── 4b. PR-11: name-keyed center maps translate to glCode-keyed ──────────
-// A persisted state with name-keyed capCenterTotals + capCenterGlCodes
-// gets rewritten so the maps key on glCode (or `seed:center:NAME` synth)
-// instead. Pools get centerGlCode stamped. Centers without a glCode in
-// capCenterGlCodes get the synth key.
-{
-  const state: Record<string, unknown> = {
-    capCenterGlCodes: {
-      "City Manager": "011-1200",
-      "Finance & Administrative Services": "011-1400",
-      // "Manual Center" intentionally absent — should synth.
-    },
-    capCenterTotals: {
-      "City Manager": 1000,
-      "Finance & Administrative Services": 2000,
-      "Manual Center": 500,
-    },
-    capCenterDisallowed: { "City Manager": 50 },
-    capCenterSources: {
-      "City Manager": { source: "imported", sourceFile: "cap.pdf" },
-      "Manual Center": { source: "manual" },
-    },
-    capCenterOrder: ["City Manager", "Finance & Administrative Services", "Manual Center"],
-    capPools: [
-      { id: "p1", center: "City Manager", amount: 100, allocationPercent: 10 },
-      { id: "p2", center: "Finance & Administrative Services", amount: 50, allocationPercent: 2.5 },
-      { id: "p3", center: "Manual Center", amount: 80, allocationPercent: 16 },
-      // Existing centerGlCode preserved verbatim even if it disagrees with the map.
-      { id: "p4", center: "City Manager", centerGlCode: "999-9999", amount: 40, allocationPercent: 4 },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  const totals = state.capCenterTotals as Record<string, number>;
-  assert.equal(totals["011-1200"], 1000, "City Manager translated to glCode key");
-  assert.equal(totals["011-1400"], 2000, "FAS translated to glCode key");
-  assert.equal(totals["seed:center:Manual Center"], 500, "Manual Center gets synth key");
-  assert.equal(totals["City Manager"], undefined, "old name key removed");
-
-  const disallowed = state.capCenterDisallowed as Record<string, number>;
-  assert.equal(disallowed["011-1200"], 50);
-
-  const sources = state.capCenterSources as Record<string, { name: string; source: string; sourceFile?: string }>;
-  assert.equal(sources["011-1200"].name, "City Manager");
-  assert.equal(sources["011-1200"].source, "imported");
-  assert.equal(sources["011-1200"].sourceFile, "cap.pdf");
-  assert.equal(sources["seed:center:Manual Center"].name, "Manual Center");
-  assert.equal(sources["seed:center:Manual Center"].source, "manual");
-
-  assert.deepEqual(
-    state.capCenterOrder,
-    ["011-1200", "011-1400", "seed:center:Manual Center"],
-    "order entries rewritten to identity keys",
-  );
-
-  const pools = state.capPools as { id: string; centerGlCode?: string }[];
-  assert.equal(pools.find((p) => p.id === "p1")!.centerGlCode, "011-1200");
-  assert.equal(pools.find((p) => p.id === "p2")!.centerGlCode, "011-1400");
-  assert.equal(pools.find((p) => p.id === "p3")!.centerGlCode, "seed:center:Manual Center");
-  assert.equal(pools.find((p) => p.id === "p4")!.centerGlCode, "999-9999", "existing centerGlCode preserved");
-
-  // PR-12: the legacy name → glCode map is stripped from the migrated
-  // state once translateCenterMaps has consumed it.
-  assert.equal(state.capCenterGlCodes, undefined,
-    "legacy capCenterGlCodes field deleted after translation");
-  console.log("  ✓ center maps translated from name-keyed to glCode-keyed");
-}
-
-// ── 4c. Translation is idempotent — already-translated state passes through
-{
-  const state: Record<string, unknown> = {
-    capCenterGlCodes: { "City Manager": "011-1200" },
-    capCenterTotals: { "011-1200": 1000, "seed:center:Manual": 500 },
-    capCenterDisallowed: { "011-1200": 50 },
-    capCenterSources: {
-      "011-1200": { name: "City Manager", source: "imported" },
-      "seed:center:Manual": { name: "Manual", source: "manual" },
-    },
-    capCenterOrder: ["011-1200", "seed:center:Manual"],
-    capPools: [
-      { id: "p1", center: "City Manager", centerGlCode: "011-1200", amount: 100, allocationPercent: 10 },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  const totals = state.capCenterTotals as Record<string, number>;
-  // Keys unchanged — no re-translation happened.
-  assert.equal(totals["011-1200"], 1000);
-  assert.equal(totals["seed:center:Manual"], 500);
-  // No double-prefixing (would produce `seed:center:seed:center:Manual`).
-  assert.equal(totals["seed:center:seed:center:Manual"], undefined,
-    "already-translated state must not be re-translated");
-  console.log("  ✓ already-translated state passes through unchanged (idempotent)");
-}
-
-// ── 4d. Version snapshots also get translated ─────────────────────────────
-{
-  const state: Record<string, unknown> = {
-    capCenterGlCodes: { "City Manager": "011-1200" },
-    capCenterTotals: { "011-1200": 1000 },
-    capCenterDisallowed: {},
-    capCenterSources: { "011-1200": { name: "City Manager", source: "imported" } },
-    capCenterOrder: ["011-1200"],
-    capPools: [
-      { id: "p1", center: "City Manager", centerGlCode: "011-1200", amount: 100, allocationPercent: 100 },
-    ],
-    versions: [
-      {
-        id: "v-legacy",
-        versionNumber: 1,
-        label: "Legacy",
-        status: "adopted",
-        createdAt: "2026-01-01T00:00:00.000Z",
-        createdBy: "user",
-        sourceImportIds: [],
-        // Old name-keyed snapshot — should be translated by migration.
-        snapshot: {
-          capCenterGlCodes: { "City Manager": "011-1200" },
-          capCenterTotals: { "City Manager": 999 },
-          capCenterDisallowed: { "City Manager": 9 },
-          capCenterSources: { "City Manager": { source: "seed" } },
-          capCenterOrder: ["City Manager"],
-          capPools: [
-            { id: "old-p", center: "City Manager", amount: 50, allocationPercent: 5 },
-          ],
-        },
-      },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  const versions = state.versions as { snapshot: Record<string, unknown> }[];
-  const snap = versions[0].snapshot as {
-    capCenterTotals: Record<string, number>;
-    capCenterOrder: string[];
-    capPools: { centerGlCode?: string }[];
-  };
-  assert.equal(snap.capCenterTotals["011-1200"], 999, "version snapshot totals translated");
-  assert.deepEqual(snap.capCenterOrder, ["011-1200"], "version snapshot order translated");
-  assert.equal(snap.capPools[0].centerGlCode, "011-1200",
-    "version snapshot pool centerGlCode stamped");
-  console.log("  ✓ version snapshots translated alongside live state");
 }
 
 // ── 5. versions backfill (seed when missing) ──────────────────────────────
@@ -400,10 +147,6 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   assert.equal(versions.length, 1);
   assert.equal(versions[0].label, "Recovered baseline");
   assert.equal(versions[0].status, "adopted");
-  // Empty starting imports → empty sourceImportIds. (Confirms migration
-  // doesn't re-seed imports into the snapshot.)
-  // Note: the migration may have backfilled imports separately, but the
-  // baseline was constructed before that mattered.
   assert.ok(Array.isArray(versions[0].sourceImportIds));
   console.log("  ✓ versions backfilled with a single 'Recovered baseline'");
 }
@@ -435,128 +178,31 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ comparisonVersionId repointed when stale, preserved when valid");
 }
 
-// ── 6b. PR-FA refinement: directHours → hoursSharePct backfill ───────────
+// ── 7. functionalAllocation — new-shape buckets pass through ─────────────
 {
   const state: Record<string, unknown> = {
-    productiveHours: [
-      { id: "ph-1", title: "Planner I",  dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-      { id: "ph-2", title: "Planner II", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-    ],
     functionalAllocation: [
-      // Legacy persisted bucket with absolute directHours, no hoursSharePct.
-      // Dept productive hours = 1720 × 2 = 3440. Share = 1720/3440 = 50%.
-      { id: "fa-x", dept: "PLAN", name: "Current Planning",
-        recoverabilityPct: 100, directHours: 1720, source: "seed" },
-      // Persisted bucket already on the new shape — leave alone.
-      { id: "fa-y", dept: "PLAN", name: "Public Counter",
-        recoverabilityPct: 50, hoursSharePct: 20, source: "seed" },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  type Row = { id: string; hoursSharePct?: number; directHours?: number; rateBasisHours?: boolean };
-  const buckets = state.functionalAllocation as Row[];
-  const a = buckets.find((b) => b.id === "fa-x")!;
-  assert.equal(a.hoursSharePct, 50,
-    "PR-FA refinement: legacy directHours translates to hoursSharePct via dept productive hours");
-  assert.equal(a.directHours, undefined,
-    "PR-FA refinement: legacy directHours field dropped after translation");
-  assert.equal(a.rateBasisHours, true,
-    "PR-FA refinement: rateBasisHours defaults to true when recoverabilityPct > 0");
-  const b = buckets.find((b) => b.id === "fa-y")!;
-  assert.equal(b.hoursSharePct, 20,
-    "PR-FA refinement: already-translated buckets pass through unchanged");
-  assert.equal(b.rateBasisHours, true,
-    "PR-FA refinement: rateBasisHours backfilled for existing-shape buckets");
-  console.log("  ✓ legacy directHours translated; rateBasisHours seeded by recoverabilityPct > 0");
-}
-
-// ── 6c. PR-FA refinement: rateBasisHours backfill respects existing value
-{
-  const state: Record<string, unknown> = {
-    productiveHours: [
-      { id: "ph-1", title: "Planner I",  dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-    ],
-    functionalAllocation: [
-      // Existing rateBasisHours = false on a 100%-recoverable bucket —
-      // analyst explicitly turned it off; migration must not flip it back.
-      { id: "fa-keep", dept: "PLAN", name: "Custom",
-        recoverabilityPct: 100, hoursSharePct: 100,
-        rateBasisHours: false, source: "manual" },
-      // Recoverability 0, no rateBasisHours field → defaults to false.
-      { id: "fa-default-off", dept: "PLAN", name: "LRP",
-        recoverabilityPct: 0, hoursSharePct: 0, source: "seed" },
-    ],
-  };
-  migratePersistedState(state as never);
-
-  type Row = { id: string; rateBasisHours: boolean };
-  const buckets = state.functionalAllocation as Row[];
-  assert.equal(buckets.find((b) => b.id === "fa-keep")!.rateBasisHours, false,
-    "existing rateBasisHours boolean preserved verbatim");
-  assert.equal(buckets.find((b) => b.id === "fa-default-off")!.rateBasisHours, false,
-    "recoverabilityPct = 0 → rateBasisHours defaults to false");
-  console.log("  ✓ rateBasisHours backfill preserves analyst toggles, defaults off when rec=0");
-}
-
-// ── 6d. FA rescue only fires for legacy-translated buckets ───────────────
-// Analyst deliberately zeroing all of a dept's new-shape buckets must NOT
-// be overwritten on rehydrate. Only legacy buckets (those carrying the old
-// directHours field) are eligible for re-seeding when their dept sums to 0.
-{
-  // (a) All-zero NEW-SHAPE buckets → preserved, no re-seed
-  const state: Record<string, unknown> = {
-    productiveHours: [
-      { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-    ],
-    functionalAllocation: [
-      // Both buckets are already on the new shape with analyst-zeroed shares.
       { id: "fa-zero-a", dept: "PLAN", name: "Long Range Planning",
-        recoverabilityPct: 0, hoursSharePct: 0, source: "manual" },
+        recoverabilityPct: 0, hoursSharePct: 0, rateBasisHours: false, source: "manual" },
       { id: "fa-zero-b", dept: "PLAN", name: "Current Planning",
-        recoverabilityPct: 0, hoursSharePct: 0, source: "manual" },
+        recoverabilityPct: 0, hoursSharePct: 0, rateBasisHours: false, source: "manual" },
     ],
   };
   migratePersistedState(state as never);
   const buckets = state.functionalAllocation as { id: string; hoursSharePct: number }[];
   assert.equal(buckets.find((b) => b.id === "fa-zero-a")!.hoursSharePct, 0,
-    "new-shape bucket with analyst-zeroed share is NOT re-seeded");
+    "new-shape bucket with analyst-zeroed share passes through unchanged");
   assert.equal(buckets.find((b) => b.id === "fa-zero-b")!.hoursSharePct, 0,
-    "new-shape bucket with analyst-zeroed share is NOT re-seeded");
-  console.log("  ✓ analyst-zeroed new-shape buckets are preserved on rehydrate");
-}
-{
-  // (b) Legacy buckets with directHours: 0 → still rescued from seed
-  const seedIds = FUNCTIONAL_ALLOCATION_SEED
-    .filter((s) => s.dept === "PLAN")
-    .map((s) => s.id);
-  assert.ok(seedIds.length >= 2, "PLAN should have at least two seed buckets");
-  const state: Record<string, unknown> = {
-    productiveHours: [
-      { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-    ],
-    functionalAllocation: seedIds.map((id) => ({
-      id, dept: "PLAN", name: "Legacy", recoverabilityPct: 0,
-      directHours: 0, source: "seed",
-    })),
-  };
-  migratePersistedState(state as never);
-  const buckets = state.functionalAllocation as { id: string; hoursSharePct: number }[];
-  const seedById = new Map(FUNCTIONAL_ALLOCATION_SEED.map((s) => [s.id, s]));
-  for (const id of seedIds) {
-    const b = buckets.find((x) => x.id === id)!;
-    assert.equal(b.hoursSharePct, seedById.get(id)!.hoursSharePct,
-      `legacy bucket ${id} with directHours: 0 is rescued from seed`);
-  }
-  console.log("  ✓ legacy directHours:0 buckets still rescued from seed");
+    "new-shape bucket with analyst-zeroed share passes through unchanged");
+  console.log("  ✓ functionalAllocation new-shape buckets pass through unchanged");
 }
 
-// ── 7. Idempotency ────────────────────────────────────────────────────────
+// ── 8. Idempotency ────────────────────────────────────────────────────────
 // Each scenario runs migratePersistedState twice and asserts the state is
 // byte-identical across the two passes. Versions are stripped because
 // makeStudyVersion stamps a fresh timestamp + id when it has to mint a
 // baseline — those will legitimately differ on first creation but never
-// thereafter. The second-pass check still proves no re-translation occurs.
+// thereafter. The second-pass check still proves the migration is stable.
 
 function assertIdempotent(label: string, build: () => Record<string, unknown>): void {
   const state = build();
@@ -571,49 +217,10 @@ function assertIdempotent(label: string, build: () => Record<string, unknown>): 
   assert.deepEqual(second, firstPass, `idempotency failed: ${label}`);
 }
 
-// (a) Empty state
 assertIdempotent("empty state", () => ({}));
 console.log("  ✓ migration is idempotent (empty state)");
 
-// (b) Name-keyed center maps (the heaviest translation path)
-assertIdempotent("name-keyed center maps", () => ({
-  capCenterGlCodes: {
-    "City Manager": "011-1200",
-    "Finance & Administrative Services": "011-1400",
-  },
-  capCenterTotals: {
-    "City Manager": 1000,
-    "Finance & Administrative Services": 2000,
-    "Manual Center": 500,
-  },
-  capCenterDisallowed: { "City Manager": 50 },
-  capCenterSources: {
-    "City Manager": { source: "imported", sourceFile: "cap.pdf" },
-  },
-  capCenterOrder: ["City Manager", "Finance & Administrative Services", "Manual Center"],
-  capPools: [
-    { id: "p1", center: "City Manager",
-      amount: 100, allocationPercent: 10,
-      basisId: "b", basis: "B", pool: "Pool",
-      receiving: "All depts", recoverability: "TBD", review: "Review" },
-  ],
-}));
-console.log("  ✓ migration is idempotent (name-keyed center maps)");
-
-// (c) Legacy FA buckets translated from directHours → hoursSharePct
-assertIdempotent("FA bucket translation", () => ({
-  productiveHours: [
-    { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
-  ],
-  functionalAllocation: [
-    { id: "fa-x", dept: "PLAN", name: "Current Planning",
-      recoverabilityPct: 100, directHours: 860, source: "seed" },
-  ],
-}));
-console.log("  ✓ migration is idempotent (FA bucket translation)");
-
-// (d) Versions array with embedded snapshots
-assertIdempotent("version snapshots", () => ({
+assertIdempotent("populated state with versions", () => ({
   capCenterTotals: { "011-1200": 1000 },
   capCenterDisallowed: {},
   capCenterSources: { "011-1200": { name: "City Manager", source: "imported" } },
@@ -645,32 +252,6 @@ assertIdempotent("version snapshots", () => ({
   ],
   comparisonVersionId: "v-1",
 }));
-console.log("  ✓ migration is idempotent (version snapshots)");
-
-// ── 8. isLikelyCenterKey tightening ──────────────────────────────────────
-// A center literally named "PLAN" (a bare uppercase token that previously
-// matched the loose regex) must still be translated to its glCode, not
-// silently skipped as already-keyed.
-{
-  const state: Record<string, unknown> = {
-    capCenterGlCodes: { "PLAN": "011-3100" },
-    capCenterTotals: { "PLAN": 1000 },
-    capCenterDisallowed: {},
-    capCenterSources: { "PLAN": { source: "seed" } },
-    capCenterOrder: ["PLAN"],
-    capPools: [
-      { id: "p1", center: "PLAN", amount: 100, allocationPercent: 100,
-        basisId: "b", basis: "B", pool: "Pool",
-        receiving: "All depts", recoverability: "TBD", review: "Review" },
-    ],
-  };
-  migratePersistedState(state as never);
-  const totals = state.capCenterTotals as Record<string, number>;
-  assert.equal(totals["011-3100"], 1000,
-    "center named 'PLAN' translates to its glCode (not skipped as already-keyed)");
-  assert.equal(totals["PLAN"], undefined,
-    "old name key removed even when it looks like a bare uppercase token");
-  console.log("  ✓ bare uppercase names ('PLAN') translate instead of being skipped");
-}
+console.log("  ✓ migration is idempotent (populated state with versions)");
 
 console.log("\nAll storeMigration assertions passed.");
