@@ -214,6 +214,7 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       }
     }
     const legacyBuckets = state.functionalAllocation as unknown as Record<string, unknown>[];
+    const legacyTranslatedIds = new Set<string>();
     let migrated = legacyBuckets.map((raw) => {
       if (typeof raw.hoursSharePct === "number") {
         return raw as unknown as typeof state.functionalAllocation[number];
@@ -224,29 +225,34 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       const share = denom > 0 && legacyHours > 0
         ? Math.min(100, Math.max(0, (legacyHours / denom) * 100))
         : 0;
+      if (typeof raw.id === "string") legacyTranslatedIds.add(raw.id);
       const { directHours: _drop, ...rest } = raw;
       void _drop;
       return { ...rest, hoursSharePct: share } as unknown as typeof state.functionalAllocation[number];
     });
 
-    // Re-seed any dept whose Σ hoursSharePct is 0 — this happens when an
-    // older persisted store carried `directHours: 0` across all of a
-    // dept's buckets (the original seed defaulted to 0 before the share-%
-    // refinement). Without this, the analyst sees "0%" rows alongside
-    // populated bucket cost (driven by the cost-split even-fallback)
-    // which reads as a contradiction. Match by bucket id so analyst edits
-    // to other fields (name, recoverability, notes) survive.
-    const byDeptSum = new Map<string, number>();
-    for (const b of migrated as { dept: string; hoursSharePct: number }[]) {
-      byDeptSum.set(b.dept, (byDeptSum.get(b.dept) ?? 0) + b.hoursSharePct);
+    // Rescue only LEGACY-TRANSLATED buckets whose dept now sums to 0 hours
+    // share. This handles persisted state where `directHours: 0` was carried
+    // across all of a dept's seed buckets before the share-% refinement —
+    // without this rescue, the analyst sees "0%" rows alongside populated
+    // bucket cost (driven by the cost-split even-fallback) which reads as a
+    // contradiction. Buckets that were already on the new shape are NEVER
+    // re-seeded — those reflect intentional analyst input (including a
+    // deliberate zeroing) and must not be overwritten on rehydrate.
+    if (legacyTranslatedIds.size > 0) {
+      const byDeptSum = new Map<string, number>();
+      for (const b of migrated as { dept: string; hoursSharePct: number }[]) {
+        byDeptSum.set(b.dept, (byDeptSum.get(b.dept) ?? 0) + b.hoursSharePct);
+      }
+      const seedById = new Map(FUNCTIONAL_ALLOCATION_SEED.map((s) => [s.id, s]));
+      migrated = (migrated as { id: string; dept: string; hoursSharePct: number }[]).map((b) => {
+        if (!legacyTranslatedIds.has(b.id)) return b;
+        if ((byDeptSum.get(b.dept) ?? 0) > 0) return b;
+        const seed = seedById.get(b.id);
+        if (!seed) return b;
+        return { ...b, hoursSharePct: seed.hoursSharePct };
+      }) as typeof migrated;
     }
-    const seedById = new Map(FUNCTIONAL_ALLOCATION_SEED.map((s) => [s.id, s]));
-    migrated = (migrated as { id: string; dept: string; hoursSharePct: number }[]).map((b) => {
-      if ((byDeptSum.get(b.dept) ?? 0) > 0) return b;
-      const seed = seedById.get(b.id);
-      if (!seed) return b;
-      return { ...b, hoursSharePct: seed.hoursSharePct };
-    }) as typeof migrated;
 
     // Rate Basis Hours backfill — defaults to (recoverabilityPct > 0) at
     // creation/migration time. Persisted-true values are preserved

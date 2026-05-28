@@ -499,6 +499,58 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ rateBasisHours backfill preserves analyst toggles, defaults off when rec=0");
 }
 
+// ── 6d. FA rescue only fires for legacy-translated buckets ───────────────
+// Analyst deliberately zeroing all of a dept's new-shape buckets must NOT
+// be overwritten on rehydrate. Only legacy buckets (those carrying the old
+// directHours field) are eligible for re-seeding when their dept sums to 0.
+{
+  // (a) All-zero NEW-SHAPE buckets → preserved, no re-seed
+  const state: Record<string, unknown> = {
+    productiveHours: [
+      { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+    ],
+    functionalAllocation: [
+      // Both buckets are already on the new shape with analyst-zeroed shares.
+      { id: "fa-zero-a", dept: "PLAN", name: "Long Range Planning",
+        recoverabilityPct: 0, hoursSharePct: 0, source: "manual" },
+      { id: "fa-zero-b", dept: "PLAN", name: "Current Planning",
+        recoverabilityPct: 0, hoursSharePct: 0, source: "manual" },
+    ],
+  };
+  migratePersistedState(state as never);
+  const buckets = state.functionalAllocation as { id: string; hoursSharePct: number }[];
+  assert.equal(buckets.find((b) => b.id === "fa-zero-a")!.hoursSharePct, 0,
+    "new-shape bucket with analyst-zeroed share is NOT re-seeded");
+  assert.equal(buckets.find((b) => b.id === "fa-zero-b")!.hoursSharePct, 0,
+    "new-shape bucket with analyst-zeroed share is NOT re-seeded");
+  console.log("  ✓ analyst-zeroed new-shape buckets are preserved on rehydrate");
+}
+{
+  // (b) Legacy buckets with directHours: 0 → still rescued from seed
+  const seedIds = FUNCTIONAL_ALLOCATION_SEED
+    .filter((s) => s.dept === "PLAN")
+    .map((s) => s.id);
+  assert.ok(seedIds.length >= 2, "PLAN should have at least two seed buckets");
+  const state: Record<string, unknown> = {
+    productiveHours: [
+      { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+    ],
+    functionalAllocation: seedIds.map((id) => ({
+      id, dept: "PLAN", name: "Legacy", recoverabilityPct: 0,
+      directHours: 0, source: "seed",
+    })),
+  };
+  migratePersistedState(state as never);
+  const buckets = state.functionalAllocation as { id: string; hoursSharePct: number }[];
+  const seedById = new Map(FUNCTIONAL_ALLOCATION_SEED.map((s) => [s.id, s]));
+  for (const id of seedIds) {
+    const b = buckets.find((x) => x.id === id)!;
+    assert.equal(b.hoursSharePct, seedById.get(id)!.hoursSharePct,
+      `legacy bucket ${id} with directHours: 0 is rescued from seed`);
+  }
+  console.log("  ✓ legacy directHours:0 buckets still rescued from seed");
+}
+
 // ── 7. Idempotency ────────────────────────────────────────────────────────
 {
   const state: Record<string, unknown> = {};
