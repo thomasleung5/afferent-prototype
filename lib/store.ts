@@ -393,7 +393,7 @@ function splitBucket(bucket: number, accounts: LaborAccount[]): number[] {
 
 /** Per-dept labor bucket — total salary + total benefits, with provenance
  *  threaded through so derived rows can stamp source/sourceFile. */
-export interface LaborBucket {
+interface LaborBucket {
   salary: number;
   benefits: number;
   source: OperatingLine["source"];
@@ -406,7 +406,7 @@ export interface LaborBucket {
  *  absorbs the rounding residual so Σ row.amount === bucket exactly.
  *  Shared by buildLaborLinesFromPositions (seed/import path) and the
  *  migration coalescer (legacy persisted state). */
-export function buildLaborLinesFromBuckets(
+function buildLaborLinesFromBuckets(
   byDept: Map<DeptCode, LaborBucket>,
 ): OperatingLine[] {
   const out: OperatingLine[] = [];
@@ -471,7 +471,7 @@ export function buildLaborLinesFromBuckets(
  *  Ids are deterministic at the (dept, GL-code) level
  *  (`op-labor-<dept>-<glCode>`) so re-running the conversion in
  *  migration/seed produces a stable, idempotent result. */
-export function buildLaborLinesFromPositions(
+function buildLaborLinesFromPositions(
   positions: Position[],
 ): OperatingLine[] {
   const byDept = new Map<DeptCode, LaborBucket>();
@@ -489,7 +489,7 @@ export function buildLaborLinesFromPositions(
  *  migration). One row per position, carrying the FTE × hrs-per-FTE
  *  inputs plus the optional breakdown. id mirrors position.id so audit
  *  trails align across the two slices until positions retires. */
-export function buildProductiveHoursFromPositions(
+function buildProductiveHoursFromPositions(
   positions: Position[],
 ): ProductiveHoursRow[] {
   return positions.map((p) => ({
@@ -510,7 +510,7 @@ export function buildProductiveHoursFromPositions(
  *  Engine treats `seed:center:*` keys as nodes just like real glCodes.
  *  Exported so storeMigration + addCapCenter can share one canonical
  *  format. */
-export function synthCenterKey(name: string): string {
+function synthCenterKey(name: string): string {
   return `seed:center:${name}`;
 }
 
