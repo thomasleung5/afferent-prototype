@@ -25,14 +25,16 @@ const coerceSource = (v: unknown): SourceTag =>
 
 /** True when a string already looks like a center identity key (a glCode
  *  or a `seed:center:*` synth) rather than a free-form display name.
- *  Used as the idempotency check before re-translating center maps. */
+ *  Used as the idempotency check before re-translating center maps.
+ *
+ *  Requires either the synth prefix or a dash-separated alphanumeric
+ *  pattern (real glCodes are `NNN-NNNN`). A bare uppercase token like
+ *  "PLAN" or "BLDG" is treated as a display name and NOT skipped —
+ *  those collide with dept codes that may legitimately appear as
+ *  center display names. */
 function isLikelyCenterKey(s: string): boolean {
-  // Synth keys + the LAH 011-NNNN pattern + tightly-formatted alphanumeric
-  // codes ("BLDG", "EQUIP"). Display names like "City Manager" or "Finance
-  // & Administrative Services" don't match.
   return s.startsWith("seed:center:")
-    || /^[A-Z0-9]+(-[A-Z0-9]+)+$/.test(s)
-    || /^[A-Z][A-Z0-9_]*$/.test(s);
+    || /^[A-Z0-9]+(-[A-Z0-9]+)+$/.test(s);
 }
 
 /** Translate the four name-keyed center maps + pool centerGlCode fields
@@ -283,7 +285,12 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     );
   }
   if (Array.isArray(state.services)) {
-    state.services = state.services.map((s: Service) => ({ ...s, source: coerceSource(s.source) }));
+    const needsCoerce = state.services.some(
+      (s: Service) => !(VALID_SOURCES as string[]).includes(s.source as string),
+    );
+    if (needsCoerce) {
+      state.services = state.services.map((s: Service) => ({ ...s, source: coerceSource(s.source) }));
+    }
   }
   // PR-F: state.positions is no longer part of BuildState. Persisted
   // blobs from earlier sessions still carry the slice — consume it
@@ -322,23 +329,31 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     // read. Imports that pre-date the field get the same default.
     // The labor-row derivation now lives in the PR-F block above
     // because state.positions is consumed (and deleted) there.
-    state.operating = state.operating.map((o: OperatingLine) => {
-      const next: OperatingLine = {
-        ...o,
-        source: coerceSource(o.source),
-        costType: o.costType ?? "Operating",
-      };
-      // PR-G: backfill laborType on labor-classified rows that pre-date
-      // the field. Uses the parser's classifyLaborType so legacy rows
-      // get the same Salary/Benefits split a fresh import would.
-      // Existing values pass through untouched.
-      if (next.costType === "Labor" && !next.laborType) {
-        next.laborType = classifyLaborType({
-          line: next.line, category: next.category,
-        });
-      }
-      return next;
-    });
+    const needsOpBackfill = state.operating.some(
+      (o: OperatingLine) =>
+        !(VALID_SOURCES as string[]).includes(o.source as string)
+        || o.costType == null
+        || (o.costType === "Labor" && !o.laborType),
+    );
+    if (needsOpBackfill) {
+      state.operating = state.operating.map((o: OperatingLine) => {
+        const next: OperatingLine = {
+          ...o,
+          source: coerceSource(o.source),
+          costType: o.costType ?? "Operating",
+        };
+        // PR-G: backfill laborType on labor-classified rows that pre-date
+        // the field. Uses the parser's classifyLaborType so legacy rows
+        // get the same Salary/Benefits split a fresh import would.
+        // Existing values pass through untouched.
+        if (next.costType === "Labor" && !next.laborType) {
+          next.laborType = classifyLaborType({
+            line: next.line, category: next.category,
+          });
+        }
+        return next;
+      });
+    }
     // PR-I: coalesce both flavors of legacy labor row ids into per-dept
     // GL-account-level aggregates (`op-labor-<dept>-<glCode>`).
     //   - PR-D ids: `op-labor-<positionId>-{salary|benefits}` (per role)
@@ -373,7 +388,12 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     }
   }
   if (Array.isArray(state.volume)) {
-    state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));
+    const needsCoerce = state.volume.some(
+      (w: VolumeRow) => !(VALID_SOURCES as string[]).includes(w.source as string),
+    );
+    if (needsCoerce) {
+      state.volume = state.volume.map((w: VolumeRow) => ({ ...w, source: coerceSource(w.source) }));
+    }
   }
   // Backfill for state persisted before allocationBases existed. Without
   // this, basisForPool(pool, undefined) crashes the matrix.
@@ -384,7 +404,10 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   // before the % column became editable. Derive totals from Σ amount per
   // center; derive each pool's % from amount/centerTotal. Keys are
   // pool.centerGlCode (guaranteed populated by translateCenterMaps above).
-  if (state.capPools) {
+  // Skip when there are no pools — an empty pool list can't produce
+  // meaningful totals, and entering the block would create an empty
+  // capCenterTotals that diverges from the unprocessed shape.
+  if (state.capPools && state.capPools.length > 0) {
     if (!state.capCenterTotals || Object.keys(state.capCenterTotals).length === 0) {
       const totals: Record<string, number> = {};
       for (const p of state.capPools) {
@@ -395,13 +418,39 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       state.capCenterTotals = totals;
     }
     const totals = state.capCenterTotals;
-    state.capPools = state.capPools.map((p): BuildState["capPools"][number] => {
-      if (typeof p.allocationPercent === "number") return p;
-      const total = totals[p.centerGlCode] ?? 0;
-      const pct = total > 0 ? (p.amount / total) * 100 : 0;
-      return { ...p, allocationPercent: pct };
-    });
+    const needsPctBackfill = state.capPools.some(
+      (p) => typeof p.allocationPercent !== "number",
+    );
+    if (needsPctBackfill) {
+      state.capPools = state.capPools.map((p): BuildState["capPools"][number] => {
+        if (typeof p.allocationPercent === "number") return p;
+        const total = totals[p.centerGlCode] ?? 0;
+        const pct = total > 0 ? (p.amount / total) * 100 : 0;
+        return { ...p, allocationPercent: pct };
+      });
+    }
   }
+  // BuildSnapshot safety net. Zustand's default merge fills any field
+  // not overridden by persisted state, so in production all of these are
+  // already present by the time onRehydrateStorage fires. The defaults
+  // matter for two cases: (a) direct callers that bypass Zustand merge
+  // (test fixtures, recovery tooling), and (b) the makeStudyVersion path
+  // below — which reads every BuildSnapshot field via createBuildSnapshot
+  // and would silently produce a partial snapshot if any were undefined.
+  if (!Array.isArray(state.operating))        state.operating = [];
+  if (!Array.isArray(state.capPools))         state.capPools = [];
+  if (!Array.isArray(state.volume))           state.volume = [];
+  if (!Array.isArray(state.services))         state.services = [];
+  if (!Array.isArray(state.policyTargets))    state.policyTargets = [];
+  if (!Array.isArray(state.policyExceptions)) state.policyExceptions = [];
+  if (!state.lineage)                          state.lineage = {};
+  if (!state.pendingReview) {
+    state.pendingReview = {
+      positions: [], operating: [], services: [],
+      fees: [], volume: [], cap: [],
+    };
+  }
+
   // Translate every persisted version snapshot so the version-comparison
   // dropdown keeps working across the PR-11 schema flip.
   if (Array.isArray(state.versions)) {
@@ -409,9 +458,8 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       if (v.snapshot) translateCenterMaps(v.snapshot as Partial<BuildSnapshot>);
     }
   } else {
-    // makeStudyVersion expects a `BuildSnapshot` shape; by this point in
-    // the rehydrate we've backfilled every snapshot field, so the cast
-    // is safe.
+    // All BuildSnapshot fields are now populated by the safety net above,
+    // so the cast is safe and the resulting baseline snapshot is complete.
     const baseline = makeStudyVersion(state as BuildState, {
       label: "Recovered baseline",
       status: "adopted",

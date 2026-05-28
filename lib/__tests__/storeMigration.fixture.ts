@@ -552,22 +552,125 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
 }
 
 // ── 7. Idempotency ────────────────────────────────────────────────────────
-{
-  const state: Record<string, unknown> = {};
+// Each scenario runs migratePersistedState twice and asserts the state is
+// byte-identical across the two passes. Versions are stripped because
+// makeStudyVersion stamps a fresh timestamp + id when it has to mint a
+// baseline — those will legitimately differ on first creation but never
+// thereafter. The second-pass check still proves no re-translation occurs.
+
+function assertIdempotent(label: string, build: () => Record<string, unknown>): void {
+  const state = build();
   migratePersistedState(state as never);
   const firstPass = JSON.parse(JSON.stringify(state));
   migratePersistedState(state as never);
-
-  // Versions are timestamped on creation so we can't reuse them. Strip
-  // before comparison — the rest of the state must be byte-identical
-  // across two migrate passes.
   delete firstPass.versions;
   delete firstPass.comparisonVersionId;
   const second = JSON.parse(JSON.stringify(state));
   delete second.versions;
   delete second.comparisonVersionId;
-  assert.deepEqual(second, firstPass);
-  console.log("  ✓ migration is idempotent (versions excluded by design)");
+  assert.deepEqual(second, firstPass, `idempotency failed: ${label}`);
+}
+
+// (a) Empty state
+assertIdempotent("empty state", () => ({}));
+console.log("  ✓ migration is idempotent (empty state)");
+
+// (b) Name-keyed center maps (the heaviest translation path)
+assertIdempotent("name-keyed center maps", () => ({
+  capCenterGlCodes: {
+    "City Manager": "011-1200",
+    "Finance & Administrative Services": "011-1400",
+  },
+  capCenterTotals: {
+    "City Manager": 1000,
+    "Finance & Administrative Services": 2000,
+    "Manual Center": 500,
+  },
+  capCenterDisallowed: { "City Manager": 50 },
+  capCenterSources: {
+    "City Manager": { source: "imported", sourceFile: "cap.pdf" },
+  },
+  capCenterOrder: ["City Manager", "Finance & Administrative Services", "Manual Center"],
+  capPools: [
+    { id: "p1", center: "City Manager",
+      amount: 100, allocationPercent: 10,
+      basisId: "b", basis: "B", pool: "Pool",
+      receiving: "All depts", recoverability: "TBD", review: "Review" },
+  ],
+}));
+console.log("  ✓ migration is idempotent (name-keyed center maps)");
+
+// (c) Legacy FA buckets translated from directHours → hoursSharePct
+assertIdempotent("FA bucket translation", () => ({
+  productiveHours: [
+    { id: "ph-1", title: "Planner I", dept: "PLAN", fte: 1, hours: 1720, source: "seed" },
+  ],
+  functionalAllocation: [
+    { id: "fa-x", dept: "PLAN", name: "Current Planning",
+      recoverabilityPct: 100, directHours: 860, source: "seed" },
+  ],
+}));
+console.log("  ✓ migration is idempotent (FA bucket translation)");
+
+// (d) Versions array with embedded snapshots
+assertIdempotent("version snapshots", () => ({
+  capCenterTotals: { "011-1200": 1000 },
+  capCenterDisallowed: {},
+  capCenterSources: { "011-1200": { name: "City Manager", source: "imported" } },
+  capCenterOrder: ["011-1200"],
+  capPools: [
+    { id: "p1", center: "City Manager", centerGlCode: "011-1200",
+      amount: 100, allocationPercent: 100,
+      basisId: "b", basis: "B", pool: "Pool",
+      receiving: "All depts", recoverability: "TBD", review: "Review" },
+  ],
+  versions: [
+    {
+      id: "v-1", versionNumber: 1, label: "v1", status: "adopted",
+      createdAt: "2026-01-01T00:00:00.000Z", createdBy: "user",
+      sourceImportIds: [],
+      snapshot: {
+        capCenterTotals: { "011-1200": 999 },
+        capCenterDisallowed: {},
+        capCenterSources: { "011-1200": { name: "City Manager", source: "seed" } },
+        capCenterOrder: ["011-1200"],
+        capPools: [
+          { id: "old-p", center: "City Manager", centerGlCode: "011-1200",
+            amount: 50, allocationPercent: 5,
+            basisId: "b", basis: "B", pool: "Pool",
+            receiving: "All depts", recoverability: "TBD", review: "Review" },
+        ],
+      },
+    },
+  ],
+  comparisonVersionId: "v-1",
+}));
+console.log("  ✓ migration is idempotent (version snapshots)");
+
+// ── 8. isLikelyCenterKey tightening ──────────────────────────────────────
+// A center literally named "PLAN" (a bare uppercase token that previously
+// matched the loose regex) must still be translated to its glCode, not
+// silently skipped as already-keyed.
+{
+  const state: Record<string, unknown> = {
+    capCenterGlCodes: { "PLAN": "011-3100" },
+    capCenterTotals: { "PLAN": 1000 },
+    capCenterDisallowed: {},
+    capCenterSources: { "PLAN": { source: "seed" } },
+    capCenterOrder: ["PLAN"],
+    capPools: [
+      { id: "p1", center: "PLAN", amount: 100, allocationPercent: 100,
+        basisId: "b", basis: "B", pool: "Pool",
+        receiving: "All depts", recoverability: "TBD", review: "Review" },
+    ],
+  };
+  migratePersistedState(state as never);
+  const totals = state.capCenterTotals as Record<string, number>;
+  assert.equal(totals["011-3100"], 1000,
+    "center named 'PLAN' translates to its glCode (not skipped as already-keyed)");
+  assert.equal(totals["PLAN"], undefined,
+    "old name key removed even when it looks like a bare uppercase token");
+  console.log("  ✓ bare uppercase names ('PLAN') translate instead of being skipped");
 }
 
 console.log("\nAll storeMigration assertions passed.");
