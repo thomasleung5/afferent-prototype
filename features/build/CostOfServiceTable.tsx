@@ -20,9 +20,16 @@ interface Row extends ServiceCost {
 }
 
 export function CostOfServiceTable() {
-  const { derived } = useBuildState();
+  const { derived, services } = useBuildState();
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
+
+  // Service lookup so the Fee # column can pull feeNo (lives on
+  // Service, not on the derived ServiceCost row).
+  const svcById = useMemo(
+    () => new Map(services.map((s) => [s.id, s])),
+    [services],
+  );
 
   const all: Row[] = useMemo(() => derived.costs.map((c) => ({
     ...c,
@@ -58,6 +65,21 @@ export function CostOfServiceTable() {
   }];
 
   const cols: Column<Row>[] = [
+    {
+      key: "feeNo",
+      label: "Fee #",
+      width: "90px",
+      sortable: true,
+      sortKey: (r) => svcById.get(r.id)?.feeNo ?? "",
+      render: (r) => {
+        const feeNo = svcById.get(r.id)?.feeNo;
+        return (
+          <span className="num" style={{
+            color: feeNo ? "var(--ink-2)" : "var(--ink-4)",
+          }}>{feeNo ?? "—"}</span>
+        );
+      },
+    },
     {
       key: "name",
       label: "Service",
