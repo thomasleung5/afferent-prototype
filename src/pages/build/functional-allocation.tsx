@@ -147,6 +147,10 @@ function BucketTable() {
         </div>
       )}
 
+      {/* Per-dept sections render FunctionalBucketSupport in their drilldown
+       *  rather than the Ledger + MetaGrid used by the Labor / Operating /
+       *  Cap summaries — FA buckets are workflow-editable, not a derived
+       *  ledger, so the drilldown is an editor panel by design. */}
       {activeDepts.map((d) => (
         <DeptBucketSection
           key={d}

@@ -1,6 +1,5 @@
 import type { ReactNode } from "react";
-
-type Tone = "neg" | "warn" | "pos" | "info";
+import { TONE_COLOR, type Tone } from "@/components/ui";
 
 interface AnswerStat {
   label: string;
@@ -17,13 +16,6 @@ interface Props {
   stats: AnswerStat[];
   actions?: ReactNode;
 }
-
-const TONE_COLOR: Record<Tone, string> = {
-  neg: "var(--neg)",
-  warn: "var(--warn)",
-  pos: "var(--pos)",
-  info: "var(--ink)",
-};
 
 /** "Decision screen" header: question → headline answer → supporting stats → actions. */
 export function AnswerHeader({ question, answer, tone = "info", sub, stats, actions }: Props) {

@@ -1,6 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Page } from "@/components/layout";
-import { Btn, Icon } from "@/components/ui";
+import { Btn, Icon, KpiEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
@@ -86,10 +86,7 @@ export default function HomePage() {
         alignItems: "center", gap: 24, flexWrap: "wrap",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-          <div className="mono" style={{
-            fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "var(--ink-3)",
-          }}>Overall cost recovery</div>
+          <KpiEyebrow>Overall cost recovery</KpiEyebrow>
           <div className="display" style={{
             fontSize: 40, fontWeight: 600, letterSpacing: "-0.024em", lineHeight: 1.08,
           }}>
@@ -164,10 +161,7 @@ export default function HomePage() {
         textDecoration: "none",
       }}>
         <div style={{ display: "flex", flexDirection: "column", gap: 8, minWidth: 0 }}>
-          <div className="mono" style={{
-            fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.12em",
-            textTransform: "uppercase", color: "var(--ink-3)",
-          }}>Recurring workflow</div>
+          <KpiEyebrow>Recurring workflow</KpiEyebrow>
           <div className="display" style={{
             fontSize: 24, fontWeight: 600, letterSpacing: "-0.018em", lineHeight: 1.15,
           }}>Annual update</div>
@@ -188,10 +182,7 @@ export default function HomePage() {
             { l: "Fees impacted",     v: `${feesImpacted}` },
           ].map((s) => (
             <div key={s.l}>
-              <div className="mono" style={{
-                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-                textTransform: "uppercase", color: "var(--ink-3)",
-              }}>{s.l}</div>
+              <KpiEyebrow size="l9">{s.l}</KpiEyebrow>
               <div className="num display" style={{
                 fontSize: 26, fontWeight: 600, marginTop: 6, letterSpacing: "-0.02em",
               }}>{s.v}</div>

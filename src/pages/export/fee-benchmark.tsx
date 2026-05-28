@@ -198,7 +198,7 @@ function Tile({
       display: "flex", flexDirection: "column", gap: 4,
     }}>
       <div className="mono" style={{
-        fontSize: 9.5, fontWeight: 600, letterSpacing: "0.1em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</div>
       <div className="num" style={{
