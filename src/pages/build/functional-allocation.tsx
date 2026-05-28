@@ -6,12 +6,12 @@ import {
   type Column, type DeptSummaryRow,
 } from "@/components/table";
 import {
-  CellInput, DeptChip, NodeEyebrow, SectionLabel,
+  CellInput, DeptCellHeader, NodeEyebrow, SectionLabel, TotalEyebrow,
 } from "@/components/ui";
 import { FunctionalBucketSupport } from "@/features/build/FunctionalBucketSupport";
 import { useBuildActions, useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { FEE_DEPTS } from "@/lib/data/departments";
 import type { DeptCode, FunctionalAllocationBucket } from "@/lib/types";
 import type {
   FunctionalAllocationBucketDerived,
@@ -53,12 +53,7 @@ export default function FunctionalAllocationPage() {
     return {
       key: d,
       cells: {
-        dept: (
-          <span style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
-            <DeptChip code={d}/>
-            <span style={{ fontWeight: 500 }}>{deptName(d)}</span>
-          </span>
-        ),
+        dept: <DeptCellHeader code={d}/>,
         fully: fmt.dollarsK(dd.fullyBurdenedCost),
         recCost: fmt.dollarsK(dd.recoverableCost),
         productiveHours: dd.directHours > 0 ? fmt.int(dd.directHours) : "—",
@@ -99,12 +94,7 @@ export default function FunctionalAllocationPage() {
           ]}
           rows={deptRows}
           footer={{
-            dept: (
-              <span style={{
-                color: "var(--ink-3)", textTransform: "uppercase",
-                letterSpacing: "0.06em", fontSize: "var(--t-l8)",
-              }}>Citywide</span>
-            ),
+            dept: <TotalEyebrow size="l8">Citywide</TotalEyebrow>,
             fully: fmt.dollarsK(totalFully),
             recCost: fmt.dollarsK(totalRecoverable),
             productiveHours: totalProductiveHours > 0 ? fmt.int(totalProductiveHours) : "—",
@@ -292,11 +282,7 @@ function DeptBucketSection({
   return (
     <div>
       <SectionLabel right={sectionRight}>
-        <span style={{
-          color: "var(--ink-3)", marginRight: 8,
-          letterSpacing: "0.02em", fontWeight: 400, textTransform: "none",
-        }}>{dept}</span>
-        {deptName(dept)}
+        <DeptCellHeader code={dept}/>
       </SectionLabel>
       <DataTable
         cols={cols}
@@ -320,12 +306,7 @@ function DeptBucketSection({
         )}
         emptyState="No activities configured for this department."
         footer={{
-          name: (
-            <span className="mono" style={{
-              fontSize: "var(--t-l9)", letterSpacing: "0.1em",
-              color: "var(--ink-3)", textTransform: "uppercase",
-            }}>Total</span>
-          ),
+          name: <TotalEyebrow size="l8">Total</TotalEyebrow>,
           productiveHours: (
             <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
               {sumProductiveHours > 0 ? fmt.int(sumProductiveHours) : "—"}
