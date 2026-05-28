@@ -389,9 +389,10 @@ const DOMAIN_LABEL: Record<Domain, string> = {
 export function buildExportPayload(input: ExportInput): ExportPayload {
   const { productiveHours, services, derived, policyTargets, policyExceptions, capPools } = input;
 
-  const totalCost = derived.costs.reduce((a, c) => a + c.annualCost, 0);
-  const totalRevenue = derived.costs.reduce((a, c) => a + c.annualRevenue, 0);
-  const potentialUplift = derived.comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
+  const recoverableComparisons = derived.comparisons.filter((c) => c.recoverable);
+  const totalCost = derived.impact.totalCost;
+  const totalRevenue = derived.impact.currentRevenue;
+  const potentialUplift = recoverableComparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
   const fte = productiveHours.reduce((a, p) => a + p.fte, 0);
 
   const cover: ExportCover = {
@@ -408,7 +409,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     fte,
     totalCost,
     currentRevenue: totalRevenue,
-    recoveryGap: Math.max(0, totalCost - totalRevenue),
+    recoveryGap: Math.max(0, derived.impact.recoverableGap),
     recoveryPct: totalCost > 0 ? (totalRevenue / totalCost) * 100 : 0,
     potentialUplift,
     intendedRecoveryPct: derived.impact.overallPct,
@@ -427,12 +428,10 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   const deptSummaries: ExportDeptSummary[] = activeDepts.map((d) => {
     const labor = derived.labor[d];
     const f = derived.fbhr[d];
-    const deptCosts = derived.costs.filter((c) => c.dept === d);
-    const deptComparisons = derived.comparisons.filter((c) => c.dept === d);
-    const deptTotalCost = deptCosts.reduce((a, c) => a + c.annualCost, 0);
-    const deptRev = deptCosts.reduce((a, c) => a + c.annualRevenue, 0);
+    const deptComparisons = recoverableComparisons.filter((c) => c.dept === d);
+    const deptTotalCost = deptComparisons.reduce((a, c) => a + c.annualCost, 0);
+    const deptRev = deptComparisons.reduce((a, c) => a + c.annualRevenue, 0);
     const recommendedRev = deptComparisons
-      .filter((c) => c.recoverable)
       .reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
     const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;
     return {
@@ -493,7 +492,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   }));
 
   const recommendations: ExportRecommendation[] = derived.comparisons
-    .filter((c) => c.annualUplift !== 0)
+    .filter((c) => c.recoverable && c.annualUplift !== 0)
     .map((c) => {
       const fee = feeSchedule.find((f) => f.id === c.id)!;
       return {
@@ -551,7 +550,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   // "Other" when a fee row carries no subcategory.
   const deptBuckets: ExportDeptBuckets[] = activeDepts.map((d) => {
     const buckets = new Map<string, ExportFunctionalBucket>();
-    for (const c of derived.comparisons.filter((c) => c.dept === d)) {
+    for (const c of recoverableComparisons.filter((c) => c.dept === d)) {
       const svc = services.find((s) => s.id === c.id);
       const label = svc?.subcategory ?? svc?.category ?? "Other";
       const b = buckets.get(label) ?? {
@@ -646,6 +645,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
       const annualRecRev = c.recoverable
         ? c.calculatedRecommendedFee * c.volume
         : c.annualRevenue;
+      const uplift = annualRecRev - c.annualRevenue;
       const row: ExportFeeDetailRow = {
         id: c.id,
         ...(svc?.feeNo ? { feeNo: svc.feeNo } : {}),
@@ -665,7 +665,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
         annualCost: c.annualCost,
         annualRevenue: c.annualRevenue,
         annualRecommendedRevenue: annualRecRev,
-        uplift: c.annualUplift,
+        uplift,
       };
       const arr = grouped.get(cat) ?? [];
       arr.push(row);

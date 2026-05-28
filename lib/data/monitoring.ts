@@ -92,7 +92,8 @@ function deriveSummary({ comparisons, impact, imports }: MonitoringInput): Monit
   const citywideRecovery = impact.totalCost > 0
     ? (impact.currentRevenue / impact.totalCost) * 100
     : 0;
-  const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
+  const recoverableComparisons = comparisons.filter((c) => c.recoverable);
+  const feesBelowTarget = recoverableComparisons.filter((c) => c.recoveryPct < c.target).length;
   // Revenue drift = the closeable gap, expressed as a negative number
   // (under-collecting). Matches the sign convention the page legend used.
   const revenueDrift = -Math.round(Math.max(0, impact.recoverableGap));
@@ -137,7 +138,7 @@ function deriveRecoveryAlerts({ comparisons }: MonitoringInput): RecoveryAlert[]
   // Rank fees by absolute closeable impact (uplift if adopted at target).
   // Surface the top 5 — that's the actionable Recovery Alerts queue.
   return comparisons
-    .filter((c) => c.annualUplift > 500) // ignore noise below $500/yr
+    .filter((c) => c.recoverable && c.annualUplift > 500) // ignore noise below $500/yr
     .sort((a, b) => b.annualUplift - a.annualUplift)
     .slice(0, 5)
     .map((c, i) => {
@@ -166,7 +167,7 @@ function deriveDriftDrivers(
   for (const dh of deptHealth) {
     if (dh.subsidy < 1000) continue;
     const deptName = DEPTS[dh.dept].name.replace(" Administration", "");
-    const deptRows = comparisons.filter((c) => c.dept === dh.dept);
+    const deptRows = comparisons.filter((c) => c.recoverable && c.dept === dh.dept);
     const belowCount = deptRows.filter((c) => c.recoveryPct < c.target).length;
     drivers.push({
       id: `DR-${dh.dept}`,
@@ -181,7 +182,7 @@ function deriveDriftDrivers(
   }
   // Plus a single "unadopted fees" row capturing services with $0 fee but
   // a calculated cost — that's typically a category-wide adoption lag.
-  const unadopted = comparisons.filter((c) => c.fee === 0 && c.unitCost > 0);
+  const unadopted = comparisons.filter((c) => c.recoverable && c.fee === 0 && c.unitCost > 0);
   if (unadopted.length > 0) {
     const impact = unadopted.reduce((a, c) => a + c.annualCost, 0);
     drivers.push({
@@ -206,7 +207,9 @@ function deriveStaffActions(
 ): StaffAction[] {
   const actions: StaffAction[] = [];
   const highAlertCount = recoveryAlerts.filter((a) => a.severity === "high").length;
-  const totalUplift = comparisons.reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
+  const totalUplift = comparisons
+    .filter((c) => c.recoverable)
+    .reduce((a, c) => a + Math.max(0, c.annualUplift), 0);
   if (highAlertCount > 0 && totalUplift > 0) {
     actions.push({
       id: "SA-FEES",

@@ -239,9 +239,11 @@ export function deriveRecoveryDelta(input: AnnualInput): RecoveryDelta {
 }
 
 export function deriveNetImpact(input: AnnualInput): number {
-  // Sum of net adoption uplift across every fee comparison — the same
-  // number Fee Schedule's "Net adoption impact" shows.
-  return input.comparisons.reduce((a, c) => a + c.annualUplift, 0);
+  // Sum of net adoption uplift across recoverable fee comparisons — the
+  // same number Fee Schedule's "Net adoption impact" shows.
+  return input.comparisons
+    .filter((c) => c.recoverable)
+    .reduce((a, c) => a + c.annualUplift, 0);
 }
 
 export function deriveFeeChangeExplanations(

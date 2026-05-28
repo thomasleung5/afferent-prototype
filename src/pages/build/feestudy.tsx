@@ -21,15 +21,17 @@ export default function FeeSchedulePage() {
   const comparisons = derived.comparisons;
 
   // Net adoption impact: full-precision sum (recommended − fee) × volume across
-  // every fee row, NOT clamped. Reconciles exactly with Recovery Policy's
-  // Recoverable Revenue — both derive from the same calculatedRecommendedFee.
-  const netAdoptionImpact = comparisons.reduce((a, c) => a + c.annualUplift, 0);
-  const belowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
-  const atTarget = comparisons.filter((c) => Math.abs(c.recommended - c.fee) < 1).length;
-  const revenueNow = comparisons.reduce((a, c) => a + c.annualRevenue, 0);
+  // recoverable fee rows, NOT clamped. Reconciles exactly with Recovery
+  // Policy's Recoverable Revenue — both derive from the same
+  // calculatedRecommendedFee and skip display-only/non-recoverable rows.
+  const recoverableComparisons = comparisons.filter((c) => c.recoverable);
+  const netAdoptionImpact = recoverableComparisons.reduce((a, c) => a + c.annualUplift, 0);
+  const belowTarget = recoverableComparisons.filter((c) => c.recoveryPct < c.target).length;
+  const atTarget = recoverableComparisons.filter((c) => Math.abs(c.recommended - c.fee) < 1).length;
+  const revenueNow = recoverableComparisons.reduce((a, c) => a + c.annualRevenue, 0);
   // Target Revenue: sum of full-precision recommended × volume. NEVER use
   // c.recommended (rounded for display) — rounding drift breaks reconciliation.
-  const targetRevenue = comparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
+  const targetRevenue = recoverableComparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
 
   // Fee Schedule's two summaries differ subtly: PDF includes "from PDF"
   // in its sentence; clipboard does not. Each handler owns that
