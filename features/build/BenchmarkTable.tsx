@@ -28,7 +28,6 @@ interface Row {
   peerCount: number;
   varianceVsMedian: number;
   varianceVsCost: number;
-  status: "below" | "in-line" | "above" | "no-peer";
 }
 
 const OFFSETS = [-0.18, -0.07, 0.04, 0.12, 0.22];
@@ -40,13 +39,6 @@ function peerJitter(id: string, median: number, peers: string[]): number[] {
     const off = OFFSETS[(seed + i) % OFFSETS.length];
     return Math.round((median * (1 + off)) / 5) * 5;
   });
-}
-
-function classify(variance: number, hasPeer: boolean): Row["status"] {
-  if (!hasPeer) return "no-peer";
-  if (variance < -5) return "below";
-  if (variance >  5) return "above";
-  return "in-line";
 }
 
 export function BenchmarkTable() {
@@ -99,7 +91,6 @@ export function BenchmarkTable() {
       peerCount: nonZeroPeers.length,
       varianceVsMedian,
       varianceVsCost,
-      status: classify(varianceVsMedian, s.peer > 0),
     };
   }), [services, derived.fbhr, peers]);
 
@@ -121,6 +112,21 @@ export function BenchmarkTable() {
   }];
 
   const cols: Column<Row>[] = [
+    {
+      key: "feeNo",
+      label: "Fee #",
+      width: "90px",
+      sortable: true,
+      sortKey: (r) => svcById.get(r.id)?.feeNo ?? "",
+      render: (r) => {
+        const feeNo = svcById.get(r.id)?.feeNo;
+        return (
+          <span className="num" style={{
+            color: feeNo ? "var(--ink-2)" : "var(--ink-4)",
+          }}>{feeNo ?? "—"}</span>
+        );
+      },
+    },
     {
       key: "name",
       label: "Fee item",
@@ -189,14 +195,6 @@ export function BenchmarkTable() {
       },
     },
     {
-      key: "status",
-      label: "Status",
-      width: "90px",
-      sortable: true,
-      sortKey: (r) => STATUS_RANK[r.status],
-      render: (r) => <StatusChip status={r.status}/>,
-    },
-    {
       key: "peerRange",
       label: "Peer range",
       width: "minmax(130px, 1fr)",
@@ -206,18 +204,6 @@ export function BenchmarkTable() {
       render: (r) => (
         r.peerCount > 0
           ? <span className="num">{fmt.dollars(r.peerMin)} – {fmt.dollars(r.peerMax)}</span>
-          : <span style={{ color: "var(--ink-4)" }}>—</span>
-      ),
-    },
-    {
-      key: "peerCount",
-      label: "Peers",
-      width: "80px",
-      align: "right",
-      sortable: true,
-      render: (r) => (
-        r.peerCount > 0
-          ? <span className="num">{r.peerCount}</span>
           : <span style={{ color: "var(--ink-4)" }}>—</span>
       ),
     },
@@ -232,7 +218,7 @@ export function BenchmarkTable() {
         cols={cols}
         rows={rows}
         filters={filters}
-        defaultSort={{ key: "varianceVsMedian", dir: "asc" }}
+        defaultSort={{ key: "feeNo", dir: "asc" }}
         openId={openId}
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
         drilldownIndicator
@@ -313,44 +299,6 @@ export function BenchmarkTable() {
         }}
       />
     </div>
-  );
-}
-
-// ---------------------------------------------------------------------------
-// Status chip & ranking helpers
-// ---------------------------------------------------------------------------
-
-const STATUS_RANK: Record<Row["status"], number> = {
-  below: 0, "in-line": 1, above: 2, "no-peer": 3,
-};
-
-const STATUS_LABEL: Record<Row["status"], string> = {
-  below: "Below",
-  "in-line": "In line",
-  above: "Above",
-  "no-peer": "—",
-};
-
-const STATUS_COLOR: Record<Row["status"], string> = {
-  below: "var(--warn)",
-  "in-line": "var(--ink-2)",
-  above: "var(--ink-3)",
-  "no-peer": "var(--ink-4)",
-};
-
-function StatusChip({ status }: { status: Row["status"] }) {
-  if (status === "no-peer") {
-    return <span style={{ color: "var(--ink-4)" }}>—</span>;
-  }
-  return (
-    <span className="mono" style={{
-      display: "inline-block",
-      fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.06em",
-      color: STATUS_COLOR[status],
-      padding: "2px 6px",
-      background: "var(--paper-2)",
-      border: "1px solid var(--rule)",
-    }}>{STATUS_LABEL[status]}</span>
   );
 }
 

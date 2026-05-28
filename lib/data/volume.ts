@@ -36,10 +36,9 @@ export const VOLUME: VolumeRow[] = SERVICES.map((s, i): VolumeRow => {
     return {
       id: s.id,
       prior,
-      current: null,
+      current: s.volume,
       source: "seed",
-      status: "Missing",
-      flag: "missing-current-volume",
+      status: "Imported",
     };
   }
   if (bucket === 5) {

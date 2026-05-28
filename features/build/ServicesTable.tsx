@@ -263,7 +263,7 @@ export function ServicesTable() {
         filters={filters}
         onAdd={addService}
         addLabel="Add service"
-        defaultSort={{ key: "name", dir: "asc" }}
+        defaultSort={{ key: "feeNo", dir: "asc" }}
         stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
         openId={openId}
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}

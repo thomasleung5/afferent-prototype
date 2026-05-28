@@ -160,7 +160,7 @@ export function CostOfServiceTable() {
       cols={cols}
       rows={rows}
       filters={filters}
-      defaultSort={{ key: "annual", dir: "desc" }}
+      defaultSort={{ key: "feeNo", dir: "asc" }}
       openId={openId}
       onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
       drilldownIndicator

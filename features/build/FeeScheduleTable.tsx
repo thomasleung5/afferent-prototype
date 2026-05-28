@@ -71,13 +71,12 @@ export function FeeScheduleTable() {
     [services],
   );
 
-  // Sort by annual uplift descending so the rows with the largest
-  // adoption impact float to the top. Previous confidence-first ranking
-  // depended on the workflow-state UI that's been removed.
-  const sorted = useMemo(() => {
-    const filtered = applyFilter(derived.comparisons, "dept", deptFilter);
-    return [...filtered].sort((a, b) => b.annualUplift - a.annualUplift);
-  }, [derived.comparisons, deptFilter]);
+  // Filter by dept; user-controlled sort lives on DataTable (default
+  // Fee # ascending, matching the rest of the fee tables).
+  const sorted = useMemo(
+    () => applyFilter(derived.comparisons, "dept", deptFilter),
+    [derived.comparisons, deptFilter],
+  );
 
   const filters: FilterGroup[] = [
     {
@@ -262,6 +261,7 @@ export function FeeScheduleTable() {
         cols={cols}
         rows={sorted}
         filters={filters}
+        defaultSort={{ key: "feeNo", dir: "asc" }}
         openId={openId}
         onRowClick={(r) => setOpenId(openId === r.id ? undefined : r.id)}
         drilldownIndicator

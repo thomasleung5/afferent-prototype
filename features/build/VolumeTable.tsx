@@ -206,7 +206,7 @@ export function VolumeTable() {
         cols={cols}
         rows={rows}
         filters={filters}
-        defaultSort={{ key: "name", dir: "asc" }}
+        defaultSort={{ key: "feeNo", dir: "asc" }}
         stickySort={(a, b) => (a.flag ? 0 : 1) - (b.flag ? 0 : 1)}
       />
     </div>
