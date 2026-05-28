@@ -1193,7 +1193,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Recoverable where fee-related",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1700"
     },
     {
       "id": "cap-cm-leg",
@@ -1204,7 +1205,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1100"
     },
     {
       "id": "cap-cm-twdev",
@@ -1215,7 +1217,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1100"
     },
     {
       "id": "cap-fas-hr",
@@ -1226,7 +1229,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1300"
     },
     {
       "id": "cap-fas-acct",
@@ -1237,7 +1241,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1300"
     },
     {
       "id": "cap-atty",
@@ -1248,7 +1253,8 @@
       "receiving": "Multiple departments",
       "recoverability": "Legal review recommended",
       "review": "Review",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1200"
     },
     {
       "id": "cap-ins",
@@ -1259,22 +1265,16 @@
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed",
-      "source": "seed"
+      "source": "seed",
+      "centerGlCode": "001-1500"
     }
   ],
-  "capCenterGlCodes": {
-    "City Manager": "001-1100",
-    "City Attorney": "001-1200",
-    "Finance & Admin": "001-1300",
-    "Insurance": "001-1500",
-    "Building Use": "001-1700"
-  },
   "capCenterOrder": [
-    "Finance & Admin",
-    "City Manager",
-    "Insurance",
-    "City Attorney",
-    "Building Use"
+    "001-1300",
+    "001-1100",
+    "001-1500",
+    "001-1200",
+    "001-1700"
   ],
   "services": [
     {
@@ -2475,5 +2475,34 @@
       "running": false
     }
   },
-  "imports": []
+  "imports": [],
+  "capCenterTotals": {
+    "001-1700": 140000,
+    "001-1100": 1085000,
+    "001-1300": 612000,
+    "001-1200": 210000,
+    "001-1500": 445000
+  },
+  "capCenterSources": {
+    "001-1100": {
+      "name": "City Manager",
+      "source": "seed"
+    },
+    "001-1200": {
+      "name": "City Attorney",
+      "source": "seed"
+    },
+    "001-1300": {
+      "name": "Finance & Admin",
+      "source": "seed"
+    },
+    "001-1500": {
+      "name": "Insurance",
+      "source": "seed"
+    },
+    "001-1700": {
+      "name": "Building Use",
+      "source": "seed"
+    }
+  }
 }
