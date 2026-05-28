@@ -1,4 +1,5 @@
 ﻿
+import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -14,6 +15,7 @@ const labelOf = deptName;
 export function LaborSummary() {
   const { operating, derived } = useBuildState();
   const labor = derived.labor;
+  const { dept: searchDept } = useSearch({ from: "/build/direct-labor" });
 
   const totalComp = ORDER.reduce((a, d) => a + labor[d].totalComp, 0);
   const totalHrs  = ORDER.reduce((a, d) => a + labor[d].productiveHours, 0);
@@ -118,6 +120,7 @@ export function LaborSummary() {
         Direct labor by department
       </SectionLabel>
       <DeptSummaryTable
+        autoOpenKey={searchDept}
         cols={[
         { key: "dept",      label: "Department",  width: "1.5fr" },
         { key: "positions", label: "Positions",   width: "160px" },

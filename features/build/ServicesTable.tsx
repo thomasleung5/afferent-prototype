@@ -382,7 +382,7 @@ export function ServicesTable() {
                     display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
                     color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                   }}
-                >Open fee schedule →</Link>
+                >View fee schedule →</Link>
               </DrilldownColumn>
             </DrilldownShell>
           );

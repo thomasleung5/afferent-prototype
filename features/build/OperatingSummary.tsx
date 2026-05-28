@@ -1,4 +1,5 @@
 ﻿
+import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -15,6 +16,7 @@ const labelOf = deptName;
 export function OperatingSummary() {
   const { operating, derived } = useBuildState();
   const byDept = derived.operatingByDept;
+  const { dept: searchDept } = useSearch({ from: "/build/operating" });
   const includedTotal = operating.filter((l) => l.include).reduce((a, l) => a + l.amount, 0);
   const excluded = operating.filter((l) => !l.include);
   const excludedTotal = excluded.reduce((a, l) => a + l.amount, 0);
@@ -139,6 +141,7 @@ export function OperatingSummary() {
         Operating costs by department
       </SectionLabel>
       <DeptSummaryTable
+        autoOpenKey={searchDept}
         cols={[
         { key: "dept",   label: "Department",     width: "1.5fr" },
         { key: "opCost", label: "Operating $",    width: "160px", align: "right", mono: true },

@@ -18,6 +18,7 @@
  * by the bucket's hoursSharePct — the same split rule used inside
  * deriveFunctionalAllocation. */
 
+import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
@@ -37,9 +38,16 @@ interface Props {
    *  so the reader still sees how this bucket contributes to the
    *  dept's FBHR. Omit for the dept-wide workpaper view. */
   bucketId?: string;
+  /** When true, render the cross-page nav strip (upstream cost inputs
+   *  + downstream rate consumers) below the workpaper. Used by the
+   *  Functional Allocation drilldowns to anchor the dept inside the
+   *  broader Build Model workflow. Off by default so Cost of Service
+   *  drilldowns — which already have their own page-level cross-nav —
+   *  don't pick up a redundant duplicate strip. */
+  crossNav?: boolean;
 }
 
-export function FunctionalBucketSupport({ dept, service, bucketId }: Props) {
+export function FunctionalBucketSupport({ dept, service, bucketId, crossNav = false }: Props) {
   const { derived } = useBuildState();
   const fa = derived.functionalAllocation;
   const engine = derived.fbhr[dept];
@@ -121,16 +129,19 @@ export function FunctionalBucketSupport({ dept, service, bucketId }: Props) {
     const onlyBucket = supportRows[0];
     if (!onlyBucket) return null;
     return (
-      <ActivityCostFormulas
-        deptLabor={engine.directDollars}
-        deptOperating={engine.operatingDollars}
-        deptOverhead={engine.capDollars}
-        deptTotalCost={dd.fullyBurdenedCost}
-        allocationPct={onlyBucket.bucketHoursSharePct}
-        activityCost={onlyBucket.fullyBurdened}
-        recoverabilityPct={onlyBucket.recoverabilityPct}
-        recoverableCost={onlyBucket.recoverableCost}
-      />
+      <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
+        <ActivityCostFormulas
+          deptLabor={engine.directDollars}
+          deptOperating={engine.operatingDollars}
+          deptOverhead={engine.capDollars}
+          deptTotalCost={dd.fullyBurdenedCost}
+          allocationPct={onlyBucket.bucketHoursSharePct}
+          activityCost={onlyBucket.fullyBurdened}
+          recoverabilityPct={onlyBucket.recoverabilityPct}
+          recoverableCost={onlyBucket.recoverableCost}
+        />
+        {crossNav && <CrossNavLinks dept={dept}/>}
+      </div>
     );
   }
 
@@ -147,6 +158,43 @@ export function FunctionalBucketSupport({ dept, service, bucketId }: Props) {
         recoverableFbhr={recoverableFbhr}
         service={service}
       />
+      {crossNav && <CrossNavLinks dept={dept}/>}
+    </div>
+  );
+}
+
+/** Single-row cross-nav strip surfaced inside every FA drilldown:
+ *  upstream cost-source pages (Direct Labor / Operating / Overhead).
+ *  Same `?dept=…` query pattern the Cost of Service / Fee Benchmark
+ *  links use for `?serviceId=…`, so the destination page lands the
+ *  user on the matching dept row with its drilldown pre-opened. */
+function CrossNavLinks({ dept }: { dept: DeptCode }) {
+  const links: { to: string; text: string }[] = [
+    { to: "/build/direct-labor", text: "View direct labor" },
+    { to: "/build/operating",    text: "View operating" },
+    { to: "/build/cap",          text: "View overhead" },
+  ];
+  return (
+    <div style={{
+      display: "flex", flexWrap: "wrap", alignItems: "baseline",
+      paddingTop: 4,
+      fontSize: "var(--t-l8)", lineHeight: 1.6,
+    }}>
+      {links.map((l, i) => (
+        <span key={l.to} style={{ display: "inline-flex", alignItems: "baseline", gap: 14, marginRight: 14 }}>
+          {i > 0 && (
+            <span aria-hidden style={{ color: "var(--rule-strong)" }}>·</span>
+          )}
+          <Link
+            to={l.to}
+            search={{ dept }}
+            style={{
+              fontSize: "var(--t-l8)", color: "var(--accent)",
+              textDecoration: "underline", textUnderlineOffset: 3,
+            }}
+          >{l.text} →</Link>
+        </span>
+      ))}
     </div>
   );
 }

@@ -1,4 +1,5 @@
 ﻿
+import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptChip, Formula, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
@@ -15,6 +16,7 @@ const labelOf = deptName;
  *  the cost pools, not a manually-entered override. */
 export function CapSummary() {
   const { capPools, derived } = useBuildState();
+  const { dept: searchDept } = useSearch({ from: "/build/cap" });
   const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
@@ -118,6 +120,7 @@ export function CapSummary() {
         Allocated overhead by department
       </SectionLabel>
       <DeptSummaryTable
+        autoOpenKey={searchDept}
         cols={[
         { key: "dept",  label: "Department",          width: "1.4fr" },
         { key: "alloc", label: "Allocated overhead",  width: "160px", align: "right", mono: true },

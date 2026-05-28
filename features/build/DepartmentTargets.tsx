@@ -1,4 +1,6 @@
 
+import { useEffect } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { DataTable, type Column } from "@/components/table";
 import { CellInput, DeptChip, SectionLabel } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
@@ -23,6 +25,24 @@ function Bar({ pct }: { pct: number }) {
 
 export function DepartmentTargets() {
   const { policyTargets, updatePolicyTarget } = useBuildState();
+  const { dept: searchDept } = useSearch({ from: "/build/policy" });
+
+  // ?dept=... cross-nav from Functional Allocation: scroll the matching
+  // dept row into view and flash it briefly. Same row-flash pattern as
+  // BenchmarkTable / CostOfServiceTable / FeeScheduleTable.
+  useEffect(() => {
+    if (!searchDept) return;
+    const row = policyTargets.find((t) => t.dept === searchDept);
+    if (!row) return;
+    const handle = window.setTimeout(() => {
+      const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(row.id)}"]`);
+      if (!el) return;
+      el.scrollIntoView({ behavior: "smooth", block: "center" });
+      el.classList.add("row-flash");
+      window.setTimeout(() => el.classList.remove("row-flash"), 1700);
+    }, 30);
+    return () => window.clearTimeout(handle);
+  }, [searchDept, policyTargets]);
 
   const cols: Column<PolicyTarget>[] = [
     {

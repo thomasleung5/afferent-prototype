@@ -1,5 +1,5 @@
 
-import { useState, type ReactNode } from "react";
+import { useEffect, useState, type ReactNode } from "react";
 import { ExpandIndicator } from "@/components/ui/ExpandIndicator";
 
 interface DeptSummaryCol {
@@ -22,13 +22,24 @@ interface Props {
   cols: DeptSummaryCol[];
   rows: DeptSummaryRow[];
   footer?: Record<string, ReactNode>;
+  /** When set, expand the matching row's drilldown on first mount /
+   *  whenever the key changes. Used by cross-page nav from Functional
+   *  Allocation that lands the user on a specific dept's drilldown.
+   *  Subsequent user clicks still toggle freely — this only seeds the
+   *  initial open state. */
+  autoOpenKey?: string;
 }
 
 /** The single primary per-dept summary table shared across Direct Labor,
  *  Operating, Cost Allocation, and Cost of Service. Each row can expand to
  *  show a ledger + method/formula/source metadata grid. */
-export function DeptSummaryTable({ title, focus, cols, rows, footer }: Props) {
+export function DeptSummaryTable({ title, focus, cols, rows, footer, autoOpenKey }: Props) {
   const [open, setOpen] = useState<Record<string, boolean>>({});
+  useEffect(() => {
+    if (autoOpenKey != null) {
+      setOpen((o) => ({ ...o, [autoOpenKey]: true }));
+    }
+  }, [autoOpenKey]);
   const grid = cols.map((c) => c.width ?? "1fr").join(" ");
   const colTpl = `${grid} 36px`;
 

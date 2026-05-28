@@ -42,7 +42,7 @@ export function CostOfServiceTable() {
   // Drop any dept filter that would hide the row, open its drilldown,
   // scroll into view, and flash briefly so the user sees where they
   // landed. Same pattern as BenchmarkTable.
-  const { serviceId } = useSearch({ from: "/build/costs" });
+  const { serviceId, dept: searchDept } = useSearch({ from: "/build/costs" });
   useEffect(() => {
     if (!serviceId) return;
     if (!all.some((r) => r.id === serviceId)) return;
@@ -57,6 +57,14 @@ export function CostOfServiceTable() {
     }, 30);
     return () => window.clearTimeout(handle);
   }, [serviceId, all]);
+
+  // ?dept=... cross-nav from Functional Allocation. Pre-filters the
+  // table to the dept the user was viewing upstream. Only fires when
+  // there's no serviceId (a row-targeted nav wins over a dept filter).
+  useEffect(() => {
+    if (serviceId || !searchDept) return;
+    setDept(searchDept);
+  }, [searchDept, serviceId]);
 
   const filters: FilterGroup[] = [{
     id: "dept", label: "Dept",
@@ -162,42 +170,41 @@ export function CostOfServiceTable() {
           background: "var(--paper-2)",
           display: "flex", flexDirection: "column", gap: 12,
         }}>
-          <div style={{
-            display: "flex", justifyContent: "space-between",
-            alignItems: "baseline", gap: 12,
+          <div className="mono" style={{
             fontSize: "var(--t-l4)",
+            color: "var(--ink-3)", textTransform: "uppercase",
+            letterSpacing: "0.08em", fontWeight: 600,
           }}>
-            <span className="mono" style={{
-              color: "var(--ink-3)", textTransform: "uppercase",
-              letterSpacing: "0.08em", fontWeight: 600,
-            }}>
-              Functional allocation support — {r.dept}
-            </span>
-            <span style={{ display: "inline-flex", gap: 14 }}>
-              <Link
-                to="/build/services"
-                search={{ serviceId: r.id }}
-                style={{
-                  fontSize: "var(--t-l8)",
-                  color: "var(--accent)", textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >View service →</Link>
-              <Link
-                to="/build/feestudy"
-                search={{ serviceId: r.id }}
-                style={{
-                  fontSize: "var(--t-l8)",
-                  color: "var(--accent)", textDecoration: "underline",
-                  textUnderlineOffset: 3,
-                }}
-              >View fee schedule →</Link>
-            </span>
+            Functional allocation support — {r.dept}
           </div>
           <FunctionalBucketSupport
             dept={r.dept as DeptCode}
             service={{ name: r.name, hours: r.hours }}
           />
+          <div style={{
+            display: "flex", flexWrap: "wrap", alignItems: "baseline",
+            gap: 14, paddingTop: 4,
+          }}>
+            <Link
+              to="/build/functional-allocation"
+              search={{ dept: r.dept as DeptCode }}
+              style={{
+                fontSize: "var(--t-l8)",
+                color: "var(--accent)", textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >View functional allocation →</Link>
+            <span aria-hidden style={{ color: "var(--rule-strong)" }}>·</span>
+            <Link
+              to="/build/feestudy"
+              search={{ serviceId: r.id }}
+              style={{
+                fontSize: "var(--t-l8)",
+                color: "var(--accent)", textDecoration: "underline",
+                textUnderlineOffset: 3,
+              }}
+            >View fee schedule →</Link>
+          </div>
         </div>
       )}
       />

@@ -30,7 +30,7 @@ export function FeeScheduleTable() {
   // Service or Fee Benchmark. Clear filters that would hide the row,
   // open its drilldown, scroll, and flash so the user sees where they
   // landed. Same pattern used by BenchmarkTable / CostOfServiceTable.
-  const { serviceId } = useSearch({ from: "/build/feestudy" });
+  const { serviceId, dept: searchDept } = useSearch({ from: "/build/feestudy" });
   useEffect(() => {
     if (!serviceId) return;
     if (!derived.comparisons.some((c) => c.id === serviceId)) return;
@@ -45,6 +45,13 @@ export function FeeScheduleTable() {
     }, 30);
     return () => window.clearTimeout(handle);
   }, [serviceId, derived.comparisons]);
+
+  // ?dept=... cross-nav from Functional Allocation. Pre-filters to
+  // that dept. serviceId-targeted navs win over dept filters.
+  useEffect(() => {
+    if (serviceId || !searchDept) return;
+    setDeptFilter(searchDept);
+  }, [searchDept, serviceId]);
 
   // FeeComparison doesn't carry `peer`, so look it up from services — same
   // source the Fee Benchmark tab reads from. Keeps the column aligned with

@@ -1,4 +1,5 @@
 import { useState } from "react";
+import { useSearch } from "@tanstack/react-router";
 import { Page, PageHeader } from "@/components/layout";
 import {
   DataTable, DeptSummaryTable,
@@ -31,6 +32,7 @@ interface BucketRow {
 export default function FunctionalAllocationPage() {
   const { derived } = useBuildState();
   const fa = derived.functionalAllocation;
+  const { dept: searchDept } = useSearch({ from: "/build/functional-allocation" });
 
   const activeDepts = ORDER.filter((d) => fa.byDept[d] != null);
   const totalFully = activeDepts.reduce(
@@ -67,7 +69,7 @@ export default function FunctionalAllocationPage() {
       },
       drilldown: (
         <div style={{ paddingTop: 8, display: "flex", flexDirection: "column", gap: 12 }}>
-          <FunctionalBucketSupport dept={d}/>
+          <FunctionalBucketSupport dept={d} crossNav/>
         </div>
       ),
     };
@@ -86,6 +88,7 @@ export default function FunctionalAllocationPage() {
           Summary by department
         </SectionLabel>
         <DeptSummaryTable
+          autoOpenKey={searchDept}
           cols={[
             { key: "dept",            label: "Department",        width: "1.5fr" },
             { key: "fully",           label: "Total cost",        width: "140px", align: "right", mono: true },
@@ -311,6 +314,7 @@ function DeptBucketSection({
             <FunctionalBucketSupport
               dept={r.derived.bucket.dept}
               bucketId={r.derived.bucket.id}
+              crossNav
             />
           </div>
         )}
