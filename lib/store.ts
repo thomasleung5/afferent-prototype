@@ -293,7 +293,7 @@ interface BuildActions {
   createVersion: (input?: { label?: string; status?: StudyVersionStatus; notes?: string }) => StudyVersion;
   setComparisonVersion: (id: string | null) => void;
   /** Edit one Functional Allocation bucket (name, description,
-   *  recoverabilityPct, directHours, notes). The dept is intentionally
+   *  recoverabilityPct, hoursSharePct, notes). The dept is intentionally
    *  not patchable — moving a bucket to another dept would silently
    *  rebalance recoverable hours / cost away from the original dept's
    *  derived FBHR, which is almost always a destructive surprise. */
