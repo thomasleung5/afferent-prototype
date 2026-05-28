@@ -1425,6 +1425,17 @@ interface BuildDerived {
 }
 
 export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
+  // Overlay current-cycle volume from the Volume tab onto each service
+  // so downstream consumers (serviceCosts, capacity allocation, fee
+  // comparisons) see Volume edits flow through. VolumeRow.id matches
+  // Service.id; missing or null `current` falls back to the Service's
+  // own volume field.
+  const volumeById = new Map(state.volume.map((w) => [w.id, w]));
+  const services = state.services.map((s) => {
+    const v = volumeById.get(s.id);
+    return v?.current != null ? { ...s, volume: v.current } : s;
+  });
+
   const labor = deptLabor(state.operating, state.productiveHours);
   const hoursByDept = {} as Record<DeptCode, number>;
   for (const d of FEE_DEPTS) hoursByDept[d] = labor[d].productiveHours;
@@ -1444,7 +1455,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   // only jurisdiction).
   const modeledFeeDepts: DeptCode[] = Array.from(new Set<DeptCode>([
     ...state.productiveHours.map((r) => r.dept),
-    ...state.services.map((s) => s.dept),
+    ...services.map((s) => s.dept),
   ]));
 
   const graph = buildEngineGraph({
@@ -1497,15 +1508,15 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   // recoverable FBHR is null (no buckets, no rate-basis hours) fall
   // through to the engine FBHR.
   const fbhr = applyFunctionalAllocationFbhr(engineFbhr, functionalAllocation);
-  const costs = serviceCosts(state.services, fbhr);
+  const costs = serviceCosts(services, fbhr);
   const comparisons = feeComparisons(
-    costs, state.services, state.policyTargets, state.policyExceptions,
+    costs, services, state.policyTargets, state.policyExceptions,
   );
   const impact = policyImpact(comparisons);
   const deptRollup = buildDeptRollup(comparisons);
 
   const allocated = allocatedHoursByDept(
-    state.services, state.serviceRoleAllocations, state.productiveHours,
+    services, state.serviceRoleAllocations, state.productiveHours,
   );
   const utilization = utilizationByDept(allocated, hoursByDept);
 
@@ -1583,12 +1594,14 @@ export function useBuildState() {
 
   const derived: BuildDerived = useMemo(() => deriveBuildDerived(state), [
     state.productiveHours, state.operating,
-    state.capPools, state.capCenterTotals, state.capCenterOrder,
-    state.capBasisUnits, state.capDirectAllocations,
+    state.capPools, state.capCenterTotals, state.capCenterDisallowed,
+    state.capCenterOrder,
+    state.capBasisUnits, state.capDirectAllocations, state.directBills,
     state.allocationBases, state.capCenterSources, state.studyContext,
     state.services, state.serviceRoleAllocations,
     state.policyTargets, state.policyExceptions,
     state.functionalAllocation,
+    state.volume,
   ]);
 
   return { ...state, derived };
