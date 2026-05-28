@@ -1,7 +1,6 @@
 import { Link } from "@tanstack/react-router";
 import { Page } from "@/components/layout";
 import { Btn, Icon } from "@/components/ui";
-import { useActiveJurisdiction } from "@/lib/active";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
@@ -11,7 +10,6 @@ import { FEE_DEPTS } from "@/lib/data/departments";
 
 export default function HomePage() {
   const { services, productiveHours, capPools, policyTargets, imports, derived } = useBuildState();
-  const jurisdiction = useActiveJurisdiction();
   const { impact, comparisons } = derived;
 
   // Headline numbers — same derivation the Revenue Gap page uses, so the
@@ -72,15 +70,11 @@ export default function HomePage() {
       {/* Document header */}
       <div style={{
         borderBottom: "1px solid var(--rule)",
-        paddingBottom: 16, marginBottom: -4,
+        paddingBottom: 12, marginBottom: -4,
       }}>
-        <div className="mono" style={{
-          fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.14em",
-          textTransform: "uppercase", color: "var(--ink-3)",
-        }}>{jurisdiction.name}</div>
         <div className="display" style={{
           fontSize: 26, fontWeight: 600, letterSpacing: "-0.018em",
-          lineHeight: 1.15, marginTop: 4,
+          lineHeight: 1.15,
         }}>Revenue Intelligence System</div>
       </div>
 
