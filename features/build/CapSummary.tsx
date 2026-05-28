@@ -115,7 +115,7 @@ export function CapSummary() {
       ]}
       rows={rows}
       footer={{
-        dept: <TotalEyebrow size="l8">Allocated to fee depts</TotalEyebrow>,
+        dept: <TotalEyebrow size="l8">Total</TotalEyebrow>,
         alloc: fmt.dollarsK(totalAllocated),
         perHr: "—",
         pools: capPools.length,

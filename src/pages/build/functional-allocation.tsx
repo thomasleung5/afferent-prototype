@@ -94,7 +94,7 @@ export default function FunctionalAllocationPage() {
           ]}
           rows={deptRows}
           footer={{
-            dept: <TotalEyebrow size="l8">Citywide</TotalEyebrow>,
+            dept: <TotalEyebrow size="l8">Total</TotalEyebrow>,
             fully: fmt.dollarsK(totalFully),
             recCost: fmt.dollarsK(totalRecoverable),
             productiveHours: totalProductiveHours > 0 ? fmt.int(totalProductiveHours) : "—",
