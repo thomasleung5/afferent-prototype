@@ -288,6 +288,7 @@ type ColKey =
   | "fullyBurdened"
   | "recoverabilityPct"
   | "recoverableCost"
+  | "productiveHours"
   | "directHours"
   | "rateBasisFlag";
 
@@ -306,6 +307,7 @@ const ALL_COLS: SupportCol[] = [
   { key: "fullyBurdened",     label: "Total cost",              width: "120px", align: "right" },
   { key: "recoverabilityPct", label: "Fee Recoverability %",    width: "150px", align: "right" },
   { key: "recoverableCost",   label: "Fee-Recoverable Cost",    width: "160px", align: "right" },
+  { key: "productiveHours",   label: "Productive Hours",        width: "140px", align: "right" },
   { key: "directHours",       label: "Direct Hours",            width: "120px", align: "right" },
   { key: "rateBasisFlag",     label: "Included in FBHR",        width: "130px", align: "right" },
 ];
@@ -315,7 +317,7 @@ const ALL_COLS: SupportCol[] = [
  *  Leaves the horizontal cost-component breakdown
  *  (Labor / Operating / Overhead / Total cost / Fee-Recoverable Cost). */
 const COMPACT_HIDE: ReadonlySet<ColKey> = new Set([
-  "name", "recoverabilityPct", "directHours", "rateBasisFlag",
+  "name", "recoverabilityPct", "productiveHours", "directHours", "rateBasisFlag",
 ]);
 
 /** Columns hidden in dept-wide view — Labor / Operating / Overhead are
@@ -341,11 +343,27 @@ function renderCell(key: ColKey, r: SupportRow): React.ReactNode {
         {fmt.dollarsK(r.recoverableCost)}
       </span>
     );
-    case "directHours": return (
+    case "productiveHours": return (
       <span style={{ color: r.directHours > 0 ? "var(--ink)" : "var(--ink-3)" }}>
         {r.directHours > 0 ? fmt.int(r.directHours) : "—"}
       </span>
     );
+    case "directHours": {
+      // Effective Direct Hours = Productive Hours when included in
+      // FBHR, 0 otherwise. The activity table's column header marks
+      // this as the FBHR denominator contribution.
+      const value = r.rateBasis ? r.directHours : 0;
+      return (
+        <span
+          title={r.rateBasis
+            ? "Included in FBHR"
+            : "Excluded from FBHR — Direct Hours = 0"}
+          style={{ color: value > 0 ? "var(--ink)" : "var(--ink-3)" }}
+        >
+          {value > 0 ? fmt.int(value) : "—"}
+        </span>
+      );
+    }
     case "rateBasisFlag": return (
       <span style={{
         color: r.rateBasis ? "var(--accent)" : "var(--ink-3)",
@@ -371,7 +389,8 @@ function renderTotal(key: ColKey, totals: TotalsShape): React.ReactNode {
     case "fullyBurdened": return fmt.dollarsK(totals.fullyBurdened);
     case "recoverabilityPct": return null;
     case "recoverableCost": return fmt.dollarsK(totals.recoverableCost);
-    case "directHours":     return totals.directHours > 0 ? fmt.int(totals.directHours) : "—";
+    case "productiveHours": return totals.directHours > 0 ? fmt.int(totals.directHours) : "—";
+    case "directHours":     return totals.rateBasisHours > 0 ? fmt.int(totals.rateBasisHours) : "—";
     case "rateBasisFlag":   return totals.rateBasisHours > 0 ? fmt.int(totals.rateBasisHours) : "—";
   }
 }

@@ -39,8 +39,11 @@ export default function FunctionalAllocationPage() {
   const totalRecoverable = activeDepts.reduce(
     (a, d) => a + (fa.byDept[d]?.recoverableCost ?? 0), 0,
   );
-  const totalDirectHours = activeDepts.reduce(
+  const totalProductiveHours = activeDepts.reduce(
     (a, d) => a + (fa.byDept[d]?.directHours ?? 0), 0,
+  );
+  const totalDirectHours = activeDepts.reduce(
+    (a, d) => a + (fa.byDept[d]?.rateBasisDirectHours ?? 0), 0,
   );
 
   const deptRows: DeptSummaryRow[] = activeDepts.map((d) => {
@@ -56,7 +59,8 @@ export default function FunctionalAllocationPage() {
         ),
         fully: fmt.dollarsK(dd.fullyBurdenedCost),
         recCost: fmt.dollarsK(dd.recoverableCost),
-        directHours: dd.directHours > 0 ? fmt.int(dd.directHours) : "—",
+        productiveHours: dd.directHours > 0 ? fmt.int(dd.directHours) : "—",
+        directHours: dd.rateBasisDirectHours > 0 ? fmt.int(dd.rateBasisDirectHours) : "—",
         recoverableFbhr: dd.recoverableFbhr != null
           ? <span style={{ color: "var(--accent)" }}>${Math.round(dd.recoverableFbhr)}</span>
           : <span style={{ color: "var(--ink-3)" }}>—</span>,
@@ -86,6 +90,7 @@ export default function FunctionalAllocationPage() {
             { key: "dept",            label: "Department",        width: "1.5fr" },
             { key: "fully",           label: "Total cost",        width: "140px", align: "right", mono: true },
             { key: "recCost",         label: "Fee-Recoverable Cost", width: "170px", align: "right", mono: true },
+            { key: "productiveHours", label: "Productive Hours",        width: "140px", align: "right", mono: true },
             { key: "directHours",     label: "Direct Hours",            width: "120px", align: "right", mono: true },
             { key: "recoverableFbhr", label: "FBHR",              width: "120px", align: "right", mono: true },
           ]}
@@ -99,6 +104,7 @@ export default function FunctionalAllocationPage() {
             ),
             fully: fmt.dollarsK(totalFully),
             recCost: fmt.dollarsK(totalRecoverable),
+            productiveHours: totalProductiveHours > 0 ? fmt.int(totalProductiveHours) : "—",
             directHours: totalDirectHours > 0 ? fmt.int(totalDirectHours) : "—",
             recoverableFbhr: "—",
           }}
@@ -224,26 +230,45 @@ function DeptBucketSection({
       ),
     },
     {
+      key: "productiveHours",
+      label: "Productive Hours",
+      width: "140px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => r.derived.directHours,
+      render: (r) => (
+        <span className="num" style={{
+          fontVariantNumeric: "tabular-nums",
+          color: r.derived.directHours > 0 ? "var(--ink)" : "var(--ink-3)",
+        }}>
+          {r.derived.directHours > 0 ? fmt.int(r.derived.directHours) : "—"}
+        </span>
+      ),
+    },
+    {
       key: "directHours",
       label: "Direct Hours",
       width: "120px",
       align: "right",
       sortable: true,
-      sortKey: (r) => r.derived.directHours,
+      // Sort on the effective Direct Hours value (zero when excluded
+      // from FBHR) so the column reads as a true workload aggregate.
+      sortKey: (r) => r.derived.bucket.rateBasisHours ? r.derived.directHours : 0,
       render: (r) => {
         const included = r.derived.bucket.rateBasisHours;
+        const value = included ? r.derived.directHours : 0;
         return (
           <span
             className="num"
             title={included
               ? "Included in FBHR"
-              : "Excluded from FBHR"}
+              : "Excluded from FBHR — Direct Hours = 0"}
             style={{
               fontVariantNumeric: "tabular-nums",
-              color: included && r.derived.directHours > 0 ? "var(--ink)" : "var(--ink-3)",
+              color: value > 0 ? "var(--ink)" : "var(--ink-3)",
             }}
           >
-            {r.derived.directHours > 0 ? fmt.int(r.derived.directHours) : "—"}
+            {value > 0 ? fmt.int(value) : "—"}
           </span>
         );
       },
@@ -253,7 +278,11 @@ function DeptBucketSection({
   // Σ allocation share so the analyst can see if a dept's buckets
   // reconcile to 100%. Totals row uses the same per-column sums that
   // already appear in the workpaper drilldown.
-  const sumDirectHours = rows.reduce((a, r) => a + r.derived.directHours, 0);
+  const sumProductiveHours = rows.reduce((a, r) => a + r.derived.directHours, 0);
+  const sumDirectHours = rows.reduce(
+    (a, r) => a + (r.derived.bucket.rateBasisHours ? r.derived.directHours : 0),
+    0,
+  );
   const sumTotalCost = rows.reduce((a, r) => a + r.derived.fullyBurdenedCost, 0);
   const sumRecoverable = rows.reduce((a, r) => a + r.derived.recoverableCost, 0);
 
@@ -292,6 +321,11 @@ function DeptBucketSection({
               fontSize: "var(--t-l9)", letterSpacing: "0.1em",
               color: "var(--ink-3)", textTransform: "uppercase",
             }}>Total</span>
+          ),
+          productiveHours: (
+            <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
+              {sumProductiveHours > 0 ? fmt.int(sumProductiveHours) : "—"}
+            </span>
           ),
           directHours: (
             <span className="num" style={{ fontVariantNumeric: "tabular-nums" }}>
