@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type {
@@ -287,18 +287,6 @@ export function FeeScheduleTable() {
                       fontSize: "var(--fs-ui)", fontWeight: 600, minWidth: 42, textAlign: "right",
                     }}>{r.target}%</span>
                   </div>
-                </div>
-                <div>
-                  <div className="mono" style={{
-                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                    color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
-                  }}>Current fee</div>
-                  <CellInput
-                    type="currency"
-                    value={svc.fee}
-                    onChange={(v) => updateService(r.id, { fee: Number(v) || 0 })}
-                    prefix="$" min={0}
-                  />
                 </div>
                 <div>
                   <div

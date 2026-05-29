@@ -188,7 +188,7 @@ export function BenchmarkTable() {
           : v >  5 ? "var(--ink-3)"
           : "var(--ink-2)";
         return (
-          <span className="num" style={{ color, fontWeight: 600 }}>
+          <span className="num" style={{ color }}>
             {v > 0 ? "+" : ""}{Math.round(v)}%
           </span>
         );
