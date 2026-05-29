@@ -97,24 +97,22 @@ export function OperatingSummary() {
               amt:   <span className="num">{fmt.dollars(r.total)}</span>,
             }}
           />
-          <MetaGrid
-            rows={[
-              { label: "Formula", value: (
-                <RateFormula
-                  formula="operating $/hr = operating $ ÷ productive hrs"
-                  numerator={r.total}
-                  hours={derived.fbhr[d].productiveHours}
-                  rate={r.rate}
-                />
-              )},
-              ...((() => {
-                const excludedCount = excluded.filter((l) => l.dept === d || l.dept === "SHARED:CDS").length;
-                return excludedCount > 0
-                  ? [{ label: "Excluded", value: `${excludedCount} line(s) — capital outlay, one-time, or pass-through items not in the rate` }]
-                  : [];
-              })()),
-            ]}
+          <RateFormula
+            formula="operating $/hr = operating $ ÷ productive hrs"
+            numerator={r.total}
+            hours={derived.fbhr[d].productiveHours}
+            rate={r.rate}
           />
+          {(() => {
+            const excludedCount = excluded.filter((l) => l.dept === d || l.dept === "SHARED:CDS").length;
+            if (excludedCount === 0) return null;
+            return (
+              <MetaGrid rows={[{
+                label: "Excluded",
+                value: `${excludedCount} line(s) — capital outlay, one-time, or pass-through items not in the rate`,
+              }]}/>
+            );
+          })()}
         </div>
       ),
     };

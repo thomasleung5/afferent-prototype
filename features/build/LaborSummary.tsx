@@ -1,6 +1,6 @@
 ﻿
 import { useSearch } from "@tanstack/react-router";
-import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
+import { DeptSummaryTable, Ledger, type DeptSummaryRow } from "@/components/table";
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -82,17 +82,11 @@ export function LaborSummary() {
             }}
           />
 
-          <MetaGrid
-            rows={[
-              { label: "Formula", value: (
-                <RateFormula
-                  formula="direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs"
-                  numerator={r.totalComp}
-                  hours={r.productiveHours}
-                  rate={r.directRate}
-                />
-              )},
-            ]}
+          <RateFormula
+            formula="direct $/hr = Σ (salary + benefits) ÷ Σ productive hrs"
+            numerator={r.totalComp}
+            hours={r.productiveHours}
+            rate={r.directRate}
           />
         </div>
       ),

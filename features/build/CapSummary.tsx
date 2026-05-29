@@ -1,6 +1,6 @@
 ﻿
 import { useSearch } from "@tanstack/react-router";
-import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
+import { DeptSummaryTable, Ledger, type DeptSummaryRow } from "@/components/table";
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -82,17 +82,11 @@ export function CapSummary() {
               alloc: <span className="num">{fmt.dollars(allocated)}</span>,
             }}
           />
-          <MetaGrid
-            rows={[
-              { label: "Formula", value: (
-                <RateFormula
-                  formula="$/hr = allocated $ ÷ productive hrs"
-                  numerator={allocated}
-                  hours={derived.fbhr[d].productiveHours}
-                  rate={rate}
-                />
-              )},
-            ]}
+          <RateFormula
+            formula="$/hr = allocated $ ÷ productive hrs"
+            numerator={allocated}
+            hours={derived.fbhr[d].productiveHours}
+            rate={rate}
           />
         </div>
       ),
