@@ -261,20 +261,22 @@ function DeptFbhrFormula({
   const fbhrLabel = recoverableFbhr != null
     ? `$${Math.round(recoverableFbhr)}/hr`
     : "—";
+  const fbhrLine = (
+    <FormulaLine
+      expr="FBHR = Fee-Recoverable Cost ÷ Direct Hours"
+      subst={`= ${fmt.dollars(recoverableCost)} ÷ ${directProductiveHours > 0 ? `${fmt.int(directProductiveHours)} hrs` : "0"}`}
+      result={fbhrLabel}
+    />
+  );
+  if (!service) return fbhrLine;
   return (
     <FormulaPanel>
+      {fbhrLine}
       <FormulaLine
-        expr="FBHR = Fee-Recoverable Cost ÷ Direct Hours"
-        subst={`= ${fmt.dollars(recoverableCost)} ÷ ${directProductiveHours > 0 ? `${fmt.int(directProductiveHours)} hrs` : "0"}`}
-        result={fbhrLabel}
+        expr={`Service cost — ${service.name} = ${service.hours} hrs × FBHR`}
+        subst={`= ${service.hours} × ${fbhrLabel}`}
+        result={recoverableFbhr != null ? fmt.dollars(service.hours * recoverableFbhr) : "—"}
       />
-      {service && (
-        <FormulaLine
-          expr={`Service cost — ${service.name} = ${service.hours} hrs × FBHR`}
-          subst={`= ${service.hours} × ${fbhrLabel}`}
-          result={recoverableFbhr != null ? fmt.dollars(service.hours * recoverableFbhr) : "—"}
-        />
-      )}
     </FormulaPanel>
   );
 }
