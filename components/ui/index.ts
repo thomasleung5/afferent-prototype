@@ -8,6 +8,7 @@ export { DeptCellHeader } from "./DeptCellHeader";
 export { TotalEyebrow } from "./TotalEyebrow";
 export { KpiEyebrow } from "./KpiEyebrow";
 export { RateFormula } from "./RateFormula";
+export { ExpandIndicator } from "./ExpandIndicator";
 export { TONE_COLOR } from "./tone";
 export type { Tone } from "./tone";
 export { SectionLabel } from "./SectionLabel";

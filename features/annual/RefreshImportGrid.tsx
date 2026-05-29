@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Btn, Icon, SectionLabel } from "@/components/ui";
+import { Btn, ExpandIndicator, Icon, SectionLabel } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
@@ -181,13 +181,16 @@ interface SourceCardShellProps {
   children?: ReactNode;
 }
 
-/** Source-Data card. Collapsed view shows only source name, loaded
- *  status, items requiring review (if any), last-refresh date, and
- *  Review / Re-import actions. Expand to surface import controls,
- *  contextual document-type guidance, paste-JSON shape, recent import
- *  history, and domain-specific review panels (children). */
+/** Source-Data card. Collapsed view shows source name, import status,
+ *  items requiring review (if any), last-refresh date, and the Import
+ *  action. The whole card header is the expand affordance — clicking
+ *  anywhere outside the Import button toggles. Expand to surface
+ *  import controls, contextual document-type guidance, paste-JSON
+ *  shape, recent import history, and domain-specific review panels
+ *  (children). */
 function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }: SourceCardShellProps) {
   const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
   const noun = LOADED_NOUN[card.domain];
   const loaded = card.seedCount;
   const reviewTotal = card.review + reviewExtra;
@@ -195,21 +198,57 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
 
   const open = () => setExpanded(true);
   const toggle = () => setExpanded((v) => !v);
+  const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggle();
+    }
+  };
+
+  // Hover treatment mirrors .tbl-row-hover-grid in src/index.css: 80ms
+  // background tint to paper-2. The border darkens to rule-strong for
+  // the same affordance the clickable rows on DataTable use.
+  const borderColor = expanded || hovered ? "var(--rule-strong)" : "var(--rule)";
+  const headerBg = hovered && !expanded ? "var(--paper-2)" : "transparent";
 
   return (
     <div id={card.domain} style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      padding: 20,
-      display: "flex", flexDirection: "column", gap: 14,
+      background: "var(--paper)",
+      border: `1px solid ${borderColor}`,
+      transition: "border-color 80ms",
       scrollMarginTop: 110,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`${card.name} — ${expanded ? "collapse" : "expand"} details`}
+        onClick={toggle}
+        onKeyDown={handleHeaderKeyDown}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          padding: 20,
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+          cursor: "pointer",
+          background: headerBg,
+          transition: "background 80ms",
+          userSelect: "none",
+        }}
+      >
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
           <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
           <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
-            <span className="num" style={{ fontWeight: 500, color: "var(--ink)" }}>
-              {loaded.toLocaleString()}
-            </span>{" "}{loaded === 1 ? noun.singular : noun.plural} loaded
+            {card.hasImports
+              ? (
+                <>
+                  <span style={{ color: "var(--ink)", fontWeight: 500 }}>Imported</span>
+                  {" · "}
+                  <span className="num">{loaded.toLocaleString()}</span>
+                  {" "}{loaded === 1 ? noun.singular : noun.plural}
+                </>
+              )
+              : <span style={{ color: "var(--ink-3)", fontWeight: 500 }}>Not Imported</span>}
             {hasReview && (
               <>
                 {" · "}
@@ -219,28 +258,23 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
               </>
             )}
           </div>
-          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
-            {card.hasImports
-              ? `Last refreshed ${formatStamp(card.lastImport!)}`
-              : "Never refreshed · using seed baseline"}
-          </div>
+          {card.hasImports && (
+            <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
+              Last refreshed {formatStamp(card.lastImport!)}
+            </div>
+          )}
         </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          <Btn kind="ghost" onClick={open}>
-            <Icon name="arrow-up-to-line" size={13}/> Import
-          </Btn>
-          <button
-            onClick={toggle}
-            aria-label={expanded ? "Collapse" : "Expand"}
-            style={{
-              border: "1px solid var(--rule)", background: "var(--paper)",
-              padding: "4px 8px", cursor: "pointer",
-              fontSize: "var(--t-l9)", color: "var(--ink-3)",
-              fontFamily: "var(--ff-mono)", letterSpacing: "0.05em",
-            }}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
+          <span
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={(e) => e.stopPropagation()}
+            style={{ display: "inline-flex" }}
           >
-            {expanded ? "▲" : "▼"}
-          </button>
+            <Btn kind="ghost" onClick={open}>
+              <Icon name="arrow-up-to-line" size={13}/> Import
+            </Btn>
+          </span>
+          <ExpandIndicator open={expanded}/>
         </div>
       </div>
 
@@ -272,11 +306,14 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
     .slice(0, 4);
 
   return (
-    <div style={{
-      borderTop: "1px solid var(--rule)",
-      paddingTop: 14,
-      display: "flex", flexDirection: "column", gap: 14,
-    }}>
+    <div
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        borderTop: "1px solid var(--rule)",
+        padding: "16px 20px 20px",
+        display: "flex", flexDirection: "column", gap: 14,
+      }}
+    >
       {/* Contextual guidance */}
       <div>
         <SubsectionEyebrow>What to upload</SubsectionEyebrow>
