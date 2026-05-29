@@ -24,8 +24,11 @@ export default function RevenueGapPage() {
   const totalCost = impact.totalCost;
 
   // Action-oriented headline stats: where is recovery falling short?
-  const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
-  const totalFees = comparisons.length;
+  // Filter to recoverable rows so the count is consistent with the
+  // headline annualGap math (policyImpact also filters on c.recoverable).
+  const recoverableComparisons = comparisons.filter((c) => c.recoverable);
+  const feesBelowTarget = recoverableComparisons.filter((c) => c.recoveryPct < c.target).length;
+  const totalFees = recoverableComparisons.length;
   const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
     const r = deptRollup[d];
     if (!r || r.totalCost <= 0) return count;

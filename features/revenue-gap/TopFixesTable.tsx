@@ -12,24 +12,21 @@ interface Props {
 
 interface TopFix extends FeeComparison {
   recovery: number;
-  gap: number;
 }
 
 /** Top revenue opportunities: fees ranked by annual uplift available at
  *  the recommended rate. Pulls from the live comparisons in BuildState —
- *  reflects seed data + imports + edits. */
+ *  reflects seed data + imports + edits. Filters to c.recoverable so the
+ *  list is consistent with the Revenue Opportunity headline aggregate
+ *  (policyImpact applies the same gate). */
 export function TopFixesTable({ limit = 12 }: Props) {
   const { derived } = useBuildState();
   const [dept, setDept] = useState("ALL");
 
   const allRows: TopFix[] = useMemo(() => {
     return derived.comparisons
-      .map((c) => ({
-        ...c,
-        recovery: c.recoveryPct,
-        gap: (c.unitCost - c.fee) * c.volume,
-      }))
-      .filter((r) => r.annualUplift > 0)
+      .filter((c) => c.recoverable && c.annualUplift > 0)
+      .map((c) => ({ ...c, recovery: c.recoveryPct }))
       .sort((a, b) => b.annualUplift - a.annualUplift)
       .slice(0, limit);
   }, [derived.comparisons, limit]);
