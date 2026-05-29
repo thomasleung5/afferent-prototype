@@ -1,7 +1,6 @@
-import { createFileRoute, redirect } from "@tanstack/react-router";
+import { createFileRoute } from "@tanstack/react-router";
+import AnnualUpdatePage from "@/src/pages/annual";
 
 export const Route = createFileRoute("/annual/")({
-  beforeLoad: () => {
-    throw redirect({ to: "/annual/changes" });
-  },
+  component: AnnualUpdatePage,
 });

@@ -1,15 +1,8 @@
 import { createFileRoute, Outlet } from "@tanstack/react-router";
-import { SubNav, type SubNavItem } from "@/components/layout";
 
-const ITEMS: SubNavItem[] = [
-  { href: "/annual/changes", label: "Review changes" },
-];
-
+// Annual Update is now a single page (Review changes) — the previous
+// SubNav layer with one tab has been removed. The layout still exists
+// because /annual/changes is kept as a redirect for bookmarked links.
 export const Route = createFileRoute("/annual")({
-  component: () => (
-    <>
-      <SubNav items={ITEMS}/>
-      <Outlet/>
-    </>
-  ),
+  component: () => <Outlet/>,
 });
