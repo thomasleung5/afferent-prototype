@@ -112,9 +112,16 @@ export function operatingToExtractionResult(
 }
 
 function normDept(v: string): OpDept | null {
-  const s = v.trim().toUpperCase();
+  const s = v.trim().toUpperCase().replace(/\s+/g, " ");
   if ((FEE_DEPTS as readonly string[]).includes(s)) return s as OpDept;
   if (s === "SHARED:CDS" || s === "SHARED" || s === "CDS") return "SHARED:CDS";
+  if (["PLANNING", "PLANNING DIVISION", "PLANNING DEPARTMENT"].includes(s)) return "PLAN";
+  if (["BUILDING", "BUILDING & SAFETY", "BUILDING AND SAFETY", "BUILDING DIVISION", "BUILDING DEPARTMENT", "INSPECTION", "INSPECTIONS"].includes(s)) return "BLDG";
+  if (["ENGINEERING", "ENGINEERING DIVISION", "ENGINEERING DEPARTMENT", "DEVELOPMENT ENGINEERING"].includes(s)) return "ENG";
+  if (["PARKS", "PARKS & RECREATION", "PARKS AND RECREATION", "RECREATION", "PARKS DEPARTMENT", "PARKS & RECREATION DEPARTMENT"].includes(s)) return "PARKS";
+  if (["POLICE", "POLICE DEPARTMENT", "PD"].includes(s)) return "PD";
+  if (["FIRE", "FIRE DEPARTMENT", "FIRE PREVENTION"].includes(s)) return "FIRE";
+  if (["COMMUNITY DEVELOPMENT", "COMMUNITY DEVELOPMENT DEPARTMENT", "DEVELOPMENT SERVICES"].includes(s)) return "SHARED:CDS";
   return null;
 }
 

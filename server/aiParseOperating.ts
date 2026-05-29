@@ -5,6 +5,7 @@ const SYSTEM = `You are extracting expenditure line items (both operating AND pe
 IMPORTANT — if the document is a comprehensive fee study, annual report, or multi-section document:
 - Skip narrative chapters, methodology sections, executive summaries, recommendation tables, and revenue/fee tables
 - Focus on the expenditure tables: sections titled "Operating Expenditures", "Services & Supplies", "Materials & Services", "Operating Budget Detail", "Expenditure Detail", AND personnel sections titled "Salaries & Benefits", "Personnel", "Personnel Services", "Personnel Budget", "Compensation", or any tabular section listing account-level expenditure lines (operating or personnel) with adopted/budgeted amounts
+- In ERP/GL exports, "Salaries & Benefits" may appear as an account_category column value rather than as a section title. Those rows are personnel expenditure line items and MUST be extracted when the department is in scope.
 - Do not read or process narrative paragraphs — jump directly to the expenditure tables
 
 Extract every expenditure line item you find — operating AND personnel — and return ONLY this JSON, no prose:
@@ -20,14 +21,14 @@ Extract every expenditure line item you find — operating AND personnel — and
 }
 
 Rules:
-- dept must be exactly "PLAN" (Planning), "BLDG" (Building/Inspection), "ENG" (Engineering / Development Engineering), or "SHARED:CDS" (shared Community Development / Development Services)
+- dept must be exactly one of: "PLAN" (Planning), "BLDG" (Building/Inspection), "ENG" (Engineering / Development Engineering), "PARKS" (Parks & Recreation), "PD" (Police), "FIRE" (Fire), or "SHARED:CDS" (shared Community Development / Development Services)
 - sourceDept must preserve the raw department / division / program name EXACTLY as written in the document (e.g. "Planning Division", "Building & Safety", "Public Works — Development Engineering", "Community Development Department"). Do not normalize or shorten it.
 - Department inclusion logic:
-  * INCLUDE: Planning, Building / Inspection / Code Enforcement on the permit side, Engineering / Development Engineering, and any shared Community Development / Development Services umbrella that contains those functions.
+  * INCLUDE: Planning, Building / Inspection / Code Enforcement on the permit side, Engineering / Development Engineering, Parks & Recreation, Police, Fire / Fire Prevention, and any shared Community Development / Development Services umbrella that contains those functions.
   * Public Works rows: include ONLY when the section or line clearly relates to development engineering, permit review, encroachment permits, grading, inspections, plan check, land development, or fee-supported development services. Map those to dept="ENG".
   * SKIP unrelated Public Works operations: streets, parks, utilities, maintenance, fleet, facilities, sewer, water, storm drain operations, traffic signal maintenance, street sweeping, refuse, etc.
-  * SKIP every row whose department is clearly outside the development-services umbrella: Police, Fire, Parks & Recreation, Library, Recreation, Finance, City Manager, City Clerk, Admin, HR, IT (unless directly billed to a fee-supported division), etc.
-- Personnel lines ARE in scope — extract regular salaries, overtime, part-time wages, retirement contributions, PERS, OPEB, health insurance, dental, vision, payroll taxes, Medicare, FICA, workers' comp, life insurance, and similar pay/benefit accounts. Preserve the source line text exactly (e.g. "Regular Salaries", "Health Insurance", "Retirement (PERS)") — downstream classification reads the line text to tag rows as Salary vs Benefits automatically.
+  * SKIP every row whose department is clearly outside the fee-supported departments above: Library, Finance, City Manager, City Clerk, Admin, HR, IT (unless directly billed to a fee-supported division), etc.
+- Personnel lines ARE in scope — extract regular salaries, overtime, part-time wages, retirement contributions, PERS, OPEB, health insurance, dental, vision, payroll taxes, Medicare, FICA, workers' comp, life insurance, and similar pay/benefit accounts. Do NOT skip a row just because account_category is "Salaries & Benefits"; extract it and set category="Other". Preserve the source line text exactly (e.g. "Regular Salaries", "Health Insurance", "Retirement (PERS)") — downstream classification reads the line text to tag rows as Salary vs Benefits automatically.
 - category must be exactly one of these nine values — pick the closest match. For personnel lines (salaries, benefits, retirement, etc.), use "Other" — the downstream tagger reads the line text directly:
   * "Software & subscriptions" — software licenses, SaaS, cloud services, IT subscriptions, technology platforms
   * "Professional services" — consulting, contract services, legal (non-noticing), plan review services, contract inspection, contract engineering, outside professional services
