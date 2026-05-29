@@ -1,6 +1,7 @@
-import { type ReactNode } from "react";
-import { SectionLabel } from "@/components/ui";
+import { useState, type ReactNode } from "react";
+import { Btn, Icon, SectionLabel } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
+import type { BuildImportLog, Domain } from "@/lib/store";
 import {
   deriveRefreshSections, deriveRefreshSummary, type RefreshSectionCard,
 } from "@/lib/data/annual";
@@ -16,6 +17,30 @@ import {
 } from "@/features/imports/sourceImportHandlers";
 import { unmappedBasisDetails } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
+
+/** Noun used in the "X positions loaded" status line. Distinct from the
+ *  card title because the title is the source-document name, while the
+ *  noun describes the rows the user will edit downstream. */
+const LOADED_NOUN: Record<Domain, { singular: string; plural: string }> = {
+  positions: { singular: "position",   plural: "positions" },
+  operating: { singular: "line item",  plural: "line items" },
+  volume:    { singular: "row",        plural: "rows" },
+  services:  { singular: "service",    plural: "services" },
+  fees:      { singular: "fee",        plural: "fees" },
+  cap:       { singular: "pool",       plural: "pools" },
+};
+
+/** Plain-English description of the kinds of source documents the
+ *  domain's parser knows how to read. Surfaced in the expanded card so
+ *  users see what they can upload before they're asked to pick a file. */
+const SUPPORTED_DOCS: Record<Domain, string[]> = {
+  positions: ["Personnel budget", "Salary & benefits report", "Position roster"],
+  operating: ["Budget book", "Expenditure detail report", "Operating budget extract"],
+  volume:    ["Annual report", "Permit-volume table", "Activity / volume appendix"],
+  services:  ["Prior fee study", "Cost-of-service report", "Services catalog export"],
+  fees:      ["Adopted fee schedule", "Master fee resolution"],
+  cap:       ["Cost Allocation Plan", "Indirect cost rate proposal"],
+};
 
 export function RefreshImportGrid() {
   const state = useBuildState();
@@ -52,26 +77,24 @@ export function RefreshImportGrid() {
             {summary.hasImports
               ? <>
                   {" · "}{importedDomains} of {summary.totalInputs} input{summary.totalInputs === 1 ? "" : "s"}
-                  {" · "}{summary.totalRows.toLocaleString()} rows
-                  {" · "}<span style={{ color: "var(--pos)" }}>{summary.autoPct}% auto-mapped</span>
                   {summary.totalReview > 0 && <span style={{ color: "var(--warn)" }}> · {summary.totalReview} need review</span>}
                 </>
               : <> {" · "}Seed baseline · upload sources to refresh</>}
           </div>
         </div>
         <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
-          Upload current-year exports for staffing, operating, volume of activity, fee schedules, benchmark fees, and CAP inputs.
+          Upload current-year exports for staffing, operating, volume of activity, fee schedules, and CAP inputs.
         </div>
       </div>
 
-      {/* Per-section cards */}
+      {/* Per-source cards */}
       <div>
         <SectionLabel right={`${cards.length} sources · ${importedDomains} refreshed`}>
           Source documents
         </SectionLabel>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          {cards.map((c) => <DomainCard key={c.domain} card={c}/>)}
+          {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
         </div>
       </div>
     </div>
@@ -81,127 +104,201 @@ export function RefreshImportGrid() {
 /** Dispatch to the right per-domain card. Each card calls its own
  *  handler hook — keeping the call sites flat so React's hook order
  *  stays stable across renders. */
-function DomainCard({ card }: { card: RefreshSectionCard }) {
+function DomainCard({ card, imports }: { card: RefreshSectionCard; imports: BuildImportLog[] }) {
   switch (card.domain) {
-    case "positions": return <PositionsCard card={card}/>;
-    case "operating": return <OperatingCard card={card}/>;
-    case "services":  return <ServicesCard card={card}/>;
-    case "volume":    return <VolumeCard card={card}/>;
-    case "fees":      return <FeesCard card={card}/>;
-    case "cap":       return <CapCard card={card}/>;
+    case "positions": return <PositionsCard card={card} imports={imports}/>;
+    case "operating": return <OperatingCard card={card} imports={imports}/>;
+    case "services":  return <ServicesCard card={card} imports={imports}/>;
+    case "volume":    return <VolumeCard card={card} imports={imports}/>;
+    case "fees":      return <FeesCard card={card} imports={imports}/>;
+    case "cap":       return <CapCard card={card} imports={imports}/>;
   }
 }
 
-function PositionsCard({ card }: { card: RefreshSectionCard }) {
+interface DomainCardProps {
+  card: RefreshSectionCard;
+  imports: BuildImportLog[];
+}
+
+function PositionsCard({ card, imports }: DomainCardProps) {
   const importer = useDirectLaborImportHandlers();
-  return <ImportSectionShell card={card} importer={importer}/>;
+  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
 }
 
-function OperatingCard({ card }: { card: RefreshSectionCard }) {
+function OperatingCard({ card, imports }: DomainCardProps) {
   const importer = useOperatingImportHandlers();
-  return <ImportSectionShell card={card} importer={importer}/>;
+  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
 }
 
-function ServicesCard({ card }: { card: RefreshSectionCard }) {
+function ServicesCard({ card, imports }: DomainCardProps) {
   const importer = useServicesImportHandlers();
-  return <ImportSectionShell card={card} importer={importer}/>;
+  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
 }
 
-function FeesCard({ card }: { card: RefreshSectionCard }) {
+function FeesCard({ card, imports }: DomainCardProps) {
   const importer = useFeesImportHandlers();
-  return <ImportSectionShell card={card} importer={importer}/>;
+  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
 }
 
-function VolumeCard({ card }: { card: RefreshSectionCard }) {
+function VolumeCard({ card, imports }: DomainCardProps) {
   const importer = useVolumeImportHandlers();
+  const reviewExtra = importer.unmapped.length;
   return (
-    <ImportSectionShell card={card} importer={importer}>
+    <SourceCardShell card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}>
       {importer.unmapped.length > 0 && (
         <VolumeUnmappedPanel
           unmapped={importer.unmapped}
           setUnmapped={importer.setUnmapped}
         />
       )}
-    </ImportSectionShell>
+    </SourceCardShell>
   );
 }
 
-function CapCard({ card }: { card: RefreshSectionCard }) {
+function CapCard({ card, imports }: DomainCardProps) {
   const importer = useCapImportHandlers();
+  const reviewExtra = importer.unmappedBases.length;
   return (
-    <ImportSectionShell card={card} importer={importer}>
+    <SourceCardShell card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}>
       {importer.unmappedBases.length > 0 && (
         <CapUnmappedPanel
           unmappedBases={importer.unmappedBases}
           setUnmappedBases={importer.setUnmappedBases}
         />
       )}
-    </ImportSectionShell>
+    </SourceCardShell>
   );
 }
 
-interface ImportSectionShellProps {
+interface SourceCardShellProps {
   card: RefreshSectionCard;
+  imports: BuildImportLog[];
+  importer: ImportHandlerBundle;
+  /** Extra review-pending count surfaced by domain-specific state
+   *  (Volume's unmapped rows, CAP's unbound bases). Added to the
+   *  card-level low-confidence count for the collapsed badge. */
+  reviewExtra?: number;
+  children?: ReactNode;
+}
+
+/** Source-Data card. Collapsed view shows only source name, loaded
+ *  status, items requiring review (if any), last-refresh date, and
+ *  Review / Re-import actions. Expand to surface import controls,
+ *  contextual document-type guidance, paste-JSON shape, recent import
+ *  history, and domain-specific review panels (children). */
+function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }: SourceCardShellProps) {
+  const [expanded, setExpanded] = useState(false);
+  const noun = LOADED_NOUN[card.domain];
+  const loaded = card.seedCount;
+  const reviewTotal = card.review + reviewExtra;
+  const hasReview = reviewTotal > 0;
+
+  const open = () => setExpanded(true);
+  const toggle = () => setExpanded((v) => !v);
+
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--rule)",
+      padding: 20,
+      display: "flex", flexDirection: "column", gap: 14,
+    }}>
+      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+          <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
+          <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
+            <span className="num" style={{ fontWeight: 500, color: "var(--ink)" }}>
+              {loaded.toLocaleString()}
+            </span>{" "}{loaded === 1 ? noun.singular : noun.plural} loaded
+            {hasReview && (
+              <>
+                {" · "}
+                <span className="num" style={{ color: "var(--warn)", fontWeight: 500 }}>
+                  {reviewTotal}
+                </span>{" "}item{reviewTotal === 1 ? "" : "s"} need review
+              </>
+            )}
+          </div>
+          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
+            {card.hasImports
+              ? `Last refreshed ${formatStamp(card.lastImport!)}`
+              : "Never refreshed · using seed baseline"}
+          </div>
+        </div>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {hasReview && (
+            <Btn kind="ghost" onClick={open}>Review</Btn>
+          )}
+          <Btn kind="ghost" onClick={open}>
+            <Icon name="arrow-up-to-line" size={13}/> Re-import
+          </Btn>
+          <button
+            onClick={toggle}
+            aria-label={expanded ? "Collapse" : "Expand"}
+            style={{
+              border: "1px solid var(--rule)", background: "var(--paper)",
+              padding: "4px 8px", cursor: "pointer",
+              fontSize: "var(--t-l9)", color: "var(--ink-3)",
+              fontFamily: "var(--ff-mono)", letterSpacing: "0.05em",
+            }}
+          >
+            {expanded ? "▲" : "▼"}
+          </button>
+        </div>
+      </div>
+
+      {expanded && (
+        <ExpandedDetail
+          card={card}
+          imports={imports}
+          importer={importer}
+        >
+          {children}
+        </ExpandedDetail>
+      )}
+    </div>
+  );
+}
+
+interface ExpandedDetailProps {
+  card: RefreshSectionCard;
+  imports: BuildImportLog[];
   importer: ImportHandlerBundle;
   children?: ReactNode;
 }
 
-/** Shared visual shell: section eyebrow + name + conf badge, progress
- *  bar, 3-stat grid, last-refresh line, then the InlineImportCard
- *  affordances. Optional children render below the import actions —
- *  used for per-domain review panels (Volume / CAP unmapped rows). */
-function ImportSectionShell({ card, importer, children }: ImportSectionShellProps) {
-  const pct = card.rows > 0 ? Math.round((card.mapped / card.rows) * 100) : 0;
-  const showSeed = !card.hasImports;
+function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailProps) {
+  const supported = SUPPORTED_DOCS[card.domain];
+  const history = imports
+    .filter((e) => e.domain === card.domain)
+    .sort((a, b) => (b.at > a.at ? 1 : -1))
+    .slice(0, 4);
+
   return (
     <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)", padding: 22,
+      borderTop: "1px solid var(--rule)",
+      paddingTop: 14,
       display: "flex", flexDirection: "column", gap: 14,
     }}>
-      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
-        <span className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.04em",
-          padding: "2px 7px", border: "1px solid var(--rule)",
-          background: "var(--paper-2)", color: "var(--ink-2)",
-        }}>{showSeed ? "Seed" : card.conf}</span>
+      {/* Contextual guidance */}
+      <div>
+        <SubsectionEyebrow>What to upload</SubsectionEyebrow>
+        <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)", lineHeight: 1.55 }}>
+          {importer.aiPdfHelper}
+        </div>
+        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
+          {supported.map((label) => (
+            <span key={label} className="mono" style={{
+              fontSize: "var(--t-l4)", color: "var(--ink-2)",
+              padding: "2px 8px",
+              border: "1px solid var(--rule)",
+              background: "var(--paper-2)",
+              letterSpacing: "0.04em",
+            }}>{label}</span>
+          ))}
+        </div>
       </div>
 
-      <div style={{ height: 6, background: "var(--rule)", overflow: "hidden" }}>
-        <div style={{
-          height: "100%",
-          width: showSeed ? "100%" : `${pct}%`,
-          background: showSeed
-            ? "var(--ink-4)"
-            : (card.review > 10 ? "var(--warn)" : "var(--pos)"),
-        }}/>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(3, 1fr)", gap: 12 }}>
-        {showSeed
-          ? [
-              { label: "In model",   value: card.seedCount.toLocaleString(), color: "var(--ink)" },
-              { label: "Imported",   value: "—",                              color: "var(--ink-4)" },
-              { label: "Need review", value: "—",                             color: "var(--ink-4)" },
-            ].map((stat) => <Stat key={stat.label} {...stat}/>)
-          : [
-              { label: "Imported",    value: card.rows.toLocaleString(),   color: "var(--ink)" },
-              { label: "Auto-mapped", value: card.mapped.toLocaleString(), color: "var(--pos)" },
-              { label: "Need review", value: String(card.review),          color: card.review > 10 ? "var(--warn)" : "var(--ink)" },
-            ].map((stat) => <Stat key={stat.label} {...stat}/>)}
-      </div>
-
-      <div style={{
-        paddingTop: 10, borderTop: "1px solid var(--rule)",
-        display: "flex", justifyContent: "space-between", alignItems: "center", gap: 8,
-      }}>
-        <span className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
-          {showSeed
-            ? "Never refreshed · using seed baseline"
-            : `Last refreshed ${formatStamp(card.lastImport!)} · ${card.importCount} import${card.importCount === 1 ? "" : "s"}`}
-        </span>
-      </div>
-
+      {/* Import actions */}
       <InlineImportCard
         aiPdfHelper={importer.aiPdfHelper}
         onAiPdfImport={importer.aiPdf}
@@ -211,22 +308,54 @@ function ImportSectionShell({ card, importer, children }: ImportSectionShellProp
         onPasteJson={importer.pasteJson}
       />
 
+      {/* Domain-specific review (volume unmapped, cap unbound bases) */}
       {children}
+
+      {/* Recent import history */}
+      {history.length > 0 && (
+        <div>
+          <SubsectionEyebrow>Recent imports</SubsectionEyebrow>
+          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+            {history.map((entry) => (
+              <div key={entry.id} style={{
+                display: "grid",
+                gridTemplateColumns: "minmax(0, 1fr) auto auto",
+                gap: 12,
+                fontSize: "var(--t-l7)", color: "var(--ink-2)",
+                padding: "4px 0",
+                borderBottom: "1px dashed var(--rule)",
+                alignItems: "baseline",
+              }}>
+                <span style={{
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }} title={entry.result.fileName}>{entry.result.fileName}</span>
+                <span className="num" style={{ color: "var(--ink-3)" }}>
+                  {entry.result.rows.toLocaleString()} rows
+                  {entry.result.lowConfidence > 0 && (
+                    <span style={{ color: "var(--warn)" }}>
+                      {" · "}{entry.result.lowConfidence} review
+                    </span>
+                  )}
+                </span>
+                <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+                  {formatStamp(entry.at)}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function Stat({ label, value, color }: { label: string; value: string; color: string }) {
+function SubsectionEyebrow({ children }: { children: ReactNode }) {
   return (
-    <div>
-      <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
-      <div className="num" style={{ fontSize: 14, fontWeight: 500, marginTop: 4, color }}>
-        {value}
-      </div>
-    </div>
+    <div className="mono" style={{
+      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+      color: "var(--ink-3)", textTransform: "uppercase",
+      marginBottom: 6,
+    }}>{children}</div>
   );
 }
 
