@@ -6,28 +6,37 @@ import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { slugCity } from "@/lib/printing";
+import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
 import { DriverBreakdown } from "@/features/revenue-gap/DriverBreakdown";
 import { DeptRecoveryChart } from "@/features/revenue-gap/DeptRecoveryChart";
 import { TopFixesTable } from "@/features/revenue-gap/TopFixesTable";
 
 export default function RevenueGapPage() {
-  const { derived, services } = useBuildState();
+  const { derived, policyTargets } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
-  const { impact, fbhr, costs, comparisons } = derived;
+  const { impact, fbhr, costs, comparisons, deptRollup } = derived;
 
   // Primary revenue gap: target (policy-intended) − current revenue. Clamped
   // for the headline tone — a negative gap means current revenue already
   // exceeds policy intent, so there's nothing to close.
   const annualGap = Math.max(0, impact.recoverableGap);
   const totalCost = impact.totalCost;
-  const recoveryPct = totalCost > 0 ? (impact.currentRevenue / totalCost) * 100 : 0;
 
-  const missingVolume = services.filter((s) => !s.volume).length;
-  const missingHours  = services.filter((s) => !s.hours).length;
-  const dataCompleteness = Math.round(
-    (1 - (missingVolume + missingHours) / Math.max(1, services.length * 2)) * 100,
-  );
+  // Action-oriented headline stats: where is recovery falling short?
+  const feesBelowTarget = comparisons.filter((c) => c.recoveryPct < c.target).length;
+  const totalFees = comparisons.length;
+  const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
+    const r = deptRollup[d];
+    if (!r || r.totalCost <= 0) return count;
+    const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;
+    return r.recoveryPct < target ? count + 1 : count;
+  }, 0);
+  const activeFeeDepts = FEE_DEPTS.filter((d) => (deptRollup[d]?.totalCost ?? 0) > 0).length;
+  const topOpportunity = FEE_DEPTS
+    .map((d) => ({ dept: d, subsidy: deptRollup[d]?.subsidy ?? 0 }))
+    .filter((x) => x.subsidy > 0)
+    .sort((a, b) => b.subsidy - a.subsidy)[0];
 
   // Driver split — decompose each service's annual cost into its three FBHR
   // components (direct labor / operating / CAP) using the per-dept rate
@@ -55,11 +64,12 @@ export default function RevenueGapPage() {
     const csv = buildCsv([
       ["Section", "Metric", "Value"],
       ["Headline", "Annual gap", fmt.dollars(annualGap)],
-      ["Headline", "Recovery rate", `${recoveryPct.toFixed(1)}%`],
       ["Headline", "Current revenue", fmt.dollars(impact.currentRevenue)],
       ["Headline", "Total cost", fmt.dollars(totalCost)],
-      ["Headline", "Data completeness", `${dataCompleteness}%`],
-      ["Headline", "Missing cells", String(missingVolume + missingHours)],
+      ["Headline", "Fees below target", `${feesBelowTarget} of ${totalFees}`],
+      ["Headline", "Departments below policy", `${deptsBelowPolicy} of ${activeFeeDepts}`],
+      ["Headline", "Top opportunity department",
+        topOpportunity ? `${deptName(topOpportunity.dept)} · ${fmt.dollars(topOpportunity.subsidy)}/yr` : "—"],
       null,
       ["Drivers", "Direct labor", fmt.dollars(drivers.direct)],
       ["Drivers", "Operating", fmt.dollars(drivers.operating)],
@@ -73,7 +83,7 @@ export default function RevenueGapPage() {
       ]),
     ]);
     downloadCsv(csv, `${slugCity(jurisdiction.name)}-revenue-opportunity-brief.csv`);
-  }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons, jurisdiction.name]);
+  }, [annualGap, impact.currentRevenue, totalCost, feesBelowTarget, totalFees, deptsBelowPolicy, activeFeeDepts, topOpportunity, drivers, comparisons, jurisdiction.name]);
 
   return (
     <Page>
@@ -89,22 +99,22 @@ export default function RevenueGapPage() {
           sub="Cost of fee-supported services minus revenue collected. Closing it takes policy decisions, not just rate updates."
           stats={[
             {
-              label: "Recovery rate",
-              value: `${recoveryPct.toFixed(0)}%`,
-              tone: recoveryPct < 60 ? "neg" : recoveryPct < 80 ? "warn" : "pos",
-              sub: `${fmt.dollarsK(impact.currentRevenue)} of ${fmt.dollarsK(totalCost)}`,
+              label: "Fees below target",
+              value: `${feesBelowTarget}`,
+              tone: feesBelowTarget === 0 ? "pos" : "warn",
+              sub: `of ${totalFees} fees`,
             },
             {
-              label: "Uplift at policy",
-              value: `${fmt.dollarsK(annualGap)}/yr`,
-              tone: "pos",
-              sub: "if Council adopts targets",
+              label: "Departments below policy",
+              value: `${deptsBelowPolicy}`,
+              tone: deptsBelowPolicy === 0 ? "pos" : "warn",
+              sub: `of ${activeFeeDepts} fee departments`,
             },
             {
-              label: "Data complete",
-              value: `${dataCompleteness}%`,
-              tone: dataCompleteness >= 90 ? "pos" : dataCompleteness >= 75 ? "warn" : "neg",
-              sub: `${missingVolume + missingHours} cells missing`,
+              label: "Top opportunity department",
+              value: topOpportunity ? deptName(topOpportunity.dept) : "—",
+              tone: "info",
+              sub: topOpportunity ? `${fmt.dollarsK(topOpportunity.subsidy)}/yr to close` : "no gap to close",
             },
           ]}
           actions={
