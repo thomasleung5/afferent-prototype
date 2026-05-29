@@ -75,10 +75,14 @@ export interface ImportHandlerBundle {
   title: string;
   /** One-line description shown under the title. */
   helper: string;
+  /** Tag-line style summary surfaced in the COLLAPSED card so users can
+   *  scan what each source represents at a glance. Comma-separated list
+   *  of fields / concepts (no full sentence, no period). */
+  tagline: string;
   /** Concise sentence (~one line) listing what fields this import
-   *  extracts. Surfaced as the single descriptive line below the card
-   *  header — the supported-document chips and the upload button stand
-   *  in for the rest of the previous "What to upload" guidance. */
+   *  extracts. Surfaced inside the EXPANDED card as the only descriptive
+   *  line — the supported-document chips and the upload button stand in
+   *  for the rest of the previous "What to upload" guidance. */
   extracts: string;
   /** Inline example shape (e.g. "{ items: [...] }"). */
   pasteExample: string;
@@ -140,6 +144,7 @@ export function useDirectLaborImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Direct Labor",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
+    tagline: "FTEs, salaries, benefits, productive hours",
     extracts: "Extracts positions, departments, FTEs, salaries, benefits, and productive hours.",
     pasteExample: "{ positions: [...] }",
     pasteHelper: "Paste structured output shaped like { positions: [...] }.",
@@ -189,6 +194,7 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Operating",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
+    tagline: "Operating expenditures and personnel costs",
     extracts: "Extracts operating expenditures and personnel line items, auto-classified into Salary, Benefits, or Operating.",
     pasteExample: "{ operating: [...] }",
     pasteHelper: "Paste structured output shaped like { operating: [...] }.",
@@ -240,6 +246,7 @@ export function useServicesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Services",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
+    tagline: "Department services and workflows",
     extracts: "Extracts service names, departments, hours per unit, volumes, and current fees.",
     pasteExample: "{ services: [...] }",
     pasteHelper: "Paste structured output shaped like { services: [...] }.",
@@ -289,6 +296,7 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
     }),
     title: "Import Volume of Activity",
     helper: "Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog.",
+    tagline: "Permit, inspection, and review counts",
     extracts: "Extracts service-level volume counts and matches them to the existing services catalog.",
     pasteExample: "{ items: [...] }",
     pasteHelper: "Paste structured output shaped like { items: [...] }.",
@@ -328,6 +336,7 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Fee Schedule",
     helper: "Import fees via Claude (PDF) or by pasting LLM JSON output.",
+    tagline: "Current fees and adopted rates",
     extracts: "Extracts adopted fees, units, current rates, and recovery targets.",
     pasteExample: "{ fees: [...] }",
   };
@@ -439,6 +448,7 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
     }),
     title: "Import Overhead Cost Allocation",
     helper: "Imports centers, allocation bases, and cost pools.",
+    tagline: "Indirect cost allocation methodology",
     extracts: "Extracts cost centers, allocation bases, basis units, cost pools, and direct allocations.",
     pasteExample: "{ centers?, bases?, pools? }",
     pasteHelper: "Paste JSON shaped like { centers?, bases?, pools? }.",

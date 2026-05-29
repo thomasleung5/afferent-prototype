@@ -1,5 +1,5 @@
 import { useState, type ReactNode } from "react";
-import { Btn, ExpandIndicator, Icon, SectionLabel } from "@/components/ui";
+import { SectionLabel } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
@@ -196,7 +196,6 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
   const reviewTotal = card.review + reviewExtra;
   const hasReview = reviewTotal > 0;
 
-  const open = () => setExpanded(true);
   const toggle = () => setExpanded((v) => !v);
   const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
     if (e.key === "Enter" || e.key === " ") {
@@ -236,7 +235,7 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
           userSelect: "none",
         }}
       >
-        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
           <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
             {card.hasImports
@@ -258,23 +257,14 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
               </>
             )}
           </div>
+          <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.45 }}>
+            {importer.tagline}
+          </div>
           {card.hasImports && (
-            <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)" }}>
+            <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
               Last refreshed {formatStamp(card.lastImport!)}
             </div>
           )}
-        </div>
-        <div style={{ display: "flex", alignItems: "center", gap: 10, flexShrink: 0 }}>
-          <span
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => e.stopPropagation()}
-            style={{ display: "inline-flex" }}
-          >
-            <Btn kind="ghost" onClick={open}>
-              <Icon name="arrow-up-to-line" size={13}/> Import
-            </Btn>
-          </span>
-          <ExpandIndicator open={expanded}/>
         </div>
       </div>
 
