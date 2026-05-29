@@ -34,10 +34,9 @@ interface Props {
 
 type Status = { ok: boolean; message: string } | null;
 
-/** Inline two-action import shell — same mechanics as PageImportDrawer
- *  (PDF upload + paste JSON, status reporting, schema preview) but
- *  rendered in-place with no drawer chrome. Sized to embed inside a
- *  Source Data card; the surrounding card owns the header and section
+/** Inline two-action import shell: PDF upload + paste JSON, each with
+ *  independent loading and status reporting. Sized to embed inside a
+ *  Source Data card — the surrounding card owns the header and section
  *  metadata. */
 export function InlineImportCard({
   aiPdfLabel = "Upload PDF",

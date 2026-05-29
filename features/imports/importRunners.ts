@@ -1,29 +1,19 @@
-/* Shared import orchestration helpers for the per-page import drawers.
+/* Shared import orchestration factories.
  *
- * The drawer UI (PageImportDrawer.tsx) is a presentation shell. Each
- * build page (salary, operating, services, feestudy, volume, cap)
- * wires up domain-specific parsers + merge calls + side effects, but
- * the surrounding scaffolding — try/catch shape, clipboard JSON
+ * Each domain's import wiring (parser, merge call, summary formatter,
+ * any local review state) lives in sourceImportHandlers.ts. The
+ * surrounding scaffolding — try/catch shape, clipboard JSON
  * extraction, root-key validation, "clipboard" source tag, fallback
- * error messages — was identical across all six. These factories
- * collapse that boilerplate into one place.
- *
- * What stays in each page (intentionally):
- *   - the actual `aiParseXxxPdf` parser + per-domain conversion to
- *     ExtractionResult (or CAP-style multi-section bundle)
- *   - the `merge*` call into the store
- *   - the per-import summary formatter
- *   - any local side effect (e.g. volume's setUnmapped, cap's
- *     setUnmappedBases)
- *   - contextual inputs the parser needs (e.g. services catalog)
+ * error messages — was identical across every domain, so these
+ * factories collapse that boilerplate into one place.
  *
  * Source-tag convention: PDF imports use `file.name`; clipboard
- * imports use the literal string `"clipboard"`. Same convention all
- * six pages already used; codified here so it can't drift. */
+ * imports use the literal string `"clipboard"`. Codified here so the
+ * convention can't drift. */
 
-/** Standard return type for both drawer hooks (`onAiPdfImport`,
- *  `onPasteJson`). The drawer renders the message inline with
- *  warn-tone styling when `ok === false`. */
+/** Standard return type for both handlers (`onAiPdfImport`,
+ *  `onPasteJson`). Consumers render the message inline with warn-tone
+ *  styling when `ok === false`. */
 export interface ImportResult {
   ok: boolean;
   message: string;
@@ -70,9 +60,8 @@ interface PdfImportConfig<P extends PdfParserResult> {
   importFailureMessage?: string;
 }
 
-/** Build a drawer-compatible PDF import handler. Wraps parsePdf +
- *  apply in the canonical try/catch shape and standardizes the
- *  fallback messages. */
+/** Build a PDF import handler. Wraps parsePdf + apply in the
+ *  canonical try/catch shape and standardizes the fallback messages. */
 export function createPdfImportHandler<P extends PdfParserResult>(
   config: PdfImportConfig<P>,
 ): (file: File) => Promise<ImportResult> {
@@ -122,9 +111,9 @@ interface JsonImportConfig {
   importFailureMessage?: string;
 }
 
-/** Build a drawer-compatible JSON paste handler. Handles clipboard
- *  text → JSON object extraction, optional rootKey validation, and
- *  the canonical try/catch shape. */
+/** Build a JSON paste handler. Handles clipboard text → JSON object
+ *  extraction, optional rootKey validation, and the canonical
+ *  try/catch shape. */
 export function createJsonImportHandler(
   config: JsonImportConfig,
 ): (text: string) => Promise<ImportResult> {
