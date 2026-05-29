@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import type { CSSProperties, ReactNode } from "react";
 import type { SourceTag } from "@/lib/types";
 
 interface Props {
@@ -14,6 +14,83 @@ export function Formula({ children }: Props) {
       padding: "2px 6px",
       border: "1px solid var(--rule)",
     }}>{children}</span>
+  );
+}
+
+interface FormulaLineProps {
+  /** Formula expression rendered inside a `<Formula>` chip (e.g.
+   *  `"Department Total Cost = Labor + Operating + Overhead"`). */
+  expr: string;
+  /** Optional mid-line substitution rendered in muted mono ink-3 with
+   *  tabular-nums (typically the numeric form of the expression, e.g.
+   *  `"= $850K + $220K + $40K"`). Caller manages the leading "=" if
+   *  one is desired. */
+  subst?: ReactNode;
+  /** Optional result rendered in mono with tabular-nums. The component
+   *  prepends `"= "` automatically. */
+  result?: ReactNode;
+  /** Result color emphasis:
+   *   - `"accent"` (default): blue + 600 weight — used by Functional
+   *     Allocation / Cost of Service workpaper formulas where the result
+   *     is the highlight.
+   *   - `"ink"`: ink + 600 weight — used by Direct Labor / Operating /
+   *     Overhead source-rate formulas inside a MetaGrid value cell. */
+  resultTone?: "accent" | "ink";
+}
+
+/** Shared "{Formula chip} {subst} = {result}" line. Used both as the
+ *  stacked workpaper line inside a `<FormulaPanel>` (Functional
+ *  Allocation / Cost of Service) and as the single MetaGrid value
+ *  (Direct Labor / Operating / Overhead via `RateFormula`). Wraps as a
+ *  baseline-aligned flex row. */
+export function FormulaLine({
+  expr, subst, result, resultTone = "accent",
+}: FormulaLineProps) {
+  const resultColor = resultTone === "ink" ? "var(--ink)" : "var(--accent)";
+  return (
+    <div style={{
+      display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 8,
+    }}>
+      <Formula>{expr}</Formula>
+      {subst != null && (
+        <span style={{
+          color: "var(--ink-3)", fontFamily: "var(--ff-mono)",
+          fontVariantNumeric: "tabular-nums",
+        }}>{subst}</span>
+      )}
+      {result != null && (
+        <span style={{
+          color: resultColor, fontWeight: 600,
+          fontFamily: "var(--ff-mono)", fontVariantNumeric: "tabular-nums",
+        }}>= {result}</span>
+      )}
+    </div>
+  );
+}
+
+interface FormulaPanelProps {
+  children: ReactNode;
+  /** Optional style overrides merged on top of the defaults
+   *  (paper background, rule border, 10×14 padding, gap 6, 12px /
+   *  lineHeight 1.55). */
+  style?: CSSProperties;
+}
+
+/** Stacked container for one or more `<FormulaLine/>` workpaper lines.
+ *  Used by the Functional Allocation activity drilldown and the Cost of
+ *  Service per-service drilldown. */
+export function FormulaPanel({ children, style }: FormulaPanelProps) {
+  return (
+    <div style={{
+      background: "var(--paper)", border: "1px solid var(--rule)",
+      padding: "10px 14px",
+      display: "flex", flexDirection: "column",
+      gap: 6,
+      fontSize: 12, lineHeight: 1.55,
+      ...style,
+    }}>
+      {children}
+    </div>
   );
 }
 

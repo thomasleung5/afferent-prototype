@@ -22,7 +22,10 @@ import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { Formula, MiniTable, MonoLabel, type MiniTableColumn } from "@/components/ui";
+import {
+  FormulaLine, FormulaPanel, MiniTable, MonoLabel,
+  type MiniTableColumn,
+} from "@/components/ui";
 
 interface Props {
   dept: DeptCode;
@@ -273,44 +276,6 @@ function DeptFbhrFormula({
         />
       )}
     </FormulaPanel>
-  );
-}
-
-function FormulaPanel({ children }: { children: React.ReactNode }) {
-  return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      padding: "10px 14px",
-      display: "flex", flexDirection: "column",
-      gap: 6,
-      fontSize: 12, lineHeight: 1.55,
-    }}>
-      {children}
-    </div>
-  );
-}
-
-function FormulaLine({
-  expr, subst, result,
-}: {
-  expr: string;
-  subst: string;
-  result: string;
-}) {
-  return (
-    <div style={{
-      display: "flex", flexWrap: "wrap", alignItems: "baseline", gap: 8,
-    }}>
-      <Formula>{expr}</Formula>
-      <span style={{
-        color: "var(--ink-3)", fontFamily: "var(--ff-mono)",
-        fontVariantNumeric: "tabular-nums",
-      }}>{subst}</span>
-      <span style={{
-        color: "var(--accent)", fontWeight: 600,
-        fontFamily: "var(--ff-mono)", fontVariantNumeric: "tabular-nums",
-      }}>= {result}</span>
-    </div>
   );
 }
 

@@ -19,7 +19,7 @@ export { Drawer } from "./Drawer";
 export { ExportMenu } from "./ExportMenu";
 export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";
-export { Formula, SourcePill } from "./Formula";
+export { Formula, FormulaLine, FormulaPanel, SourcePill } from "./Formula";
 export { DrilldownShell, DrilldownColumn } from "./Drilldown";
 export { NodeEyebrow } from "./NodeEyebrow";
 export { SectionEyebrow } from "./SectionEyebrow";
