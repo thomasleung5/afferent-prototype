@@ -339,7 +339,6 @@ export default function RevenueMonitoringPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow="Operations · Revenue monitoring"
         title="Revenue Monitoring"
         subtitle="Cost recovery drift and post-adoption fee actions."
         actions={
