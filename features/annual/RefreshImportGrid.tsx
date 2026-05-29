@@ -65,22 +65,11 @@ export function RefreshImportGrid() {
         background: "var(--paper)", border: "2px dashed var(--rule-strong)",
         padding: "14px 20px",
       }}>
-        <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", gap: 16 }}>
-          <div className="mono" style={{
-            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase",
-          }}>
-            Refresh source files
-          </div>
-          <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-3)", whiteSpace: "nowrap" }}>
-            Last refresh: <span style={{ color: "var(--ink-2)" }}>{summary.lastRefresh}</span>
-            {summary.hasImports
-              ? <>
-                  {" · "}{importedDomains} of {summary.totalInputs} input{summary.totalInputs === 1 ? "" : "s"}
-                  {summary.totalReview > 0 && <span style={{ color: "var(--warn)" }}> · {summary.totalReview} need review</span>}
-                </>
-              : <> {" · "}Seed baseline · upload sources to refresh</>}
-          </div>
+        <div className="mono" style={{
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+          color: "var(--ink-3)", textTransform: "uppercase",
+        }}>
+          Refresh source files
         </div>
         <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
           Upload current-year exports for staffing, operating, volume of activity, fee schedules, and CAP inputs.
@@ -260,11 +249,6 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
           <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.45 }}>
             {importer.tagline}
           </div>
-          {card.hasImports && (
-            <div className="mono" style={{ fontSize: "var(--t-l4)", color: "var(--ink-4)", marginTop: 2 }}>
-              Last refreshed {formatStamp(card.lastImport!)}
-            </div>
-          )}
         </div>
       </div>
 
@@ -350,11 +334,6 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
                 }} title={entry.result.fileName}>{entry.result.fileName}</span>
                 <span className="num" style={{ color: "var(--ink-3)" }}>
                   {entry.result.rows.toLocaleString()} rows
-                  {entry.result.lowConfidence > 0 && (
-                    <span style={{ color: "var(--warn)" }}>
-                      {" · "}{entry.result.lowConfidence} review
-                    </span>
-                  )}
                 </span>
                 <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
                   {formatStamp(entry.at)}
