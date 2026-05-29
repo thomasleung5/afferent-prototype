@@ -72,7 +72,7 @@ export default function RevenueGapPage() {
         `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
       ]),
     ]);
-    downloadCsv(csv, `${slugCity(jurisdiction.name)}-revenue-gap-brief.csv`);
+    downloadCsv(csv, `${slugCity(jurisdiction.name)}-revenue-opportunity-brief.csv`);
   }, [annualGap, recoveryPct, impact.currentRevenue, totalCost, dataCompleteness, missingVolume, missingHours, drivers, comparisons, jurisdiction.name]);
 
   return (

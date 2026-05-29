@@ -187,7 +187,7 @@ function buildPolicy(p: ExportPayload): Cell[][] {
   rows.push([h("Impact summary")]);
   rows.push(["Overall intended recovery", n(p.policy.impact.overallPct / 100, "0.0%")]);
   rows.push(["Annual subsidy at target", n(p.policy.impact.subsidy, "$#,##0")]);
-  rows.push(["Recoverable revenue gap",  n(p.policy.impact.recoverableGap, "$#,##0")]);
+  rows.push(["Recoverable revenue opportunity",  n(p.policy.impact.recoverableGap, "$#,##0")]);
   return rows;
 }
 

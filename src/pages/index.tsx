@@ -97,11 +97,11 @@ export default function HomePage() {
             </span>
           </div>
           <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-3)" }}>
-            See Revenue Gap for recovery drivers, shortfalls, and source traceability.
+            See Revenue Opportunity for recovery drivers, shortfalls, and source traceability.
           </div>
         </div>
         <Btn kind="primary" href="/gap">
-          Open Revenue Gap <Icon name="arrow-right" size={13}/>
+          Open Revenue Opportunity <Icon name="arrow-right" size={13}/>
         </Btn>
       </div>
 
