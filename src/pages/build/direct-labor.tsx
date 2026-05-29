@@ -6,59 +6,11 @@ import { LaborSummary } from "@/features/build/LaborSummary";
 import { LaborLineItemsTable } from "@/features/build/LaborLineItemsTable";
 import { ProductiveHoursTable } from "@/features/build/ProductiveHoursTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
-import {
-  createJsonImportHandler, createPdfImportHandler,
-} from "@/features/imports/importRunners";
-import { useBuildActions } from "@/lib/store";
-import {
-  aiParseDirectLaborPdf,
-  directLaborToExtractionResult,
-} from "@/lib/ai/parseDirectLabor";
-
-type DirectLaborRows = Parameters<typeof directLaborToExtractionResult>[0];
-
-const POSITIONS_SCHEMA = `{
-  positions: [
-    { title, dept, fte, salary, benefits, hours, confidence }
-  ]
-}`;
-
-/** Compose the post-import summary. The parser drops rows whose dept
- *  isn't in the fee-bearing registry, so we derive a "skipped" count
- *  from the gap between the model's row count and what survived merge. */
-function formatImportSummary(
-  total: number, mapped: number, lowConfidence: number,
-): string {
-  const imported = mapped + lowConfidence;
-  const skipped = Math.max(0, total - imported);
-  const parts: string[] = [`${mapped} accepted`, `${lowConfidence} for review`];
-  if (skipped > 0) parts.push(`${skipped} skipped`);
-  return `${imported} position${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
-}
+import { useDirectLaborImportHandlers } from "@/features/imports/sourceImportHandlers";
 
 export default function DirectLaborPage() {
-  const { mergePositions } = useBuildActions((s) => ({
-    mergePositions: s.mergePositions,
-  }));
   const [importerOpen, setImporterOpen] = useState(false);
-
-  const apply = (rows: DirectLaborRows, source: string) => {
-    const extraction = directLaborToExtractionResult(rows, source);
-    const applied = mergePositions(extraction, source);
-    return formatImportSummary(
-      extraction.stats.total, applied.mapped, applied.lowConfidence,
-    );
-  };
-
-  const uploadPdfToClaude = createPdfImportHandler({
-    parsePdf: aiParseDirectLaborPdf,
-    apply: (parsed, fileName) => apply(parsed.positions, fileName),
-  });
-
-  const pasteJson = createJsonImportHandler({
-    rootKey: "positions",
-    apply: (rows, source) => apply(rows as DirectLaborRows, source),
-  });
+  const importer = useDirectLaborImportHandlers();
 
   return (
     <Page>
@@ -82,14 +34,14 @@ export default function DirectLaborPage() {
       <PageImportDrawer
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
-        title="Import Direct Labor"
-        helper="Upload a source PDF, or paste structured JSON as a fallback."
-        aiPdfHelper="Send a personnel budget or salary and benefits report PDF. We'll extract position, department, FTE, salary, benefits, and hours."
-        onAiPdfImport={uploadPdfToClaude}
-        pasteExample="{ positions: [...] }"
-        pasteHelper="Paste structured output shaped like { positions: [...] }."
-        pasteSchema={POSITIONS_SCHEMA}
-        onPasteJson={pasteJson}
+        title={importer.title}
+        helper={importer.helper}
+        aiPdfHelper={importer.aiPdfHelper}
+        onAiPdfImport={importer.aiPdf}
+        pasteExample={importer.pasteExample}
+        pasteHelper={importer.pasteHelper}
+        pasteSchema={importer.pasteSchema}
+        onPasteJson={importer.pasteJson}
       />
     </Page>
   );

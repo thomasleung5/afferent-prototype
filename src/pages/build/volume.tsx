@@ -9,14 +9,8 @@ import {
   ImportReviewPanel,
   ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
-import {
-  createJsonImportHandler, createPdfImportHandler,
-} from "@/features/imports/importRunners";
-import { useBuildState } from "@/lib/store";
-import { aiParseVolumePdf, volumeToExtractionResult } from "@/lib/ai/parseVolume";
+import { useVolumeImportHandlers } from "@/features/imports/sourceImportHandlers";
 import type { UnmappedRow } from "@/lib/parse/types";
-
-type VolumeRows = Parameters<typeof volumeToExtractionResult>[0];
 
 /** Pull human-readable display fields out of an UnmappedRow's lineage so the
  *  surfaced list can show "name (dept) — prior / current". The shape mirrors
@@ -42,48 +36,10 @@ function unmappedDetails(u: UnmappedRow): {
   };
 }
 
-const VOLUME_SCHEMA = `{
-  items: [
-    { name, dept, prior, current, unit, confidence }
-  ]
-}`;
-
 export default function VolumePage() {
-  const { mergeVolume, services, volume } = useBuildState();
   const [importerOpen, setImporterOpen] = useState(false);
-  // Unmatched rows are volume-specific (mergeVolume writes them to
-  // pendingReview, but the page surfaces them inline so users see what
-  // didn't bind). Populated as a side effect inside the drawer hooks.
-  const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
-
-  // Apply extraction + populate the page's "unmatched" review state as
-  // a side effect. The shared handler factories handle the try/catch
-  // and `setUnmapped([])` reset via `onStart`.
-  const apply = (rows: VolumeRows, source: string) => {
-    const extraction = volumeToExtractionResult(rows, services, source, volume);
-    const applied = mergeVolume(extraction, source);
-    setUnmapped(extraction.unmapped);
-    const imported = applied.mapped + applied.lowConfidence + applied.duplicates;
-    const parts: string[] = [`${applied.mapped} accepted`];
-    if (applied.duplicates > 0)    parts.push(`${applied.duplicates} updated`);
-    parts.push(`${applied.lowConfidence} for review`);
-    if (applied.unmapped > 0)      parts.push(`${applied.unmapped} unmatched`);
-    return `${imported} row${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
-  };
-
-  const resetUnmapped = () => setUnmapped([]);
-
-  const uploadPdfToClaude = createPdfImportHandler({
-    parsePdf: aiParseVolumePdf,
-    apply: (parsed, fileName) => apply(parsed.items, fileName),
-    onStart: resetUnmapped,
-  });
-
-  const pasteJson = createJsonImportHandler({
-    rootKey: "items",
-    apply: (rows, source) => apply(rows as VolumeRows, source),
-    onStart: resetUnmapped,
-  });
+  const importer = useVolumeImportHandlers();
+  const { unmapped, setUnmapped } = importer;
 
   return (
     <Page>
@@ -153,14 +109,14 @@ export default function VolumePage() {
       <PageImportDrawer
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
-        title="Import Volume of Activity"
-        helper="Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog."
-        aiPdfHelper="Send an annual report, permit-volume table, or volume-of-activity appendix. We'll extract service-level volume counts and match them to the existing catalog."
-        onAiPdfImport={uploadPdfToClaude}
-        pasteExample="{ items: [...] }"
-        pasteHelper="Paste structured output shaped like { items: [...] }."
-        pasteSchema={VOLUME_SCHEMA}
-        onPasteJson={pasteJson}
+        title={importer.title}
+        helper={importer.helper}
+        aiPdfHelper={importer.aiPdfHelper}
+        onAiPdfImport={importer.aiPdf}
+        pasteExample={importer.pasteExample}
+        pasteHelper={importer.pasteHelper}
+        pasteSchema={importer.pasteSchema}
+        onPasteJson={importer.pasteJson}
       />
     </Page>
   );

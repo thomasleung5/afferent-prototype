@@ -5,19 +5,15 @@ import { fmt } from "@/lib/format";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { FeeScheduleTable } from "@/features/build/FeeScheduleTable";
 import { PageImportDrawer } from "@/features/imports/PageImportDrawer";
-import {
-  createJsonImportHandler, createPdfImportHandler,
-} from "@/features/imports/importRunners";
+import { useFeesImportHandlers } from "@/features/imports/sourceImportHandlers";
 import { useBuildState } from "@/lib/store";
 import { useExport } from "@/features/build/useExport";
-import { aiParseFeesPdf, feesToExtractionResult } from "@/lib/ai/parseFees";
-
-type FeeRows = Parameters<typeof feesToExtractionResult>[0];
 
 export default function FeeSchedulePage() {
-  const { derived, services, mergeFeeSchedule } = useBuildState();
+  const { derived } = useBuildState();
   const { downloadExcel, pdfHref } = useExport();
   const [importerOpen, setImporterOpen] = useState(false);
+  const importer = useFeesImportHandlers();
   const comparisons = derived.comparisons;
 
   // Net adoption impact: full-precision sum (recommended − fee) × volume across
@@ -32,30 +28,6 @@ export default function FeeSchedulePage() {
   // Target Revenue: sum of full-precision recommended × volume. NEVER use
   // c.recommended (rounded for display) — rounding drift breaks reconciliation.
   const targetRevenue = recoverableComparisons.reduce((a, c) => a + c.calculatedRecommendedFee * c.volume, 0);
-
-  // Fee Schedule's two summaries differ subtly: PDF includes "from PDF"
-  // in its sentence; clipboard does not. Each handler owns that
-  // formatting so the existing copy is preserved verbatim.
-  const apply = (rows: FeeRows, source: string, fromPdf: boolean) => {
-    const extraction = feesToExtractionResult(rows, services, source);
-    const applied = mergeFeeSchedule(extraction, source);
-    const total = applied.mapped + applied.duplicates + applied.lowConfidence;
-    const noun = `fee${total === 1 ? "" : "s"}`;
-    const suffix = fromPdf ? " from PDF" : "";
-    return `${total} ${noun} imported${suffix} (${applied.mapped} new, ${applied.duplicates} updated).`;
-  };
-
-  const uploadPdfToClaude = createPdfImportHandler({
-    parsePdf: aiParseFeesPdf,
-    apply: (parsed, fileName) => apply(parsed.fees, fileName, true),
-    parseFailureMessage: "AI parsing failed.",
-    importFailureMessage: "PDF parsing failed.",
-  });
-
-  const pasteJson = createJsonImportHandler({
-    rootKey: "fees",
-    apply: (rows, source) => apply(rows as FeeRows, source, false),
-  });
 
   return (
     <Page>
@@ -87,12 +59,14 @@ export default function FeeSchedulePage() {
       <PageImportDrawer
         open={importerOpen}
         onClose={() => setImporterOpen(false)}
-        title="Import Fee Schedule"
-        helper="Import fees via Claude (PDF) or by pasting LLM JSON output."
-        aiPdfHelper="Sends PDF directly to Claude — skips fuzzy matching, returns structured fees"
-        onAiPdfImport={uploadPdfToClaude}
-        pasteExample="{ fees: [...] }"
-        onPasteJson={pasteJson}
+        title={importer.title}
+        helper={importer.helper}
+        aiPdfHelper={importer.aiPdfHelper}
+        onAiPdfImport={importer.aiPdf}
+        pasteExample={importer.pasteExample}
+        pasteHelper={importer.pasteHelper}
+        pasteSchema={importer.pasteSchema}
+        onPasteJson={importer.pasteJson}
       />
     </Page>
   );
