@@ -303,7 +303,7 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
 
 const FEES_SCHEMA = `{
   fees: [
-    { name, dept, fee, peer, target, confidence }
+    { name, dept, unit, fee, confidence }
   ]
 }`;
 
@@ -335,7 +335,7 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Fee Schedule",
     helper: "Import fees via Claude (PDF) or by pasting LLM JSON output.",
-    tagline: "Current fees and adopted rates",
+    tagline: "Fees, departments, pricing units, current rates",
     pasteExample: "{ fees: [...] }",
     pasteHelper: "Paste structured output shaped like { fees: [...] }.",
     pasteSchema: FEES_SCHEMA,

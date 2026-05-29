@@ -6,9 +6,11 @@ import { newServiceId } from "./serviceId";
 interface FeeRow {
   name: string;
   dept: string;
+  /** Pricing unit as written in the document ("each", "per hour",
+   *  "per $1,000 valuation", "deposit", …). Optional — many fee
+   *  schedules don't surface a unit column explicitly. */
+  unit?: string;
   fee: number;
-  peer?: number;
-  target?: number;
   confidence: "high" | "low";
 }
 
@@ -51,24 +53,30 @@ export function feesToExtractionResult(
       file: fileName,
       sheet: "AI parsed",
       row: i + 1,
-      rawCells: { name: row.name, dept: row.dept, fee: row.fee },
+      rawCells: { name: row.name, dept: row.dept, unit: row.unit ?? null, fee: row.fee },
       confidence: row.confidence === "high" ? ("high" as const) : ("review" as const),
       importedAt: now,
     };
 
+    const unit = row.unit?.trim() || undefined;
     const existingSvc = existingByName.get(row.name.toLowerCase());
+    // Import only carries identity + price + unit; Fee #, Cost, Recommended,
+    // Recovery, and Impact are software-derived downstream. For existing
+    // services we update fee + unit only and leave the rest of the row
+    // (target, peer, hours, volume, …) untouched.
     const entity: Service = existingSvc
-      ? { ...existingSvc, fee: row.fee, peer: row.peer ?? existingSvc.peer, target: row.target ?? existingSvc.target }
+      ? { ...existingSvc, fee: row.fee, ...(unit ? { unit } : {}) }
       : {
           id: newServiceId(dept, row.name),
           name: row.name,
           dept,
           fee: row.fee,
-          peer: row.peer ?? 0,
-          target: row.target ?? 100,
+          peer: 0,
+          target: 100,
           hours: 0,
           volume: 0,
           cost: 0,
+          ...(unit ? { unit } : {}),
           source: "imported",
           sourceFile: fileName,
         };
