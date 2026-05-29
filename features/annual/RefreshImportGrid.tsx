@@ -29,6 +29,11 @@ const LOADED_NOUN: Record<Domain, { singular: string; plural: string }> = {
   cap:       { singular: "pool",       plural: "pools" },
 };
 
+/** Domains the analyst can skip — published only when the jurisdiction
+ *  has a Cost Allocation Plan. Surfaced as a small "Optional" pill next
+ *  to the card title. */
+const OPTIONAL_DOMAINS: ReadonlySet<Domain> = new Set<Domain>(["cap"]);
+
 /** Plain-English description of the kinds of source documents the
  *  domain's parser knows how to read. Surfaced in the expanded card so
  *  users see what they can upload before they're asked to pick a file. */
@@ -215,7 +220,17 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
         }}
       >
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</span>
+            {OPTIONAL_DOMAINS.has(card.domain) && (
+              <span className="mono" style={{
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                color: "var(--ink-3)", textTransform: "uppercase",
+                padding: "2px 6px", border: "1px solid var(--rule)",
+                background: "var(--paper-2)",
+              }}>Optional</span>
+            )}
+          </div>
           <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
             {card.hasImports
               ? (

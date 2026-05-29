@@ -40,7 +40,12 @@ const DOMAIN_SECTION_CODE: Record<Domain, string> = {
   fees: "FEE", volume: "VOL", cap: "CAP",
 };
 
-const ALL_DOMAINS: Domain[] = ["positions", "operating", "volume", "services", "fees", "cap"];
+// Source Data card order — Staffing & Positions feeds labor; Operating
+// Budget feeds non-labor + ties back to positions; Services Catalog
+// defines the fee items; Volume measures how often those services are
+// delivered; Fee Schedule prices them; CAP layers indirect cost on top
+// (optional — only relevant when the jurisdiction publishes a CAP).
+const ALL_DOMAINS: Domain[] = ["positions", "operating", "services", "volume", "fees", "cap"];
 
 export interface AnnualChange {
   id: string;
