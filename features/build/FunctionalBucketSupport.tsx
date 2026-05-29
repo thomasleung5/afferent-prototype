@@ -22,7 +22,7 @@ import { Link } from "@tanstack/react-router";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { Formula } from "@/components/ui";
+import { Formula, MiniTable, MonoLabel, type MiniTableColumn } from "@/components/ui";
 
 interface Props {
   dept: DeptCode;
@@ -425,12 +425,7 @@ function renderCell(key: ColKey, r: SupportRow): React.ReactNode {
 
 function renderTotal(key: ColKey, totals: TotalsShape): React.ReactNode {
   switch (key) {
-    case "name": return (
-      <span style={{
-        fontSize: "var(--t-l4)", letterSpacing: "0.06em",
-        textTransform: "uppercase", color: "var(--ink-3)",
-      }}>Total</span>
-    );
+    case "name": return <MonoLabel>Total</MonoLabel>;
     case "directLabor":   return fmt.dollarsK(totals.directLabor);
     case "operating":     return fmt.dollarsK(totals.operating);
     case "overhead":      return fmt.dollarsK(totals.overhead);
@@ -465,74 +460,27 @@ function BucketSupportTable({
   compact?: boolean;
 }) {
   const hide = compact ? COMPACT_HIDE : DEPT_HIDE;
-  const cols = ALL_COLS.filter((c) => !hide.has(c.key));
-  const grid = cols.map((c) => c.width).join(" ");
+  const visibleCols: MiniTableColumn[] = ALL_COLS.filter((c) => !hide.has(c.key));
   // Skip totals when the table represents a single activity — they'd
   // just echo the lone row.
   const showTotals = !compact && rows.length > 1;
 
   return (
     <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
       fontFamily: "var(--ff-mono)", fontSize: 12, lineHeight: 1.4,
     }}>
-      <div style={{
-        display: "grid", gridTemplateColumns: grid, gap: 10,
-        padding: "8px 12px",
-        borderBottom: "1px solid var(--rule)",
-        background: "var(--paper-2)",
-        fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.08em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>
-        {cols.map((c) => (
-          <div key={c.key} style={{ textAlign: c.align ?? "left" }}>{c.label}</div>
-        ))}
-      </div>
-
-      {rows.length === 0 ? (
-        <div style={{ padding: "12px", color: "var(--ink-3)", textAlign: "center" }}>
-          No functional buckets.
-        </div>
-      ) : rows.map((r, i) => (
-        <div
-          key={r.id}
-          style={{
-            display: "grid", gridTemplateColumns: grid, gap: 10,
-            padding: "7px 12px", alignItems: "baseline",
-            borderBottom: i < rows.length - 1 ? "1px solid var(--rule)" : undefined,
-            color: "var(--ink-2)",
-          }}
-        >
-          {cols.map((c) => (
-            <div key={c.key} style={{
-              textAlign: c.align ?? "left",
-              fontVariantNumeric: c.align === "right" ? "tabular-nums" : undefined,
-            }}>
-              {renderCell(c.key, r)}
-            </div>
-          ))}
-        </div>
-      ))}
-
-      {showTotals && (
-        <div style={{
-          display: "grid", gridTemplateColumns: grid, gap: 10,
-          padding: "10px 12px",
-          borderTop: "2px solid var(--ink)",
-          background: "var(--paper-2)",
-          alignItems: "baseline",
-          color: "var(--ink)", fontWeight: 700,
-        }}>
-          {cols.map((c) => (
-            <div key={c.key} style={{
-              textAlign: c.align ?? "left",
-              fontVariantNumeric: c.align === "right" ? "tabular-nums" : undefined,
-            }}>
-              {renderTotal(c.key, totals)}
-            </div>
-          ))}
-        </div>
-      )}
+      <MiniTable
+        columns={visibleCols}
+        rows={rows}
+        rowKey={(r) => r.id}
+        renderCell={(col, r) => renderCell(col.key as ColKey, r)}
+        renderFooter={
+          showTotals
+            ? (col) => renderTotal(col.key as ColKey, totals)
+            : undefined
+        }
+        emptyState="No functional buckets."
+      />
     </div>
   );
 }
