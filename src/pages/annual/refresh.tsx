@@ -27,26 +27,14 @@ export default function AnnualRefreshPage() {
       />
       <StatusRow items={[
         {
-          label: "Rows imported",
-          value: summary.hasImports ? summary.totalRows.toLocaleString() : "—",
+          label: "Sources connected",
+          value: `${summary.inputsRefreshed} of ${summary.totalInputs}`,
+          tone: summary.inputsRefreshed === summary.totalInputs ? "pos" : undefined,
         },
         {
-          label: "Inputs refreshed",
-          value: `${summary.inputsRefreshed} / ${summary.totalInputs}`,
-        },
-        {
-          label: "Auto-mapped",
-          value: summary.hasImports ? `${summary.autoPct}%` : "—",
-          tone: summary.hasImports && summary.autoPct >= 90 ? "pos" : undefined,
-        },
-        {
-          label: "Need review",
-          value: summary.hasImports ? String(summary.totalReview) : "—",
+          label: "Items needing review",
+          value: String(summary.totalReview),
           tone: summary.totalReview > 0 ? "warn" : undefined,
-        },
-        {
-          label: "Confidence",
-          value: summary.hasImports ? summary.confidence : "Seed",
         },
         {
           label: "Last refresh",
