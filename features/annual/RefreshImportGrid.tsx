@@ -227,7 +227,7 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
         </div>
         <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           <Btn kind="ghost" onClick={open}>
-            <Icon name="arrow-up-to-line" size={13}/> Re-import
+            <Icon name="arrow-up-to-line" size={13}/> Import
           </Btn>
           <button
             onClick={toggle}
