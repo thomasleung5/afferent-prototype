@@ -1,9 +1,8 @@
 import { useState, type ReactNode } from "react";
-import { SectionLabel } from "@/components/ui";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
-  deriveRefreshSections, deriveRefreshSummary, type RefreshSectionCard,
+  deriveRefreshSections, type RefreshSectionCard,
 } from "@/lib/data/annual";
 import { InlineImportCard } from "@/features/imports/InlineImportCard";
 import {
@@ -55,8 +54,6 @@ export function RefreshImportGrid() {
     impact: state.derived.impact,
   };
   const cards = deriveRefreshSections(input);
-  const summary = deriveRefreshSummary(input);
-  const importedDomains = summary.inputsRefreshed;
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
@@ -72,19 +69,12 @@ export function RefreshImportGrid() {
           Refresh source files
         </div>
         <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
-          Upload current-year exports for staffing, operating, volume of activity, fee schedules, and CAP inputs.
+          Upload current-year exports to refresh the model.
         </div>
       </div>
 
-      {/* Per-source cards */}
-      <div>
-        <SectionLabel right={`${cards.length} sources · ${importedDomains} refreshed`}>
-          Source documents
-        </SectionLabel>
-
-        <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-          {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
-        </div>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
       </div>
     </div>
   );
