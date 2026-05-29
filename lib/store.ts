@@ -404,8 +404,9 @@ interface LaborBucket {
  *  buckets. Each bucket fans out into 4 Salary rows + 4 Benefits rows via
  *  SALARY_ACCOUNTS / BENEFITS_ACCOUNTS; the first entry in each list
  *  absorbs the rounding residual so Σ row.amount === bucket exactly.
- *  Shared by buildLaborLinesFromPositions (seed/import path) and the
- *  migration coalescer (legacy persisted state). */
+ *  Used only by the seed builder (buildLaborLinesFromPositions →
+ *  initialState); the Operating Budget import is the authoritative
+ *  source for labor rows post-seed. */
 function buildLaborLinesFromBuckets(
   byDept: Map<DeptCode, LaborBucket>,
 ): OperatingLine[] {
@@ -891,18 +892,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergePositions: (r, fileName) => {
         const result = toApplyResult("positions", fileName, r);
         set((s) => {
-          // PR-F: each imported Position upserts into productiveHours
-          // (id mirrors the import) so the role roster stays in sync.
-          //
-          // PR-H: labor budget lines are dept-aggregate, not per-role,
-          // so we rebuild them ONCE per dept touched by this batch from
-          // the imported positions. Existing labor rows for those depts
-          // get replaced (deterministic id collision); other depts'
-          // labor rows stay untouched.
+          // Each imported Position upserts into productiveHours (id mirrors
+          // the import) so the role roster stays in sync. Labor-classified
+          // operating rows (the Direct Labor "Labor Line Items" table) are
+          // NOT touched here — they're authoritatively owned by the
+          // Operating Budget import via mergeOperating's costType
+          // classifier. A staffing import that touches PLAN no longer
+          // overwrites whatever PLAN labor rows the budget import wrote.
           const incoming = [...r.mapped, ...r.lowConfidence, ...r.duplicates];
           const lineagePatch: Record<string, SourceLineage> = {};
           const phById = new Map(s.productiveHours.map((row) => [row.id, row]));
-          const opById = new Map(s.operating.map((row) => [row.id, row]));
 
           for (const { entity, lineage } of incoming) {
             const phRow: ProductiveHoursRow = {
@@ -920,17 +919,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             phById.set(entity.id, phRow);
             lineagePatch[entity.id] = lineage;
           }
-          // Rebuild per-dept labor rows from the full incoming batch in
-          // one shot; deterministic ids overwrite whatever was there.
-          for (const laborRow of buildLaborLinesFromPositions(
-            incoming.map((x) => x.entity),
-          )) {
-            opById.set(laborRow.id, laborRow);
-          }
 
           return {
             productiveHours: [...phById.values()],
-            operating: [...opById.values()],
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, positions: [...s.pendingReview.positions, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "positions", result, at: new Date().toISOString() }],
