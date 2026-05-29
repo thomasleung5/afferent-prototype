@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect,
+  AddRowButton, CellInput, CellSelect,
   DrilldownColumn, DrilldownLabel, DrilldownShell,
   SectionLabel, SourcePill,
 } from "@/components/ui";
@@ -361,17 +361,13 @@ export function ServicesTable() {
                     <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
                     <span/>
                   </div>
-                  <div style={{
-                    padding: "8px 12px", borderTop: "1px solid var(--rule)",
-                  }}>
-                    <button
-                      onClick={(e) => { e.stopPropagation(); addRole(r); }}
-                      style={{
-                        fontSize: 12, color: "var(--accent)",
-                        background: "transparent", border: 0, cursor: "pointer",
-                        padding: 0,
-                      }}
-                    >+ Add role</button>
+                  <div
+                    onClick={(e) => e.stopPropagation()}
+                    style={{
+                      padding: "8px 12px", borderTop: "1px solid var(--rule)",
+                    }}
+                  >
+                    <AddRowButton label="Add role" onClick={() => addRole(r)}/>
                   </div>
                 </div>
                 <Link
