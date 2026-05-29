@@ -186,7 +186,7 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Operating",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    aiPdfHelper: "Send a budget book or expenditure detail PDF. We'll extract non-labor line items.",
+    aiPdfHelper: "Send a budget book or expenditure detail PDF. We'll extract operating line items AND personnel/salary-benefit lines; labor rows are auto-classified into Salary or Benefits from the line text.",
     pasteExample: "{ operating: [...] }",
     pasteHelper: "Paste structured output shaped like { operating: [...] }.",
     pasteSchema: OPERATING_SCHEMA,

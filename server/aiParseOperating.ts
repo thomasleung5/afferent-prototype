@@ -1,16 +1,18 @@
 import { runPdfParser } from "./aiParseRunner";
 
-const SYSTEM = `You are extracting non-labor operating expenditure line items from a municipal budget document. The document may be a budget book, an ERP/GL export, a fund-detail report, or a department appendix inside a larger fee study — only the line-item rows matter.
+const SYSTEM = `You are extracting expenditure line items (both operating AND personnel) from a municipal budget document. The document may be a budget book, an ERP/GL export, a fund-detail report, or a department appendix inside a larger fee study — only the line-item rows matter.
 
 IMPORTANT — if the document is a comprehensive fee study, annual report, or multi-section document:
 - Skip narrative chapters, methodology sections, executive summaries, recommendation tables, and revenue/fee tables
-- Focus exclusively on sections titled "Operating Expenditures", "Non-Personnel Budget", "Services & Supplies", "Materials & Services", "Operating Budget Detail", "Expenditure Detail", or any tabular section that lists individual account-level expenditure lines with adopted/budgeted amounts
+- Focus on the expenditure tables: sections titled "Operating Expenditures", "Services & Supplies", "Materials & Services", "Operating Budget Detail", "Expenditure Detail", AND personnel sections titled "Salaries & Benefits", "Personnel", "Personnel Services", "Personnel Budget", "Compensation", or any tabular section listing account-level expenditure lines (operating or personnel) with adopted/budgeted amounts
 - Do not read or process narrative paragraphs — jump directly to the expenditure tables
 
-Extract every non-labor expenditure line item you find in those sections and return ONLY this JSON, no prose:
+Extract every expenditure line item you find — operating AND personnel — and return ONLY this JSON, no prose:
 
 {
   "operating": [
+    { "code": "51110", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other", "line": "Regular Salaries", "amount": 850000, "include": true, "confidence": "high" },
+    { "code": "51210", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other", "line": "Retirement (PERS)", "amount": 220000, "include": true, "confidence": "high" },
     { "code": "53120", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Professional services", "line": "Consulting Services", "amount": 620000, "include": true, "confidence": "high" },
     { "code": "54330", "dept": "BLDG", "sourceDept": "Building & Safety", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Software & subscriptions", "line": "Software Subscriptions", "amount": 84000, "include": true, "confidence": "high" },
     { "code": "55210", "dept": "ENG", "sourceDept": "Public Works — Development Engineering", "fiscalYear": "FY 2025-26", "amountType": "proposed", "category": "Vehicles & equipment", "line": "Field Equipment", "amount": 42000, "include": true, "confidence": "low" }
@@ -25,8 +27,8 @@ Rules:
   * Public Works rows: include ONLY when the section or line clearly relates to development engineering, permit review, encroachment permits, grading, inspections, plan check, land development, or fee-supported development services. Map those to dept="ENG".
   * SKIP unrelated Public Works operations: streets, parks, utilities, maintenance, fleet, facilities, sewer, water, storm drain operations, traffic signal maintenance, street sweeping, refuse, etc.
   * SKIP every row whose department is clearly outside the development-services umbrella: Police, Fire, Parks & Recreation, Library, Recreation, Finance, City Manager, City Clerk, Admin, HR, IT (unless directly billed to a fee-supported division), etc.
-- SKIP all personnel / payroll lines entirely — anything that pays a person. This includes (but is not limited to) regular salaries, overtime, part-time wages, retirement contributions, PERS, OPEB, health insurance, dental, vision, payroll taxes, Medicare, FICA, workers comp, life insurance, and any account whose category is "Salaries", "Salaries & Benefits", "Personnel", "Wages", "Compensation", or whose account number falls in a personnel range (commonly 511xx–512xx, but trust the category label too). These belong on the salary roster, NOT on operating.
-- category must be exactly one of these nine values — pick the closest match:
+- Personnel lines ARE in scope — extract regular salaries, overtime, part-time wages, retirement contributions, PERS, OPEB, health insurance, dental, vision, payroll taxes, Medicare, FICA, workers' comp, life insurance, and similar pay/benefit accounts. Preserve the source line text exactly (e.g. "Regular Salaries", "Health Insurance", "Retirement (PERS)") — downstream classification reads the line text to tag rows as Salary vs Benefits automatically.
+- category must be exactly one of these nine values — pick the closest match. For personnel lines (salaries, benefits, retirement, etc.), use "Other" — the downstream tagger reads the line text directly:
   * "Software & subscriptions" — software licenses, SaaS, cloud services, IT subscriptions, technology platforms
   * "Professional services" — consulting, contract services, legal (non-noticing), plan review services, contract inspection, contract engineering, outside professional services
   * "Training & travel" — conferences, training, certifications, travel, mileage, per diem
