@@ -162,7 +162,7 @@ function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCar
     : undefined;
   return {
     domain,
-    name: SECTION_NAMES[domain],
+    name: SOURCE_NAMES[domain],
     section: DOMAIN_LABEL[domain],
     rows,
     mapped,
@@ -176,13 +176,16 @@ function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCar
   };
 }
 
-const SECTION_NAMES: Record<Domain, string> = {
-  positions: "Staffing / Direct Labor",
+/** Source-document names surfaced on the Source Data page. Keyed by
+ *  Domain so the same map drives both the on-page card title and any
+ *  cross-page references back to "the source". */
+const SOURCE_NAMES: Record<Domain, string> = {
+  positions: "Staffing & Positions",
   operating: "Operating Budget",
   volume:    "Volume of Activity",
   services:  "Services Catalog",
   fees:      "Fee Schedule",
-  cap:       "CAP / Indirect Costs",
+  cap:       "Cost Allocation Plan",
 };
 
 function seedCountFor(domain: Domain, input: AnnualInput): number {

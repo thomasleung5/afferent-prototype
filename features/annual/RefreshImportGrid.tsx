@@ -66,8 +66,8 @@ export function RefreshImportGrid() {
 
       {/* Per-section cards */}
       <div>
-        <SectionLabel right={`${cards.length} sections · ${importedDomains} refreshed`}>
-          Imports by model section
+        <SectionLabel right={`${cards.length} sources · ${importedDomains} refreshed`}>
+          Source documents
         </SectionLabel>
 
         <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
@@ -159,13 +159,7 @@ function ImportSectionShell({ card, importer, children }: ImportSectionShellProp
       display: "flex", flexDirection: "column", gap: 14,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start" }}>
-        <div>
-          <div className="mono" style={{
-            fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
-            color: "var(--ink-3)", textTransform: "uppercase",
-          }}>{card.section}</div>
-          <div className="display" style={{ fontSize: 16, fontWeight: 600, marginTop: 4 }}>{card.name}</div>
-        </div>
+        <div className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</div>
         <span className="mono" style={{
           fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.04em",
           padding: "2px 7px", border: "1px solid var(--rule)",
