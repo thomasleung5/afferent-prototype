@@ -4,8 +4,9 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect, DrilldownColumn, DrilldownLabel, DrilldownShell,
-  SectionLabel, SourcePill,
+  CellInput, CellSelect, DrilldownColumn, DrilldownShell,
+  MiniTable, MonoLabel, SectionLabel, SourcePill,
+  type MiniTableColumn,
 } from "@/components/ui";
 import type { DeptCode, ProductiveHoursBreakdown, ProductiveHoursRow } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
@@ -173,47 +174,36 @@ function ProductiveHoursDrilldown({
       </DrilldownColumn>
 
       <DrilldownColumn marker="②" title="Nonproductive deductions">
-        <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
-            padding: "8px 12px",
-            background: "var(--paper-2)",
-            borderBottom: "1px solid var(--rule)",
-          }}>
-            <DrilldownLabel>Category</DrilldownLabel>
-            <DrilldownLabel align="right">Hours</DrilldownLabel>
-          </div>
-          {result.deductions.map((d, i) => (
-            <div key={d.key} style={{
-              display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
-              alignItems: "baseline",
-              padding: "7px 12px",
-              borderBottom: i < result.deductions.length - 1 ? "1px solid var(--rule)" : "none",
-              fontSize: 12,
-            }}>
-              <span style={{ color: "var(--ink-2)" }}>{d.label}</span>
-              <CellInput
-                type="number" value={d.hours} step={4} min={0}
-                onChange={(v) => onChange(d.key, Number(v) || 0)}
-                align="right"
-                fontSize={12}
-              />
-            </div>
-          ))}
-          <div style={{
-            display: "grid", gridTemplateColumns: "1fr 90px", gap: 12,
-            padding: "8px 12px",
-            background: "var(--paper-2)",
-            borderTop: "1px solid var(--rule-strong)",
-            fontSize: 12, fontWeight: 600,
-            alignItems: "baseline",
-          }}>
-            <span style={{ color: "var(--ink-3)", textTransform: "uppercase", letterSpacing: "0.06em", fontSize: "var(--t-l9)" }}>
-              Total nonproductive
-            </span>
-            <span className="num" style={{ textAlign: "right" }}>{fmt.int(result.totalNonproductiveHours)}</span>
-          </div>
-        </div>
+        {(() => {
+          const deductionCols: MiniTableColumn[] = [
+            { key: "label", label: "Category", width: "1fr" },
+            { key: "hours", label: "Hours",    width: "90px", align: "right" },
+          ];
+          return (
+            <MiniTable
+              columns={deductionCols}
+              rows={result.deductions}
+              rowKey={(d) => d.key}
+              renderCell={(col, d) => {
+                if (col.key === "label") {
+                  return <span style={{ color: "var(--ink-2)" }}>{d.label}</span>;
+                }
+                return (
+                  <CellInput
+                    type="number" value={d.hours} step={4} min={0}
+                    onChange={(v) => onChange(d.key, Number(v) || 0)}
+                    align="right"
+                    fontSize={12}
+                  />
+                );
+              }}
+              renderFooter={(col) => {
+                if (col.key === "label") return <MonoLabel>Total nonproductive</MonoLabel>;
+                return <span className="num">{fmt.int(result.totalNonproductiveHours)}</span>;
+              }}
+            />
+          );
+        })()}
       </DrilldownColumn>
 
       <DrilldownColumn marker="③" title="Net productive hours">

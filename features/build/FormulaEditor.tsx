@@ -1,5 +1,8 @@
 import React from "react";
-import { AddRowButton, CellInput, CellSelect, RemoveIconButton } from "@/components/ui";
+import {
+  AddRowButton, CellInput, CellSelect, MiniTable, RemoveIconButton,
+  type MiniTableColumn,
+} from "@/components/ui";
 import type { FeeFormula, FeeFormulaTier } from "@/lib/types";
 
 /** Structured editor for the Service.formula union. Extracted in PR-M2 so
@@ -114,7 +117,13 @@ function TieredValuationFields({
     onChange({ ...value, tiers: value.tiers.filter((_, idx) => idx !== i) });
   const addTier = () =>
     onChange({ ...value, tiers: [...value.tiers, { baseFee: 0, perUnit: 0, unitSize: 1000 }] });
-  const TIER_COLS = "1fr 1fr 1fr 70px 22px";
+  const tierCols: MiniTableColumn[] = [
+    { key: "upTo",     label: "Up to",    width: "1fr" },
+    { key: "baseFee",  label: "Base fee", width: "1fr" },
+    { key: "perUnit",  label: "+ per",    width: "1fr" },
+    { key: "unitSize", label: "per",      width: "70px" },
+    { key: "remove",   label: "",         width: "22px" },
+  ];
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <FormulaSubField label="Basis">
@@ -124,66 +133,79 @@ function TieredValuationFields({
           placeholder="e.g. construction valuation"
         />
       </FormulaSubField>
-      <div style={{ border: "1px solid var(--rule)", background: "var(--paper-2)" }}>
-        <div style={{
-          display: "grid", gridTemplateColumns: TIER_COLS, gap: 8,
-          padding: "5px 8px", borderBottom: "1px solid var(--rule)",
-          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>
-          <span>Up to</span><span>Base fee</span><span>+ per</span><span>per</span><span/>
-        </div>
-        {value.tiers.map((t, i) => (
-          <div key={i} style={{
-            display: "grid", gridTemplateColumns: TIER_COLS, gap: 8,
-            padding: "4px 8px",
-            borderBottom: i < value.tiers.length - 1 ? "1px solid var(--rule)" : "none",
-            alignItems: "baseline",
-          }}>
-            <CellInput
-              type="integer"
-              value={t.upTo ?? ""}
-              onChange={(v) => patchTier(i, { upTo: v === "" ? undefined : Number(v) })}
-              placeholder="(no cap)"
-              fontSize={12}
-            />
-            <CellInput
-              type="currency"
-              value={t.baseFee}
-              onChange={(v) => patchTier(i, { baseFee: Number(v) || 0 })}
-              prefix="$"
-              fontSize={12}
-            />
-            <CellInput
-              type="number"
-              value={t.perUnit ?? 0}
-              onChange={(v) => patchTier(i, { perUnit: Number(v) || 0 })}
-              step={0.1} min={0}
-              fontSize={12}
-            />
-            <CellInput
-              type="integer"
-              value={t.unitSize ?? 1000}
-              onChange={(v) => patchTier(i, { unitSize: Number(v) || 1 })}
-              fontSize={12}
-            />
-            <RemoveIconButton
-              title="Remove tier"
-              onClick={(e) => { e.stopPropagation(); removeTier(i); }}
-            />
+      <MiniTable
+        columns={tierCols}
+        rows={value.tiers}
+        rowKey={(_, i) => `tier-${i}`}
+        outerBackground="var(--paper-2)"
+        density="compact"
+        renderCell={(col, t, i) => {
+          if (col.key === "upTo") {
+            return (
+              <CellInput
+                type="integer"
+                value={t.upTo ?? ""}
+                onChange={(v) => patchTier(i, { upTo: v === "" ? undefined : Number(v) })}
+                placeholder="(no cap)"
+                fontSize={12}
+              />
+            );
+          }
+          if (col.key === "baseFee") {
+            return (
+              <CellInput
+                type="currency"
+                value={t.baseFee}
+                onChange={(v) => patchTier(i, { baseFee: Number(v) || 0 })}
+                prefix="$"
+                fontSize={12}
+              />
+            );
+          }
+          if (col.key === "perUnit") {
+            return (
+              <CellInput
+                type="number"
+                value={t.perUnit ?? 0}
+                onChange={(v) => patchTier(i, { perUnit: Number(v) || 0 })}
+                step={0.1} min={0}
+                fontSize={12}
+              />
+            );
+          }
+          if (col.key === "unitSize") {
+            return (
+              <CellInput
+                type="integer"
+                value={t.unitSize ?? 1000}
+                onChange={(v) => patchTier(i, { unitSize: Number(v) || 1 })}
+                fontSize={12}
+              />
+            );
+          }
+          if (col.key === "remove") {
+            return (
+              <RemoveIconButton
+                title="Remove tier"
+                onClick={(e) => { e.stopPropagation(); removeTier(i); }}
+              />
+            );
+          }
+          return null;
+        }}
+        footerSlot={(
+          <div
+            onClick={(e) => e.stopPropagation()}
+            style={{
+              padding: "10px 16px",
+              borderTop: "1px solid var(--rule-strong)",
+              background: "var(--paper-2)",
+            }}
+          >
+            <AddRowButton label="Add tier" onClick={addTier}/>
           </div>
-        ))}
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            padding: "10px 16px",
-            borderTop: "1px solid var(--rule-strong)",
-            background: "var(--paper-2)",
-          }}
-        >
-          <AddRowButton label="Add tier" onClick={addTier}/>
-        </div>
-      </div>
+        )}
+      />
     </div>
   );
 }

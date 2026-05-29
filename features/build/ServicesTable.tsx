@@ -7,8 +7,9 @@ import {
 } from "@/components/table";
 import {
   AddRowButton, CellInput, CellSelect,
-  DrilldownColumn, DrilldownLabel, DrilldownShell,
-  RemoveIconButton, SectionLabel, SourcePill,
+  DrilldownColumn, DrilldownShell,
+  MiniTable, MonoLabel, RemoveIconButton, SectionLabel, SourcePill,
+  type MiniTableColumn,
 } from "@/components/ui";
 import type {
   DeptCode, ProductiveHoursRow, RoleAllocation, Service,
@@ -271,102 +272,91 @@ export function ServicesTable() {
         renderDrilldown={(r) => {
           const mix = getMix(r);
           const totalPct = mix.reduce((a, m) => a + m.pct, 0);
-          const COLS = "minmax(220px, 1.5fr) 70px 80px 80px 28px";
+          const roleCols: MiniTableColumn[] = [
+            { key: "role",   label: "Role",  width: "minmax(220px, 1.5fr)" },
+            { key: "dept",   label: "Dept",  width: "70px", align: "right" },
+            { key: "pct",    label: "%",     width: "80px", align: "right" },
+            { key: "hours",  label: "Hours", width: "80px", align: "right" },
+            { key: "remove", label: "",      width: "28px" },
+          ];
           return (
             <DrilldownShell>
               <DrilldownColumn marker="①" title="Role allocation">
-                <div style={{ border: "1px solid var(--rule)", background: "var(--paper)" }}>
-                  <div style={{
-                    display: "grid", gridTemplateColumns: COLS, gap: 12,
-                    padding: "8px 12px",
-                    background: "var(--paper-2)",
-                    borderBottom: "1px solid var(--rule)",
-                  }}>
-                    <DrilldownLabel>Role</DrilldownLabel>
-                    <DrilldownLabel align="right">Dept</DrilldownLabel>
-                    <DrilldownLabel align="right">%</DrilldownLabel>
-                    <DrilldownLabel align="right">Hours</DrilldownLabel>
-                    <span/>
-                  </div>
-                  {mix.map((m, i) => {
-                    const pos = positionById.get(m.productiveHoursId);
-                    const roleDept = pos?.dept ?? r.dept;
-                    const crossDept = pos != null && pos.dept !== r.dept;
-                    return (
-                      <div key={`${m.productiveHoursId}-${i}`} style={{
-                        display: "grid", gridTemplateColumns: COLS, gap: 12,
-                        padding: "7px 12px",
-                        borderBottom: i < mix.length - 1 ? "1px solid var(--rule)" : "none",
-                        fontSize: 12, alignItems: "baseline",
-                      }}>
-                        <span style={{ color: "var(--ink-2)" }}>
-                          <CellSelect
-                            value={m.productiveHoursId}
-                            options={positionOptions}
-                            onChange={(v) => setRole(r, i, v)}
-                          />
-                        </span>
-                        <span
-                          className="mono"
+                <MiniTable
+                  columns={roleCols}
+                  rows={mix}
+                  rowKey={(m, i) => `${m.productiveHoursId}-${i}`}
+                  renderCell={(col, m, i) => {
+                    if (col.key === "role") {
+                      return (
+                        <CellSelect
+                          value={m.productiveHoursId}
+                          options={positionOptions}
+                          onChange={(v) => setRole(r, i, v)}
+                        />
+                      );
+                    }
+                    if (col.key === "dept") {
+                      const pos = positionById.get(m.productiveHoursId);
+                      const roleDept = pos?.dept ?? r.dept;
+                      const crossDept = pos != null && pos.dept !== r.dept;
+                      return (
+                        <MonoLabel
                           title={crossDept ? `Cross-dept allocation (service belongs to ${r.dept})` : undefined}
-                          style={{
-                            textAlign: "right",
-                            color: crossDept ? "var(--warn)" : "var(--ink-3)",
-                            fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                            textTransform: "uppercase",
-                          }}
-                        >{roleDept}</span>
-                        <span style={{ textAlign: "right" }}>
-                          <CellInput
-                            type="number"
-                            value={m.pct}
-                            onChange={(v) => setPct(r, m.productiveHoursId, Number(v) || 0)}
-                            step={5} min={0} max={100}
-                            align="right" suffix="%"
-                            fontSize={12}
-                          />
-                        </span>
-                        <span className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
-                          {((r.hours * m.pct) / 100).toFixed(1)} h
-                        </span>
+                          style={{ color: crossDept ? "var(--warn)" : "var(--ink-3)" }}
+                        >{roleDept}</MonoLabel>
+                      );
+                    }
+                    if (col.key === "pct") {
+                      return (
+                        <CellInput
+                          type="number"
+                          value={m.pct}
+                          onChange={(v) => setPct(r, m.productiveHoursId, Number(v) || 0)}
+                          step={5} min={0} max={100}
+                          align="right" suffix="%"
+                          fontSize={12}
+                        />
+                      );
+                    }
+                    if (col.key === "hours") {
+                      return <span className="num" style={{ color: "var(--ink-3)" }}>{((r.hours * m.pct) / 100).toFixed(1)} h</span>;
+                    }
+                    if (col.key === "remove") {
+                      return (
                         <RemoveIconButton
                           title="Remove role"
                           onClick={(e) => { e.stopPropagation(); removeRole(r, i); }}
                         />
-                      </div>
-                    );
-                  })}
-                  <div style={{
-                    display: "grid", gridTemplateColumns: COLS, gap: 12,
-                    padding: "8px 12px",
-                    background: "var(--paper-2)",
-                    borderTop: "1px solid var(--rule-strong)",
-                    fontSize: 12, fontWeight: 600,
-                    alignItems: "baseline",
-                  }}>
-                    <span className="mono" style={{
-                      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                      color: "var(--ink-3)", textTransform: "uppercase",
-                    }}>Total</span>
-                    <span/>
-                    <span className="num" style={{
-                      textAlign: "right",
-                      color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
-                    }}>{totalPct}%</span>
-                    <span className="num" style={{ textAlign: "right" }}>{r.hours} h</span>
-                    <span/>
-                  </div>
-                  <div
-                    onClick={(e) => e.stopPropagation()}
-                    style={{
-                      padding: "10px 16px",
-                      borderTop: "1px solid var(--rule-strong)",
-                      background: "var(--paper-2)",
-                    }}
-                  >
-                    <AddRowButton label="Add role" onClick={() => addRole(r)}/>
-                  </div>
-                </div>
+                      );
+                    }
+                    return null;
+                  }}
+                  renderFooter={(col) => {
+                    if (col.key === "role") return <MonoLabel>Total</MonoLabel>;
+                    if (col.key === "pct") {
+                      return (
+                        <span className="num" style={{
+                          color: Math.abs(totalPct - 100) < 0.5 ? "var(--ink)" : "var(--warn)",
+                        }}>{totalPct}%</span>
+                      );
+                    }
+                    if (col.key === "hours") return <span className="num">{r.hours} h</span>;
+                    return null;
+                  }}
+                  footerSlot={(
+                    <div
+                      onClick={(e) => e.stopPropagation()}
+                      style={{
+                        padding: "10px 16px",
+                        borderTop: "1px solid var(--rule-strong)",
+                        background: "var(--paper-2)",
+                      }}
+                    >
+                      <AddRowButton label="Add role" onClick={() => addRole(r)}/>
+                    </div>
+                  )}
+                />
                 <Link
                   to="/build/feestudy"
                   search={{ serviceId: r.id }}

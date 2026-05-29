@@ -1,9 +1,15 @@
-import type { MouseEvent } from "react";
+import type { CSSProperties, MouseEvent } from "react";
 
 interface Props {
   onClick: (e: MouseEvent<HTMLButtonElement>) => void;
   title?: string;
   "aria-label"?: string;
+  disabled?: boolean;
+  /** Optional style overrides merged on top of the default `×` button
+   *  styling (transparent, ink-4, fontSize 14, lineHeight 1,
+   *  `0 4px` padding). Use for one-off adjustments — most callers
+   *  should pass nothing. */
+  style?: CSSProperties;
 }
 
 /** Inline "×" remove control used in expandable-row drilldowns and
@@ -13,7 +19,7 @@ interface Props {
  *  row's drilldown) handle it inside their `onClick` — the component
  *  hands the event through. */
 export function RemoveIconButton({
-  onClick, title, "aria-label": ariaLabel,
+  onClick, title, "aria-label": ariaLabel, disabled, style,
 }: Props) {
   return (
     <button
@@ -21,6 +27,7 @@ export function RemoveIconButton({
       onClick={onClick}
       title={title}
       aria-label={ariaLabel ?? title}
+      disabled={disabled}
       style={{
         color: "var(--ink-4)",
         fontSize: 14,
@@ -28,7 +35,9 @@ export function RemoveIconButton({
         padding: "0 4px",
         background: "transparent",
         border: 0,
-        cursor: "pointer",
+        cursor: disabled ? "not-allowed" : "pointer",
+        opacity: disabled ? 0.4 : 1,
+        ...style,
       }}
     >×</button>
   );
