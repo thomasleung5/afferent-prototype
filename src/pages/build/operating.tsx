@@ -12,8 +12,8 @@ export default function OperatingPage() {
         title="Operating"
         subtitle="Department non-labor spend."
         actions={
-          <Btn kind="ghost" href="/annual/refresh">
-            <Icon name="arrow-up-to-line" size={13}/> Re-import
+          <Btn kind="ghost" href="/source-data#operating">
+            <Icon name="arrow-up-to-line" size={13}/> Import Data
           </Btn>
         }
       />

@@ -11,8 +11,8 @@ export default function VolumePage() {
         title="Volume of Activity"
         subtitle="Annual volume per service."
         actions={
-          <Btn kind="ghost" href="/annual/refresh">
-            <Icon name="arrow-up-to-line" size={13}/> Re-import
+          <Btn kind="ghost" href="/source-data#volume">
+            <Icon name="arrow-up-to-line" size={13}/> Import Data
           </Btn>
         }
       />

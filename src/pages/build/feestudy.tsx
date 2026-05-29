@@ -32,8 +32,8 @@ export default function FeeSchedulePage() {
         subtitle="What fees do we adopt? Current fees compared to calculated cost."
         actions={
           <>
-            <Btn kind="ghost" href="/annual/refresh">
-              <Icon name="arrow-up-to-line" size={13}/> Re-import
+            <Btn kind="ghost" href="/source-data#fees">
+              <Icon name="arrow-up-to-line" size={13}/> Import Data
             </Btn>
             <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
           </>

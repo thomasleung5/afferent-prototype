@@ -1,11 +1,10 @@
 import { Page, PageHeader } from "@/components/layout";
-import { SectionEyebrow } from "@/components/ui";
 import { RefreshImportGrid } from "@/features/annual/RefreshImportGrid";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { useBuildState } from "@/lib/store";
 import { deriveRefreshSummary } from "@/lib/data/annual";
 
-export default function AnnualRefreshPage() {
+export default function SourceDataPage() {
   const state = useBuildState();
   const summary = deriveRefreshSummary({
     imports: state.imports,
@@ -21,9 +20,8 @@ export default function AnnualRefreshPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<SectionEyebrow prefix="Annual Update" label="Refresh inputs"/>}
         title="Source Data"
-        subtitle="Refresh current-year staffing, operating, volume of activity, fee schedule, and CAP inputs."
+        subtitle="Central location for staffing, operating, volume of activity, fee schedule, and CAP inputs feeding the model."
       />
       <StatusRow items={[
         {

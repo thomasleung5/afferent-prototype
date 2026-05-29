@@ -1,6 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import AnnualRefreshPage from "@/src/pages/annual/refresh";
+import { createFileRoute, redirect } from "@tanstack/react-router";
 
+// Source Data was promoted to a top-level route in the nav. The old
+// /annual/refresh path now redirects so any stale links keep working.
 export const Route = createFileRoute("/annual/refresh")({
-  component: AnnualRefreshPage,
+  beforeLoad: () => {
+    throw redirect({ to: "/source-data" });
+  },
 });

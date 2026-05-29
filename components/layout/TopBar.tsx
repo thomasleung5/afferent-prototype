@@ -12,6 +12,7 @@ const NAV: NavItem[] = [
   { href: "/",           label: "Home" },
   { href: "/gap",        label: "Revenue Opportunity" },
   { href: "/build/services", label: "Build Model",    prefix: "/build" },
+  { href: "/source-data", label: "Source Data" },
   { href: "/monitoring", label: "Revenue Monitoring", prefix: "/monitoring" },
   { href: "/annual",     label: "Annual Update",      prefix: "/annual" },
 ];

@@ -11,8 +11,8 @@ export default function ServicesPage() {
         title="Services"
         subtitle="Hours per instance, role allocation."
         actions={
-          <Btn kind="ghost" href="/annual/refresh">
-            <Icon name="arrow-up-to-line" size={13}/> Re-import
+          <Btn kind="ghost" href="/source-data#services">
+            <Icon name="arrow-up-to-line" size={13}/> Import Data
           </Btn>
         }
       />

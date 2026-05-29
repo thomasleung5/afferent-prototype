@@ -1,5 +1,5 @@
 import { Page, PageHeader } from "@/components/layout";
-import { ExportMenu, SectionEyebrow } from "@/components/ui";
+import { Btn, ExportMenu, Icon, SectionEyebrow } from "@/components/ui";
 import { ChangeReviewTable } from "@/features/annual/ChangeReviewTable";
 import { SaveVersionActions } from "@/features/annual/SaveVersionActions";
 import { useExport } from "@/features/build/useExport";
@@ -14,6 +14,9 @@ export default function AnnualChangesPage() {
         title="What changed this update?"
         subtitle="Review updates before generating the adoption packet."
         actions={<>
+          <Btn kind="ghost" href="/source-data">
+            <Icon name="arrow-up-to-line" size={13}/> Refresh Data
+          </Btn>
           <SaveVersionActions/>
           <ExportMenu onDownloadExcel={downloadExcel} pdfHref={pdfHref}/>
         </>}

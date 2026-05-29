@@ -25,8 +25,8 @@ export default function CapPage() {
         subtitle="Citywide indirect, allocated to direct departments."
         actions={
           <>
-            <Btn kind="ghost" href="/annual/refresh">
-              <Icon name="arrow-up-to-line" size={13}/> Re-import
+            <Btn kind="ghost" href="/source-data#cap">
+              <Icon name="arrow-up-to-line" size={13}/> Import Data
             </Btn>
             <ExportMenu
               onDownloadExcel={downloadExcel}

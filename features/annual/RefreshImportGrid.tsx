@@ -197,10 +197,11 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
   const toggle = () => setExpanded((v) => !v);
 
   return (
-    <div style={{
+    <div id={card.domain} style={{
       background: "var(--paper)", border: "1px solid var(--rule)",
       padding: 20,
       display: "flex", flexDirection: "column", gap: 14,
+      scrollMarginTop: 110,
     }}>
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12 }}>
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 6 }}>
