@@ -364,7 +364,9 @@ export function ServicesTable() {
                   <div
                     onClick={(e) => e.stopPropagation()}
                     style={{
-                      padding: "8px 12px", borderTop: "1px solid var(--rule)",
+                      padding: "10px 16px",
+                      borderTop: "1px solid var(--rule-strong)",
+                      background: "var(--paper-2)",
                     }}
                   >
                     <AddRowButton label="Add role" onClick={() => addRole(r)}/>
