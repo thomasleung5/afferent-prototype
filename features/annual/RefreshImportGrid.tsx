@@ -304,22 +304,17 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
         display: "flex", flexDirection: "column", gap: 12,
       }}
     >
-      {/* Concise description + supported document chips */}
-      <div>
-        <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)", lineHeight: 1.5 }}>
-          {importer.extracts}
-        </div>
-        <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
-          {supported.map((label) => (
-            <span key={label} className="mono" style={{
-              fontSize: "var(--t-l4)", color: "var(--ink-2)",
-              padding: "2px 8px",
-              border: "1px solid var(--rule)",
-              background: "var(--paper-2)",
-              letterSpacing: "0.04em",
-            }}>{label}</span>
-          ))}
-        </div>
+      {/* Example source documents */}
+      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
+        {supported.map((label) => (
+          <span key={label} className="mono" style={{
+            fontSize: "var(--t-l4)", color: "var(--ink-2)",
+            padding: "2px 8px",
+            border: "1px solid var(--rule)",
+            background: "var(--paper-2)",
+            letterSpacing: "0.04em",
+          }}>{label}</span>
+        ))}
       </div>
 
       {/* Import actions — PDF primary, paste hidden behind Advanced */}
