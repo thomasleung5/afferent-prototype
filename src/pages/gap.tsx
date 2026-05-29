@@ -78,7 +78,7 @@ export default function RevenueGapPage() {
       ["Drivers", "Operating", fmt.dollars(drivers.operating)],
       ["Drivers", "Overhead Cost Allocation", fmt.dollars(drivers.cap)],
       null,
-      ["Top fixes", "Service", "Dept · Current → Recommended · Annual uplift"],
+      ["Top fixes", "Fee Item", "Dept · Current → Recommended · Annual uplift"],
       ...topFixes.map((c) => [
         "Top fixes",
         c.name,

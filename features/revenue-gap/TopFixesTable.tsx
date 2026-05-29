@@ -44,7 +44,7 @@ export function TopFixesTable({ limit = 12 }: Props) {
   const cols: Column<TopFix>[] = [
     {
       key: "name",
-      label: "Service",
+      label: "Fee Item",
       width: "minmax(280px, 2fr)",
       sortable: true,
       render: (r) => (
