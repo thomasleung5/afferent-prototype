@@ -8,7 +8,7 @@ import {
 import {
   AddRowButton, CellInput, CellSelect,
   DrilldownColumn, DrilldownLabel, DrilldownShell,
-  SectionLabel, SourcePill,
+  RemoveIconButton, SectionLabel, SourcePill,
 } from "@/components/ui";
 import type {
   DeptCode, ProductiveHoursRow, RoleAllocation, Service,
@@ -329,15 +329,10 @@ export function ServicesTable() {
                         <span className="num" style={{ textAlign: "right", color: "var(--ink-3)" }}>
                           {((r.hours * m.pct) / 100).toFixed(1)} h
                         </span>
-                        <button
-                          onClick={(e) => { e.stopPropagation(); removeRole(r, i); }}
+                        <RemoveIconButton
                           title="Remove role"
-                          style={{
-                            color: "var(--ink-4)", fontSize: 14,
-                            lineHeight: 1, padding: "0 4px",
-                            background: "transparent", border: 0, cursor: "pointer",
-                          }}
-                        >×</button>
+                          onClick={(e) => { e.stopPropagation(); removeRole(r, i); }}
+                        />
                       </div>
                     );
                   })}

@@ -1,6 +1,6 @@
 
 import { DataTable, type Column } from "@/components/table";
-import { CellInput, Icon, SectionLabel } from "@/components/ui";
+import { CellInput, RemoveIconButton, SectionLabel } from "@/components/ui";
 import type { PolicyException } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
@@ -59,20 +59,11 @@ export function PolicyExceptions() {
       width: "44px",
       align: "center",
       render: (r) => (
-        <button
-          onClick={() => removePolicyException(r.id)}
+        <RemoveIconButton
           title="Remove exception"
           aria-label="Remove exception"
-          style={{
-            width: 24, height: 24,
-            display: "inline-flex", alignItems: "center", justifyContent: "center",
-            color: "var(--ink-4)", background: "transparent",
-            border: "none",
-            cursor: "pointer",
-          }}
-        >
-          <Icon name="close" size={11}/>
-        </button>
+          onClick={() => removePolicyException(r.id)}
+        />
       ),
     },
   ];

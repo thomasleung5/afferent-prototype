@@ -1,5 +1,5 @@
 import React from "react";
-import { CellInput, CellSelect } from "@/components/ui";
+import { AddRowButton, CellInput, CellSelect, RemoveIconButton } from "@/components/ui";
 import type { FeeFormula, FeeFormulaTier } from "@/lib/types";
 
 /** Structured editor for the Service.formula union. Extracted in PR-M2 so
@@ -167,24 +167,21 @@ function TieredValuationFields({
               onChange={(v) => patchTier(i, { unitSize: Number(v) || 1 })}
               fontSize={12}
             />
-            <button
-              onClick={(e) => { e.stopPropagation(); removeTier(i); }}
+            <RemoveIconButton
               title="Remove tier"
-              style={{
-                color: "var(--ink-4)", fontSize: 14, lineHeight: 1, padding: "0 4px",
-                background: "transparent", border: 0, cursor: "pointer",
-              }}
-            >×</button>
+              onClick={(e) => { e.stopPropagation(); removeTier(i); }}
+            />
           </div>
         ))}
-        <div style={{ padding: "5px 8px", borderTop: "1px solid var(--rule)" }}>
-          <button
-            onClick={(e) => { e.stopPropagation(); addTier(); }}
-            style={{
-              fontSize: 12, color: "var(--accent)",
-              background: "transparent", border: 0, cursor: "pointer", padding: 0,
-            }}
-          >+ Add tier</button>
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            padding: "10px 16px",
+            borderTop: "1px solid var(--rule-strong)",
+            background: "var(--paper-2)",
+          }}
+        >
+          <AddRowButton label="Add tier" onClick={addTier}/>
         </div>
       </div>
     </div>

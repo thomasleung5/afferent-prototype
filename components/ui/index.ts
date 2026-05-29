@@ -1,4 +1,5 @@
 export { AddRowButton } from "./AddRowButton";
+export { RemoveIconButton } from "./RemoveIconButton";
 export { AllocationBasisCombobox } from "./AllocationBasisCombobox";
 export { Btn } from "./Btn";
 export { Icon } from "./Icon";
