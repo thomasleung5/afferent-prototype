@@ -15,8 +15,9 @@ interface TopFix extends FeeComparison {
   gap: number;
 }
 
-/** Top fees by largest cost-recovery shortfall. Pulls from the live
- *  comparisons in BuildState — reflects seed data + imports + edits. */
+/** Top revenue opportunities: fees ranked by annual uplift available at
+ *  the recommended rate. Pulls from the live comparisons in BuildState —
+ *  reflects seed data + imports + edits. */
 export function TopFixesTable({ limit = 12 }: Props) {
   const { derived } = useBuildState();
   const [dept, setDept] = useState("ALL");
@@ -115,7 +116,7 @@ export function TopFixesTable({ limit = 12 }: Props) {
   return (
     <div>
       <SectionLabel right={`${allRows.length} service${allRows.length === 1 ? "" : "s"}`}>
-        Fees with the largest cost-recovery shortfall
+        Top revenue opportunities
       </SectionLabel>
       <DataTable
         cols={cols}
