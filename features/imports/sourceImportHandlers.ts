@@ -92,6 +92,18 @@ export interface ImportHandlerBundle {
 export interface VolumeImportHandlerBundle extends ImportHandlerBundle {
   unmapped: UnmappedRow[];
   setUnmapped: Dispatch<SetStateAction<UnmappedRow[]>>;
+  /** Catalog passed to the volume review panel so the "Map to existing"
+   *  dropdown can list candidate services. Filtered by the panel to the
+   *  unmapped row's dept. */
+  services: { id: string; name: string; dept: string }[];
+  /** Promote the unmapped row at `index` into a brand-new Service +
+   *  VolumeRow pair. Removes the row from the local review list on
+   *  success. Returns the new service id, or null if name/dept couldn't
+   *  be reconstructed. */
+  createServiceForUnmapped: (u: UnmappedRow, index: number) => string | null;
+  /** Attach the unmapped row at `index` to an existing service id.
+   *  Removes the row from the local review list. */
+  mapUnmappedToService: (u: UnmappedRow, index: number, serviceId: string) => void;
 }
 
 export interface CapImportHandlerBundle extends ImportHandlerBundle {
@@ -257,11 +269,25 @@ const VOLUME_SCHEMA = `{
 }`;
 
 export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
-  const { mergeVolume, services, volume } = useBuildState();
+  const {
+    mergeVolume, services, volume,
+    createServiceFromUnmappedVolume, mapUnmappedVolumeToService,
+  } = useBuildState();
   // Unmatched rows are volume-specific (mergeVolume writes them to
   // pendingReview, but the page also surfaces them inline so users see
   // what didn't bind). Populated as a side effect inside the handlers.
   const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
+
+  const removeAt = (i: number) => setUnmapped((prev) => prev.filter((_, j) => j !== i));
+  const createServiceForUnmapped = (u: UnmappedRow, i: number): string | null => {
+    const id = createServiceFromUnmappedVolume(u);
+    if (id) removeAt(i);
+    return id;
+  };
+  const mapUnmappedToService = (u: UnmappedRow, i: number, serviceId: string): void => {
+    mapUnmappedVolumeToService(u, serviceId);
+    removeAt(i);
+  };
 
   const apply = (rows: VolumeRows, source: string) => {
     const extraction = volumeToExtractionResult(rows, services, source, volume);
@@ -296,6 +322,9 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
     pasteSchema: VOLUME_SCHEMA,
     unmapped,
     setUnmapped,
+    services: services.map((s) => ({ id: s.id, name: s.name, dept: s.dept })),
+    createServiceForUnmapped,
+    mapUnmappedToService,
   };
 }
 

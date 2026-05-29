@@ -45,6 +45,7 @@ import {
   DEFAULT_JURISDICTION_ID, getJurisdiction,
 } from "@/lib/data/jurisdictions";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
+import { newServiceId } from "@/lib/ai/serviceId";
 import { createBuildSnapshot, makeStudyVersion } from "./storeSnapshot";
 import { migratePersistedState } from "./storeMigration";
 
@@ -253,6 +254,19 @@ interface BuildActions {
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeVolume: (r: ExtractionResult<VolumeRow>, fileName: string) => ImportApplyResult;
+  /** Promote an unmapped volume review row into a brand-new Service +
+   *  VolumeRow pair. Used by the Source Data volume review panel when
+   *  no existing service matches the imported row. Reuses
+   *  `newServiceId(dept, name)` so re-imports of the same source row
+   *  converge on the same id. Returns the new service id, or null if
+   *  name/dept couldn't be reconstructed from the lineage (e.g.
+   *  ambiguous-dept rows). */
+  createServiceFromUnmappedVolume: (u: UnmappedRow) => string | null;
+  /** Attach an unmapped volume review row to an existing service.
+   *  Used when the volume row was unmatched because the service was
+   *  recorded under a different name in the catalog. The new VolumeRow
+   *  reuses the existing service's id. */
+  mapUnmappedVolumeToService: (u: UnmappedRow, serviceId: string) => void;
   /** Bulk-import a CAP bundle covering centers, bases, basisUnits, pools,
    *  and directAllocations. Centers upsert into capCenterTotals by name;
    *  bases upsert into allocationBases by name (existing entries keep
@@ -970,6 +984,70 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           };
         });
         return result;
+      },
+
+      createServiceFromUnmappedVolume: (u) => {
+        const cells = u.lineage.rawCells ?? {};
+        const name = typeof cells.name === "string" ? cells.name.trim() : "";
+        const deptRaw = typeof cells.dept === "string" ? cells.dept.trim().toUpperCase() : "";
+        const dept = (FEE_DEPTS as readonly string[]).includes(deptRaw)
+          ? (deptRaw as DeptCode)
+          : null;
+        if (!name || !dept) return null;
+        const prior = typeof cells.prior === "number" ? cells.prior : null;
+        const current = typeof cells.current === "number" ? cells.current : null;
+        const unit = typeof cells.unit === "string" && cells.unit.trim()
+          ? cells.unit.trim()
+          : "units";
+        const id = newServiceId(dept, name);
+        const sourceFile = u.lineage.file;
+        const newService: Service = {
+          id, name, dept,
+          volume: current ?? 0,
+          hours: 0,
+          cost: 0,
+          fee: 0,
+          peer: 0,
+          target: 100,
+          source: "imported",
+          sourceFile,
+        };
+        const newVolume: VolumeRow = {
+          id, prior, current, unit,
+          source: "imported",
+          status: "Imported",
+          sourceFile,
+          ...(current == null ? { flag: "missing-current-volume" as const } : {}),
+        };
+        set((s) => ({
+          services: s.services.some((svc) => svc.id === id)
+            ? s.services
+            : [...s.services, newService],
+          volume: [...s.volume.filter((v) => v.id !== id), newVolume],
+          lineage: { ...s.lineage, [id]: u.lineage },
+        }));
+        return id;
+      },
+
+      mapUnmappedVolumeToService: (u, serviceId) => {
+        const cells = u.lineage.rawCells ?? {};
+        const prior = typeof cells.prior === "number" ? cells.prior : null;
+        const current = typeof cells.current === "number" ? cells.current : null;
+        const unit = typeof cells.unit === "string" && cells.unit.trim()
+          ? cells.unit.trim()
+          : "units";
+        const sourceFile = u.lineage.file;
+        const newVolume: VolumeRow = {
+          id: serviceId, prior, current, unit,
+          source: "imported",
+          status: "Imported",
+          sourceFile,
+          ...(current == null ? { flag: "missing-current-volume" as const } : {}),
+        };
+        set((s) => ({
+          volume: [...s.volume.filter((v) => v.id !== serviceId), newVolume],
+          lineage: { ...s.lineage, [serviceId]: u.lineage },
+        }));
       },
 
       mergeVolume: (r, fileName) => {

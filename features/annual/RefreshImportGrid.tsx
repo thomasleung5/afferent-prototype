@@ -8,6 +8,7 @@ import { InlineImportCard } from "@/features/imports/InlineImportCard";
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
+import { CellSelect } from "@/components/ui";
 import {
   useDirectLaborImportHandlers, useOperatingImportHandlers,
   useServicesImportHandlers, useVolumeImportHandlers,
@@ -133,6 +134,9 @@ function VolumeCard({ card, imports }: DomainCardProps) {
         <VolumeUnmappedPanel
           unmapped={importer.unmapped}
           setUnmapped={importer.setUnmapped}
+          services={importer.services}
+          onCreate={importer.createServiceForUnmapped}
+          onMap={importer.mapUnmappedToService}
         />
       )}
     </SourceCardShell>
@@ -391,18 +395,24 @@ function unmappedRowDetails(u: UnmappedRow): {
   };
 }
 
-function VolumeUnmappedPanel({ unmapped, setUnmapped }: {
+interface VolumeUnmappedPanelProps {
   unmapped: UnmappedRow[];
   setUnmapped: (next: UnmappedRow[] | ((prev: UnmappedRow[]) => UnmappedRow[])) => void;
-}) {
+  services: { id: string; name: string; dept: string }[];
+  onCreate: (u: UnmappedRow, index: number) => string | null;
+  onMap: (u: UnmappedRow, index: number, serviceId: string) => void;
+}
+
+function VolumeUnmappedPanel({
+  unmapped, setUnmapped, services, onCreate, onMap,
+}: VolumeUnmappedPanelProps) {
   return (
     <ImportReviewPanel
       label="Unmatched"
       summary={(
         <>
-          {unmapped.length} row{unmapped.length === 1 ? "" : "s"} could not be matched to the catalog. Add the service to
-          {" "}<code style={{ fontFamily: "var(--ff-mono)", fontSize: "var(--t-l8)" }}>lib/data/services.ts</code>{" "}
-          and re-import, or skip.
+          {unmapped.length} row{unmapped.length === 1 ? "" : "s"} did not match an existing service.
+          Map each to an existing service, create a new service from the row, or skip.
         </>
       )}
       actions={(
@@ -413,26 +423,40 @@ function VolumeUnmappedPanel({ unmapped, setUnmapped }: {
     >
       {unmapped.map((u, i) => {
         const d = unmappedRowDetails(u);
+        const candidates = services
+          .filter((s) => s.dept === d.dept)
+          .sort((a, b) => a.name.localeCompare(b.name));
+        const placeholder = candidates.length > 0
+          ? "Map to existing service…"
+          : `No services in ${d.dept}`;
         return (
           <ImportReviewRow
             key={i}
-            columns="minmax(220px, 2fr) 64px 80px 80px minmax(140px, 1fr) 60px"
+            columns="minmax(220px, 1.8fr) 80px minmax(160px, 1.2fr) auto auto"
             isLast={i === unmapped.length - 1}
           >
-            <span style={{ color: "var(--ink)" }}>{d.name}</span>
-            <span className="mono" style={{
-              fontSize: "var(--t-l4)", color: "var(--ink-3)",
-              letterSpacing: "0.06em",
-            }}>{d.dept}</span>
-            <span className="num" style={{
-              textAlign: "right", color: "var(--ink-3)",
-              fontVariantNumeric: "tabular-nums",
-            }}>{d.prior}</span>
+            <div style={{ display: "flex", flexDirection: "column", gap: 2, minWidth: 0 }}>
+              <span style={{ color: "var(--ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{d.name}</span>
+              <span className="mono" style={{
+                fontSize: "var(--t-l8)", color: "var(--ink-3)",
+                letterSpacing: "0.04em",
+              }}>{d.dept} · {d.reason}</span>
+            </div>
             <span className="num" style={{
               textAlign: "right", color: "var(--ink-2)",
               fontVariantNumeric: "tabular-nums",
             }}>{d.current}</span>
-            <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{d.reason}</span>
+            <CellSelect
+              value=""
+              options={[
+                { value: "", label: placeholder },
+                ...candidates.map((s) => ({ value: s.id, label: s.name })),
+              ]}
+              onChange={(v) => { if (v) onMap(u, i, v); }}
+            />
+            <ImportReviewAction onClick={() => onCreate(u, i)}>
+              Create new
+            </ImportReviewAction>
             <ImportReviewAction
               align="right"
               onClick={() => setUnmapped((prev) => prev.filter((_, j) => j !== i))}
