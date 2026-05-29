@@ -23,7 +23,7 @@ export default function FeeBenchmarkExportPage() {
 function Toolbar({ payload }: { payload: BenchmarkPayload }) {
   return (
     <ExportToolbar
-      subtitle={`${payload.cityName} · ${payload.fiscal} fee benchmark`}
+      subtitle={`${payload.cityName} · ${payload.fiscal} fee benchmarks`}
     />
   );
 }
@@ -44,7 +44,7 @@ function Cover({ payload }: { payload: BenchmarkPayload }) {
   return (
     <ExportCover
       city={payload.cityName}
-      title="Fee Benchmark Database"
+      title="Fee Benchmarks Database"
       subtitle="Adopted fees in peer cities · variance vs. peer median & calculated cost"
       fields={[
         { label: "Fiscal year",  value: payload.fiscal },

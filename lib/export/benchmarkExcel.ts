@@ -64,7 +64,7 @@ export async function exportBenchmarkXlsx(p: BenchmarkExportPayload): Promise<Bl
 function buildSummary(p: BenchmarkExportPayload): Cell[][] {
   const s = p.summary;
   return [
-    [h("Fee Benchmark · Export Summary")],
+    [h("Fee Benchmarks · Export Summary")],
     [],
     [h("City"),         p.cityName],
     [h("Fiscal year"),  p.fiscal],

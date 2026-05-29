@@ -14,7 +14,7 @@ const NODE_LABEL: Record<NodeId, string> = {
   costs:      "Cost of Service",
   policy:     "Recovery Policy",
   feestudy:   "Fee Schedule",
-  benchmark:  "Fee Benchmark",
+  benchmark:  "Fee Benchmarks",
 };
 
 interface Props {

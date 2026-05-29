@@ -30,7 +30,7 @@ export default function FeeBenchmarkPage() {
     <Page>
       <PageHeader
         eyebrow={<NodeEyebrow node="benchmark"/>}
-        title="Fee Benchmark"
+        title="Fee Benchmarks"
         subtitle="Adopted fees vs. peer-city medians."
         actions={
           <ExportMenu

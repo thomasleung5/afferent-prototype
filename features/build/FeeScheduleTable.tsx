@@ -377,7 +377,7 @@ export function FeeScheduleTable() {
                     color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
                   }}
                 >
-                  View fee benchmark →
+                  View fee benchmarks →
                 </Link>
               </div>
             </DrilldownColumn>
