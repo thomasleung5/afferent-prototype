@@ -75,8 +75,11 @@ export interface ImportHandlerBundle {
   title: string;
   /** One-line description shown under the title. */
   helper: string;
-  /** Help text rendered next to the PDF upload button. */
-  aiPdfHelper: string;
+  /** Concise sentence (~one line) listing what fields this import
+   *  extracts. Surfaced as the single descriptive line below the card
+   *  header — the supported-document chips and the upload button stand
+   *  in for the rest of the previous "What to upload" guidance. */
+  extracts: string;
   /** Inline example shape (e.g. "{ items: [...] }"). */
   pasteExample: string;
   /** Optional richer help line for the paste button. */
@@ -137,7 +140,7 @@ export function useDirectLaborImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Direct Labor",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    aiPdfHelper: "Send a personnel budget or salary and benefits report PDF. We'll extract position, department, FTE, salary, benefits, and hours.",
+    extracts: "Extracts positions, departments, FTEs, salaries, benefits, and productive hours.",
     pasteExample: "{ positions: [...] }",
     pasteHelper: "Paste structured output shaped like { positions: [...] }.",
     pasteSchema: DIRECT_LABOR_SCHEMA,
@@ -186,7 +189,7 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Operating",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    aiPdfHelper: "Send a budget book or expenditure detail PDF. We'll extract operating line items AND personnel/salary-benefit lines; labor rows are auto-classified into Salary or Benefits from the line text.",
+    extracts: "Extracts operating expenditures and personnel line items, auto-classified into Salary, Benefits, or Operating.",
     pasteExample: "{ operating: [...] }",
     pasteHelper: "Paste structured output shaped like { operating: [...] }.",
     pasteSchema: OPERATING_SCHEMA,
@@ -237,7 +240,7 @@ export function useServicesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Services",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    aiPdfHelper: "Send a prior fee study or cost-of-service PDF. We'll extract service names, hours, volume, and fees.",
+    extracts: "Extracts service names, departments, hours per unit, volumes, and current fees.",
     pasteExample: "{ services: [...] }",
     pasteHelper: "Paste structured output shaped like { services: [...] }.",
     pasteSchema: SERVICES_SCHEMA,
@@ -286,7 +289,7 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
     }),
     title: "Import Volume of Activity",
     helper: "Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog.",
-    aiPdfHelper: "Send an annual report, permit-volume table, or volume-of-activity appendix. We'll extract service-level volume counts and match them to the existing catalog.",
+    extracts: "Extracts service-level volume counts and matches them to the existing services catalog.",
     pasteExample: "{ items: [...] }",
     pasteHelper: "Paste structured output shaped like { items: [...] }.",
     pasteSchema: VOLUME_SCHEMA,
@@ -325,7 +328,7 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Fee Schedule",
     helper: "Import fees via Claude (PDF) or by pasting LLM JSON output.",
-    aiPdfHelper: "Sends PDF directly to Claude — skips fuzzy matching, returns structured fees",
+    extracts: "Extracts adopted fees, units, current rates, and recovery targets.",
     pasteExample: "{ fees: [...] }",
   };
 }
@@ -436,7 +439,7 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
     }),
     title: "Import Overhead Cost Allocation",
     helper: "Imports centers, allocation bases, and cost pools.",
-    aiPdfHelper: "Upload a Cost Allocation Plan PDF.",
+    extracts: "Extracts cost centers, allocation bases, basis units, cost pools, and direct allocations.",
     pasteExample: "{ centers?, bases?, pools? }",
     pasteHelper: "Paste JSON shaped like { centers?, bases?, pools? }.",
     pasteSchema: CAP_SCHEMA,

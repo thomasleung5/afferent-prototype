@@ -310,15 +310,14 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
       onClick={(e) => e.stopPropagation()}
       style={{
         borderTop: "1px solid var(--rule)",
-        padding: "16px 20px 20px",
-        display: "flex", flexDirection: "column", gap: 14,
+        padding: "14px 20px 18px",
+        display: "flex", flexDirection: "column", gap: 12,
       }}
     >
-      {/* Contextual guidance */}
+      {/* Concise description + supported document chips */}
       <div>
-        <SubsectionEyebrow>What to upload</SubsectionEyebrow>
-        <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)", lineHeight: 1.55 }}>
-          {importer.aiPdfHelper}
+        <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)", lineHeight: 1.5 }}>
+          {importer.extracts}
         </div>
         <div style={{ display: "flex", flexWrap: "wrap", gap: 6, marginTop: 8 }}>
           {supported.map((label) => (
@@ -333,14 +332,14 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
         </div>
       </div>
 
-      {/* Import actions */}
+      {/* Import actions — PDF primary, paste hidden behind Advanced */}
       <InlineImportCard
-        aiPdfHelper={importer.aiPdfHelper}
         onAiPdfImport={importer.aiPdf}
         pasteExample={importer.pasteExample}
         pasteHelper={importer.pasteHelper}
         pasteSchema={importer.pasteSchema}
         onPasteJson={importer.pasteJson}
+        pasteAdvanced
       />
 
       {/* Domain-specific review (volume unmapped, cap unbound bases) */}

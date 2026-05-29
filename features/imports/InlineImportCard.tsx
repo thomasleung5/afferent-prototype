@@ -1,12 +1,10 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Btn, Icon } from "@/components/ui";
+import { Btn, ExpandIndicator, Icon } from "@/components/ui";
 
 interface Props {
   // ── PDF upload action ──────────────────────────────────────────────────
   /** Label for the PDF upload button. Defaults to "Upload PDF". */
   aiPdfLabel?: string;
-  /** Short helper text shown next to the upload status. */
-  aiPdfHelper?: ReactNode;
   /** Accept attr for the PDF file input. Defaults to ".pdf". */
   aiPdfAccept?: string;
   /** Visual emphasis for the PDF action — primary by default; secondary
@@ -30,6 +28,10 @@ interface Props {
   /** When provided, the paste button is rendered + wired to
    *  navigator.clipboard.readText() → handler. */
   onPasteJson?: (text: string) => Promise<{ ok: boolean; message: string }>;
+  /** When true, the paste action is collapsed behind an "Advanced"
+   *  disclosure and the inline OR divider is suppressed — PDF upload
+   *  stays the primary affordance. */
+  pasteAdvanced?: boolean;
 }
 
 type Status = { ok: boolean; message: string } | null;
@@ -40,7 +42,6 @@ type Status = { ok: boolean; message: string } | null;
  *  metadata. */
 export function InlineImportCard({
   aiPdfLabel = "Upload PDF",
-  aiPdfHelper,
   aiPdfAccept = ".pdf",
   aiPdfPrimary = true,
   onAiPdfImport,
@@ -49,6 +50,7 @@ export function InlineImportCard({
   pasteExample,
   pasteSchema,
   onPasteJson,
+  pasteAdvanced = false,
 }: Props) {
   // Per-action state: loading flags + last status message. Independent so
   // a stale AI message doesn't get clobbered by a clipboard paste click.
@@ -56,6 +58,7 @@ export function InlineImportCard({
   const [aiStatus, setAiStatus] = useState<Status>(null);
   const [pasteLoading, setPasteLoading] = useState(false);
   const [pasteStatus, setPasteStatus] = useState<Status>(null);
+  const [advancedOpen, setAdvancedOpen] = useState(false);
 
   const aiPdfInputRef = useRef<HTMLInputElement>(null);
 
@@ -97,7 +100,7 @@ export function InlineImportCard({
   };
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
+    <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {onAiPdfImport && (
         <ActionPanel
           tone={aiPdfPrimary ? "primary" : "secondary"}
@@ -106,7 +109,6 @@ export function InlineImportCard({
           buttonText={aiLoading ? "Uploading…" : aiPdfLabel}
           buttonDisabled={aiLoading}
           onClick={() => aiPdfInputRef.current?.click()}
-          helper={aiPdfHelper}
           loadingText="Extracting from PDF — this can take 30–60s"
           loading={aiLoading}
           status={aiStatus}
@@ -121,9 +123,9 @@ export function InlineImportCard({
         </ActionPanel>
       )}
 
-      {onAiPdfImport && onPasteJson && <OrDivider/>}
+      {onAiPdfImport && onPasteJson && !pasteAdvanced && <OrDivider/>}
 
-      {onPasteJson && (
+      {onPasteJson && !pasteAdvanced && (
         <ActionPanel
           tone="secondary"
           label={pasteLabel}
@@ -140,6 +142,47 @@ export function InlineImportCard({
           loading={pasteLoading}
           status={pasteStatus}
         />
+      )}
+
+      {onPasteJson && pasteAdvanced && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setAdvancedOpen((v) => !v)}
+            aria-expanded={advancedOpen}
+            style={{
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "transparent", border: "none",
+              padding: "2px 0",
+              cursor: "pointer",
+              fontFamily: "var(--ff-mono)",
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+            }}
+          >
+            Advanced <ExpandIndicator open={advancedOpen}/>
+          </button>
+          {advancedOpen && (
+            <div style={{ marginTop: 10 }}>
+              <ActionPanel
+                tone="secondary"
+                label={pasteLabel}
+                buttonText={pasteLoading ? "Reading clipboard…" : pasteLabel}
+                buttonDisabled={pasteLoading}
+                onClick={runPaste}
+                helper={
+                  pasteHelper ?? (pasteExample
+                    ? (<>Paste structured output shaped like <code style={{ fontFamily: "var(--ff-mono)", fontSize: "var(--t-l8)" }}>{pasteExample}</code>.</>)
+                    : undefined)
+                }
+                schema={pasteSchema}
+                loadingText="Parsing clipboard JSON…"
+                loading={pasteLoading}
+                status={pasteStatus}
+              />
+            </div>
+          )}
+        </div>
       )}
 
       {!onAiPdfImport && !onPasteJson && (
@@ -204,9 +247,6 @@ function ActionPanel({
   const isPrimary = tone === "primary";
   return (
     <div style={{
-      background: isPrimary ? "var(--paper)" : "var(--paper-2)",
-      border: `1px solid ${isPrimary ? "var(--rule-strong)" : "var(--rule)"}`,
-      padding: "14px 16px",
       display: "flex", flexDirection: "column", gap: 8,
     }}>
       <div style={{
