@@ -91,7 +91,7 @@ export function OperatingSummary() {
               };
             })}
             total={{
-              label: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
+              label: <TotalEyebrow>Total {labelOf(d)}</TotalEyebrow>,
               lines: <span className="num">{direct.length + (r.shared > 0 ? shared.length : 0)}</span>,
               share: <span className="num">100%</span>,
               amt:   <span className="num">{fmt.dollars(r.total)}</span>,

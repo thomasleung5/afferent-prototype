@@ -76,7 +76,7 @@ export function CapSummary() {
               };
             })}
             total={{
-              pool: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
+              pool: <TotalEyebrow>Total {labelOf(d)}</TotalEyebrow>,
               basis: "",
               share: <span className="num">100%</span>,
               alloc: <span className="num">{fmt.dollars(allocated)}</span>,

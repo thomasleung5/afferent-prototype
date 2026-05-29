@@ -76,7 +76,7 @@ export function LaborSummary() {
               };
             })}
             total={{
-              account: <TotalEyebrow>Total to {labelOf(d)}</TotalEyebrow>,
+              account: <TotalEyebrow>Total {labelOf(d)}</TotalEyebrow>,
               share: <span className="num">100%</span>,
               comp:  <span className="num">{fmt.dollars(r.totalComp)}</span>,
             }}
