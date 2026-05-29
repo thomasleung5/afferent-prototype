@@ -6,8 +6,6 @@ interface PositionRow {
   title: string;
   dept: string;
   fte: number;
-  salary: number;
-  benefits: number;
   hours: number;
   confidence: "high" | "low";
 }
@@ -47,18 +45,22 @@ export function directLaborToExtractionResult(
       file: fileName,
       sheet: "AI parsed",
       row: i + 1,
-      rawCells: { title: row.title, dept: row.dept, salary: row.salary },
+      rawCells: { title: row.title, dept: row.dept, fte: row.fte },
       confidence: row.confidence === "high" ? ("high" as const) : ("review" as const),
       importedAt: now,
     };
 
+    // Labor cost (salary + benefits) is owned by the Operating Budget
+    // import; positions only carry roster identity (FTE, productive
+    // hours). The Position type still keeps salary/benefits fields for
+    // the seed catalog used by initialState, so set them to zero here.
     const entity: Position = {
       id: `pos-ai-${Date.now()}-${i}`,
       title: row.title,
       dept,
       fte: row.fte ?? 1,
-      salary: row.salary ?? 0,
-      benefits: row.benefits ?? 0,
+      salary: 0,
+      benefits: 0,
       hours: row.hours ?? 1720,
       source: "imported",
       sourceFile: fileName,

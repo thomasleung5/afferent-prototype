@@ -106,7 +106,7 @@ export interface CapImportHandlerBundle extends ImportHandlerBundle {
 
 const DIRECT_LABOR_SCHEMA = `{
   positions: [
-    { title, dept, fte, salary, benefits, hours, confidence }
+    { title, dept, fte, hours, confidence }
   ]
 }`;
 
@@ -144,8 +144,8 @@ export function useDirectLaborImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Direct Labor",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    tagline: "FTEs, salaries, benefits, productive hours",
-    extracts: "Extracts positions, departments, FTEs, salaries, benefits, and productive hours.",
+    tagline: "Positions, departments, FTEs, productive hours",
+    extracts: "Extracts the staff roster (positions, departments, FTEs, and productive hours). Salary and benefit dollar amounts come from the Operating Budget import.",
     pasteExample: "{ positions: [...] }",
     pasteHelper: "Paste structured output shaped like { positions: [...] }.",
     pasteSchema: DIRECT_LABOR_SCHEMA,
