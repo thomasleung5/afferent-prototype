@@ -61,28 +61,29 @@ export interface AnnualChange {
 export interface RefreshSectionCard {
   domain: Domain;
   name: string;
-  section: string;
-  rows: number;
-  mapped: number;
+  /** Σ low-confidence rows across this domain's imports — the
+   *  warn-tone "X items need review" badge in the collapsed card. */
   review: number;
-  conf: ConfLevel;
-  importCount: number;
+  /** Timestamp of the most recent import for this domain. Folded into
+   *  the global lastRefresh in deriveRefreshSummary. */
   lastImport: string | undefined;
+  /** True when at least one import has landed for this domain.
+   *  Switches the collapsed card status between "Imported · N" and
+   *  "Not Imported", and drives whether the domain is counted in
+   *  Sources Connected. */
   hasImports: boolean;
+  /** Current row count in state for this domain — drives the
+   *  "Imported · N positions / line items / …" status line. Named
+   *  "seedCount" because it predates imports; reflects post-merge
+   *  state once imports have run. */
   seedCount: number;
-  href: string;
 }
 
 interface RefreshSummary {
-  totalRows: number;
-  totalMapped: number;
   totalReview: number;
-  autoPct: number;
   inputsRefreshed: number;
   totalInputs: number;
-  confidence: ConfLevel;
   lastRefresh: string;
-  hasImports: boolean;
 }
 
 interface RecoveryDelta {
@@ -137,30 +138,20 @@ export function deriveRefreshSections(input: AnnualInput): RefreshSectionCard[] 
 export function deriveRefreshSummary(input: AnnualInput): RefreshSummary {
   const cards = deriveRefreshSections(input);
   const importedCards = cards.filter((c) => c.hasImports);
-  const totalRows   = importedCards.reduce((a, c) => a + c.rows, 0);
-  const totalMapped = importedCards.reduce((a, c) => a + c.mapped, 0);
   const totalReview = importedCards.reduce((a, c) => a + c.review, 0);
-  const autoPct = totalRows > 0 ? Math.round((totalMapped / totalRows) * 100) : 0;
   const lastRefresh = importedCards
     .map((c) => c.lastImport).filter(Boolean)
     .sort().reverse()[0];
   return {
-    totalRows,
-    totalMapped,
     totalReview,
-    autoPct,
     inputsRefreshed: importedCards.length,
     totalInputs: ALL_DOMAINS.length,
-    confidence: confidenceFor(totalMapped, totalRows),
     lastRefresh: lastRefresh ? formatStamp(lastRefresh) : "Seed data",
-    hasImports: importedCards.length > 0,
   };
 }
 
 function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCard {
   const matching = input.imports.filter((e) => e.domain === domain);
-  const rows = matching.reduce((a, e) => a + e.result.rows, 0);
-  const mapped = matching.reduce((a, e) => a + e.result.mapped, 0);
   const review = matching.reduce((a, e) => a + e.result.lowConfidence, 0);
   const lastImport = matching.length > 0
     ? matching.reduce((a, b) => (b.id > a.id ? b : a)).at
@@ -168,16 +159,10 @@ function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCar
   return {
     domain,
     name: SOURCE_NAMES[domain],
-    section: DOMAIN_LABEL[domain],
-    rows,
-    mapped,
     review,
-    conf: matching.length > 0 ? confidenceFor(mapped, rows) : "High",
-    importCount: matching.length,
     lastImport,
     hasImports: matching.length > 0,
     seedCount: seedCountFor(domain, input),
-    href: DOMAIN_HREF[domain],
   };
 }
 
