@@ -44,9 +44,9 @@ export default function FeeSchedulePage() {
         { label: "Fees",                value: `${comparisons.length}` },
         { label: "At target",           value: `${atTarget}` },
         { label: "Below target",        value: `${belowTarget}` },
-        { label: "Current revenue",     value: `${fmt.dollarsK(revenueNow)}/yr` },
-        { label: "Target revenue",      value: `${fmt.dollarsK(targetRevenue)}/yr` },
-        { label: "Net adoption impact", value: `${netAdoptionImpact >= 0 ? "+" : ""}${fmt.dollarsK(netAdoptionImpact)}/yr`, tone: netAdoptionImpact >= 0 ? "pos" : "neg" },
+        { label: "Current fee revenue",         value: `${fmt.dollarsK(revenueNow)}/yr` },
+        { label: "Revenue at recommended fees", value: `${fmt.dollarsK(targetRevenue)}/yr` },
+        { label: "Additional annual revenue",   value: `${netAdoptionImpact >= 0 ? "+" : ""}${fmt.dollarsK(netAdoptionImpact)}/yr`, tone: netAdoptionImpact >= 0 ? "pos" : "neg" },
       ]}/>
 
       <FeeScheduleTable/>
