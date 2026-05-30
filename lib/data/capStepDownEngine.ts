@@ -1,8 +1,7 @@
 /* glCode-native CAP step-down engine.
  *
  * STRICT glCode routing: every allocation flow routes through a node.key
- * (which IS the node's glCode). deptCode survives ONLY as classification
- * metadata — it never determines a routing destination:
+ * (which IS the node's glCode). deptCode is classification metadata:
  *   - feeDept tags direct nodes for FBHR roll-up (sum by classification).
  *   - classification labels nodes for display / debug.
  *
