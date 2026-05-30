@@ -371,7 +371,7 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
   };
 }
 
-// ─── Overhead Cost Allocation (CAP) ────────────────────────────────────
+// ─── Overhead Costs (CAP bundle) ───────────────────────────────────────
 
 const CAP_SCHEMA = `{
   centers: [{ name, glCode, totalCost, confidence }],
@@ -475,7 +475,7 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
         }, source);
       },
     }),
-    title: "Import Overhead Cost Allocation",
+    title: "Import Overhead Costs",
     helper: "Imports centers, allocation bases, and cost pools.",
     tagline: "Indirect cost allocation methodology",
     pasteExample: "{ centers?, bases?, pools? }",

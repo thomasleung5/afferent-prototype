@@ -14,9 +14,9 @@ const labelOf = deptName;
 /** Per-dept CAP rollup. Each row expands to a pool ledger + method/formula/source.
  *  Allocated $ is read-only here — it's an output of the step-down engine over
  *  the cost pools, not a manually-entered override. */
-export function CapSummary() {
+export function OverheadSummary() {
   const { capPools, derived } = useBuildState();
-  const { dept: searchDept } = useSearch({ from: "/build/cap" });
+  const { dept: searchDept } = useSearch({ from: "/build/overhead-costs" });
   const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
@@ -96,7 +96,7 @@ export function CapSummary() {
   return (
     <div>
       <SectionLabel right={`${rows.length} departments · ${capPools.length} pools`}>
-        Allocated overhead by department
+        Overhead Costs by Department
       </SectionLabel>
       <DeptSummaryTable
         autoOpenKey={searchDept}

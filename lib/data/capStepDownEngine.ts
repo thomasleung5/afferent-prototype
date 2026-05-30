@@ -813,7 +813,7 @@ export function capAllocatedFromGl(
 
 /** Per-pool allocation into a single fee dept. Sums alloc2 cells across
  *  every direct node whose feeDept matches. Used by the per-pool drilldown
- *  panels (CapSummary, CostOfServiceTable, RateDerivation). */
+ *  panels (OverheadSummary, CostOfServiceTable, RateDerivation). */
 export function poolToFeeDept(
   model: GlStepDownModel, poolId: string, dept: DeptCode,
 ): number {

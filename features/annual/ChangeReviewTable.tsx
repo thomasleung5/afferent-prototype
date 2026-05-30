@@ -141,7 +141,7 @@ export function ChangeReviewTable() {
         { value: "ALL", label: "All" },
         { value: "SAL", label: "Labor" },
         { value: "VOL", label: "Volume" },
-        { value: "CAP", label: "Overhead Cost Allocation" },
+        { value: "CAP", label: "Overhead Costs" },
         { value: "FEE", label: "Fee schedule" },
         { value: "SVC", label: "Services" },
         { value: "OPS", label: "Operating" },

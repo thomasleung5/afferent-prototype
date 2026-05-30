@@ -6,9 +6,9 @@ import {
 import { fmt } from "@/lib/format";
 import type { AllocationBasis, CapPool } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { deriveCenters } from "./CapKpiRail";
+import { deriveCenters } from "./OverheadKpiRail";
 
-export function CapPoolsTable() {
+export function OverheadPoolsTable() {
   const {
     capPools, capCenterOrder, capCenterSources, allocationBases,
     addCapPool, updateCapPool, addAllocationBasis,

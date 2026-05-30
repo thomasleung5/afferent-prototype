@@ -7,7 +7,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   services: "Services",
   fees: "Fee Schedule",
   volume: "Volume of Activity",
-  cap: "Overhead Cost Allocation",
+  cap: "Overhead Costs",
 };
 
 function formatImportedAt(iso: string): string {

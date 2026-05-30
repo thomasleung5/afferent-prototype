@@ -1,27 +1,27 @@
 import { useState } from "react";
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, ExportMenu, Icon, NodeEyebrow } from "@/components/ui";
-import { useCapExport } from "@/features/build/useCapExport";
-import { CapCentersTable } from "@/features/build/CapCentersTable";
-import { CapSummary } from "@/features/build/CapSummary";
-import { CapPoolsTable } from "@/features/build/CapPoolsTable";
-import { CapStepNav, type CapStep } from "@/features/build/CapStepNav";
+import { useOverheadExport } from "@/features/build/useOverheadExport";
+import { OverheadCentersTable } from "@/features/build/OverheadCentersTable";
+import { OverheadSummary } from "@/features/build/OverheadSummary";
+import { OverheadPoolsTable } from "@/features/build/OverheadPoolsTable";
+import { OverheadStepNav, type OverheadStep } from "@/features/build/OverheadStepNav";
 import { AllocationBases } from "@/features/build/AllocationBases";
 import { AllocationDetailReport } from "@/features/build/AllocationDetailReport";
 import { AllocationMatrixByCenter } from "@/features/build/AllocationMatrixByCenter";
 
-export default function CapPage() {
-  const { downloadExcel, pdfHref } = useCapExport();
-  const [step, setStep] = useState<CapStep>("centers");
+export default function OverheadCostsPage() {
+  const { downloadExcel, pdfHref } = useOverheadExport();
+  const [step, setStep] = useState<OverheadStep>("centers");
 
   return (
     <Page>
-      {/* In-app uses the operational label "Overhead Cost Allocation".
-        * The published PDF deliverable uses the formal name "Cost
-        * Allocation Plan" — see src/pages/export/cap-allocation.tsx. */}
+      {/* In-app uses "Overhead Costs". The published PDF deliverable
+        * uses the formal name "Cost Allocation Plan" — see
+        * src/pages/export/cap-allocation.tsx. */}
       <PageHeader
         eyebrow={<NodeEyebrow node="cap"/>}
-        title="Overhead Cost Allocation"
+        title="Overhead Costs"
         subtitle="Citywide indirect, allocated to direct departments."
         actions={
           <>
@@ -40,13 +40,13 @@ export default function CapPage() {
         }
       />
 
-      <CapSummary/>
+      <OverheadSummary/>
 
-      <CapStepNav current={step} onJump={setStep}/>
+      <OverheadStepNav current={step} onJump={setStep}/>
 
-      {step === "centers" && <CapCentersTable/>}
+      {step === "centers" && <OverheadCentersTable/>}
 
-      {step === "pools" && <CapPoolsTable/>}
+      {step === "pools" && <OverheadPoolsTable/>}
 
       {step === "drivers" && <AllocationBases/>}
 

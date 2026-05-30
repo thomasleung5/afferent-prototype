@@ -225,11 +225,11 @@ function deriveStaffActions(
     const deptName = DEPTS[worstDept.dept].name.replace(" Administration", "");
     actions.push({
       id: `SA-${worstDept.dept}`,
-      title: `Re-run overhead cost allocation`,
+      title: `Re-run overhead costs`,
       rationale: `${deptName} recovery is ${Math.abs(worstDept.drift)} pts below target`,
       fiscalImpact: worstDept.subsidy,
-      nextStep: "Open Overhead Cost Allocation",
-      nextHref: "/build/cap",
+      nextStep: "Open Overhead Costs",
+      nextHref: "/build/overhead-costs",
     });
   }
   if (impact.recoverableGap > 0) {

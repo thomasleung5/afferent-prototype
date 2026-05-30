@@ -5,7 +5,7 @@ const ITEMS: SubNavItem[] = [
   { href: "/build/services",               label: "Services" },
   { href: "/build/labor",                  label: "Labor" },
   { href: "/build/operating",              label: "Operating" },
-  { href: "/build/cap",                    label: "Overhead Allocation" },
+  { href: "/build/overhead-costs",         label: "Overhead Costs" },
   { href: "/build/functional-allocation",  label: "Functional Allocation" },
   { href: "/build/volume",                 label: "Volume" },
   { href: "/build/costs",                  label: "Cost of Service" },

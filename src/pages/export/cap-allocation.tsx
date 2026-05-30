@@ -117,9 +117,9 @@ function Cover({ payload }: { payload: CapExportPayload }) {
   const totalDis = Object.values(payload.capCenterDisallowed).reduce((a, v) => a + v, 0);
   const totalNet = Math.max(0, totalGross - totalDis);
   // Published deliverable uses the formal name "Full Cost Allocation
-  // Plan". The in-app page (src/pages/build/cap.tsx) uses the
-  // operational label "Overhead Cost Allocation" — same artifact,
-  // different audience.
+  // Plan". The in-app page (src/pages/build/overhead-costs.tsx) uses
+  // the operational label "Overhead Costs" — same artifact, different
+  // audience.
   return (
     <ExportCover
       city={payload.cityName}

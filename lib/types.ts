@@ -566,7 +566,7 @@ export interface PolicyException {
 
 /* ---------- Functional Allocation ----------
  *
- * After Overhead Allocation, each department's fully burdened cost
+ * After overhead costs are allocated, each department's fully burdened cost
  * (direct labor + departmental operating + allocated CAP) is broken
  * into operational functional buckets — Plan Check, Public Counter,
  * Long Range Planning, Code Enforcement, etc. Each bucket carries a

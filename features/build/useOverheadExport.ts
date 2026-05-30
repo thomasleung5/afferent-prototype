@@ -6,9 +6,9 @@ import { slugCity } from "@/lib/printing";
 import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
 import { capAllocatedFromGl } from "@/lib/data/capStepDownEngine";
 
-/** CAP-specific Export handlers. PDF opens the print route in a new tab;
+/** Overhead-page Export handlers. PDF opens the print route in a new tab;
  *  Excel builds an .xlsx workbook from the live engine model. */
-export function useCapExport() {
+export function useOverheadExport() {
   const state = useBuildState();
 
   const buildPayload = useCallback((): CapExportPayload => ({

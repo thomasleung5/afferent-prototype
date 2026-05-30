@@ -1,9 +1,9 @@
 
-export type CapStep =
+export type OverheadStep =
   | "centers" | "pools" | "drivers"
   | "detail" | "matrixByCenter";
 
-const CAP_STEPS: { id: CapStep; label: string }[] = [
+const OVERHEAD_STEPS: { id: OverheadStep; label: string }[] = [
   { id: "centers",        label: "Indirect Cost Centers" },
   { id: "pools",          label: "Cost Pools" },
   { id: "drivers",        label: "Allocation Bases" },
@@ -12,21 +12,21 @@ const CAP_STEPS: { id: CapStep; label: string }[] = [
 ];
 
 interface Props {
-  current: CapStep;
-  onJump: (step: CapStep) => void;
+  current: OverheadStep;
+  onJump: (step: OverheadStep) => void;
 }
 
-/** Sub-tab row for the CAP page. Visual mirrors the main Build Model tab row
+/** Sub-tab row for the Overhead Costs page. Visual mirrors the main Build Model tab row
  *  (components/layout/SubNav) — underline on the active tab — but is driven
  *  by local state instead of routing. */
-export function CapStepNav({ current, onJump }: Props) {
+export function OverheadStepNav({ current, onJump }: Props) {
   return (
     <div style={{
       borderBottom: "1px solid var(--rule)",
       background: "var(--paper)",
       display: "flex", gap: 0, alignItems: "stretch",
     }}>
-      {CAP_STEPS.map((s, i) => {
+      {OVERHEAD_STEPS.map((s, i) => {
         const on = s.id === current;
         return (
           <button
@@ -41,7 +41,7 @@ export function CapStepNav({ current, onJump }: Props) {
               color: on ? "var(--ink)" : "var(--ink-3)",
               background: on ? "var(--paper-2)" : "transparent",
               borderTop: "none", borderLeft: "none",
-              borderRight: i < CAP_STEPS.length - 1 ? "1px solid var(--rule)" : "none",
+              borderRight: i < OVERHEAD_STEPS.length - 1 ? "1px solid var(--rule)" : "none",
               borderBottom: on ? "2px solid var(--accent)" : "2px solid transparent",
               marginBottom: -1,
               cursor: "pointer",

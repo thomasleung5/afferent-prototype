@@ -23,7 +23,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   services:  "Services",
   fees:      "Fee schedule",
   volume:    "Volume of Activity",
-  cap:       "Overhead Cost Allocation",
+  cap:       "Overhead Costs",
 };
 
 const DOMAIN_HREF: Record<Domain, string> = {
@@ -32,7 +32,7 @@ const DOMAIN_HREF: Record<Domain, string> = {
   services:  "/build/services",
   fees:      "/build/feestudy",
   volume:    "/build/volume",
-  cap:       "/build/cap",
+  cap:       "/build/overhead-costs",
 };
 
 const DOMAIN_SECTION_CODE: Record<Domain, string> = {

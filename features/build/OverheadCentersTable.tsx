@@ -4,7 +4,7 @@ import { CellInput, SectionLabel, SourcePill } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { SourceTag } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { deriveCenters } from "./CapKpiRail";
+import { deriveCenters } from "./OverheadKpiRail";
 
 interface Row {
   id: string;
@@ -28,7 +28,7 @@ interface CenterRowAug extends Row {
   key: string;
 }
 
-export function CapCentersTable() {
+export function OverheadCentersTable() {
   const {
     capPools, capCenterOrder, capCenterTotals, capCenterDisallowed, capCenterSources,
     addCapCenter, renameCapCenter, updateCenterTotal, updateCenterDisallowed,
