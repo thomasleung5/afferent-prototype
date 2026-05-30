@@ -68,9 +68,9 @@ export type StudyVersionStatus = "draft" | "review" | "published" | "adopted" | 
 
 export interface BuildSnapshot {
   /** Per-role productive-hours slice. Carries FTE × hrs-per-FTE inputs
-   *  for the FBHR denominator. Replaced the former `positions` slice
-   *  in PR-F; salary/benefits now live as `costType: "Labor"` rows in
-   *  the operating dataset. */
+   *  for the FBHR denominator. Salary/benefits live as
+   *  `costType: "Labor"` rows in the operating dataset; this slice
+   *  carries the hours side only. */
   productiveHours: ProductiveHoursRow[];
   operating: OperatingLine[];
   capPools: CapPool[];
@@ -531,9 +531,10 @@ function synthCenterKey(name: string): string {
 
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
-  // POSITIONS is now a seed-only convenience: each row fans out into one
+  // POSITIONS is a seed-only convenience: each row fans out into one
   // productiveHours row + two operating-labor rows (Salaries + Benefits).
-  // The Position[] slice itself is no longer stored on state (PR-F).
+  // The Position[] slice itself is not stored on state — hours and cost
+  // live in their own slices and are joined for display.
   const seedRoster = POSITIONS.map((p) => ({ ...p }));
   const seedOperating: OperatingLine[] = [
     ...OPERATING.map((o) => ({ ...o })),

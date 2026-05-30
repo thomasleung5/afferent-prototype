@@ -1,6 +1,6 @@
 /* Shared scaffolding for the Anthropic-backed PDF parse routes.
  *
- * The five "simple" parsers (fees, salary, operating, services,
+ * The five "simple" parsers (fees, labor, operating, services,
  * volume) each follow the same pipeline:
  *
  *   1. Verify ANTHROPIC_API_KEY is set.

@@ -29,21 +29,20 @@ export interface RoleAllocation {
   pct: number;
 }
 
-/* ---------- Fee-study row metadata (PR-L1) ----------
+/* ---------- Fee-study row metadata ----------
  *
- * The original Service shape carried only flat numeric pricing (fee /
- * peer / target). Real municipal fee schedules — modeled on the
- * Los Altos Hills / NBS structure — also need: nested categories,
- * line-item numbering, free-form units, formula / deposit / T&M /
- * pass-through pricing, lifecycle status (new / moved / deleted),
- * legal-authority citations, free-form notes, per-agency peer survey
- * values, and display-text variants for fees that can't be reduced to
- * a single dollar amount.
+ * Real municipal fee schedules — modeled on the Los Altos Hills / NBS
+ * structure — carry richer metadata than flat numeric pricing. The
+ * types below extend `Service` with: nested categories, line-item
+ * numbering, free-form units, formula / deposit / T&M / pass-through
+ * pricing, lifecycle status (new / moved / deleted), legal-authority
+ * citations, free-form notes, per-agency peer survey values, and
+ * display-text variants for fees that can't be reduced to a single
+ * dollar amount.
  *
- * All extensions below land as OPTIONAL fields on Service. Existing
- * flat-row rows + math + UI + export stay unchanged until later PRs
- * teach the display / calc layers to read the new fields. Migration
- * is a no-op (undefined is the legacy default). */
+ * Every extension is an OPTIONAL field on Service so persisted rows
+ * without the metadata continue to load and render correctly —
+ * undefined is the flat-row default. */
 
 /** Free-form unit label for a fee (e.g., "each", "per hour", "deposit",
  *  "per sq.ft.", "per $1,000 valuation"). Open string by design — fee
@@ -163,9 +162,9 @@ export interface Service {
   /** Filename when source === "imported". */
   sourceFile?: string;
 
-  /* ── Fee-study metadata (PR-L1) — all optional, all back-compatible.
-   *    Existing flat-row math + UI + export read only the required
-   *    fields above and continue to work without these. */
+  /* ── Fee-study metadata — all optional, all back-compatible.
+   *    Flat-row math + UI + export read only the required fields
+   *    above and continue to work when these are undefined. */
 
   /** Line number as published in the adopted resolution (e.g., "PLN-12",
    *  "B-4(a)", "5.2.1"). Stable across cycles when the same fee carries
@@ -189,9 +188,8 @@ export interface Service {
   /** Free-form unit label rendered alongside the fee value. */
   unit?: FeeUnit;
   /** Pricing structure. Defaults to "flat" semantics in display when
-   *  undefined; PR-L3 will use this to gate which rows roll into
-   *  recovery math (deposit / T&M / pass-through rows shouldn't count
-   *  the same as flat rows). */
+   *  undefined. Recovery math gates on this so deposit / T&M /
+   *  pass-through rows aren't treated the same as flat rows. */
   rowKind?: FeeRowKind;
   /** Lifecycle state of this row in the current study cycle. Defaults
    *  to "existing" semantics when undefined. */
@@ -289,11 +287,10 @@ export interface ProductiveHoursBreakdown {
 
 /** Per-role productive-hours row. Carries the FTE × hrs-per-FTE inputs
  *  the FBHR denominator needs, decoupled from the labor-cost line items
- *  that live in OperatingLine (costType: "Labor"). PR-C introduces this
- *  slice as a parallel store; PR-D/E rewire FBHR to read hours here and
- *  cost from operating, retiring Position[] as the dual source. The
- *  `id` mirrors the originating Position.id during migration so audit
- *  trails stay traceable. */
+ *  that live in OperatingLine (costType: "Labor"). FBHR reads hours
+ *  from this slice and cost from operating. The `id` mirrors the
+ *  originating Position.id when a row was promoted from a seeded
+ *  position, so audit trails across the two slices stay traceable. */
 export interface ProductiveHoursRow {
   id: string;
   title: string;
@@ -325,8 +322,8 @@ export type OpCategory =
  *  accounts) feed the FBHR labor-cost numerator. "Operating" rows feed
  *  the non-labor cost-per-hour denominator. Labor and Operating
  *  pages are filtered views over the same dataset, split by this field.
- *  Required on every line; PR-A seeds existing rows as "Operating" and
- *  the AI parser pattern-matches new rows. */
+ *  Required on every line; seeds default to "Operating" and the AI
+ *  parser pattern-matches new rows. */
 export type CostType = "Labor" | "Operating";
 
 /** Sub-classification for labor budget lines (costType === "Labor").

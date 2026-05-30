@@ -363,7 +363,7 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
       apply: (rows, source) => apply(rows as FeeRows, source, false),
     }),
     title: "Import Fee Schedule",
-    helper: "Import fees via Claude (PDF) or by pasting LLM JSON output.",
+    helper: "Upload a source PDF, or paste structured JSON as a fallback.",
     tagline: "Fees, departments, pricing units, current rates",
     pasteExample: "{ fees: [...] }",
     pasteHelper: "Paste structured output shaped like { fees: [...] }.",
