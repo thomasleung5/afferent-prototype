@@ -11,8 +11,9 @@ export default function FeeBenchmarksPage() {
   const { services } = useBuildState();
   const { downloadExcel, pdfHref } = useBenchmarksExport();
 
-  // Decision-oriented KPI strip: which fees are materially below peer
-  // pricing, how big is the typical gap, what's the worst single gap.
+  // Metric strip: how many fees price below / above peer median, the
+  // typical variance, and the annual revenue we'd capture by lifting
+  // below-median fees to the peer median.
   const withPeer = services.filter((s) => s.peer > 0);
   const variances = withPeer.map((s) => ((s.fee - s.peer) / s.peer) * 100);
   const sortedVar = [...variances].sort((a, b) => a - b);
@@ -21,10 +22,10 @@ export default function FeeBenchmarksPage() {
       ? sortedVar[Math.floor(sortedVar.length / 2)]
       : (sortedVar[sortedVar.length / 2 - 1] + sortedVar[sortedVar.length / 2]) / 2;
   const below = withPeer.filter((s) => s.fee < s.peer * 0.95);
-  const largestNegativeGap = below.reduce((max, s) => {
-    const gap = s.peer - s.fee;
-    return gap > max ? gap : max;
-  }, 0);
+  const above = withPeer.filter((s) => s.fee > s.peer * 1.05);
+  const potentialRevenueGap = below.reduce(
+    (acc, s) => acc + (s.peer - s.fee) * s.volume, 0,
+  );
 
   return (
     <Page>
@@ -46,13 +47,13 @@ export default function FeeBenchmarksPage() {
 
       <StatusRow items={[
         {
-          label: "Fees benchmarked",
-          value: `${withPeer.length} of ${services.length}`,
-        },
-        {
           label: "Below peer median",
           value: `${below.length}`,
           tone: below.length > 0 ? "warn" : undefined,
+        },
+        {
+          label: "Above peer median",
+          value: `${above.length}`,
         },
         {
           label: "Median variance",
@@ -60,9 +61,9 @@ export default function FeeBenchmarksPage() {
           tone: medianVariance < -5 ? "warn" : undefined,
         },
         {
-          label: "Largest negative gap",
-          value: largestNegativeGap > 0 ? `−${fmt.dollars(largestNegativeGap)}` : "—",
-          tone: largestNegativeGap > 0 ? "neg" : undefined,
+          label: "Potential revenue gap",
+          value: potentialRevenueGap > 0 ? fmt.dollarsK(potentialRevenueGap) : "—",
+          tone: potentialRevenueGap > 0 ? "neg" : undefined,
         },
       ]}/>
 
