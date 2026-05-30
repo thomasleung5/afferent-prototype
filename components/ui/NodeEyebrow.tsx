@@ -1,12 +1,12 @@
 import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
-  | "services" | "salary" | "operating" | "cap" | "functional" | "volume"
+  | "services" | "labor" | "operating" | "cap" | "functional" | "volume"
   | "costs" | "policy" | "feestudy" | "benchmark";
 
 const NODE_LABEL: Record<NodeId, string> = {
   services:   "Services",
-  salary:     "Labor",
+  labor:      "Labor",
   operating:  "Operating",
   cap:        "Overhead Cost Allocation",
   functional: "Functional Allocation",

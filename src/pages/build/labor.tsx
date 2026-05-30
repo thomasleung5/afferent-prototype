@@ -9,7 +9,7 @@ export default function LaborPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<NodeEyebrow node="salary"/>}
+        eyebrow={<NodeEyebrow node="labor"/>}
         title="Labor"
         subtitle="Direct labor rate per department."
         actions={

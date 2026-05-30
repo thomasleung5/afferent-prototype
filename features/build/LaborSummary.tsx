@@ -96,7 +96,7 @@ export function LaborSummary() {
   return (
     <div>
       <SectionLabel right={`${rows.length} departments · ${totalPositions} positions`}>
-        Direct labor by department
+        Labor costs by department
       </SectionLabel>
       <DeptSummaryTable
         autoOpenKey={searchDept}
