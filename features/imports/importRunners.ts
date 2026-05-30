@@ -41,7 +41,7 @@ interface PdfParserResult {
 }
 
 interface PdfImportConfig<P extends PdfParserResult> {
-  /** Domain-specific PDF parser (e.g. `aiParseDirectLaborPdf`). When the
+  /** Domain-specific PDF parser (e.g. `aiParseLaborPdf`). When the
    *  page needs extra context (a services catalog, a target year),
    *  wrap the parser in a closure here. */
   parsePdf: (file: File) => Promise<P>;

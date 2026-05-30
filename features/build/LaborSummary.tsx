@@ -15,7 +15,7 @@ const labelOf = deptName;
 export function LaborSummary() {
   const { operating, derived } = useBuildState();
   const labor = derived.labor;
-  const { dept: searchDept } = useSearch({ from: "/build/direct-labor" });
+  const { dept: searchDept } = useSearch({ from: "/build/labor" });
 
   const totalComp = ORDER.reduce((a, d) => a + labor[d].totalComp, 0);
   const totalHrs  = ORDER.reduce((a, d) => a + labor[d].productiveHours, 0);

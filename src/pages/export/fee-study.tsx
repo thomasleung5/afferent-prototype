@@ -2250,7 +2250,7 @@ function recoveryTargetSummaryLabel(payload: ExportPayload): string {
 }
 
 const SOURCE_DOMAINS: { domain: ExportPayload["reviewFlags"][number]["domain"]; label: string }[] = [
-  { domain: "positions", label: "Direct Labor" },
+  { domain: "positions", label: "Labor" },
   { domain: "operating", label: "Departmental Operating" },
   { domain: "cap",       label: "Cost Allocation Plan" },
   { domain: "services",  label: "Service Catalog" },

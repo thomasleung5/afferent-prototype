@@ -33,7 +33,7 @@ interface FormulaLineProps {
    *   - `"accent"` (default): blue + 600 weight — used by Functional
    *     Allocation / Cost of Service workpaper formulas where the result
    *     is the highlight.
-   *   - `"ink"`: ink + 600 weight — used by Direct Labor / Operating /
+   *   - `"ink"`: ink + 600 weight — used by Labor / Operating /
    *     Overhead source-rate formulas inside a MetaGrid value cell. */
   resultTone?: "accent" | "ink";
 }
@@ -41,7 +41,7 @@ interface FormulaLineProps {
 /** Shared "{Formula chip} {subst} = {result}" line. Used both as the
  *  stacked workpaper line inside a `<FormulaPanel>` (Functional
  *  Allocation / Cost of Service) and as the single MetaGrid value
- *  (Direct Labor / Operating / Overhead via `RateFormula`). Wraps as a
+ *  (Labor / Operating / Overhead via `RateFormula`). Wraps as a
  *  baseline-aligned flex row. */
 export function FormulaLine({
   expr, subst, result, resultTone = "accent",

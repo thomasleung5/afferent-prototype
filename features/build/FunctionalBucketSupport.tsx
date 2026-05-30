@@ -11,7 +11,7 @@
  *    scoped to that activity.
  *
  * MethodologyFormulas renders three inline workpaper formulas in the
- * Direct Labor "Formula chip = substituted numbers = result" pattern.
+ * Labor "Formula chip = substituted numbers = result" pattern.
  *
  * Data source: derived.functionalAllocation. Per-bucket cost
  * components are split from the dept's engine-derived dollar totals
@@ -167,13 +167,13 @@ export function FunctionalBucketSupport({ dept, service, bucketId, crossNav = fa
 }
 
 /** Single-row cross-nav strip surfaced inside every FA drilldown:
- *  upstream cost-source pages (Direct Labor / Operating / Overhead).
+ *  upstream cost-source pages (Labor / Operating / Overhead).
  *  Same `?dept=…` query pattern the Cost of Service / Fee Benchmark
  *  links use for `?serviceId=…`, so the destination page lands the
  *  user on the matching dept row with its drilldown pre-opened. */
 function CrossNavLinks({ dept }: { dept: DeptCode }) {
   const links: { to: string; text: string }[] = [
-    { to: "/build/direct-labor", text: "View direct labor" },
+    { to: "/build/labor",        text: "View labor" },
     { to: "/build/operating",    text: "View operating" },
     { to: "/build/cap",          text: "View overhead" },
   ];
@@ -210,7 +210,7 @@ function CrossNavLinks({ dept }: { dept: DeptCode }) {
 /** Step-by-step workpaper for the per-activity drilldown:
  *  dept Total Cost → Activity Cost (× allocation %) → Fee-Recoverable
  *  Cost (× recoverability %). Each line uses the same Formula chip +
- *  substituted-numbers pattern as the Direct Labor page. */
+ *  substituted-numbers pattern as the Labor page. */
 function ActivityCostFormulas({
   deptLabor, deptOperating, deptOverhead,
   deptTotalCost,

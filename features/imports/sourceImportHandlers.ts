@@ -24,8 +24,8 @@ import {
 import { useBuildActions, useBuildState } from "@/lib/store";
 import type { UnmappedRow } from "@/lib/parse/types";
 import {
-  aiParseDirectLaborPdf, directLaborToExtractionResult,
-} from "@/lib/ai/parseDirectLabor";
+  aiParseLaborPdf, laborToExtractionResult,
+} from "@/lib/ai/parseLabor";
 import {
   aiParseOperatingPdf, operatingToExtractionResult,
 } from "@/lib/ai/parseOperating";
@@ -47,7 +47,7 @@ import {
   capDirectAllocationsToExtractionResult,
 } from "@/lib/ai/parseCap";
 
-type DirectLaborRows = Parameters<typeof directLaborToExtractionResult>[0];
+type LaborRows = Parameters<typeof laborToExtractionResult>[0];
 type OperatingRows   = Parameters<typeof operatingToExtractionResult>[0];
 type VolumeRows      = Parameters<typeof volumeToExtractionResult>[0];
 type ServiceRows     = Parameters<typeof servicesToExtractionResult>[0];
@@ -111,15 +111,15 @@ export interface CapImportHandlerBundle extends ImportHandlerBundle {
   setUnmappedBases: Dispatch<SetStateAction<UnmappedRow[]>>;
 }
 
-// ─── Direct Labor ──────────────────────────────────────────────────────
+// ─── Labor ─────────────────────────────────────────────────────────────
 
-const DIRECT_LABOR_SCHEMA = `{
+const LABOR_SCHEMA = `{
   positions: [
     { title, dept, fte, hours, confidence }
   ]
 }`;
 
-function formatDirectLaborSummary(
+function formatLaborSummary(
   total: number, mapped: number, lowConfidence: number,
 ): string {
   const imported = mapped + lowConfidence;
@@ -129,34 +129,34 @@ function formatDirectLaborSummary(
   return `${imported} position${imported === 1 ? "" : "s"} imported (${parts.join(", ")}).`;
 }
 
-export function useDirectLaborImportHandlers(): ImportHandlerBundle {
+export function useLaborImportHandlers(): ImportHandlerBundle {
   const { mergePositions } = useBuildActions((s) => ({
     mergePositions: s.mergePositions,
   }));
 
-  const apply = (rows: DirectLaborRows, source: string) => {
-    const extraction = directLaborToExtractionResult(rows, source);
+  const apply = (rows: LaborRows, source: string) => {
+    const extraction = laborToExtractionResult(rows, source);
     const applied = mergePositions(extraction, source);
-    return formatDirectLaborSummary(
+    return formatLaborSummary(
       extraction.stats.total, applied.mapped, applied.lowConfidence,
     );
   };
 
   return {
     aiPdf: createPdfImportHandler({
-      parsePdf: aiParseDirectLaborPdf,
+      parsePdf: aiParseLaborPdf,
       apply: (parsed, fileName) => apply(parsed.positions, fileName),
     }),
     pasteJson: createJsonImportHandler({
       rootKey: "positions",
-      apply: (rows, source) => apply(rows as DirectLaborRows, source),
+      apply: (rows, source) => apply(rows as LaborRows, source),
     }),
-    title: "Import Direct Labor",
+    title: "Import Labor",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
     tagline: "Positions, departments, FTEs, productive hours",
     pasteExample: "{ positions: [...] }",
     pasteHelper: "Paste structured output shaped like { positions: [...] }.",
-    pasteSchema: DIRECT_LABOR_SCHEMA,
+    pasteSchema: LABOR_SCHEMA,
   };
 }
 

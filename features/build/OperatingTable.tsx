@@ -32,7 +32,7 @@ export function OperatingTable() {
   const [includeFilter, setIncludeFilter] = useState("ALL");
 
   // This page is the non-labor view of the budget-classification table.
-  // Labor-classified rows surface on the Direct Labor page's Labor Line
+  // Labor-classified rows surface on the Labor page's Labor Line
   // Items section instead, so they're filtered out here to avoid double
   // display. costType === "Operating" is the default (and what every
   // pre-PR-A row gets backfilled to via storeMigration).

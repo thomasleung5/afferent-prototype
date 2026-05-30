@@ -5,7 +5,7 @@ import type {
 import { FEE_DEPTS } from "./data/departments";
 
 /* ---------- Build Model derivations ----------
- * The four input nodes (Direct Labor, Operating, Cost Allocation, Volume)
+ * The four input nodes (Labor, Operating, Cost Allocation, Volume)
  * roll up into per-dept FBHR, which is then applied to each service in
  * Cost of Service. All functions here are pure.
  *

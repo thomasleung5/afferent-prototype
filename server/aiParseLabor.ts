@@ -28,9 +28,9 @@ Rules:
 - Use the exact position title as written in the document
 - Return only the JSON object, nothing else`;
 
-export async function handleAiParseDirectLabor(req: Request): Promise<Response> {
+export async function handleAiParseLabor(req: Request): Promise<Response> {
   return runPdfParser(req, {
-    tag: "ai-parse-direct-labor",
+    tag: "ai-parse-labor",
     rowsKey: "positions",
     rowAnchor: "title",
     rowNoun: "position",

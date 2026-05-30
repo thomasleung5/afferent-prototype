@@ -6,7 +6,7 @@ type NodeId =
 
 const NODE_LABEL: Record<NodeId, string> = {
   services:   "Services",
-  salary:     "Direct Labor",
+  salary:     "Labor",
   operating:  "Operating",
   cap:        "Overhead Cost Allocation",
   functional: "Functional Allocation",

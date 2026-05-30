@@ -5,12 +5,12 @@ import { LaborSummary } from "@/features/build/LaborSummary";
 import { LaborLineItemsTable } from "@/features/build/LaborLineItemsTable";
 import { ProductiveHoursTable } from "@/features/build/ProductiveHoursTable";
 
-export default function DirectLaborPage() {
+export default function LaborPage() {
   return (
     <Page>
       <PageHeader
         eyebrow={<NodeEyebrow node="salary"/>}
-        title="Direct Labor"
+        title="Labor"
         subtitle="Direct labor rate per department."
         actions={
           <Btn kind="ghost" href="/source-data#positions">

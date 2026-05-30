@@ -323,7 +323,7 @@ export type OpCategory =
 /** Classification of a budget line. "Labor" rows (salaries, benefits,
  *  overtime, payroll taxes, workers comp, wellness, temp labor, burden
  *  accounts) feed the FBHR labor-cost numerator. "Operating" rows feed
- *  the non-labor cost-per-hour denominator. Direct Labor and Operating
+ *  the non-labor cost-per-hour denominator. Labor and Operating
  *  pages are filtered views over the same dataset, split by this field.
  *  Required on every line; PR-A seeds existing rows as "Operating" and
  *  the AI parser pattern-matches new rows. */

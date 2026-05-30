@@ -139,7 +139,7 @@ export function ChangeReviewTable() {
       id: "section", label: "Section",
       options: [
         { value: "ALL", label: "All" },
-        { value: "SAL", label: "Direct Labor" },
+        { value: "SAL", label: "Labor" },
         { value: "VOL", label: "Volume" },
         { value: "CAP", label: "Overhead Cost Allocation" },
         { value: "FEE", label: "Fee schedule" },

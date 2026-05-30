@@ -30,7 +30,7 @@ interface Props {
   autoOpenKey?: string;
 }
 
-/** The single primary per-dept summary table shared across Direct Labor,
+/** The single primary per-dept summary table shared across Labor,
  *  Operating, Cost Allocation, and Cost of Service. Each row can expand to
  *  show a ledger + method/formula/source metadata grid. */
 export function DeptSummaryTable({ title, focus, cols, rows, footer, autoOpenKey }: Props) {

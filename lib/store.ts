@@ -223,7 +223,7 @@ interface BuildActions {
    *  the default-derived allocation at read time. */
   setServiceRoleAllocations: (serviceId: string, allocations: RoleAllocation[]) => void;
   /** Append a new operating row. costType defaults to "Operating"; the
-   *  Direct Labor page passes "Labor" so newly-added rows surface in its
+   *  Labor page passes "Labor" so newly-added rows surface in its
    *  filtered view rather than the Operating page's. */
   addOperatingLine: (costType?: "Labor" | "Operating") => void;
   /** Add a pool to an existing center. `centerKey` is the center's identity
@@ -908,7 +908,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set((s) => {
           // Each imported Position upserts into productiveHours (id mirrors
           // the import) so the role roster stays in sync. Labor-classified
-          // operating rows (the Direct Labor "Labor Line Items" table) are
+          // operating rows (the Labor page's "Labor Line Items" table) are
           // NOT touched here — they're authoritatively owned by the
           // Operating Budget import via mergeOperating's costType
           // classifier. A staffing import that touches PLAN no longer

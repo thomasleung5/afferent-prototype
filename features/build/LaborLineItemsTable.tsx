@@ -14,7 +14,7 @@ const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
 
 /** Labor-classified slice of the master operating dataset. Reads and
  *  writes the same OperatingLine rows the Operating page edits, filtered
- *  to costType === "Labor". This is the Direct Labor page's view onto
+ *  to costType === "Labor". This is the Labor page's view onto
  *  the budget-classification table — not a separate dataset. */
 export function LaborLineItemsTable() {
   const { operating, updateOperating, addOperatingLine } = useBuildState();

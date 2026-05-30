@@ -10,7 +10,7 @@ import {
 } from "@/features/imports/ImportReviewPanel";
 import { CellSelect } from "@/components/ui";
 import {
-  useDirectLaborImportHandlers, useOperatingImportHandlers,
+  useLaborImportHandlers, useOperatingImportHandlers,
   useServicesImportHandlers, useVolumeImportHandlers,
   useFeesImportHandlers, useCapImportHandlers,
   type ImportHandlerBundle,
@@ -106,7 +106,7 @@ interface DomainCardProps {
 }
 
 function PositionsCard({ card, imports }: DomainCardProps) {
-  const importer = useDirectLaborImportHandlers();
+  const importer = useLaborImportHandlers();
   return <SourceCardShell card={card} imports={imports} importer={importer}/>;
 }
 

@@ -18,7 +18,7 @@ import type { FeeComparison, PolicyImpact } from "../calc";
 type ConfLevel = "High" | "Medium-High" | "Medium" | "Low";
 
 const DOMAIN_LABEL: Record<Domain, string> = {
-  positions: "Direct Labor",
+  positions: "Labor",
   operating: "Operating",
   services:  "Services",
   fees:      "Fee schedule",
@@ -27,7 +27,7 @@ const DOMAIN_LABEL: Record<Domain, string> = {
 };
 
 const DOMAIN_HREF: Record<Domain, string> = {
-  positions: "/build/direct-labor",
+  positions: "/build/labor",
   operating: "/build/operating",
   services:  "/build/services",
   fees:      "/build/feestudy",

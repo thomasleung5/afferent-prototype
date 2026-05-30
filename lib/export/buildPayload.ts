@@ -378,7 +378,7 @@ function rationaleFor(c: FeeComparison): string[] {
 }
 
 const DOMAIN_LABEL: Record<Domain, string> = {
-  positions: "Direct Labor",
+  positions: "Labor",
   operating: "Operating",
   services:  "Services",
   fees:      "Fee Schedule",

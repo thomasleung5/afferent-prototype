@@ -3,7 +3,7 @@ import { SubNav, type SubNavItem } from "@/components/layout";
 
 const ITEMS: SubNavItem[] = [
   { href: "/build/services",               label: "Services" },
-  { href: "/build/direct-labor",           label: "Direct Labor" },
+  { href: "/build/labor",                  label: "Labor" },
   { href: "/build/operating",              label: "Operating" },
   { href: "/build/cap",                    label: "Overhead Allocation" },
   { href: "/build/functional-allocation",  label: "Functional Allocation" },

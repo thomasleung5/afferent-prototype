@@ -8,7 +8,7 @@ import type { OperatingLine } from "../types";
  *
  * Every row in the seed is non-labor — the costType: "Operating" stamp at
  * the bottom of this file is what splits them off from the future
- * labor-classified rows that will surface on the Direct Labor page. */
+ * labor-classified rows that will surface on the Labor page. */
 
 export const OPERATING: OperatingLine[] = ([
   // Planning

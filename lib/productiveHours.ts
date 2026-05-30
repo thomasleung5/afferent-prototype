@@ -1,5 +1,5 @@
 /* Productive-hours breakdown helper. Drives the row-level drilldown on
- * the Direct Labor page (features/build/PositionsTable.tsx) and any other
+ * the Labor page (features/build/PositionsTable.tsx) and any other
  * surface that needs to audit how a position's annual productive hours
  * were derived from gross calendar hours.
  *
@@ -70,7 +70,7 @@ const DEDUCTION_ORDER: ProductiveHoursDeductionKey[] = [
   "vacation", "sick", "holidays", "admin", "training", "other",
 ];
 
-/** Build the productive-hours breakdown for a single Direct Labor row.
+/** Build the productive-hours breakdown for a single Labor row.
  *  Pure — no React, no store, no I/O. Accepts the minimal shape it
  *  actually reads from `Position` so it's straightforward to call from
  *  tests with hand-crafted rows. */
