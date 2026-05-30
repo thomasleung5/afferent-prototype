@@ -4,7 +4,7 @@ type Tone = "info" | "pos" | "warn" | "neg";
 
 export type StatusItem =
   | string
-  | { value: ReactNode; tone?: Tone; label?: string };
+  | { value: ReactNode; tone?: Tone; label?: string; tooltip?: string };
 
 interface Props {
   items: StatusItem[];
@@ -30,12 +30,14 @@ export function StatusRow({ items }: Props) {
         const value = isObj ? item.value : item;
         const tone = isObj ? item.tone ?? "info" : "info";
         const label = isObj ? item.label : undefined;
+        const tooltip = isObj ? item.tooltip : undefined;
         return (
-          <div key={i} style={{
+          <div key={i} title={tooltip} style={{
             padding: "14px 22px",
             borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
             display: "flex", flexDirection: "column", gap: 5,
             minWidth: 0,
+            cursor: tooltip ? "help" : undefined,
           }}>
             {label && (
               <div className="mono" style={{

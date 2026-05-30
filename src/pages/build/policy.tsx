@@ -10,6 +10,9 @@ import { useBuildState } from "@/lib/store";
 export default function RecoveryPolicyPage() {
   const { policyTargets, policyExceptions, derived } = useBuildState();
   const impact = derived.impact;
+  const currentRecoveryPct = impact.totalCost > 0
+    ? (impact.currentRevenue / impact.totalCost) * 100
+    : 0;
 
   return (
     <Page>
@@ -20,12 +23,20 @@ export default function RecoveryPolicyPage() {
       />
 
       <StatusRow items={[
-        { label: "Departments",         value: `${policyTargets.length}` },
-        { label: "Fee exceptions",      value: `${policyExceptions.length}` },
-        { label: "Target recovery",     value: `${Math.round(impact.overallPct)}%` },
-        { label: "Policy subsidy",      value: `${fmt.dollarsK(impact.subsidy)}/yr` },
-        { label: "Recoverable revenue", value: `${impact.recoverableGap >= 0 ? "" : "−"}${fmt.dollarsK(Math.abs(impact.recoverableGap))}/yr` },
-        { label: "Total gap",           value: `${fmt.dollarsK(impact.totalCost - impact.currentRevenue)}/yr`, tone: "neg" },
+        { label: "Departments",      value: `${policyTargets.length}` },
+        { label: "Fee exceptions",   value: `${policyExceptions.length}` },
+        { label: "Current recovery", value: `${Math.round(currentRecoveryPct)}%` },
+        { label: "Target recovery",  value: `${Math.round(impact.overallPct)}%` },
+        {
+          label: "Policy subsidy",
+          value: `${fmt.dollarsK(impact.subsidy)}/yr`,
+          tooltip: "Annual cost intentionally funded by the General Fund.",
+        },
+        {
+          label: "Revenue at policy",
+          value: `${fmt.dollarsK(impact.intendedRevenue)}/yr`,
+          tooltip: "Annual revenue generated under current recovery targets.",
+        },
       ]}/>
 
       <DepartmentTargets/>

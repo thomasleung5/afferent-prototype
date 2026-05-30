@@ -1,10 +1,11 @@
 
-import { useEffect } from "react";
+import { useEffect, useMemo } from "react";
 import { useSearch } from "@tanstack/react-router";
 import { DataTable, type Column } from "@/components/table";
 import { CellInput, DeptChip, SectionLabel } from "@/components/ui";
 import { DEPTS } from "@/lib/data/departments";
-import type { PolicyTarget } from "@/lib/types";
+import { fmt } from "@/lib/format";
+import type { DeptCode, PolicyTarget } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
 function Bar({ pct }: { pct: number }) {
@@ -24,8 +25,22 @@ function Bar({ pct }: { pct: number }) {
 }
 
 export function DepartmentTargets() {
-  const { policyTargets, updatePolicyTarget } = useBuildState();
+  const { policyTargets, updatePolicyTarget, derived } = useBuildState();
   const { dept: searchDept } = useSearch({ from: "/build/policy" });
+
+  // Annual subsidy per dept: Σ annualCost × (1 − effectiveTarget/100) across
+  // recoverable fees in the dept, using each fee's effective target (so any
+  // exception override is reflected). The dept-level subsidy is what the
+  // General Fund covers under the currently-saved policy.
+  const subsidyByDept = useMemo(() => {
+    const out: Partial<Record<DeptCode, number>> = {};
+    for (const c of derived.comparisons) {
+      if (!c.recoverable) continue;
+      const sub = c.annualCost * (1 - c.target / 100);
+      out[c.dept] = (out[c.dept] ?? 0) + Math.max(0, sub);
+    }
+    return out;
+  }, [derived.comparisons]);
 
   // ?dept=... cross-nav from Functional Allocation: scroll the matching
   // dept row into view and flash it briefly. Same row-flash pattern as
@@ -82,6 +97,26 @@ export function DepartmentTargets() {
           </div>
         </div>
       ),
+    },
+    {
+      key: "subsidy",
+      label: "Annual Subsidy",
+      width: "140px",
+      align: "right",
+      sortable: true,
+      sortKey: (r) => subsidyByDept[r.dept] ?? 0,
+      render: (r) => {
+        const sub = subsidyByDept[r.dept] ?? 0;
+        return (
+          <span
+            className="num"
+            title="Annual cost intentionally funded by the General Fund under this target."
+            style={{ color: sub > 0 ? "var(--ink)" : "var(--ink-4)" }}
+          >
+            {sub > 0 ? `${fmt.dollarsK(sub)}/yr` : "—"}
+          </span>
+        );
+      },
     },
     {
       key: "note",
