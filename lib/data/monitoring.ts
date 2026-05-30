@@ -229,7 +229,7 @@ function deriveStaffActions(
       rationale: `${deptName} recovery is ${Math.abs(worstDept.drift)} pts below target`,
       fiscalImpact: worstDept.subsidy,
       nextStep: "Open Overhead Costs",
-      nextHref: "/build/overhead-costs",
+      nextHref: "/build/overhead",
     });
   }
   if (impact.recoverableGap > 0) {

@@ -175,7 +175,7 @@ function CrossNavLinks({ dept }: { dept: DeptCode }) {
   const links: { to: string; text: string }[] = [
     { to: "/build/labor",        text: "View labor" },
     { to: "/build/operating",    text: "View operating" },
-    { to: "/build/overhead-costs", text: "View overhead" },
+    { to: "/build/overhead",     text: "View overhead" },
   ];
   return (
     <div style={{

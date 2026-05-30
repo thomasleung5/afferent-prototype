@@ -43,7 +43,7 @@ src/
     index.tsx              # /
     opportunity.tsx        # /opportunity
     monitoring.tsx         # /monitoring
-    build.tsx, build/*     # /build, /build/{services,labor,operating,cap,
+    build.tsx, build/*     # /build, /build/{services,labor,operating,overhead,
                            #   volume,costs,policy,feestudy,benchmarks,
                            #   functional-allocation}
     annual.tsx, annual/*   # /annual

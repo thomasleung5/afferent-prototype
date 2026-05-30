@@ -16,7 +16,7 @@ const labelOf = deptName;
  *  the cost pools, not a manually-entered override. */
 export function OverheadSummary() {
   const { capPools, derived } = useBuildState();
-  const { dept: searchDept } = useSearch({ from: "/build/overhead-costs" });
+  const { dept: searchDept } = useSearch({ from: "/build/overhead" });
   const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
