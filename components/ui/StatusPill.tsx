@@ -1,4 +1,4 @@
-export type PillKind = "ok" | "warn" | "bad" | "review" | "info" | "locked";
+export type PillKind = "ok" | "warn" | "bad" | "review" | "info";
 
 interface Props {
   kind?: PillKind;
@@ -11,7 +11,6 @@ const PILL: Record<PillKind, { bg: string; fg: string; dot: string }> = {
   bad:    { bg: "var(--neg-tint)",  fg: "var(--neg)",   dot: "var(--neg)" },
   review: { bg: "var(--warn-tint)", fg: "var(--warn)",  dot: "var(--warn)" },
   info:   { bg: "var(--paper-2)",   fg: "var(--ink-2)", dot: "var(--ink)" },
-  locked: { bg: "var(--paper-2)",   fg: "var(--ink-2)", dot: "var(--ink-2)" },
 };
 
 export function StatusPill({ kind = "info", children }: Props) {

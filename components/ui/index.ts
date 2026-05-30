@@ -15,7 +15,6 @@ export { ExpandIndicator } from "./ExpandIndicator";
 export { TONE_COLOR } from "./tone";
 export type { Tone } from "./tone";
 export { SectionLabel } from "./SectionLabel";
-export { Drawer } from "./Drawer";
 export { ExportMenu } from "./ExportMenu";
 export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";

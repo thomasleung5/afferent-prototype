@@ -69,11 +69,10 @@ interface ActionProps {
   children: ReactNode;
   onClick: () => void;
   align?: "left" | "right";
-  tone?: "default" | "muted";
 }
 
 export function ImportReviewAction({
-  children, onClick, align = "left", tone = "muted",
+  children, onClick, align = "left",
 }: ActionProps) {
   return (
     <button
@@ -83,7 +82,7 @@ export function ImportReviewAction({
         all: "unset",
         cursor: "pointer",
         fontSize: "var(--t-l8)",
-        color: tone === "default" ? "var(--ink-2)" : "var(--ink-3)",
+        color: "var(--ink-3)",
         padding: "2px 8px",
         justifySelf: align === "right" ? "end" : "start",
       }}

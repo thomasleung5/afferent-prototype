@@ -17,12 +17,6 @@
  * derives from this list, so nothing else needs updating.
  */
 
-import type { DeptCode } from "../types";
-
-/** Direct receivers. Every DeptCode lives here; "PW" is the one direct
- *  InstDept that isn't fee-modeled (isFeeDept: false). */
-export type DirectDeptCode = DeptCode | "PW";
-
 /** The canonical 16-entry institutional dept catalog. Indirect entries
  *  are listed in the same order as the legacy INDIRECT_DEPTS array so
  *  any downstream sort-stable consumers keep their existing ordering.

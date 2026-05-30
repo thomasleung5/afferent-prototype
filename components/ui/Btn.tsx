@@ -1,7 +1,7 @@
 import { Link } from "@tanstack/react-router";
 import type { ButtonHTMLAttributes, CSSProperties, ReactNode } from "react";
 
-type BtnKind = "ghost" | "primary" | "subtle";
+type BtnKind = "ghost" | "primary";
 
 interface Props extends Omit<ButtonHTMLAttributes<HTMLButtonElement>, "style"> {
   kind?: BtnKind;
@@ -30,7 +30,6 @@ const base: CSSProperties = {
 const variants: Record<BtnKind, CSSProperties> = {
   ghost: base,
   primary: { ...base, background: "var(--accent)", color: "white", borderColor: "var(--accent)" },
-  subtle: { ...base, background: "transparent", borderColor: "transparent", color: "var(--ink-2)" },
 };
 
 export function Btn({ kind = "ghost", style, disabled, href, children, ...rest }: Props) {

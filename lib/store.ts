@@ -1639,13 +1639,6 @@ function buildDeptRollup(comparisons: FeeComparison[]): Record<DeptCode, BuildDe
  * once. Both API surfaces are stable.
  */
 
-/** Subscribe to a narrow projection of the store with shallow-equality
- *  re-render gating. Use for components that read only a few slices
- *  (e.g. `useBuildSlice(s => ({ services: s.services }))`). */
-export function useBuildSlice<T>(selector: (s: BuildState & BuildActions) => T): T {
-  return useBuildStore(useShallow(selector));
-}
-
 /** Subscribe to action functions only. The selector is expected to
  *  return an object of action references; since those references are
  *  stable across renders, the consumer effectively never re-renders.

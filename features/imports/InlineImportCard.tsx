@@ -7,9 +7,6 @@ interface Props {
   aiPdfLabel?: string;
   /** Accept attr for the PDF file input. Defaults to ".pdf". */
   aiPdfAccept?: string;
-  /** Visual emphasis for the PDF action — primary by default; secondary
-   *  swaps to the lighter ghost styling used by the paste panel. */
-  aiPdfPrimary?: boolean;
   /** When provided, the upload button is rendered. Handler returns the
    *  message to show inline; ok=false renders the message in warn color. */
   onAiPdfImport?: (file: File) => Promise<{ ok: boolean; message: string }>;
@@ -43,7 +40,6 @@ type Status = { ok: boolean; message: string } | null;
 export function InlineImportCard({
   aiPdfLabel = "Upload PDF",
   aiPdfAccept = ".pdf",
-  aiPdfPrimary = true,
   onAiPdfImport,
   pasteLabel = "Paste JSON",
   pasteHelper,
@@ -103,7 +99,7 @@ export function InlineImportCard({
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
       {onAiPdfImport && (
         <ActionPanel
-          tone={aiPdfPrimary ? "primary" : "secondary"}
+          tone="primary"
           label={aiPdfLabel}
           icon="sparkles"
           buttonText={aiLoading ? "Uploading…" : aiPdfLabel}
