@@ -1,8 +1,8 @@
 import { useMemo, useState } from "react";
 import { CellInput, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { basisForPool } from "@/lib/data/capStepDown";
-import type { GlNode } from "@/lib/data/capStepDownGl";
+import { basisForPool } from "@/lib/data/capBasisRouting";
+import type { GlNode } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 
 /** Per-pool Allocation Detail report in the standard published CAP format.

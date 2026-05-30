@@ -2,7 +2,7 @@
 import { useMemo, useState } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownGl";
+import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,

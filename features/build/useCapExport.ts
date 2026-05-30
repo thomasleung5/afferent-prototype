@@ -4,7 +4,7 @@ import { useBuildState } from "@/lib/store";
 import { downloadBlob } from "@/lib/export/excel";
 import { slugCity } from "@/lib/printing";
 import { exportCapXlsx, type CapExportPayload } from "@/lib/export/capExcel";
-import { capAllocatedFromGl } from "@/lib/data/capStepDownGl";
+import { capAllocatedFromGl } from "@/lib/data/capStepDownEngine";
 
 /** CAP-specific Export handlers. PDF opens the print route in a new tab;
  *  Excel builds an .xlsx workbook from the live engine model. */

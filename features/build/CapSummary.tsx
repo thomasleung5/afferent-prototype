@@ -5,7 +5,7 @@ import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/compo
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
-import { poolToFeeDept } from "@/lib/data/capStepDownGl";
+import { poolToFeeDept } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 
 const ORDER: DeptCode[] = FEE_DEPTS;

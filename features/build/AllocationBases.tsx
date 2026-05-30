@@ -3,7 +3,7 @@ import { useMemo, useState, type CSSProperties } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
-import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownGl";
+import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownEngine";
 import type { BasisKey } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {

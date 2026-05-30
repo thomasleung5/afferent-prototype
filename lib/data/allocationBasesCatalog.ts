@@ -3,7 +3,7 @@
 // denominators, one DIRECT routing entry. Users can extend at runtime via
 // the AllocationBasisCombobox; that state lives in BuildState.allocationBases.
 //
-// driverKey controls which column of the DRIVERS matrix (lib/data/capStepDown.ts)
+// driverKey controls which column of the DRIVERS matrix (lib/data/capBasisRouting.ts)
 // supplies the denominator when a pool with this basis is stepped down — but
 // because every basis below has a corresponding BasisUnitRow in
 // lib/data/cap.ts:CAP_BASIS_UNITS, the engine's fallback path almost never

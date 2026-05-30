@@ -33,7 +33,7 @@ import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
   type GlDriverMatrix, type GlStepDownModel,
-} from "@/lib/data/capStepDownGl";
+} from "@/lib/data/capStepDownEngine";
 import {
   deriveFunctionalAllocation, applyFunctionalAllocationFbhr,
   type FunctionalAllocationDerived,

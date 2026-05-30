@@ -16,8 +16,8 @@
  * Mirrors the structure of lib/export/excel.ts (fee study exporter). */
 
 import type { AllocationBasis, CapPool } from "../types";
-import type { GlNode, GlStepDownModel } from "../data/capStepDownGl";
-import { basisForPool } from "../data/capStepDown";
+import type { GlNode, GlStepDownModel } from "../data/capStepDownEngine";
+import { basisForPool } from "../data/capBasisRouting";
 import { FEE_DEPTS } from "../data/departments";
 
 type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
