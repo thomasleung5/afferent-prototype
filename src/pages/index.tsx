@@ -12,8 +12,8 @@ export default function HomePage() {
   const { services, productiveHours, capPools, policyTargets, imports, derived } = useBuildState();
   const { impact, comparisons } = derived;
 
-  // Headline numbers — same derivation the Revenue Gap page uses, so the
-  // home tile reconciles exactly with the detail screen.
+  // Headline numbers — same derivation the Revenue Opportunity page uses,
+  // so the home tile reconciles exactly with the detail screen.
   const gap = Math.max(0, impact.recoverableGap);
   const recovery = impact.totalCost > 0
     ? (impact.currentRevenue / impact.totalCost) * 100
@@ -34,13 +34,13 @@ export default function HomePage() {
   }, 0);
 
   // Services missing required inputs — surfaces as the secondary count
-  // alongside dept policy status. (Same definition as the Revenue Gap
-  // "data complete" tile.)
+  // alongside dept policy status. (Same definition as the Revenue
+  // Opportunity "data complete" tile.)
   const staleAssumptions = services.filter((s) => !s.volume || !s.hours).length;
 
   // Cost-of-service model completeness: pct of (volume, hours) cells
-  // populated across every service. Mirrors the Revenue Gap data-complete
-  // calculation so both screens reconcile.
+  // populated across every service. Mirrors the Revenue Opportunity
+  // data-complete calculation so both screens reconcile.
   const expectedCells = Math.max(1, services.length * 2);
   const missingCells = services.reduce(
     (a, s) => a + (s.volume ? 0 : 1) + (s.hours ? 0 : 1), 0,
@@ -100,7 +100,7 @@ export default function HomePage() {
             See Revenue Opportunity for recovery drivers, shortfalls, and source traceability.
           </div>
         </div>
-        <Btn kind="primary" href="/gap">
+        <Btn kind="primary" href="/opportunity">
           Open Revenue Opportunity <Icon name="arrow-right" size={13}/>
         </Btn>
       </div>

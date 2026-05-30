@@ -41,7 +41,7 @@ src/
   routes/                  # file-based TanStack Router routes
     __root.tsx             # root layout: <TopBar/> + <Outlet/>
     index.tsx              # /
-    gap.tsx                # /gap
+    opportunity.tsx        # /opportunity
     monitoring.tsx         # /monitoring
     build.tsx, build/*     # /build, /build/{services,labor,operating,cap,
                            #   volume,costs,policy,feestudy,benchmarks,
@@ -66,7 +66,7 @@ components/
 
 features/                  # screen-level components, one folder per feature
   home/                    # EntryCard, AuditTrail
-  revenue-gap/             # AnswerHeader, DriverBreakdown, DeptRecoveryChart, TopFixesTable
+  revenue-opportunity/     # AnswerHeader, DriverBreakdown, DeptRecoveryChart, TopFixesTable
   build/                   # per-screen tables and panels for the build workflow
   annual/                  # annual-update screens
   imports/                 # InlineImportCard, ImportReviewPanel, source

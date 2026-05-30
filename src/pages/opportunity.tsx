@@ -7,17 +7,17 @@ import { useBuildState } from "@/lib/store";
 import { buildCsv, downloadCsv } from "@/lib/export/csv";
 import { slugCity } from "@/lib/printing";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
-import { AnswerHeader } from "@/features/revenue-gap/AnswerHeader";
-import { DriverBreakdown } from "@/features/revenue-gap/DriverBreakdown";
-import { DeptRecoveryChart } from "@/features/revenue-gap/DeptRecoveryChart";
-import { TopFixesTable } from "@/features/revenue-gap/TopFixesTable";
+import { AnswerHeader } from "@/features/revenue-opportunity/AnswerHeader";
+import { DriverBreakdown } from "@/features/revenue-opportunity/DriverBreakdown";
+import { DeptRecoveryChart } from "@/features/revenue-opportunity/DeptRecoveryChart";
+import { TopFixesTable } from "@/features/revenue-opportunity/TopFixesTable";
 
-export default function RevenueGapPage() {
+export default function RevenueOpportunityPage() {
   const { derived, policyTargets } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const { impact, fbhr, costs, comparisons, deptRollup } = derived;
 
-  // Primary revenue gap: target (policy-intended) − current revenue. Clamped
+  // Primary opportunity: target (policy-intended) − current revenue. Clamped
   // for the headline tone — a negative gap means current revenue already
   // exceeds policy intent, so there's nothing to close.
   const annualGap = Math.max(0, impact.recoverableGap);
@@ -59,7 +59,7 @@ export default function RevenueGapPage() {
 
   const exportBrief = useCallback(() => {
     // Top fixes: services where adopting the recommended fee would close
-    // the biggest single-row revenue gap. Sort by absolute annual uplift.
+    // the biggest single-row opportunity. Sort by absolute annual uplift.
     const topFixes = [...comparisons]
       .filter((c) => Math.abs(c.annualUplift) >= 1)
       .sort((a, b) => Math.abs(b.annualUplift) - Math.abs(a.annualUplift))
