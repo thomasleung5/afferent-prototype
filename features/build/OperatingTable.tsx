@@ -214,7 +214,7 @@ export function OperatingTable() {
   return (
     <div>
       <SectionLabel right={`${operatingScope.length} line${operatingScope.length === 1 ? "" : "s"}`}>
-        Operating cost lines
+        Operating Costs
       </SectionLabel>
       <DataTable
         cols={cols}

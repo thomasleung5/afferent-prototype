@@ -204,7 +204,7 @@ export function LaborLineItemsTable() {
   return (
     <div>
       <SectionLabel right={`${labor.length} line${labor.length === 1 ? "" : "s"}`}>
-        Labor Line Items
+        Labor Costs
       </SectionLabel>
       <DataTable
         cols={cols}
