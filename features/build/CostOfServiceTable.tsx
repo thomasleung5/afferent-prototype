@@ -188,7 +188,7 @@ export function CostOfServiceTable() {
                 text: "View service →" },
               { to: "/build/functional-allocation", search: { dept: r.dept as DeptCode },
                 text: "View functional allocation →" },
-              { to: "/build/feestudy",              search: { serviceId: r.id },
+              { to: "/build/fee-schedule",          search: { serviceId: r.id },
                 text: "View fee schedule →" },
             ]}
           />

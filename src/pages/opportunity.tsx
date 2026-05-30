@@ -74,9 +74,9 @@ export default function RevenueOpportunityPage() {
       ["Headline", "Top opportunity department",
         topOpportunity ? `${deptName(topOpportunity.dept)} · ${fmt.dollars(topOpportunity.subsidy)}/yr` : "—"],
       null,
-      ["Drivers", "Direct labor", fmt.dollars(drivers.direct)],
-      ["Drivers", "Operating", fmt.dollars(drivers.operating)],
-      ["Drivers", "Overhead Cost Allocation", fmt.dollars(drivers.cap)],
+      ["Drivers", "Labor", fmt.dollars(drivers.direct)],
+      ["Drivers", "Operating Costs", fmt.dollars(drivers.operating)],
+      ["Drivers", "Overhead Costs", fmt.dollars(drivers.cap)],
       null,
       ["Top fixes", "Fee Item", "Dept · Current → Recommended · Annual uplift"],
       ...topFixes.map((c) => [
@@ -123,7 +123,7 @@ export default function RevenueOpportunityPage() {
           actions={
             <>
               <Btn kind="ghost" onClick={exportBrief}><Icon name="download" size={13}/> Export brief</Btn>
-              <Btn kind="primary" href="/build/feestudy">
+              <Btn kind="primary" href="/build/fee-schedule">
                 Open fee schedule <Icon name="arrow-right" size={13}/>
               </Btn>
             </>

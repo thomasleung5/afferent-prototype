@@ -3,7 +3,7 @@ import { useBuildState, type Domain } from "@/lib/store";
 
 const DOMAIN_LABEL: Record<Domain, string> = {
   positions: "Labor",
-  operating: "Operating",
+  operating: "Operating Costs",
   services: "Services",
   fees: "Fee Schedule",
   volume: "Volume of Activity",

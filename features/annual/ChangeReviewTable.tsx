@@ -144,7 +144,7 @@ export function ChangeReviewTable() {
         { value: "CAP", label: "Overhead Costs" },
         { value: "FEE", label: "Fee schedule" },
         { value: "SVC", label: "Services" },
-        { value: "OPS", label: "Operating" },
+        { value: "OPS", label: "Operating Costs" },
       ],
       value: section, onChange: (v) => setSection(v as SectionFilter),
     },

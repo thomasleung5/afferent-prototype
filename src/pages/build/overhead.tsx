@@ -20,7 +20,7 @@ export default function OverheadCostsPage() {
         * uses the formal name "Cost Allocation Plan" — see
         * src/pages/export/cap-allocation.tsx. */}
       <PageHeader
-        eyebrow={<NodeEyebrow node="cap"/>}
+        eyebrow={<NodeEyebrow node="overhead"/>}
         title="Overhead Costs"
         subtitle="Citywide indirect, allocated to direct departments."
         actions={

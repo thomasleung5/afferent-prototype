@@ -102,7 +102,18 @@
       "Bash(echo \"---EXIT=$?\")",
       "Bash(bash /tmp/check_orphans.sh)",
       "Bash(chmod +x /tmp/check_reachable.sh)",
-      "Bash(/tmp/check_reachable.sh)"
+      "Bash(/tmp/check_reachable.sh)",
+      "Bash(lsof -nP -iTCP:3001 -sTCP:LISTEN)",
+      "Bash(curl -s -X POST http://localhost:8787/api/ai/parse-operating -o /tmp/apitest -w \"api:%{http_code}\\\\n\")",
+      "Bash(grep -r \"FormulaLine\\\\|FormulaPanel\\\\|MiniTable\\\\|MonoLabel\\\\|AddRowButton\\\\|RemoveIconButton\" /Users/thomasleung/Developer/afferent-prototype --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.git/*\")",
+      "Bash(grep -rn \"SourcePill\" /Users/thomasleung/Developer/afferent-prototype --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\" ! -path \"*/.git/*\" ! -path \"*/components/ui/index.ts\" ! -path \"*/components/ui/Formula.tsx\")",
+      "Bash(grep -rn \"footerSlot\" /Users/thomasleung/Developer/afferent-prototype --include=\"*.tsx\" --include=\"*.ts\" ! -path \"*/node_modules/*\")",
+      "Bash(git restore *)",
+      "Bash(git reset *)",
+      "Bash(sed -n '65,85p;530,545p' lib/store.ts)",
+      "Bash(sed -n '28,50p;160,200p;285,335p' lib/types.ts)",
+      "Bash(sed -n '1,10p' lib/data/capStepDown.ts)",
+      "Bash(sed -n '1,10p' lib/data/capStepDownGl.ts)"
     ]
   }
 }

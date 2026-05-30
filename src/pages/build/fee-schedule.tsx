@@ -27,7 +27,7 @@ export default function FeeSchedulePage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<NodeEyebrow node="feestudy"/>}
+        eyebrow={<NodeEyebrow node="feeSchedule"/>}
         title="Fee Schedule"
         subtitle="What fees do we adopt? Current fees compared to calculated cost."
         actions={

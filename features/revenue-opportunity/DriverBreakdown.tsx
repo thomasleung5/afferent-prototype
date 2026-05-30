@@ -12,13 +12,13 @@ interface Row {
   color: string;
 }
 
-/** Horizontal stacked bar showing where the cost comes from: direct labor / operating / CAP. */
+/** Horizontal stacked bar showing where the cost comes from: labor / operating / overhead. */
 export function DriverBreakdown({ direct, operating, cap }: Props) {
   const total = direct + operating + cap || 1;
   const rows: Row[] = [
-    { label: "Direct labor",              value: direct,    color: "var(--ink)" },
-    { label: "Operating",                 value: operating, color: "var(--ink-2)" },
-    { label: "Overhead cost allocation",  value: cap,       color: "var(--ink-3)" },
+    { label: "Labor",            value: direct,    color: "var(--ink)" },
+    { label: "Operating Costs",  value: operating, color: "var(--ink-2)" },
+    { label: "Overhead Costs",   value: cap,       color: "var(--ink-3)" },
   ];
 
   return (

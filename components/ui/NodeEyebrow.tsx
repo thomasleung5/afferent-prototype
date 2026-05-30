@@ -1,19 +1,19 @@
 import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
-  | "services" | "labor" | "operating" | "cap" | "functional" | "volume"
-  | "costs" | "policy" | "feestudy" | "benchmarks";
+  | "services" | "labor" | "operating" | "overhead" | "functional" | "volume"
+  | "costs" | "policy" | "feeSchedule" | "benchmarks";
 
 const NODE_LABEL: Record<NodeId, string> = {
   services:   "Services",
   labor:      "Labor",
-  operating:  "Operating",
-  cap:        "Overhead Costs",
+  operating:  "Operating Costs",
+  overhead:   "Overhead Costs",
   functional: "Functional Allocation",
   volume:     "Volume of Activity",
   costs:      "Cost of Service",
   policy:     "Recovery Policy",
-  feestudy:   "Fee Schedule",
+  feeSchedule: "Fee Schedule",
   benchmarks: "Fee Benchmarks",
 };
 

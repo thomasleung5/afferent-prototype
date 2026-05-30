@@ -287,7 +287,7 @@ export function BenchmarksTable() {
                   links={[
                     { to: "/build/costs",    search: { serviceId: r.id },
                       text: "View cost of service →" },
-                    { to: "/build/feestudy", search: { serviceId: r.id },
+                    { to: "/build/fee-schedule", search: { serviceId: r.id },
                       text: "View fee schedule →" },
                   ]}
                 />

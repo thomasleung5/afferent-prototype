@@ -30,7 +30,7 @@ export function FeeScheduleTable() {
   // Service or Fee Benchmarks. Clear filters that would hide the row,
   // open its drilldown, scroll, and flash so the user sees where they
   // landed. Same pattern used by BenchmarksTable / CostOfServiceTable.
-  const { serviceId, dept: searchDept } = useSearch({ from: "/build/feestudy" });
+  const { serviceId, dept: searchDept } = useSearch({ from: "/build/fee-schedule" });
   useEffect(() => {
     if (!serviceId) return;
     if (!derived.comparisons.some((c) => c.id === serviceId)) return;

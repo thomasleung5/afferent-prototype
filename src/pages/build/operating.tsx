@@ -9,7 +9,7 @@ export default function OperatingPage() {
     <Page>
       <PageHeader
         eyebrow={<NodeEyebrow node="operating"/>}
-        title="Operating"
+        title="Operating Costs"
         subtitle="Department non-labor spend."
         actions={
           <Btn kind="ghost" href="/source-data#operating">

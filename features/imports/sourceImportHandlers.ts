@@ -200,7 +200,7 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
       rootKey: "operating",
       apply: (rows, source) => apply(rows as OperatingRows, source),
     }),
-    title: "Import Operating",
+    title: "Import Operating Costs",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
     tagline: "Operating expenditures and personnel costs",
     pasteExample: "{ operating: [...] }",

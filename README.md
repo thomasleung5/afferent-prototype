@@ -44,7 +44,7 @@ src/
     opportunity.tsx        # /opportunity
     monitoring.tsx         # /monitoring
     build.tsx, build/*     # /build, /build/{services,labor,operating,overhead,
-                           #   volume,costs,policy,feestudy,benchmarks,
+                           #   volume,costs,policy,fee-schedule,benchmarks,
                            #   functional-allocation}
     annual.tsx, annual/*   # /annual
     source-data.tsx        # /source-data

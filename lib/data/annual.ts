@@ -19,7 +19,7 @@ type ConfLevel = "High" | "Medium-High" | "Medium" | "Low";
 
 const DOMAIN_LABEL: Record<Domain, string> = {
   positions: "Labor",
-  operating: "Operating",
+  operating: "Operating Costs",
   services:  "Services",
   fees:      "Fee schedule",
   volume:    "Volume of Activity",
@@ -30,7 +30,7 @@ const DOMAIN_HREF: Record<Domain, string> = {
   positions: "/build/labor",
   operating: "/build/operating",
   services:  "/build/services",
-  fees:      "/build/feestudy",
+  fees:      "/build/fee-schedule",
   volume:    "/build/volume",
   cap:       "/build/overhead",
 };

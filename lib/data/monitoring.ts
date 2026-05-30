@@ -177,7 +177,7 @@ function deriveDriftDrivers(
       evidence: `${belowCount} fee${belowCount === 1 ? "" : "s"} below target · `
         + `recovery ${dh.current}% vs ${dh.target}% policy`,
       action: "Review fee schedule",
-      actionHref: "/build/feestudy",
+      actionHref: "/build/fee-schedule",
     });
   }
   // Plus a single "unadopted fees" row capturing services with $0 fee but
@@ -192,7 +192,7 @@ function deriveDriftDrivers(
       annualImpact: Math.round(impact),
       evidence: `${unadopted.length} service${unadopted.length === 1 ? "" : "s"} carry calculated cost but no adopted fee`,
       action: "Move to fee schedule",
-      actionHref: "/build/feestudy",
+      actionHref: "/build/fee-schedule",
     });
   }
   return drivers
@@ -217,7 +217,7 @@ function deriveStaffActions(
       rationale: `${highAlertCount} high-priority fee${highAlertCount === 1 ? "" : "s"} below policy target`,
       fiscalImpact: Math.round(totalUplift),
       nextStep: "Export council-ready schedule",
-      nextHref: "/build/feestudy",
+      nextHref: "/build/fee-schedule",
     });
   }
   const worstDept = [...deptHealth].sort((a, b) => a.drift - b.drift)[0];
