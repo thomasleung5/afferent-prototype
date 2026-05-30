@@ -94,7 +94,7 @@ export function FormulaPanel({ children, style }: FormulaPanelProps) {
   );
 }
 
-type PillTone = "default" | "cap" | "salary" | "fact" | "policy";
+type PillTone = "default" | "fact" | "policy";
 
 interface SourcePillProps {
   children?: ReactNode;
@@ -137,13 +137,11 @@ function shortFilename(name: string): string {
 /** Small mono pill used inline for source attribution. Two modes:
  *  - `<SourcePill source={s.source} sourceFile={s.sourceFile} />` for the
  *    standardized row-level Source column (recommended).
- *  - `<SourcePill tone="cap">Custom</SourcePill>` for inline non-row labels. */
+ *  - `<SourcePill tone="…">Custom</SourcePill>` for inline non-row labels. */
 export function SourcePill({ children, tone, source, sourceFile }: SourcePillProps) {
   const resolvedTone: PillTone = tone ?? (source ? SOURCE_TONE[source] : "default");
   const palette: Record<PillTone, { bg: string; fg: string; bd: string }> = {
     default: { bg: "var(--paper-2)", fg: "var(--ink-3)", bd: "var(--rule)" },
-    cap:     { bg: "var(--paper-2)", fg: "var(--accent)", bd: "var(--rule)" },
-    salary:  { bg: "var(--paper-2)", fg: "var(--ink-2)", bd: "var(--rule)" },
     fact:    { bg: "var(--paper-2)", fg: "var(--ink-3)", bd: "var(--rule)" },
     policy:  { bg: "var(--accent-tint)", fg: "var(--accent)", bd: "var(--accent)" },
   };
