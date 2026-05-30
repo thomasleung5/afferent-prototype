@@ -30,7 +30,7 @@ export interface Jurisdiction {
    *  block (settings / about) but NOT for engine routing — engine uses
    *  DeptCode (PLAN/BLDG/ENG/…) defined in lib/types. */
   departments: string[];
-  /** Peer cities used by the Fee Benchmark module. */
+  /** Peer cities used by the Fee Benchmarks module. */
   peers: string[];
   /** Attribution string shown on exported PDFs/Excel. */
   preparedBy: string;

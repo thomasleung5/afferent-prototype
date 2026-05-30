@@ -7,7 +7,7 @@ import { fmt } from "./format";
  *
  * Pure helpers that route fee values to either a Service's *Text
  * override (when set) or the formatted numeric fallback. They exist so
- * UI cells in FeeScheduleTable / BenchmarkTable / Cost of Service can
+ * UI cells in FeeScheduleTable / BenchmarksTable / Cost of Service can
  * support non-numeric fees (T&M w/ deposit, "5% of valuation",
  * "Pass-through at actual cost") without forking renderer logic. The
  * underlying numeric `fee` / `peer` / computed cost values are still

@@ -2,14 +2,14 @@
 import { Page, PageHeader } from "@/components/layout";
 import { ExportMenu, NodeEyebrow } from "@/components/ui";
 import { StatusRow } from "@/features/_shared/StatusRow";
-import { BenchmarkTable } from "@/features/build/BenchmarkTable";
-import { useBenchmarkExport } from "@/features/build/useBenchmarkExport";
+import { BenchmarksTable } from "@/features/build/BenchmarksTable";
+import { useBenchmarksExport } from "@/features/build/useBenchmarksExport";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 
-export default function FeeBenchmarkPage() {
+export default function FeeBenchmarksPage() {
   const { services } = useBuildState();
-  const { downloadExcel, pdfHref } = useBenchmarkExport();
+  const { downloadExcel, pdfHref } = useBenchmarksExport();
 
   // Decision-oriented KPI strip: which fees are materially below peer
   // pricing, how big is the typical gap, what's the worst single gap.
@@ -29,17 +29,17 @@ export default function FeeBenchmarkPage() {
   return (
     <Page>
       <PageHeader
-        eyebrow={<NodeEyebrow node="benchmark"/>}
+        eyebrow={<NodeEyebrow node="benchmarks"/>}
         title="Fee Benchmarks"
         subtitle="Adopted fees vs. peer-city medians."
         actions={
           <ExportMenu
             onDownloadExcel={downloadExcel}
             pdfHref={pdfHref}
-            pdfLabel="Fee benchmark report (PDF)"
+            pdfLabel="Fee benchmarks report (PDF)"
             pdfSub="Council-ready, print-formatted"
             excelLabel="Excel workbook (.xlsx)"
-            excelSub="Summary · benchmark · notes"
+            excelSub="Summary · benchmarks · notes"
           />
         }
       />
@@ -66,7 +66,7 @@ export default function FeeBenchmarkPage() {
         },
       ]}/>
 
-      <BenchmarkTable/>
+      <BenchmarksTable/>
     </Page>
   );
 }

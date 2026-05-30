@@ -7,7 +7,7 @@ interface CostsSearch extends DeptSearch {
 }
 
 export const Route = createFileRoute("/build/costs")({
-  // Cross-navigation from another tab (Fee Schedule, Fee Benchmark)
+  // Cross-navigation from another tab (Fee Schedule, Fee Benchmarks)
   // passes ?serviceId=<service.id> so this view can auto-open, scroll
   // to, and highlight the matching cost-of-service row. Functional
   // Allocation drilldowns pass ?dept=<DeptCode> to pre-filter.

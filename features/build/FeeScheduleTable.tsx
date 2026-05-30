@@ -27,9 +27,9 @@ export function FeeScheduleTable() {
   const [openId, setOpenId] = useState<string | undefined>();
 
   // ?serviceId=... means we were cross-navigated here from Cost of
-  // Service or Fee Benchmark. Clear filters that would hide the row,
+  // Service or Fee Benchmarks. Clear filters that would hide the row,
   // open its drilldown, scroll, and flash so the user sees where they
-  // landed. Same pattern used by BenchmarkTable / CostOfServiceTable.
+  // landed. Same pattern used by BenchmarksTable / CostOfServiceTable.
   const { serviceId, dept: searchDept } = useSearch({ from: "/build/feestudy" });
   useEffect(() => {
     if (!serviceId) return;
@@ -370,7 +370,7 @@ export function FeeScheduleTable() {
                   </div>
                 )}
                 <Link
-                  to="/build/benchmark"
+                  to="/build/benchmarks"
                   search={{ serviceId: r.id }}
                   style={{
                     display: "inline-block", marginTop: 8, fontSize: "var(--t-l8)",

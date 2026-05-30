@@ -245,7 +245,7 @@ export interface Service {
    *  still reflects ownership at the start of this cycle (for diff
    *  rendering); `movedToDept` is where the fee lands at the end. */
   movedToDept?: DeptCode;
-  /** Per-agency peer-survey values supporting the Fee Benchmark view.
+  /** Per-agency peer-survey values supporting the Fee Benchmarks view.
    *  The numeric `peer` field above is the median of the comparable
    *  subset; this array preserves the individual rows + sourcing for
    *  the audit trail. */

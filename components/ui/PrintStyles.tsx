@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 
 interface Props {
   /** @page margin (any CSS length). Default "0.6in" matches the
-   *  monitoring / fee-benchmark / cap-allocation routes. Fee Study can
+   *  monitoring / fee-benchmarks / cap-allocation routes. Fee Study can
    *  override to "0.7in" if its larger headline warrants more white. */
   pageMargin?: string;
   /** Optional per-route CSS appended after the canonical rules. Use for

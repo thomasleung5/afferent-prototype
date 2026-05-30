@@ -2,7 +2,7 @@ import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
   | "services" | "labor" | "operating" | "cap" | "functional" | "volume"
-  | "costs" | "policy" | "feestudy" | "benchmark";
+  | "costs" | "policy" | "feestudy" | "benchmarks";
 
 const NODE_LABEL: Record<NodeId, string> = {
   services:   "Services",
@@ -14,7 +14,7 @@ const NODE_LABEL: Record<NodeId, string> = {
   costs:      "Cost of Service",
   policy:     "Recovery Policy",
   feestudy:   "Fee Schedule",
-  benchmark:  "Fee Benchmarks",
+  benchmarks: "Fee Benchmarks",
 };
 
 interface Props {

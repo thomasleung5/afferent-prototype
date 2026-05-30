@@ -41,7 +41,7 @@ export function CostOfServiceTable() {
   // ?serviceId=... means we were cross-navigated here from another tab.
   // Drop any dept filter that would hide the row, open its drilldown,
   // scroll into view, and flash briefly so the user sees where they
-  // landed. Same pattern as BenchmarkTable.
+  // landed. Same pattern as BenchmarksTable.
   const { serviceId, dept: searchDept } = useSearch({ from: "/build/costs" });
   useEffect(() => {
     if (!serviceId) return;

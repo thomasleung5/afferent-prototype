@@ -1,15 +1,15 @@
 import { fmt } from "@/lib/format";
 import { ExportCover, ExportToolbar, PrintStyles } from "@/components/ui";
 import {
-  useBenchmarkPayload,
-} from "@/features/build/useBenchmarkExport";
-import type { BenchmarkExportPayload } from "@/lib/export/benchmarkExcel";
+  useBenchmarksPayload,
+} from "@/features/build/useBenchmarksExport";
+import type { BenchmarksExportPayload } from "@/lib/export/benchmarksExcel";
 import { useAutoPrint } from "@/lib/printing";
 
-type BenchmarkPayload = BenchmarkExportPayload;
+type BenchmarksPayload = BenchmarksExportPayload;
 
-export default function FeeBenchmarkExportPage() {
-  const payload = useBenchmarkPayload();
+export default function FeeBenchmarksExportPage() {
+  const payload = useBenchmarksPayload();
 
   return (
     <>
@@ -20,7 +20,7 @@ export default function FeeBenchmarkExportPage() {
   );
 }
 
-function Toolbar({ payload }: { payload: BenchmarkPayload }) {
+function Toolbar({ payload }: { payload: BenchmarksPayload }) {
   return (
     <ExportToolbar
       subtitle={`${payload.cityName} · ${payload.fiscal} fee benchmarks`}
@@ -28,19 +28,19 @@ function Toolbar({ payload }: { payload: BenchmarkPayload }) {
   );
 }
 
-function Report({ payload }: { payload: BenchmarkPayload }) {
+function Report({ payload }: { payload: BenchmarksPayload }) {
   useAutoPrint();
   return (
     <div className="report">
       <Cover payload={payload}/>
       <Summary payload={payload}/>
       <Method payload={payload}/>
-      <BenchmarkTable payload={payload}/>
+      <BenchmarksTable payload={payload}/>
     </div>
   );
 }
 
-function Cover({ payload }: { payload: BenchmarkPayload }) {
+function Cover({ payload }: { payload: BenchmarksPayload }) {
   return (
     <ExportCover
       city={payload.cityName}
@@ -56,7 +56,7 @@ function Cover({ payload }: { payload: BenchmarkPayload }) {
   );
 }
 
-function Summary({ payload }: { payload: BenchmarkPayload }) {
+function Summary({ payload }: { payload: BenchmarksPayload }) {
   const s = payload.summary;
   return (
     <section className="section" style={{ marginBottom: 32 }}>
@@ -87,7 +87,7 @@ function Summary({ payload }: { payload: BenchmarkPayload }) {
   );
 }
 
-function Method({ payload }: { payload: BenchmarkPayload }) {
+function Method({ payload }: { payload: BenchmarksPayload }) {
   return (
     <section className="section" style={{ marginBottom: 36 }}>
       <div className="eyebrow">Section 2</div>
@@ -116,11 +116,11 @@ function Method({ payload }: { payload: BenchmarkPayload }) {
   );
 }
 
-function BenchmarkTable({ payload }: { payload: BenchmarkPayload }) {
+function BenchmarksTable({ payload }: { payload: BenchmarksPayload }) {
   return (
     <section className="section section-break" style={{ marginBottom: 24 }}>
       <div className="eyebrow">Section 3</div>
-      <h2 className="h2">Fee benchmark</h2>
+      <h2 className="h2">Fee benchmarks</h2>
       <div className="body" style={{ marginBottom: 14, maxWidth: 600 }}>
         Every fee with its adopted price, the per-city peer values, the peer
         median, and the variance against both the median and our calculated

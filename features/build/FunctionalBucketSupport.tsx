@@ -168,7 +168,7 @@ export function FunctionalBucketSupport({ dept, service, bucketId, crossNav = fa
 
 /** Single-row cross-nav strip surfaced inside every FA drilldown:
  *  upstream cost-source pages (Labor / Operating / Overhead).
- *  Same `?dept=…` query pattern the Cost of Service / Fee Benchmark
+ *  Same `?dept=…` query pattern the Cost of Service / Fee Benchmarks
  *  links use for `?serviceId=…`, so the destination page lands the
  *  user on the matching dept row with its drilldown pre-opened. */
 function CrossNavLinks({ dept }: { dept: DeptCode }) {

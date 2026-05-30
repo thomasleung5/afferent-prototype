@@ -29,7 +29,7 @@ export function DepartmentTargets() {
 
   // ?dept=... cross-nav from Functional Allocation: scroll the matching
   // dept row into view and flash it briefly. Same row-flash pattern as
-  // BenchmarkTable / CostOfServiceTable / FeeScheduleTable.
+  // BenchmarksTable / CostOfServiceTable / FeeScheduleTable.
   useEffect(() => {
     if (!searchDept) return;
     const row = policyTargets.find((t) => t.dept === searchDept);

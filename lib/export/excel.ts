@@ -8,7 +8,7 @@
  *   4. Department Summary— per-dept FBHR composition + recovery
  *   5. Recommendations   — ranked fee changes with action + rationale
  *   6. Recovery Policy   — dept targets + exceptions + impact
- *   7. Benchmark         — peer-city variance per fee
+ *   7. Benchmarks        — peer-city variance per fee
  *   8. Review Flags      — unmapped/low-confidence rows still pending
  *   9. Methodology       — text content used in the PDF as well
  *
@@ -31,7 +31,7 @@ export async function exportFeeStudyXlsx(payload: ExportPayload): Promise<Blob> 
   addSheet(XLSX, wb, "Department Summary", buildDeptSummary(payload), [20, 10, 10, 12, 10, 10, 10, 10, 14, 14, 14, 14, 10, 8]);
   addSheet(XLSX, wb, "Recommendations", buildRecommendations(payload), [10, 36, 8, 12, 12, 12, 14, 20, 50]);
   addSheet(XLSX, wb, "Recovery Policy", buildPolicy(payload), [20, 12, 32, 32]);
-  addSheet(XLSX, wb, "Benchmark", buildBenchmark(payload), [40, 8, 12, 12, 12, 12]);
+  addSheet(XLSX, wb, "Benchmarks", buildBenchmarks(payload), [40, 8, 12, 12, 12, 12]);
   addSheet(XLSX, wb, "Review Flags", buildReviewFlags(payload), [20, 8, 50, 32]);
   addSheet(XLSX, wb, "Methodology", buildMethodology(payload), [20, 80]);
 
@@ -191,7 +191,7 @@ function buildPolicy(p: ExportPayload): Cell[][] {
   return rows;
 }
 
-function buildBenchmark(p: ExportPayload): Cell[][] {
+function buildBenchmarks(p: ExportPayload): Cell[][] {
   const rows: Cell[][] = [[
     h("Service"), h("Dept"),
     h("Our fee"), h("Peer median"),

@@ -7,7 +7,7 @@ interface ServicesSearch {
 
 export const Route = createFileRoute("/build/services")({
   // Cross-navigation from another tab (Cost of Service, Fee Schedule,
-  // Fee Benchmark) passes ?serviceId=<service.id> so this view can
+  // Fee Benchmarks) passes ?serviceId=<service.id> so this view can
   // auto-open, scroll to, and highlight the matching service row.
   validateSearch: (search: Record<string, unknown>): ServicesSearch => {
     const id = search.serviceId;

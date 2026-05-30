@@ -1,11 +1,11 @@
-/* Excel exporter for the Fee Benchmark deliverable. Builds a focused
+/* Excel exporter for the Fee Benchmarks deliverable. Builds a focused
  * multi-sheet workbook via SheetJS and triggers a client-side download.
  *
  * Sheets:
- *   1. Summary    — city info + KPI counts (with-peer, above/in-line/below).
- *   2. Benchmark  — every fee with our fee, per-peer-city columns, peer
- *                   median, variance vs. median, variance vs. cost.
- *   3. Notes      — method, source, caveats.
+ *   1. Summary     — city info + KPI counts (with-peer, above/in-line/below).
+ *   2. Benchmarks  — every fee with our fee, per-peer-city columns, peer
+ *                    median, variance vs. median, variance vs. cost.
+ *   3. Notes       — method, source, caveats.
  *
  * Mirrors lib/export/capExcel.ts and lib/export/excel.ts (fee-study). */
 
@@ -13,7 +13,7 @@ import type { DeptCode } from "../types";
 
 type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
 
-export interface BenchmarkRow {
+export interface BenchmarksRow {
   id: string;
   name: string;
   dept: DeptCode;
@@ -26,13 +26,13 @@ export interface BenchmarkRow {
   varianceVsCost: number;
 }
 
-export interface BenchmarkExportPayload {
+export interface BenchmarksExportPayload {
   cityName: string;
   fiscal: string;
   preparedBy: string;
   peers: string[];
   generatedAt: string;
-  rows: BenchmarkRow[];
+  rows: BenchmarksRow[];
   summary: {
     total: number;
     withPeer: number;
@@ -43,13 +43,13 @@ export interface BenchmarkExportPayload {
   };
 }
 
-export async function exportBenchmarkXlsx(p: BenchmarkExportPayload): Promise<Blob> {
+export async function exportBenchmarksXlsx(p: BenchmarksExportPayload): Promise<Blob> {
   const XLSX = await import("xlsx");
   const wb = XLSX.utils.book_new();
 
-  addSheet(XLSX, wb, "Summary",   buildSummary(p),   [28, 24]);
-  addSheet(XLSX, wb, "Benchmark", buildBenchmark(p), [40, 8, 12, ...new Array(p.peers.length).fill(12), 12, 12, 12]);
-  addSheet(XLSX, wb, "Notes",     buildNotes(p),     [28, 60]);
+  addSheet(XLSX, wb, "Summary",    buildSummary(p),    [28, 24]);
+  addSheet(XLSX, wb, "Benchmarks", buildBenchmarks(p), [40, 8, 12, ...new Array(p.peers.length).fill(12), 12, 12, 12]);
+  addSheet(XLSX, wb, "Notes",      buildNotes(p),      [28, 60]);
 
   const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
   return new Blob([buf], {
@@ -61,7 +61,7 @@ export async function exportBenchmarkXlsx(p: BenchmarkExportPayload): Promise<Bl
 // Sheet builders
 // ============================================================================
 
-function buildSummary(p: BenchmarkExportPayload): Cell[][] {
+function buildSummary(p: BenchmarksExportPayload): Cell[][] {
   const s = p.summary;
   return [
     [h("Fee Benchmarks · Export Summary")],
@@ -84,7 +84,7 @@ function buildSummary(p: BenchmarkExportPayload): Cell[][] {
   ];
 }
 
-function buildBenchmark(p: BenchmarkExportPayload): Cell[][] {
+function buildBenchmarks(p: BenchmarksExportPayload): Cell[][] {
   const header: Cell[] = [
     h("Fee item"), h("Dept"), h("Our fee"),
     ...p.peers.map((c) => h(c)),
@@ -107,7 +107,7 @@ function buildBenchmark(p: BenchmarkExportPayload): Cell[][] {
   return rows;
 }
 
-function buildNotes(p: BenchmarkExportPayload): Cell[][] {
+function buildNotes(p: BenchmarksExportPayload): Cell[][] {
   return [
     [h("Method")],
     [

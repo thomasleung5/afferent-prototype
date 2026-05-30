@@ -11,7 +11,7 @@ const ITEMS: SubNavItem[] = [
   { href: "/build/costs",                  label: "Cost of Service" },
   { href: "/build/policy",                 label: "Recovery Policy" },
   { href: "/build/feestudy",               label: "Fee Schedule" },
-  { href: "/build/benchmark",              label: "Fee Benchmarks" },
+  { href: "/build/benchmarks",             label: "Fee Benchmarks" },
 ];
 
 export const Route = createFileRoute("/build")({

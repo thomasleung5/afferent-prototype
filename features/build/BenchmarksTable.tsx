@@ -41,7 +41,7 @@ function peerJitter(id: string, median: number, peers: string[]): number[] {
   });
 }
 
-export function BenchmarkTable() {
+export function BenchmarksTable() {
   const { services, derived } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const peers = jurisdiction.peers;
@@ -51,7 +51,7 @@ export function BenchmarkTable() {
   // On arrival, drop any dept filter that would hide the row, open the
   // matching drilldown, scroll it into view, and flash it briefly so the
   // user sees where they landed.
-  const { serviceId } = useSearch({ from: "/build/benchmark" });
+  const { serviceId } = useSearch({ from: "/build/benchmarks" });
   useEffect(() => {
     if (!serviceId) return;
     const match = services.find((s) => s.id === serviceId);

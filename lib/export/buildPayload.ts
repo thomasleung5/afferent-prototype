@@ -250,7 +250,7 @@ interface ExportRecommendation extends ExportFeeRow {
   rationale: string[];
 }
 
-interface ExportBenchmarkRow {
+interface ExportBenchmarksRow {
   id: string;
   name: string;
   dept: DeptCode;
@@ -284,7 +284,7 @@ export interface ExportPayload {
   feeSchedule: ExportFeeRow[];
   costOfService: ExportCostRow[];
   recommendations: ExportRecommendation[];
-  benchmarks: ExportBenchmarkRow[];
+  benchmarks: ExportBenchmarksRow[];
   policy: {
     targets: PolicyTarget[];
     exceptions: PolicyException[];
@@ -504,7 +504,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     })
     .sort((a, b) => b.uplift - a.uplift);
 
-  const benchmarks: ExportBenchmarkRow[] = services
+  const benchmarks: ExportBenchmarksRow[] = services
     .filter((s) => s.peer > 0)
     .map((s) => {
       const c = compByid.get(s.id);
