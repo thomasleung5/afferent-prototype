@@ -31,9 +31,9 @@ export interface RoleAllocation {
 
 /* ---------- Fee-study row metadata ----------
  *
- * Real municipal fee schedules — modeled on the Los Altos Hills / NBS
- * structure — carry richer metadata than flat numeric pricing. The
- * types below extend `Service` with: nested categories, line-item
+ * Real municipal fee schedules carry richer metadata than flat numeric
+ * pricing. The types below extend `Service` with: nested categories,
+ * line-item
  * numbering, free-form units, formula / deposit / T&M / pass-through
  * pricing, lifecycle status (new / moved / deleted), legal-authority
  * citations, free-form notes, per-agency peer survey values, and
@@ -386,7 +386,7 @@ export interface OperatingLine {
 //
 // BasisKey is the denominator the step-down engine uses to split a pool
 // across receiving depts; it lives here so AllocationBasis can reference
-// it without a circular dep into capStepDown.
+// it without a circular dep into capBasisRouting.
 // ---------------------------------------------------------------------------
 
 import type { InstDeptCode } from "./data/institutionalDepts";
@@ -601,9 +601,9 @@ export interface FunctionalAllocationBucket {
    *  recoverable-FBHR denominator (Σ directHours over rate-basis
    *  buckets). When false, the bucket's cost still contributes to the
    *  recoverable numerator if recoverabilityPct > 0, but its hours are
-   *  excluded from the rate basis — useful for NBS-style adjustments
-   *  where non-fee-supported activity (long-range planning, CIP,
-   *  governance) is removed from the hourly rate denominator. Defaults
+   *  excluded from the rate basis — useful for adjustments where
+   *  non-fee-supported activity (long-range planning, CIP, governance)
+   *  is removed from the hourly rate denominator. Defaults
    *  to true when recoverabilityPct > 0 at row creation; analysts may
    *  override and the value persists. */
   rateBasisHours: boolean;

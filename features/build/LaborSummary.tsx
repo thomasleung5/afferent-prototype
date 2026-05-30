@@ -27,9 +27,9 @@ export function LaborSummary() {
   const activeDepts = ORDER.filter((d) => labor[d].positions > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = labor[d];
-    // PR-I: labor lives at GL/account granularity, not per-role. The
-    // drilldown ledger groups by account name (Regular Salaries,
-    // Retirement, etc.); FTE has no per-account meaning so it's omitted.
+    // Labor lives at GL/account granularity, not per-role. The drilldown
+    // ledger groups by account name (Regular Salaries, Retirement, etc.);
+    // FTE has no per-account meaning so it's omitted.
     const compByAccount = new Map<string, number>();
     for (const o of operating) {
       if (o.costType !== "Labor") continue;

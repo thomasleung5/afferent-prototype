@@ -2,8 +2,9 @@
  *
  * Run with: npm run test:capacity
  *
- * Pins the contract of the PR-K1 default-allocation helper. Future PR-K2
- * work (allocatedHoursByDept, utilizationByDept) will extend this file. */
+ * Pins the contract of the default-allocation helper plus the
+ * downstream allocatedHoursByDept / utilizationByDept derivations and
+ * the warning surfaces. */
 
 import assert from "node:assert/strict";
 import {
@@ -43,10 +44,10 @@ const svc = (
   const allocs = defaultRoleAllocationsForService(svc("plan-x", "PLAN"), roster);
 
   assert.equal(allocs.length, 2,
-    "PR-K1: default picks top 2 same-dept positions");
+    "default picks top 2 same-dept positions");
   // Tied at FTE 1.0 — alphabetical tiebreak: pos-aspln < pos-srpln
   assert.equal(allocs[0].productiveHoursId, "pos-aspln",
-    "PR-K1: tied FTE → alphabetical id order");
+    "tied FTE → alphabetical id order");
   assert.equal(allocs[1].productiveHoursId, "pos-srpln");
   // Equal FTE → 50/50; residual absorbed in first.
   assert.equal(allocs[0].pct, 50);
@@ -71,7 +72,7 @@ const svc = (
   assert.equal(allocs[0].pct, 63);
   assert.equal(allocs[1].pct, 37);
   assert.equal(allocs[0].pct + allocs[1].pct, 100,
-    "PR-K1: pcts sum to 100 (residual baked into the rounding here)");
+    "pcts sum to 100 (residual baked into the rounding here)");
   console.log("  ✓ proportional split with rounding residual");
 }
 
@@ -83,7 +84,7 @@ const svc = (
   ];
   const allocs = defaultRoleAllocationsForService(svc("plan-y", "PLAN"), roster);
   assert.equal(allocs.length, 1,
-    "PR-K1: defaults consider only same-dept positions");
+    "defaults consider only same-dept positions");
   assert.equal(allocs[0].productiveHoursId, "pos-plan");
   assert.equal(allocs[0].pct, 100);
   console.log("  ✓ cross-dept positions excluded from default");
@@ -94,7 +95,7 @@ const svc = (
   const roster = [ph("pos-only-bldg", "BLDG", 1.0)];
   const allocs = defaultRoleAllocationsForService(svc("plan-z", "PLAN"), roster);
   assert.deepEqual(allocs, [],
-    "PR-K1: no candidate positions → empty allocations (UI shows empty state)");
+    "no candidate positions → empty allocations (UI shows empty state)");
   console.log("  ✓ empty default when no same-dept positions");
 }
 
@@ -112,9 +113,9 @@ const svc = (
   };
   const allocs = effectiveRoleAllocations(svc("plan-x", "PLAN"), roster, overrides);
   assert.equal(allocs.length, 1,
-    "PR-K1: persisted override takes precedence over default");
+    "persisted override takes precedence over default");
   assert.equal(allocs[0].productiveHoursId, "pos-bldg-shared",
-    "PR-K1: override preserves cross-dept allocations");
+    "override preserves cross-dept allocations");
   console.log("  ✓ override-pattern resolution");
 }
 
@@ -124,14 +125,14 @@ const svc = (
   const overrides = { "plan-x": [] };
   const allocs = effectiveRoleAllocations(svc("plan-x", "PLAN"), roster, overrides);
   assert.equal(allocs[0].productiveHoursId, "pos-a",
-    "PR-K1: empty override array treated as 'no override' — re-derives default");
+    "empty override array treated as 'no override' — re-derives default");
   console.log("  ✓ empty override re-derives default");
 }
 
 // ── 7. allocatedRoleHours: volume × hours × pct/100 ─────────────────────
 {
   const hrs = allocatedRoleHours({ volume: 100, hours: 5 }, { pct: 30 });
-  assert.equal(hrs, 150, "PR-K2: 100 × 5 × 0.30 = 150");
+  assert.equal(hrs, 150, "100 × 5 × 0.30 = 150");
   console.log("  ✓ allocatedRoleHours basic math");
 }
 
@@ -150,8 +151,8 @@ const svc = (
   };
   const services = [svc("plan-x", "PLAN", 100, 5)];
   const byDept = allocatedHoursByDept(services, overrides, roster);
-  assert.equal(byDept.PLAN, 500, "PR-K2: 60% + 40% routed to PLAN = 500 total");
-  assert.equal(byDept.BLDG, 0, "PR-K2: untouched dept stays at 0");
+  assert.equal(byDept.PLAN, 500, "60% + 40% routed to PLAN = 500 total");
+  assert.equal(byDept.BLDG, 0, "untouched dept stays at 0");
   console.log("  ✓ single-dept aggregation");
 }
 
@@ -177,9 +178,9 @@ const svc = (
   const services = [svc("bldg-shared", "BLDG", 200, 2)];
   const byDept = allocatedHoursByDept(services, overrides, roster);
   assert.equal(byDept.BLDG, 280,
-    "PR-K2: BLDG-role portion of a BLDG service lands in BLDG");
+    "BLDG-role portion of a BLDG service lands in BLDG");
   assert.equal(byDept.PLAN, 120,
-    "PR-K2: PLAN-role portion of a BLDG service lands in PLAN (NOT BLDG) — " +
+    "PLAN-role portion of a BLDG service lands in PLAN (NOT BLDG) — " +
     "this is the conceptual rule the capacity layer exists to enforce");
   console.log("  ✓ cross-dept allocations routed by role.dept, not service.dept");
 }
@@ -197,10 +198,10 @@ const svc = (
   const services = [svc("plan-x", "PLAN", 10, 10)];
   const byDept = allocatedHoursByDept(services, overrides, roster);
   // 10 × 10 × 0.5 = 50 routed to PLAN; the ghost half drops on the floor.
-  // PR-K4's warning surface is the right place to flag this; capacity
-  // math itself must not crash.
+  // The warning surface is the right place to flag this; capacity math
+  // itself must not crash.
   assert.equal(byDept.PLAN, 50,
-    "PR-K2: dangling allocations drop silently (warning surface handles UX)");
+    "dangling allocations drop silently (warning surface handles UX)");
   console.log("  ✓ dangling productiveHoursId silently dropped");
 }
 
@@ -211,11 +212,11 @@ const svc = (
   const u = utilizationByDept(allocated, productive);
   // Spec example: PLAN ≈ 120%, BLDG ≈ 76%.
   assert.equal(Math.round(u.PLAN.pct), 120,
-    "PR-K2: PLAN utilization matches the spec example (120%)");
+    "PLAN utilization matches the spec example (120%)");
   assert.equal(Math.round(u.BLDG.pct), 76,
-    "PR-K2: BLDG utilization matches the spec example (76%)");
+    "BLDG utilization matches the spec example (76%)");
   assert.equal(u.ENG.pct, 0,
-    "PR-K2: 0 productive hours → 0% utilization (not NaN, not Infinity)");
+    "0 productive hours → 0% utilization (not NaN, not Infinity)");
   console.log("  ✓ utilization math matches spec example + 0-divisor guard");
 }
 
@@ -234,7 +235,7 @@ const svc = (
   const warns = serviceCapacityWarnings(
     [svc("plan-x", "PLAN", 10, 10)], overrides, roster,
   );
-  assert.equal(warns.length, 1, "PR-K4: exactly one warning for off-total mix");
+  assert.equal(warns.length, 1, "exactly one warning for off-total mix");
   assert.equal(warns[0].kind, "alloc-not-100");
   if (warns[0].kind === "alloc-not-100") {
     assert.equal(warns[0].actual, 95);
@@ -262,7 +263,7 @@ const svc = (
   // Two warnings expected: one alloc-not-100 (well, the user total IS
   // 100 here — 50+50; so actually no), plus the dangling.
   // Wait: total here IS 100. So only the dangling warning fires.
-  assert.equal(warns.length, 1, "PR-K4: dangling productiveHoursId fires its own warning");
+  assert.equal(warns.length, 1, "dangling productiveHoursId fires its own warning");
   assert.equal(warns[0].kind, "dangling-position");
   if (warns[0].kind === "dangling-position") {
     assert.equal(warns[0].productiveHoursId, "pos-ghost");
@@ -296,7 +297,7 @@ const svc = (
       [svc("plan-x", "PLAN", 10, 10)], overrides, roster,
     );
     assert.equal(warns.length, expected,
-      `PR-K4: total=${total} → expected ${expected} warning(s), got ${warns.length}`);
+      `total=${total} → expected ${expected} warning(s), got ${warns.length}`);
   }
   console.log("  ✓ alloc-not-100 strict at integer-pct boundary");
 }
@@ -312,7 +313,7 @@ const svc = (
     FIRE: { allocated: 0,    productive: 0,    pct: 0 },
   } as Record<DeptCode, { allocated: number; productive: number; pct: number }>;
   const warns = deptCapacityWarnings(u);
-  assert.equal(warns.length, 1, "PR-K4: only depts strictly > 125% trigger critical");
+  assert.equal(warns.length, 1, "only depts strictly > 125% trigger critical");
   assert.equal(warns[0].dept, "PLAN");
   assert.equal(warns[0].kind, "utilization-critical");
   console.log("  ✓ utilization-critical (>125% strict)");
@@ -331,7 +332,7 @@ const svc = (
     FIRE: { allocated: 0, productive: 0, pct: 0 },
   } as Record<DeptCode, { allocated: number; productive: number; pct: number }>;
   const warns = deptCapacityWarnings(u);
-  assert.equal(warns.length, 1, "PR-K4: missing-productive only when allocated > 0");
+  assert.equal(warns.length, 1, "missing-productive only when allocated > 0");
   assert.equal(warns[0].dept, "PLAN");
   assert.equal(warns[0].kind, "missing-productive-hours");
   console.log("  ✓ missing-productive-hours (demand vs zero supply)");

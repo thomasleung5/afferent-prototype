@@ -27,10 +27,9 @@ export interface DeptLabor {
 
 /** Per-dept labor cost + productive-hours roll-up.
  *
- *  PR-E flipped the cost source from positions to operating-labor rows.
- *  Cost (totalComp) is now `Σ operatingLine.amount where costType="Labor"
+ *  Cost (totalComp) is `Σ operatingLine.amount where costType="Labor"
  *  && include && dept=D` — the labor row amounts already bake in
- *  salary × fte (per PR-D's buildLaborLinesFromPositions) so no further
+ *  salary × fte (via buildLaborLinesFromPositions) so no further
  *  weighting is needed.
  *
  *  Hours come from the productiveHours slice: `Σ row.hours × row.fte`
@@ -84,9 +83,9 @@ export function deptOperating(
   lines: OperatingLine[],
   hoursByDept: Record<DeptCode, number>,
 ): Record<DeptCode, DeptOperating> {
-  // PR-D: labor-classified rows live in the same OperatingLine[] but
-  // feed the labor numerator (deptLabor → directRate), not the
-  // operating denominator. Skip them here so FBHR doesn't double-count
+  // Labor-classified rows live in the same OperatingLine[] but feed
+  // the labor numerator (deptLabor → directRate), not the operating
+  // denominator. Skip them here so FBHR doesn't double-count
   // salaries/benefits.
   const included = lines.filter((l) => l.include && l.costType !== "Labor");
   const sharedTotal = included

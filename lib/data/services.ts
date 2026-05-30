@@ -3,11 +3,9 @@ import type { Service } from "../types";
 /* Source: final draft Development Services Fee Study, March 30, 2026.
  * Tables 2, 4, 7; Appendices A.1–A.3.
  *
- * PR-L5 enriches each row with the NBS-style fee-schedule metadata
- * fields introduced by PR-L1 (feeNo, category, subcategory, unit, plus
- * rowKind + legalAuthority where the row isn't a flat fee). The numeric
- * fee / volume / hours stay unchanged — this enrichment is data only,
- * not behavior. */
+ * Each row carries fee-schedule metadata fields (feeNo,
+ * category, subcategory, unit, plus rowKind + legalAuthority where the
+ * row isn't a flat fee) on top of the numeric fee / volume / hours. */
 
 export const SERVICES: Service[] = [
   // ---------- Planning (FBHR $301) — category: "Planning & Zoning" ----------

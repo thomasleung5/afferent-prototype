@@ -4,13 +4,13 @@
  *   - hoursSharePct: share of the dept's productive hours assigned to
  *     this bucket. Σ across a dept's buckets should sum to 100%.
  *   - recoverabilityPct: fee-recoverable portion of the bucket's
- *     activity. Follows NBS-style starter ranges.
+ *     activity.
  *
  * Direct hours are derived per-render (deptProductiveHours ×
  * hoursSharePct / 100) so the splits stay reconciled to the
  * authoritative productive-hours roster without persisted duplication.
  *
- * Loaded by PR-FA2 (store slice). Existing FBHR math is unaffected. */
+ * Loaded into the store slice; FBHR math is unaffected. */
 
 import type { FunctionalAllocationBucket } from "@/lib/types";
 

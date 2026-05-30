@@ -34,8 +34,8 @@ export function OperatingTable() {
   // This page is the non-labor view of the budget-classification table.
   // Labor-classified rows surface on the Labor page's Labor Line
   // Items section instead, so they're filtered out here to avoid double
-  // display. costType === "Operating" is the default (and what every
-  // pre-PR-A row gets backfilled to via storeMigration).
+  // display. costType === "Operating" is the default and the value
+  // storeMigration backfills any persisted rows missing the field.
   const operatingScope = useMemo(
     () => operating.filter((r) => r.costType !== "Labor"),
     [operating],

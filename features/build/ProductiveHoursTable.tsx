@@ -20,10 +20,10 @@ import {
 const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
 
 /** Productive-hours modeling table. Sits below the Labor Line Items
- *  section on Labor. Reads/writes the productiveHours slice
- *  (PR-C) — one row per role, carrying FTE × hrs-per-FTE inputs that
- *  feed the FBHR denominator. Salary/benefits live as labor operating
- *  lines in the row above; this table is hours-only. */
+ *  section on Labor. Reads/writes the productiveHours slice — one row
+ *  per role, carrying FTE × hrs-per-FTE inputs that feed the FBHR
+ *  denominator. Salary/benefits live as labor operating lines in the
+ *  row above; this table is hours-only. */
 export function ProductiveHoursTable() {
   const {
     productiveHours, updateProductiveHours, addProductiveHours,

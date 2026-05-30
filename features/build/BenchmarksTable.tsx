@@ -96,7 +96,7 @@ export function BenchmarksTable() {
 
   const rows = useMemo(() => applyFilter(all, "dept", dept), [all, dept]);
 
-  // Service lookup for the PR-L2 fee-display helpers (currentFeeText /
+  // Service lookup for the fee-display helpers (currentFeeText /
   // fullCostRecoveryFeeText overrides). The Row precomputes numeric
   // fee/cost for math + sortKey; cell display routes through the
   // helper when the matching Service carries a text override.

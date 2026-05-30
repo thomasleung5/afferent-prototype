@@ -4,7 +4,9 @@ import type { AllocationBasis } from "@/lib/types";
 interface Props {
   bases: AllocationBasis[];
   selectedId: string;
-  /** Shown when selectedId doesn't resolve to a catalog entry (legacy pool). */
+  /** Shown when selectedId doesn't resolve to a catalog entry — typically
+   *  a pool persisted before the basis was renamed or removed from the
+   *  catalog. Lets the user see the stale id and pick a current basis. */
   fallbackText?: string;
   onSelect: (basisId: string, basisName: string) => void;
   onCreate: (input: { name: string; source: string; methodologyNote?: string }) => string;

@@ -1,13 +1,12 @@
-/* CAP step-down — basis routing + seed DRIVERS matrix.
+/* CAP basis routing + seed driver denominators.
  *
- * The engine itself lives in capStepDownGl.ts (glCode-native). This file
- * exposes the helpers and constants that engine uses:
+ * Not an allocation engine — these are the lookup helpers and seed
+ * constants the engine (./capStepDownEngine.ts) reads:
  *   - basisForPool / inferBasis — resolves a pool's basis key + directTo.
  *   - DRIVERS — per-InstDeptCode seed driver values used as fallback
  *     when no imports cover a given node.
  *
- * The institutional dept catalog (the registry that INDIRECT_DEPTS and
- * CENTER_NAME_TO_CODE used to encode) lives in ./institutionalDepts.ts.
+ * The institutional dept catalog lives in ./institutionalDepts.ts.
  */
 
 import type { AllocationBasis, BasisKey, CapPool, InstDeptCode } from "../types";

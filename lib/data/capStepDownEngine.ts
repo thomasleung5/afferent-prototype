@@ -31,7 +31,7 @@ import type {
 } from "../types";
 import {
   basisForPool, DRIVERS,
-} from "./capStepDown";
+} from "./capBasisRouting";
 import { INST_DEPTS, INDIRECT_CODE_BY_NAME } from "./institutionalDepts";
 import type { ReceiverEntry } from "./capReceiverRegistry";
 
@@ -86,9 +86,9 @@ interface GlEngineGraph {
   /** Pool → indirect node key. Prefers pool.centerGlCode (glCode → node
    *  via the centerNodeByGlCode index) and falls back to pool.center
    *  (name → node via indirectNodeByCenter). The glCode path is the
-   *  load-bearing routing identity; the name path is the legacy
-   *  fallback for pools whose centerGlCode wasn't backfilled (manually-
-   *  added centers, etc.). */
+   *  load-bearing routing identity; the name path is the fallback for
+   *  pools whose centerGlCode hasn't been backfilled (manually-added
+   *  centers, etc.). */
   resolvePoolHome: (pool: CapPool) => NodeKey | undefined;
 }
 
@@ -169,8 +169,9 @@ export function buildEngineGraph(args: {
    *  from state.positions / state.services). Scopes the synthetic
    *  fallback direct nodes (step 3 below) so jurisdictions that don't
    *  model e.g. PARKS / PD / FIRE don't end up with phantom receivers
-   *  catching CAP allocation via the seed DRIVERS matrix. Omit for the
-   *  legacy behavior (seed every entry in FEE_DEPTS). */
+   *  catching CAP allocation via the seed DRIVERS matrix. Omit to seed
+   *  every entry in FEE_DEPTS (used by tests + jurisdictions that model
+   *  the full fee-dept set). */
   modeledFeeDepts?: DeptCode[];
 }): GlEngineGraph {
   const {
@@ -323,7 +324,8 @@ export function buildEngineGraph(args: {
 
   // Build the by-glCode index AFTER step 2's defensive seed-center →
   // real-glCode promotion has settled, so a promoted center is found
-  // under its real glCode (not its old synth seed:center:* key).
+  // under its real glCode (not the `seed:center:*` synthetic key it
+  // was first inserted under).
   const centerNodeByGlCode = new Map<string, NodeKey>();
   for (const n of nodes) {
     if (n.role === "indirect") centerNodeByGlCode.set(n.glCode, n.key);
@@ -480,9 +482,10 @@ export function computeStepDownGl(args: {
   // stepOrder in sequence so each center's First Pool can include its
   // upstream centers' First contributions, and each center's Phase 2
   // input can include upstream centers' Phase 2 contributions.
-  // centerOrder entries are NodeKeys (glCodes / `seed:center:*` synth)
-  // post-PR-11. If a stale name slips through (legacy caller), the
-  // resolveCenterNode fallback finds it via the name→key map.
+  // centerOrder entries are NodeKeys (glCodes or `seed:center:*`
+  // synthetics). If a caller passes a center name instead, the
+  // resolveCenterNode fallback finds the matching key via the
+  // name→key map so name-keyed callers keep working.
   const stepOrder: NodeKey[] = [];
   const seenStep = new Set<NodeKey>();
   for (const entry of centerOrder) {
@@ -678,7 +681,8 @@ export function computeStepDownGl(args: {
   }
 
   // Also handle pools whose home center isn't in stepOrder (defensive —
-  // shouldn't happen, but covers any legacy data).
+  // shouldn't happen in well-formed state, but covers persisted bundles
+  // where centerOrder doesn't enumerate every populated center).
   const stepOrderSet = new Set(stepOrder);
   for (const p of pools) {
     const homeKey = resolvePoolHome(p);

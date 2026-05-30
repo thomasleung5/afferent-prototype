@@ -2,7 +2,7 @@
  * recoverable cost and FBHR from FunctionalAllocationBucket rows + the
  * dept's fully burdened cost (post-overhead-allocation).
  *
- * NBS-style fee-study methodology:
+ * Methodology:
  *
  *   bucket.directHours       = deptProductiveHours × allocationSharePct
  *   bucket.fullyBurdenedCost = deptFullyBurdenedCost × allocationSharePct
@@ -20,7 +20,7 @@
  *
  *   (2) Hourly rate basis contribution — Rate Basis Hours flag. When
  *       true, the bucket's direct hours are included in the FBHR
- *       denominator. When false, hours are excluded (NBS adjustment for
+ *       denominator. When false, hours are excluded (adjustment for
  *       non-fee-supported activity such as long-range planning, CIP,
  *       governance). Cost contribution is unaffected by this flag.
  *

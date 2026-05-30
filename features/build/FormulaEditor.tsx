@@ -5,12 +5,10 @@ import {
 } from "@/components/ui";
 import type { FeeFormula, FeeFormulaTier } from "@/lib/types";
 
-/** Structured editor for the Service.formula union. Extracted in PR-M2 so
- *  both Fee Schedule and (potentially) any future page that edits fee
- *  structure can use the same component. PR-L6 introduced the editor
- *  inside ServicesTable; PR-M2 moves the canonical edit surface to the
- *  Fee Schedule page since fee structure is a policy concern, not a
- *  catalog concern. */
+/** Structured editor for the Service.formula union. Owned by the Fee
+ *  Schedule page (fee structure is a policy concern, not a catalog
+ *  concern). Extracted so any future page that edits fee structure can
+ *  reuse the same component. */
 
 const FORMULA_KIND_OPTIONS = [
   { value: "none",              label: "(none — flat row)" },

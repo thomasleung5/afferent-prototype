@@ -6,11 +6,11 @@ import { FEE_DEPTS } from "./data/departments";
 /* Capacity reconciliation layer — answers "can each department deliver the
  * modeled annual service workload with its current staffing?"
  *
- * PR-K1 introduces the foundation: a deterministic default-allocation
- * helper so role allocations are derived from the actual position roster
- * (productiveHours) rather than hardcoded labels. Later PRs add the
- * allocatedHoursByDept / utilizationByDept derivations and the
- * RateDerivation UI surface. */
+ * Role allocations are derived from the actual position roster
+ * (productiveHours), with a deterministic FTE-weighted default
+ * picked when no service-level override is set. Downstream derivations
+ * (allocatedHoursByDept / utilizationByDept) and the RateDerivation
+ * UI surface read off this layer. */
 
 /** Resolve a service's role allocations: the persisted override when
  *  present, otherwise the FTE-weighted default derived from same-dept
@@ -79,8 +79,8 @@ export function allocatedRoleHours(
  *  as 30% PLAN demand, not 100% BLDG demand. Pure / deterministic.
  *
  *  Allocations referencing a productiveHoursId that no longer exists
- *  in the roster are silently dropped (the position was deleted); the
- *  PR-K4 warning surface will flag those rows for cleanup. */
+ *  in the roster are silently dropped (the position was deleted);
+ *  serviceCapacityWarnings flags those rows for cleanup at the UI layer. */
 export function allocatedHoursByDept(
   services: Service[],
   overrides: Record<string, RoleAllocation[]>,

@@ -4,15 +4,15 @@ import { SERVICES } from "./services";
 /* Volume of Activity (annual count per service) layered on top of the
  * canonical service catalog. `prior` is the prior-study volume;
  * `current` is what's in the permit-system import for FY 26-27. All
- * seed rows carry source: "seed" (the status / flag mix below simulates
- * the legacy review-state variety).
+ * seed rows carry source: "seed"; the status / flag mix below
+ * exercises the review-state variety the UI needs to handle.
  *
- * Activity labels for the Volume page now come from `Service.activity`
- * (Services is the canonical owner). The legacy `VolumeRow.unit` field
- * is kept optional on the type for parser / import / export back-
- * compat, but the seed no longer populates it — the display layer
- * reads Service.activity directly with the row-level unit as a
- * fallback for any imported rows whose Service has no activity set. */
+ * Activity labels for the Volume page come from `Service.activity` —
+ * Services is the canonical owner. `VolumeRow.unit` stays optional on
+ * the type so persisted imports and parser/export round-trips keep
+ * working; the seed no longer populates it. The display layer reads
+ * Service.activity directly and falls back to the row-level unit only
+ * when an imported row's Service has no activity set. */
 
 function vary(volume: number, i: number): number {
   return Math.max(1, Math.round(volume * (0.85 + (i % 5) * 0.06)));

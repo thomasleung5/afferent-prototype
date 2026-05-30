@@ -53,12 +53,12 @@ export function FeeScheduleTable() {
     setDeptFilter(searchDept);
   }, [searchDept, serviceId]);
 
-  // Full Service lookup for the PR-L2 display helpers (currentFeeText,
+  // Full Service lookup for the display helpers (currentFeeText,
   // recommendedFeeText, fullCostRecoveryFeeText overrides) plus the
-  // PR-L4 fee identity columns (feeNo, unit). The FeeComparison rows
-  // don't carry these fields, so each cell looks the Service up by id
-  // at render time. Math (annualUplift, recoveryPct, etc.) still uses
-  // the numeric fields off FeeComparison — display routing only.
+  // fee identity columns (feeNo, unit). The FeeComparison rows don't
+  // carry these fields, so each cell looks the Service up by id at
+  // render time. Math (annualUplift, recoveryPct, etc.) still uses the
+  // numeric fields off FeeComparison — display routing only.
   const svcById = useMemo(
     () => new Map(services.map((s) => [s.id, s])),
     [services],

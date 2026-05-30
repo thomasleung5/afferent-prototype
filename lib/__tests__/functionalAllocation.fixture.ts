@@ -2,7 +2,7 @@
  *
  * Run with: npm run test:functional-allocation
  *
- * Pins NBS-style methodology:
+ * Pins methodology:
  *   - bucket.directHours       = deptProductiveHours × hoursSharePct/100
  *   - bucket.fullyBurdenedCost = deptFullBurd × hoursSharePct/100
  *   - bucket.recoverableCost   = bucket.fullyBurdenedCost × recPct/100
@@ -73,7 +73,7 @@ const bucket = (overrides: Partial<FunctionalAllocationBucket> = {}): Functional
   console.log("  ✓ rate-basis flag excludes bucket hours from denominator only");
 }
 
-// ── 3. NBS-style mixed dept: long-range / CIP excluded from rate basis ──
+// ── 3. Mixed dept: long-range / CIP excluded from rate basis ──
 // 4 buckets representing a Planning division:
 //   - Current Planning (50% share, 100% rec, rate basis)
 //   - Public Counter (20%, 50% rec, rate basis)
@@ -97,7 +97,7 @@ const bucket = (overrides: Partial<FunctionalAllocationBucket> = {}): Functional
   assert.equal(d.recoverableCost, 127_000);
   assert.equal(d.rateBasisDirectHours, 800);
   assert.equal(d.recoverableFbhr, 127_000 / 800);
-  console.log("  ✓ NBS-style mixed dept: excludes non-fee activity from rate basis");
+  console.log("  ✓ Mixed dept: excludes non-fee activity from rate basis");
 }
 
 // ── 4. No rate-basis buckets → recoverable FBHR null ────────────────────

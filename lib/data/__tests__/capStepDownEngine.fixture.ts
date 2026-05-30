@@ -25,14 +25,14 @@ import type {
 } from "../../types";
 import {
   buildEngineGraph, computeStepDownGl, capAllocatedFromGl,
-} from "../capStepDownGl";
+} from "../capStepDownEngine";
 import { buildReceiverRegistry } from "../capReceiverRegistry";
 import { DEFAULT_STUDY_CONTEXT } from "../studyContext";
 
-/** Convert the fixture's legacy name-keyed (totals, glCodes) pair into
- *  the engine's PR-11 glCode-keyed (totals, sources) shape so each test
- *  block can keep declaring centers by name. Names that don't appear in
- *  glByName fall back to `seed:center:NAME`. */
+/** Convert the fixture's name-keyed (totals, glCodes) pair into the
+ *  engine's glCode-keyed (totals, sources) shape so each test block can
+ *  keep declaring centers by name. Names that don't appear in glByName
+ *  fall back to `seed:center:NAME`. */
 function buildCenterMaps(
   totalsByName: Record<string, number>,
   glByName: Record<string, string>,
@@ -629,10 +629,9 @@ assert.equal(directBadModel.diagnostics.length, 0,
 // ── glCode-first pool home resolution ───────────────────────────────────
 //
 // A pool whose centerGlCode is set should route via the glCode index even
-// when pool.center is wrong. This guards the engine flip in PR-10:
-// resolvePoolHome must prefer centerGlCode over center name. The reverse
-// path (no centerGlCode → fall back to center name) is exercised by every
-// other test in this file.
+// when pool.center is wrong: resolvePoolHome prefers centerGlCode over
+// center name. The reverse path (no centerGlCode → fall back to center
+// name) is exercised by every other test in this file.
 
 console.log("\n== glCode-first pool home resolution ==");
 
@@ -679,7 +678,7 @@ const glRouteGraph = buildEngineGraph({
 });
 const glRouteModel = computeStepDownGl({
   pools: glRoutePools,
-  // centerOrder is NodeKey[] post-PR-11 — pass the indirect node's key.
+  // centerOrder is NodeKey[] — pass the indirect node's key.
   centerOrder: [glRoute.keyByName["City Manager"]],
   bases: glRouteBases, basisUnits: glRouteBasisUnits,
   directAllocations: [], graph: glRouteGraph,

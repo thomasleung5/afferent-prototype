@@ -4,7 +4,7 @@ import type {
 import { INST_DEPTS } from "./institutionalDepts";
 
 /* Source: Los Altos Hills FY 24/25 CAP bundle (AI-parsed export of the
- * Sept 2025 NBS workbook). The step-down engine reads these via the
+ * Sept 2025 cost allocation workbook). The step-down engine reads these via the
  * live store. To refresh the seed against a future CAP edition, replace
  * the four exported constants below with the corresponding sections of
  * the new bundle — every other map in this file derives from them. */

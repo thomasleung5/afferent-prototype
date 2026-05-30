@@ -56,9 +56,9 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (state.directBills == null) {
     state.directBills = {};
   }
-  // PR-K1: serviceRoleAllocations is a sparse override map — missing
-  // means "use the FTE-weighted default at read time". Pre-K1 persisted
-  // state has no slice at all, so backfill {} so reducers can do safe
+  // serviceRoleAllocations is a sparse override map — missing means
+  // "use the FTE-weighted default at read time". Older persisted state
+  // has no slice at all, so backfill {} here so reducers can do safe
   // spreads without optional-chaining.
   if (state.serviceRoleAllocations == null) {
     state.serviceRoleAllocations = {};

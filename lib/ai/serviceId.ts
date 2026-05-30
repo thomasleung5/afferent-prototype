@@ -1,11 +1,10 @@
 /* Shared ID generation for new (non-catalog-matched) service rows
  * coming out of the AI parsers (parseServices, parseFees).
  *
- * The old `svc-ai-${i}` scheme collided across imports — the store's
- * `mergeRows` keys by `id`, so a second import's row 0 would silently
- * overwrite the first import's row 0 even if the two were unrelated
- * services. This module derives an ID from the normalized
- * dept + name so it's stable per service identity:
+ * Service IDs are the merge key inside the store (`mergeRows` keys by
+ * `id`), so the id MUST be a function of service identity — not row
+ * position — or two imports will silently overwrite each other's rows.
+ * This module derives an id from the normalized dept + name so:
  *   - Two imports of the same (dept, name) collapse onto the same id
  *     and the merge correctly treats the second as a duplicate.
  *   - Two imports of different services get distinct ids regardless of
