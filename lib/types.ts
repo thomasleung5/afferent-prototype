@@ -252,8 +252,6 @@ export interface Service {
 
 /* ---------- Build Model inputs ---------- */
 
-type PositionFlag = "title-changed" | "missing-hours";
-
 export interface Position {
   id: string;
   title: string;
@@ -269,7 +267,6 @@ export interface Position {
    *  informational — the authoritative productive-hour value used by
    *  downstream rate calculations is `hours`. */
   productiveHoursBreakdown?: ProductiveHoursBreakdown;
-  flag?: PositionFlag;
   /** Row provenance — set at creation, not mutated by edits. */
   source: SourceTag;
   /** Filename when source === "imported". */
