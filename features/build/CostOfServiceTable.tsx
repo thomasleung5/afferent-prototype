@@ -1,12 +1,12 @@
 ﻿
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, SectionLabel,
+  DeptChip, InlineLinkRow, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -181,30 +181,17 @@ export function CostOfServiceTable() {
             dept={r.dept as DeptCode}
             service={{ name: r.name, hours: r.hours }}
           />
-          <div style={{
-            display: "flex", flexWrap: "wrap", alignItems: "baseline",
-            gap: 14, paddingTop: 4,
-          }}>
-            <Link
-              to="/build/functional-allocation"
-              search={{ dept: r.dept as DeptCode }}
-              style={{
-                fontSize: "var(--t-l8)",
-                color: "var(--accent)", textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >View functional allocation →</Link>
-            <span aria-hidden style={{ color: "var(--rule-strong)" }}>·</span>
-            <Link
-              to="/build/feestudy"
-              search={{ serviceId: r.id }}
-              style={{
-                fontSize: "var(--t-l8)",
-                color: "var(--accent)", textDecoration: "underline",
-                textUnderlineOffset: 3,
-              }}
-            >View fee schedule →</Link>
-          </div>
+          <InlineLinkRow
+            style={{ marginTop: 0, paddingTop: 4 }}
+            links={[
+              { to: "/build/services",              search: { serviceId: r.id },
+                text: "View service →" },
+              { to: "/build/functional-allocation", search: { dept: r.dept as DeptCode },
+                text: "View functional allocation →" },
+              { to: "/build/feestudy",              search: { serviceId: r.id },
+                text: "View fee schedule →" },
+            ]}
+          />
         </div>
       )}
       />

@@ -21,6 +21,7 @@ export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";
 export { Formula, FormulaLine, FormulaPanel, SourcePill } from "./Formula";
 export { DrilldownShell, DrilldownColumn } from "./Drilldown";
+export { InlineLinkRow, type InlineLink } from "./InlineLinkRow";
 export { NodeEyebrow } from "./NodeEyebrow";
 export { SectionEyebrow } from "./SectionEyebrow";
 export { StatusPill } from "./StatusPill";

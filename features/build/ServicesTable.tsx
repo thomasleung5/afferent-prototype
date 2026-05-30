@@ -1,13 +1,13 @@
 ﻿
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
   AddRowButton, CellInput, CellSelect,
-  DrilldownColumn, DrilldownShell,
+  DrilldownColumn, DrilldownShell, InlineLinkRow,
   MiniTable, MonoLabel, RemoveIconButton, SectionLabel, SourcePill,
   type MiniTableColumn,
 } from "@/components/ui";
@@ -357,15 +357,16 @@ export function ServicesTable() {
                     </div>
                   )}
                 />
-                <Link
-                  to="/build/feestudy"
-                  search={{ serviceId: r.id }}
-                  onClick={(e) => e.stopPropagation()}
-                  style={{
-                    display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
-                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
-                  }}
-                >View fee schedule →</Link>
+                <InlineLinkRow
+                  links={[
+                    { to: "/build/costs",    search: { serviceId: r.id },
+                      text: "View cost of service →",
+                      onClick: (e) => e.stopPropagation() },
+                    { to: "/build/feestudy", search: { serviceId: r.id },
+                      text: "View fee schedule →",
+                      onClick: (e) => e.stopPropagation() },
+                  ]}
+                />
               </DrilldownColumn>
             </DrilldownShell>
           );

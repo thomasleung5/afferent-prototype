@@ -1,12 +1,12 @@
 
 import { useEffect, useMemo, useState } from "react";
-import { Link, useSearch } from "@tanstack/react-router";
+import { useSearch } from "@tanstack/react-router";
 import {
   DataTable, deriveDeptFilter, applyFilter,
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  DeptChip, DrilldownShell, DrilldownColumn, InlineLinkRow, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
@@ -283,16 +283,14 @@ export function BenchmarkTable() {
                     <span>{r.peerMedian > 0 ? `$${r.peerMedian.toLocaleString()}` : "—"}</span>
                   </div>
                 </div>
-                <Link
-                  to="/build/feestudy"
-                  search={{ serviceId: r.id }}
-                  style={{
-                    display: "inline-block", marginTop: 12, fontSize: "var(--t-l8)",
-                    color: "var(--accent)", textDecoration: "underline", textUnderlineOffset: 3,
-                  }}
-                >
-                  View fee →
-                </Link>
+                <InlineLinkRow
+                  links={[
+                    { to: "/build/costs",    search: { serviceId: r.id },
+                      text: "View cost of service →" },
+                    { to: "/build/feestudy", search: { serviceId: r.id },
+                      text: "View fee schedule →" },
+                  ]}
+                />
               </DrilldownColumn>
             </DrilldownShell>
           );
