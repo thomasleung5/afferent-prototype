@@ -106,7 +106,7 @@ export function FeeChangeExplanations() {
     },
     {
       key: "directRateEffect",
-      label: "Direct",
+      label: "Labor",
       width: "90px",
       align: "right",
       sortable: true,
@@ -122,7 +122,7 @@ export function FeeChangeExplanations() {
     },
     {
       key: "capRateEffect",
-      label: "CAP",
+      label: "Overhead",
       width: "85px",
       align: "right",
       sortable: true,
