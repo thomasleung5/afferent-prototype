@@ -3,6 +3,7 @@ export { RemoveIconButton } from "./RemoveIconButton";
 export { MiniTable, type MiniTableColumn } from "./MiniTable";
 export { MonoLabel } from "./MonoLabel";
 export { AllocationBasisCombobox } from "./AllocationBasisCombobox";
+export { UnitCombobox } from "./UnitCombobox";
 export { Btn } from "./Btn";
 export { Icon } from "./Icon";
 export { RecoveryMeter } from "./RecoveryMeter";

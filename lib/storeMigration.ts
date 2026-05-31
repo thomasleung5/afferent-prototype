@@ -10,6 +10,7 @@ import type {
   FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { defaultCenterOrder } from "./store";
+import { mapLegacyUnit } from "./data/feeUnits";
 import { classifyLaborType } from "./ai/parseOperating";
 import type { BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
@@ -129,6 +130,22 @@ export function migratePersistedState(state: Partial<BuildState>): void {
         if (rest.formula != null) return rest;
         const synthesized = defaultFormulaForLegacyRowKind(rowKind);
         return synthesized ? { ...rest, formula: synthesized } : rest;
+      });
+    }
+    // Migrate legacy free-text `unit` into the structured unitLabel +
+    // unitType pair, mapping known wording to the canonical FEE_UNITS
+    // catalog and preserving anything unmapped as a CUSTOM entry.
+    type LegacyUnitService = Service & { unit?: string };
+    const withLegacyUnit = state.services as LegacyUnitService[];
+    if (withLegacyUnit.some((s) => s.unit != null && s.unitLabel == null)) {
+      state.services = withLegacyUnit.map((s) => {
+        if (s.unit == null) return s;
+        const { unit, ...rest } = s;
+        if (rest.unitLabel != null) return rest;
+        const mapped = mapLegacyUnit(unit);
+        return mapped
+          ? { ...rest, unitLabel: mapped.label, unitType: mapped.type }
+          : rest;
       });
     }
   }

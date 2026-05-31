@@ -44,11 +44,21 @@ export interface RoleAllocation {
  * without the metadata continue to load and render correctly —
  * undefined is the flat-row default. */
 
-/** Free-form unit label for a fee (e.g., "each", "per hour", "deposit",
- *  "per sq.ft.", "per $1,000 valuation"). Open string by design — fee
- *  schedules use long-tail unit phrasing that resists enumeration. The
- *  display layer renders this alongside the fee value. */
+/** User-visible label for a fee's pricing unit (e.g., "Each", "Hour",
+ *  "Per $1,000 Valuation"). Drawn from the canonical FEE_UNITS catalog
+ *  in lib/data/feeUnits.ts when possible; arbitrary free text is
+ *  preserved as a "Custom..." entry. Display layer renders this
+ *  alongside the fee value. */
 export type FeeUnit = string;
+
+/** Categorical metadata for the pricing unit — hidden from analysts
+ *  today; reserved for future analytics and reporting (e.g., grouping
+ *  fees by basis or detecting "per-hour" fees across departments).
+ *  Always paired with `unitLabel`; CUSTOM means the analyst entered
+ *  free text that didn't match any catalog entry. */
+export type UnitType =
+  | "COUNT" | "PROJECT" | "TIME" | "AREA" | "LENGTH"
+  | "LAND" | "VALUATION" | "DEPOSIT" | "CUSTOM";
 
 /** Pricing structure label for an active fee — derived from
  *  `Service.formula` via `feeRowKind()` in lib/calc.ts. Lifecycle
@@ -224,8 +234,15 @@ export interface Service {
    *  unit ("each", "per hour", "per $1,000 valuation") — activity
    *  describes WHAT is counted, unit describes HOW the fee is charged. */
   activity?: string;
-  /** Free-form unit label rendered alongside the fee value. */
-  unit?: FeeUnit;
+  /** Pricing-unit label rendered alongside the fee value (e.g.,
+   *  "Each", "Hour", "Per $1,000 Valuation"). Sourced from the
+   *  canonical FEE_UNITS catalog when possible; arbitrary text is
+   *  preserved as a "Custom..." entry. Always paired with `unitType`. */
+  unitLabel?: FeeUnit;
+  /** Categorical type for `unitLabel` — hidden from users today; used
+   *  by future analytics + reporting. CUSTOM means the analyst entered
+   *  free text. See FEE_UNITS in lib/data/feeUnits.ts. */
+  unitType?: UnitType;
   /** Lifecycle state of this row in the current study cycle. Defaults
    *  to "existing" semantics when undefined. */
   status?: FeeScheduleStatus;

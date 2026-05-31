@@ -9,6 +9,7 @@ import {
   AddRowButton, CellInput, CellSelect,
   DrilldownColumn, DrilldownShell, InlineLinkRow,
   MiniTable, MonoLabel, RemoveIconButton, SectionLabel, SourcePill,
+  UnitCombobox,
   type MiniTableColumn,
 } from "@/components/ui";
 import type {
@@ -201,14 +202,16 @@ export function ServicesTable() {
     {
       key: "unit",
       label: "Unit",
-      width: "110px",
+      width: "140px",
       sortable: true,
-      sortKey: (r) => r.unit ?? "",
+      sortKey: (r) => r.unitLabel ?? "",
       render: (r) => (
-        <CellInput
-          value={r.unit ?? ""}
-          onChange={(v) => updateService(r.id, { unit: String(v) || undefined })}
-          placeholder="each"
+        <UnitCombobox
+          value={r.unitLabel != null
+            ? { label: r.unitLabel, type: r.unitType ?? "CUSTOM" }
+            : undefined}
+          onChange={(next) =>
+            updateService(r.id, { unitLabel: next.label, unitType: next.type })}
         />
       ),
     },

@@ -1,6 +1,7 @@
 import type { Service } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
+import { mapLegacyUnit } from "@/lib/data/feeUnits";
 import { newServiceId } from "./serviceId";
 
 interface FeeRow {
@@ -58,14 +59,17 @@ export function feesToExtractionResult(
       importedAt: now,
     };
 
-    const unit = row.unit?.trim() || undefined;
+    const unitOption = mapLegacyUnit(row.unit);
+    const unitPatch = unitOption
+      ? { unitLabel: unitOption.label, unitType: unitOption.type }
+      : {};
     const existingSvc = existingByName.get(row.name.toLowerCase());
     // Import only carries identity + price + unit; Fee #, Cost, Recommended,
     // Recovery, and Impact are software-derived downstream. For existing
     // services we update fee + unit only and leave the rest of the row
     // (target, peer, hours, volume, …) untouched.
     const entity: Service = existingSvc
-      ? { ...existingSvc, fee: row.fee, ...(unit ? { unit } : {}) }
+      ? { ...existingSvc, fee: row.fee, ...unitPatch }
       : {
           id: newServiceId(dept, row.name),
           name: row.name,
@@ -76,7 +80,7 @@ export function feesToExtractionResult(
           hours: 0,
           volume: 0,
           cost: 0,
-          ...(unit ? { unit } : {}),
+          ...unitPatch,
           source: "imported",
           sourceFile: fileName,
         };

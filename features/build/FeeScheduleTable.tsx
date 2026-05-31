@@ -140,9 +140,9 @@ export function FeeScheduleTable() {
       label: "Unit",
       width: "100px",
       sortable: true,
-      sortKey: (r) => svcById.get(r.id)?.unit ?? "",
+      sortKey: (r) => svcById.get(r.id)?.unitLabel ?? "",
       render: (r) => {
-        const unit = svcById.get(r.id)?.unit;
+        const unit = svcById.get(r.id)?.unitLabel;
         return (
           <span className="num" style={{
             color: unit ? "var(--ink-2)" : "var(--ink-4)",
