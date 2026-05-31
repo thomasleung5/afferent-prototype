@@ -10,7 +10,7 @@
 
 import assert from "node:assert/strict";
 import {
-  isPdf, readPdfUpload, resolveMaxBytes,
+  hasPdfMagicBytes, isPdf, readPdfUpload, resolveMaxBytes,
 } from "../aiUploadValidator";
 
 /** Build a multipart/form-data Request with the given form fields. */
@@ -64,6 +64,24 @@ async function readJsonBody(res: Response): Promise<{ ok: boolean; message?: str
     else process.env.MAX_UPLOAD_MB = original;
   }
   console.log("  ✓ resolveMaxBytes default + env override + invalid-value fallback");
+}
+
+// ── 2b. hasPdfMagicBytes — pure-function check ───────────────────────────
+{
+  // %PDF in hex
+  const validPdfPrefix = new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d, 0x31]).buffer;
+  assert.equal(hasPdfMagicBytes(validPdfPrefix), true);
+
+  const wrong = new Uint8Array([0x50, 0x4b, 0x03, 0x04]).buffer; // ZIP magic
+  assert.equal(hasPdfMagicBytes(wrong), false,
+    "ZIP magic (DOCX/XLSX/JAR) must not pass the PDF check");
+
+  const tooShort = new Uint8Array([0x25, 0x50]).buffer;
+  assert.equal(hasPdfMagicBytes(tooShort), false,
+    "buffers shorter than 4 bytes can't be a PDF header");
+
+  assert.equal(hasPdfMagicBytes(new ArrayBuffer(0)), false);
+  console.log("  ✓ hasPdfMagicBytes accepts %PDF, rejects junk + short buffers");
 }
 
 // readPdfUpload assertions need top-level await — wrap in an async
@@ -123,6 +141,26 @@ async function main() {
     const body = await readJsonBody(result as Response);
     assert.match(body.message ?? "", /limit/i);
     console.log("  ✓ oversize file → 413 with size hint");
+  }
+
+  // ── 6b. PDF MIME + .pdf extension but bytes aren't PDF → 415 ──────────
+  //       Catches a renamed-extension attack: someone uploads a .docx
+  //       (ZIP magic) as application/pdf hoping to slip past the MIME
+  //       gate. Magic-byte sniff rejects before we burn Anthropic.
+  {
+    const form = new FormData();
+    const file = new File(
+      [new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0xff])],
+      "fake.pdf",
+      { type: "application/pdf" },
+    );
+    form.append("file", file);
+    const result = await readPdfUpload(makeRequest(form));
+    assert.ok(result instanceof Response);
+    assert.equal((result as Response).status, 415);
+    const body = await readJsonBody(result as Response);
+    assert.match(body.message ?? "", /valid PDF/);
+    console.log("  ✓ wrong magic bytes → 415 (rejects renamed-extension uploads)");
   }
 
   // ── 7. Happy path → ok payload includes form + base64 + metadata ──────

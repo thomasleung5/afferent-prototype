@@ -66,12 +66,15 @@ export async function readPdfUpload(
     return errorResponse(`File exceeds ${limitMb} MB limit.`, 413);
   }
 
-  let base64: string;
+  let buf: ArrayBuffer;
   try {
-    const buf = await file.arrayBuffer();
-    base64 = Buffer.from(buf).toString("base64");
+    buf = await file.arrayBuffer();
   } catch {
     return errorResponse("Could not read uploaded file.", 400);
+  }
+
+  if (!hasPdfMagicBytes(buf)) {
+    return errorResponse("File does not appear to be a valid PDF.", 415);
   }
 
   return {
@@ -80,8 +83,19 @@ export async function readPdfUpload(
     file,
     fileName: file.name,
     fileSizeKb: Math.round(file.size / 1024),
-    base64,
+    base64: Buffer.from(buf).toString("base64"),
   };
+}
+
+/** PDFs start with the literal bytes `%PDF` (0x25 0x50 0x44 0x46),
+ *  followed by a version tag (e.g. `-1.7`). Sniffing the first four
+ *  bytes rejects renamed-extension uploads (a .docx renamed to .pdf
+ *  with a PDF MIME type) before we burn an Anthropic call. We don't
+ *  validate the version — that's the SDK's problem. */
+export function hasPdfMagicBytes(buf: ArrayBuffer): boolean {
+  if (buf.byteLength < 4) return false;
+  const view = new Uint8Array(buf, 0, 4);
+  return view[0] === 0x25 && view[1] === 0x50 && view[2] === 0x44 && view[3] === 0x46;
 }
 
 /** True when the file declares itself as a PDF by MIME type, OR (for

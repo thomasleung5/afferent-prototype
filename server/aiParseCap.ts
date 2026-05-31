@@ -1,5 +1,8 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readPdfUpload } from "./aiUploadValidator";
+import { logEvent } from "./logger";
+
+const TAG = "ai-parse-cap";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -272,7 +275,10 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
   if (upload instanceof Response) return upload;
   const { fileName, fileSizeKb, base64: pdfBase64 } = upload;
 
-  console.log(`[ai-parse-cap] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
+  logEvent({
+    tag: TAG, msg: "anthropic request start",
+    file: fileName, file_kb: fileSizeKb, model: MODEL,
+  });
   const t0 = Date.now();
 
   const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
@@ -293,15 +299,26 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
         }],
       }],
+    }, {
+      // Stop billing for output tokens once the client disconnects.
+      signal: req.signal,
     });
 
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    const elapsed_ms = Date.now() - t0;
     const text = response.content.find((c) => c.type === "text")?.text ?? "";
-    console.log(`[ai-parse-cap] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
+    logEvent({
+      tag: TAG, msg: "anthropic response",
+      latency_ms: elapsed_ms,
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+    });
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error(`[ai-parse-cap] No JSON in response. Raw: ${text.slice(0, 300)}`);
+      logEvent({
+        level: "error", tag: TAG, msg: "no JSON in model response",
+        raw_preview: text.slice(0, 300),
+      });
       return json({ ok: false, message: `Model returned no JSON. Raw: ${text.slice(0, 200)}` }, { status: 502 });
     }
 
@@ -340,14 +357,32 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       if (recovered === 0) {
         return json({ ok: false, message: "Response was truncated and no complete CAP rows could be recovered. Try a shorter document or split it by section." }, { status: 502 });
       }
-      console.warn(`[ai-parse-cap] Response truncated — recovered ${centers.length} centers / ${bases.length} bases / ${basisUnits.length} basisUnits / ${pools.length} pools / ${directAllocations.length} directAllocations`);
+      logEvent({
+        level: "warn", tag: TAG, msg: "response truncated, partial recovery",
+        centers: centers.length, bases: bases.length,
+        basisUnits: basisUnits.length, pools: pools.length,
+        directAllocations: directAllocations.length,
+      });
     }
 
-    console.log(`[ai-parse-cap] Parsed ${centers.length} centers, ${bases.length} bases, ${basisUnits.length} basisUnits, ${pools.length} pools, ${directAllocations.length} directAllocations from ${fileName}`);
+    logEvent({
+      tag: TAG, msg: "parsed bundle",
+      centers: centers.length, bases: bases.length,
+      basisUnits: basisUnits.length, pools: pools.length,
+      directAllocations: directAllocations.length,
+      file: fileName,
+    });
     return json({ ok: true, centers, bases, basisUnits, pools, directAllocations });
   } catch (err) {
+    const aborted = err instanceof Error && err.name === "AbortError";
     const message = err instanceof Error ? err.message : "Unknown model error.";
-    console.error(`[ai-parse-cap] Error: ${message}`);
-    return json({ ok: false, message }, { status: 502 });
+    logEvent({
+      level: aborted ? "info" : "error",
+      tag: TAG,
+      msg: aborted ? "request aborted by client" : "anthropic error",
+      error: message,
+      latency_ms: Date.now() - t0,
+    });
+    return json({ ok: false, message }, { status: aborted ? 499 : 502 });
   }
 }

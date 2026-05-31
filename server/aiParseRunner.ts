@@ -23,6 +23,7 @@
 
 import Anthropic from "@anthropic-ai/sdk";
 import { readPdfUpload } from "./aiUploadValidator";
+import { logEvent } from "./logger";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -87,7 +88,11 @@ export async function runPdfParser(
     return json({ ok: false, message }, { status: 400 });
   }
 
-  console.log(`[${spec.tag}] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
+  logEvent({
+    tag: spec.tag,
+    msg: "anthropic request start",
+    file: fileName, file_kb: fileSizeKb, model: MODEL,
+  });
   const t0 = Date.now();
 
   const client = new Anthropic({ apiKey, timeout: 10 * 60 * 1000 });
@@ -103,15 +108,30 @@ export async function runPdfParser(
           source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
         }],
       }],
+    }, {
+      // Propagate the client's disconnect signal so when the SPA tab
+      // closes mid-parse we stop billing for output tokens the user
+      // will never see.
+      signal: req.signal,
     });
 
-    const elapsed = ((Date.now() - t0) / 1000).toFixed(1);
+    const elapsed_ms = Date.now() - t0;
     const text = response.content.find((c) => c.type === "text")?.text ?? "";
-    console.log(`[${spec.tag}] Response received in ${elapsed}s (${response.usage.input_tokens} in / ${response.usage.output_tokens} out tokens)`);
+    logEvent({
+      tag: spec.tag,
+      msg: "anthropic response",
+      latency_ms: elapsed_ms,
+      input_tokens: response.usage.input_tokens,
+      output_tokens: response.usage.output_tokens,
+    });
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
     if (!jsonMatch) {
-      console.error(`[${spec.tag}] No JSON in response. Raw: ${text.slice(0, 300)}`);
+      logEvent({
+        level: "error", tag: spec.tag,
+        msg: "no JSON in model response",
+        raw_preview: text.slice(0, 300),
+      });
       return json({
         ok: false,
         message: `Model returned no JSON. Raw: ${text.slice(0, 200)}`,
@@ -126,12 +146,27 @@ export async function runPdfParser(
       }, { status: 502 });
     }
 
-    console.log(`[${spec.tag}] Parsed ${rows.length} ${spec.rowNoun} rows from ${fileName}`);
+    logEvent({
+      tag: spec.tag,
+      msg: "parsed rows",
+      row_count: rows.length,
+      row_noun: spec.rowNoun,
+      file: fileName,
+    });
     return json({ ok: true, [spec.rowsKey]: rows });
   } catch (err) {
+    // AbortError fires when the client disconnects — log at info, not
+    // error, since this is a normal outcome of the user navigating away.
+    const aborted = err instanceof Error && err.name === "AbortError";
     const message = err instanceof Error ? err.message : "Unknown model error.";
-    console.error(`[${spec.tag}] Error: ${message}`);
-    return json({ ok: false, message }, { status: 502 });
+    logEvent({
+      level: aborted ? "info" : "error",
+      tag: spec.tag,
+      msg: aborted ? "request aborted by client" : "anthropic error",
+      error: message,
+      latency_ms: Date.now() - t0,
+    });
+    return json({ ok: false, message }, { status: aborted ? 499 : 502 });
   }
 }
 
