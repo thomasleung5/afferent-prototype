@@ -27,10 +27,6 @@ export interface PreviewLimits {
   maxRowsPerSheet: number;
   maxColumnsPerRow: number;
   maxTotalCells: number;
-  /** Rows surfaced per sheet in the response. Tuned to "enough to
-   *  confirm column mapping" — the full data stays on the client side
-   *  if/when the merge step runs in a follow-up. */
-  previewRowsPerSheet: number;
 }
 
 export const DEFAULT_PREVIEW_LIMITS: PreviewLimits = {
@@ -38,20 +34,22 @@ export const DEFAULT_PREVIEW_LIMITS: PreviewLimits = {
   maxRowsPerSheet: 5000,
   maxColumnsPerRow: 100,
   maxTotalCells: 200_000,
-  previewRowsPerSheet: 50,
 };
 
 export type PreviewCell = string | number | boolean | null;
 
 export interface PreviewSheet {
   name: string;
-  /** Total non-empty-looking rows in the source (used for "this is a
-   *  big sheet, here's the first 50" copy). */
+  /** Total rows parsed from the source. */
   rowCount: number;
   /** Max column count across all rows in the source. */
   columnCount: number;
-  /** First N rows, normalized. May be shorter than `rowCount`. */
-  previewRows: PreviewCell[][];
+  /** All parsed rows, normalized. The full set is returned so the same
+   *  payload powers both the mapping UI (typically displays the first
+   *  ~50 rows) and the downstream merge step (consumes every row).
+   *  Bounded by `maxTotalCells` — pathological workbooks are rejected
+   *  before reaching the response. */
+  rows: PreviewCell[][];
 }
 
 export interface PreviewOk {
@@ -124,15 +122,11 @@ export async function previewExcel(
       }
     }
 
-    const previewRows = rows
-      .slice(0, limits.previewRowsPerSheet)
-      .map((r) => r.map(normalizeCell));
-
     previewSheets.push({
       name: s.sheet,
       rowCount: rows.length,
       columnCount: maxCols,
-      previewRows,
+      rows: rows.map((r) => r.map(normalizeCell)),
     });
   }
 

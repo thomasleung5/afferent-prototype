@@ -5,6 +5,7 @@ import {
   deriveRefreshSections, type RefreshSectionCard,
 } from "@/lib/data/annual";
 import { InlineImportCard } from "@/features/imports/InlineImportCard";
+import { ExcelFeeImportCard } from "@/features/imports/ExcelFeeImportCard";
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
@@ -122,7 +123,11 @@ function ServicesCard({ card, imports }: DomainCardProps) {
 
 function FeesCard({ card, imports }: DomainCardProps) {
   const importer = useFeesImportHandlers();
-  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
+  return (
+    <SourceCardShell card={card} imports={imports} importer={importer}>
+      <ExcelFeeImportCard/>
+    </SourceCardShell>
+  );
 }
 
 function VolumeCard({ card, imports }: DomainCardProps) {

@@ -80,7 +80,7 @@ Response shape on success:
       "name": "Fees",
       "rowCount": 312,
       "columnCount": 8,
-      "previewRows": [["Service","Dept","Fee", ...], ...]
+      "rows": [["Service","Dept","Fee", ...], ...]
     }
   ]
 }
@@ -96,7 +96,6 @@ before parsing reaches downstream code:
 | Max rows per sheet | 5,000 |
 | Max columns per row | 100 |
 | Max total cells | 200,000 |
-| Preview rows returned per sheet | 50 |
 
 Cap violations and parse failures return JSON `{ ok: false, message }`
 with status 400 (no file), 413 (oversize / cap exceeded), 415 (wrong

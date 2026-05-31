@@ -17,7 +17,9 @@ export interface PreviewSheet {
   name: string;
   rowCount: number;
   columnCount: number;
-  previewRows: PreviewCell[][];
+  /** All parsed rows. The mapping UI typically displays only the first
+   *  ~50; the merge step iterates the full set. */
+  rows: PreviewCell[][];
 }
 
 export interface ExcelPreviewOk {

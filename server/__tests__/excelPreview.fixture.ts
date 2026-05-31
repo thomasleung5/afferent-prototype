@@ -75,12 +75,12 @@ async function main(): Promise<void> {
     assert.equal(body.fileName, "workbook.xlsx");
     assert.ok(Array.isArray(body.sheets));
     assert.equal(body.sheets!.length, 2);
-    const s0 = body.sheets![0] as { name: string; rowCount: number; columnCount: number; previewRows: unknown[][] };
+    const s0 = body.sheets![0] as { name: string; rowCount: number; columnCount: number; rows: unknown[][] };
     assert.equal(s0.name, "Fees");
     assert.equal(s0.rowCount, 3);
     assert.equal(s0.columnCount, 3);
-    assert.deepEqual(s0.previewRows[0], ["Service", "Dept", "Fee"]);
-    assert.deepEqual(s0.previewRows[1], ["Plan check", "PLAN", 1200]);
+    assert.deepEqual(s0.rows[0], ["Service", "Dept", "Fee"]);
+    assert.deepEqual(s0.rows[1], ["Plan check", "PLAN", 1200]);
     console.log("  ✓ valid .xlsx upload returns preview");
   }
 
@@ -162,7 +162,6 @@ async function main(): Promise<void> {
         maxRowsPerSheet: 5,
         maxColumnsPerRow: 100,
         maxTotalCells: 200_000,
-        previewRowsPerSheet: 50,
       },
     );
     assert.equal(result.ok, false);
@@ -189,7 +188,6 @@ async function main(): Promise<void> {
         maxRowsPerSheet: 5000,
         maxColumnsPerRow: 100,
         maxTotalCells: 50,
-        previewRowsPerSheet: 50,
       },
     );
     assert.equal(result.ok, false);
