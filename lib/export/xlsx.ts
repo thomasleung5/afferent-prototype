@@ -54,7 +54,15 @@ export interface SheetSpec {
  *
  *  The xlsx writer is dynamic-imported so the export bundle stays
  *  code-split out of the initial page chunk — the user only pays the
- *  download cost when they actually trigger an Excel export. */
+ *  download cost when they actually trigger an Excel export.
+ *
+ *  IMPORTANT: write-excel-file's browser entry does NOT return a Blob.
+ *  It returns a writer object with `toBlob()` and `toFile(name)` methods
+ *  (the published TypeScript types are misleading here — they advertise
+ *  a unified `ReturnType` that resolves to the writer, not a Blob). The
+ *  initial port treated the awaited writer as a Blob and handed it to
+ *  URL.createObjectURL, which silently produced no download. Always go
+ *  through `.toBlob()` to get the real binary. */
 export async function buildXlsxBlob(sheets: SheetSpec[]): Promise<Blob> {
   const { default: writeXlsxFile } = await import("write-excel-file/browser");
   const built: Sheet<Blob>[] = sheets.map((s) => ({
@@ -65,9 +73,8 @@ export async function buildXlsxBlob(sheets: SheetSpec[]): Promise<Blob> {
       ? { columns: s.columnWidths.map((w) => ({ width: w })) }
       : {}),
   }));
-  // The browser build returns a Blob when called without a `filePath`.
-  // The library's overloaded types route through `ReturnType`, so we cast.
-  return (await writeXlsxFile(built)) as unknown as Blob;
+  const writer = writeXlsxFile(built) as unknown as { toBlob: () => Promise<Blob> };
+  return writer.toBlob();
 }
 
 /** Trigger a client-side download of `blob` with the given filename. */

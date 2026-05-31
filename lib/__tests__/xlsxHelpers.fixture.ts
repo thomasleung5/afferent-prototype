@@ -9,7 +9,7 @@
  * fixture freezes the new shape so a future backend swap is obvious. */
 
 import assert from "node:assert/strict";
-import { h, n } from "../export/xlsx";
+import { buildXlsxBlob, h, n } from "../export/xlsx";
 
 // ── h() emits a bold-header cell ────────────────────────────────────────
 {
@@ -41,4 +41,43 @@ import { h, n } from "../export/xlsx";
   console.log("  ✓ n() collapses non-finite values to empty string");
 }
 
-console.log("\nAll xlsx helpers assertions passed.");
+// ── buildXlsxBlob() returns a real, non-empty XLSX Blob ─────────────────
+//      Regression guard for the v1 bug: write-excel-file's browser entry
+//      returns a `{ toBlob, toFile }` writer, NOT a Blob. The first port
+//      awaited the writer object and handed it to URL.createObjectURL,
+//      which silently produced no download. This assertion catches that
+//      regression by verifying we get back a real Blob whose first four
+//      bytes are the ZIP local-file-header magic (PK\x03\x04) — every
+//      XLSX file starts with that signature.
+//
+//      Wrapped in an async main() because tsx's default CJS transform
+//      doesn't allow top-level await.
+async function assertRealXlsxBlob(): Promise<void> {
+  const blob = await buildXlsxBlob([
+    {
+      name: "Sheet1",
+      rows: [
+        [h("Name"), h("Amount")],
+        ["Alpha", n(123, "$#,##0")],
+        ["Beta",  n(0.5, "0%")],
+      ],
+      columnWidths: [20, 12],
+    },
+  ]);
+
+  assert.ok(blob instanceof Blob,
+    "buildXlsxBlob must return a Blob, not the writer object");
+  assert.ok(blob.size > 0, "produced Blob must be non-empty");
+
+  const head = new Uint8Array(await blob.slice(0, 4).arrayBuffer());
+  assert.deepEqual(
+    Array.from(head),
+    [0x50, 0x4b, 0x03, 0x04],
+    "first four bytes must be the ZIP magic (PK\\x03\\x04) — every xlsx is a zip",
+  );
+  console.log("  ✓ buildXlsxBlob() resolves to a non-empty xlsx Blob (PK magic verified)");
+}
+
+assertRealXlsxBlob()
+  .then(() => console.log("\nAll xlsx helpers assertions passed."))
+  .catch((err) => { console.error(err); process.exit(1); });
