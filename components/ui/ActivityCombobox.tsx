@@ -274,7 +274,8 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
         type="button"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
         style={{
-          display: "block", width: "100%", textAlign: "left",
+          display: "flex", alignItems: "center", justifyContent: "space-between",
+          gap: 6, width: "100%", textAlign: "left",
           padding: "2px 4px",
           background: "transparent", border: "1px solid transparent",
           cursor: "pointer", borderRadius: 0,
@@ -289,6 +290,13 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
         }}>
           {labelText ?? placeholder}
         </span>
+        <span
+          aria-hidden
+          style={{
+            fontSize: 9, color: "var(--ink-3)", lineHeight: 1,
+            fontFamily: "var(--ff-mono)", flexShrink: 0,
+          }}
+        >▼</span>
       </button>
       {panel}
     </>

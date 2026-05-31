@@ -234,7 +234,7 @@ export function ServicesTable() {
     {
       key: "hours",
       label: "Hours / inst",
-      width: "120px",
+      width: "100px",
       align: "right",
       sortable: true,
       render: (r) => (
@@ -251,7 +251,7 @@ export function ServicesTable() {
     {
       key: "mix",
       label: "Role allocation",
-      width: "170px",
+      width: "120px",
       align: "right",
       sortable: true,
       sortKey: (r) => getMix(r).length,
@@ -264,7 +264,7 @@ export function ServicesTable() {
     {
       key: "source",
       label: "Source",
-      width: "150px",
+      width: "110px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.sourceFile ?? r.source,
