@@ -215,4 +215,113 @@ const existing: Service[] = [];
   console.log("  ✓ name match routes the row to duplicates with the existing id");
 }
 
+// ── Defensive: empty sheet (rowCount 0, no rows) ────────────────────────
+//      validateFeeMapping should surface a clear "no rows" error rather
+//      than letting downstream code crash on indexing.
+{
+  const s: PreviewSheet = { name: "Empty", rowCount: 0, columnCount: 0, rows: [] };
+  const errors = validateFeeMapping(s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  });
+  assert.ok(errors.some((e) => /no rows/i.test(e)), "empty sheet → 'no rows' error");
+
+  // The extraction call must not throw — returns an empty, well-formed result.
+  const r = excelToFeeExtraction("empty.xlsx", s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  }, existing);
+  assert.equal(r.importedRowCount, 0);
+  assert.equal(r.extraction.mapped.length, 0);
+  assert.equal(r.extraction.unmapped.length, 0);
+  console.log("  ✓ empty sheet: validateFeeMapping flags it, extraction returns empty without crashing");
+}
+
+// ── Defensive: header row beyond the sheet's rows ───────────────────────
+{
+  const s = sheet([
+    ["Service", "Dept", "Fee"],
+    ["Plan check", "PLAN", 100],
+  ]);
+  // Sheet only has 2 rows; user asked for header row 10.
+  const errors = validateFeeMapping(s, {
+    headerRowIndex: 9, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  });
+  assert.ok(errors.some((e) => /Header row 10 is outside/.test(e)),
+    "out-of-range header row → clear error pointing at the offending value");
+
+  // Extraction still runs without throwing — yields nothing.
+  const r = excelToFeeExtraction("oob.xlsx", s, {
+    headerRowIndex: 9, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  }, existing);
+  assert.equal(r.importedRowCount, 0);
+  console.log("  ✓ header row beyond available rows: clear error, no crash");
+}
+
+// ── Defensive: selected column beyond row width ─────────────────────────
+{
+  const s = sheet([
+    ["Service", "Dept", "Fee"],     // 3 columns
+    ["Plan check", "PLAN", 100],
+  ]);
+  const errors = validateFeeMapping(s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 99, unitCol: null,
+  });
+  assert.ok(
+    errors.some((e) => /outside the sheet's 3 columns/.test(e)),
+    "out-of-range column index → clear error naming the bound",
+  );
+
+  // Even if the mapping says feeCol=99, extraction tolerates it: the
+  // out-of-range cell reads as undefined → fee can't be parsed →
+  // row routes to extraction.unmapped (schema-mismatch). No crash.
+  const r = excelToFeeExtraction("widecol.xlsx", s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 99, unitCol: null,
+  }, existing);
+  assert.equal(r.extraction.mapped.length, 0);
+  assert.equal(r.extraction.unmapped.length, 1);
+  assert.equal(r.extraction.unmapped[0].reason, "schema-mismatch");
+  console.log("  ✓ column index beyond row width: routes to unmapped, no crash");
+}
+
+// ── Defensive: malformed sheet shape (rows missing) ─────────────────────
+//      The PreviewSheet type marks `rows` as required, but a malformed
+//      preview payload could in principle deliver it as undefined. Pure
+//      helpers must surface this as a mapping error rather than a
+//      "sheet.rows[…] is undefined" crash.
+{
+  const broken = {
+    name: "Broken", rowCount: 5, columnCount: 3,
+    // Simulate a malformed payload — `rows` was the field that crashed
+    // in the field-rename incident.
+    rows: undefined,
+  } as unknown as PreviewSheet;
+
+  const errors = validateFeeMapping(broken, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  });
+  assert.ok(errors.length > 0, "malformed rows: validateFeeMapping returns errors");
+
+  // Extraction must not throw.
+  const r = excelToFeeExtraction("broken.xlsx", broken, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  }, existing);
+  assert.equal(r.importedRowCount, 0);
+  assert.equal(r.skippedRowCount, 0);
+  console.log("  ✓ malformed sheet (rows undefined): errors surfaced, no crash");
+}
+
+// ── Sanity: a valid sheet still maps after the defenses are in place ────
+{
+  const s = sheet([
+    ["Service", "Dept", "Fee"],
+    ["Plan check", "PLAN", 100],
+    ["Inspection", "BLDG", 250],
+  ]);
+  const r = excelToFeeExtraction("ok.xlsx", s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  }, existing);
+  assert.equal(r.importedRowCount, 2);
+  assert.equal(r.extraction.unmapped.length, 0);
+  console.log("  ✓ defenses don't regress the happy path");
+}
+
 console.log("\nAll excelToFees assertions passed.");

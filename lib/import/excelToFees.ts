@@ -58,16 +58,32 @@ export interface ExcelToFeeResult {
 
 /** Returns the user-facing list of mapping errors (missing required
  *  column, header row out of range). Empty array means the mapping is
- *  applyable — call `excelToFeeExtraction` next. */
+ *  applyable — call `excelToFeeExtraction` next.
+ *
+ *  Defensively normalizes `sheet.rows`, `rowCount`, and `columnCount`
+ *  so a malformed preview payload produces clear mapping errors rather
+ *  than runtime exceptions. */
 export function validateFeeMapping(
   sheet: PreviewSheet,
   mapping: FeeColumnMapping,
 ): string[] {
   const errors: string[] = [];
-  if (mapping.headerRowIndex < 0 || mapping.headerRowIndex >= sheet.rowCount) {
-    errors.push(`Header row ${mapping.headerRowIndex + 1} is outside the sheet's ${sheet.rowCount} rows.`);
+  const rowCount = typeof sheet?.rowCount === "number" ? sheet.rowCount : 0;
+  const cols = typeof sheet?.columnCount === "number" ? sheet.columnCount : 0;
+  const rows = Array.isArray(sheet?.rows) ? sheet.rows : [];
+
+  if (rowCount === 0 || rows.length === 0) {
+    errors.push("Sheet has no rows.");
+    return errors;
   }
-  const cols = sheet.columnCount;
+
+  if (mapping.headerRowIndex < 0 || mapping.headerRowIndex >= rowCount) {
+    errors.push(`Header row ${mapping.headerRowIndex + 1} is outside the sheet's ${rowCount} rows.`);
+  }
+  if (cols === 0) {
+    errors.push("Sheet has no columns to map.");
+  }
+
   const requireCol = (label: string, idx: number): void => {
     if (idx < 0) errors.push(`Pick a column for ${label}.`);
     else if (idx >= cols) errors.push(`Column for ${label} is outside the sheet's ${cols} columns.`);
@@ -78,7 +94,7 @@ export function validateFeeMapping(
   if (mapping.unitCol != null && mapping.unitCol >= cols) {
     errors.push(`Unit column is outside the sheet's ${cols} columns.`);
   }
-  if (sheet.rowCount <= mapping.headerRowIndex + 1) {
+  if (rowCount <= mapping.headerRowIndex + 1) {
     errors.push("Sheet has no data rows after the header.");
   }
   return errors;
@@ -99,7 +115,13 @@ export function excelToFeeExtraction(
   const warnings: ExcelFeeWarning[] = [];
   let skipped = 0;
 
-  const data = sheet.rows.slice(mapping.headerRowIndex + 1);
+  // Defensive: a malformed preview payload could in principle deliver
+  // a sheet without `rows`. Normalize to an empty data section so the
+  // caller gets an empty (but well-formed) extraction instead of a
+  // crash — the UI's validateFeeMapping pass surfaces the underlying
+  // problem to the user.
+  const allRows = Array.isArray(sheet.rows) ? sheet.rows : [];
+  const data = allRows.slice(mapping.headerRowIndex + 1);
 
   // Build the rejection lineage from the same per-row fields the happy
   // path uses, so reviewers see the actual workbook values for every
@@ -121,10 +143,15 @@ export function excelToFeeExtraction(
     importedAt: now,
   });
 
-  data.forEach((row, i) => {
+  data.forEach((rawRow, i) => {
     // Source row number as the analyst sees it in Excel (1-based, accounting
     // for the header offset). +2 = +1 to skip header + +1 to go from 0-based.
     const sourceRow = mapping.headerRowIndex + i + 2;
+
+    // Tolerate ragged rows / out-of-range column indexes — `[]` falls
+    // through to the cell-level "missing field" / "invalid fee" branches
+    // instead of throwing on .length access.
+    const row = Array.isArray(rawRow) ? rawRow : [];
 
     const nameCell = row[mapping.nameCol];
     const deptCell = row[mapping.deptCol];

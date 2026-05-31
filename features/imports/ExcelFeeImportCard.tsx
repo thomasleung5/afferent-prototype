@@ -13,7 +13,7 @@
  * Today it's rendered alongside the existing InlineImportCard on the
  * Fees source card. */
 
-import { useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Btn } from "@/components/ui";
 import {
   excelToFeeExtraction, validateFeeMapping,
@@ -21,7 +21,7 @@ import {
 } from "@/lib/import/excelToFees";
 import {
   previewExcelFile,
-  type ExcelPreviewOk, type PreviewSheet,
+  type ExcelPreviewOk, type PreviewCell, type PreviewSheet,
 } from "@/lib/import/excelPreview";
 import { useBuildState } from "@/lib/store";
 
@@ -50,6 +50,20 @@ export function ExcelFeeImportCard() {
 
   const [importStatus, setImportStatus] = useState<Status>(null);
   const [warnings, setWarnings] = useState<ExcelFeeWarning[]>([]);
+
+  // When the active sheet changes, reset the per-sheet mapping state.
+  // Sheets in the same workbook can have very different shapes
+  // (different column counts, different header rows), and carrying
+  // the previous sheet's column indexes / header-row into the new
+  // sheet is the most common way to produce a crash like
+  // "sheet.rows[headerIdx] is undefined".
+  useEffect(() => {
+    setHeaderRow(1);
+    setNameCol(UNSET);
+    setDeptCol(UNSET);
+    setFeeCol(UNSET);
+    setUnitCol(UNSET);
+  }, [sheetIndex]);
 
   const reset = () => {
     setPreview(null);
@@ -184,41 +198,69 @@ function MappingPanel(props: MappingPanelProps) {
     unitCol, setUnitCol, existingServices, onImport,
   } = props;
 
-  const sheet: PreviewSheet | undefined = preview.sheets[sheetIndex];
+  // Defensive reads. Although the PreviewSheet type marks these as
+  // required, a malformed preview payload would otherwise produce
+  // "undefined is not an object" runtime errors during render. Every
+  // downstream access (label computation, validation, extraction)
+  // routes through these normalized locals so a bad sheet shape
+  // surfaces as a friendly mapping error, not a crash.
+  const sheets: PreviewSheet[] = Array.isArray(preview?.sheets) ? preview.sheets : [];
+  const sheet: PreviewSheet | undefined = sheets[sheetIndex];
+  const sheetRows: PreviewCell[][] = Array.isArray(sheet?.rows) ? sheet.rows : [];
+  const sheetRowCount = sheet && typeof sheet.rowCount === "number"
+    ? Math.max(sheet.rowCount, sheetRows.length)
+    : sheetRows.length;
+  const sheetColumnCount = sheet && typeof sheet.columnCount === "number"
+    ? sheet.columnCount
+    : sheetRows.reduce((m, r) => Math.max(m, Array.isArray(r) ? r.length : 0), 0);
+
+  // Clamp the header-row input into the sheet's actual range. We don't
+  // mutate state on render (avoids feedback loops); validateFeeMapping
+  // will surface an out-of-range value as a mapping error.
+  const headerIdx = Math.max(0, headerRow - 1);
+
   // Column header labels come from the chosen header row when valid;
   // otherwise fall back to A/B/C… letters so the dropdowns are still
   // usable on sheets without a real header row.
   const columnLabels = useMemo<string[]>(() => {
-    if (!sheet) return [];
-    const headerIdx = headerRow - 1;
-    const headerRowValues = sheet.rows[headerIdx];
-    if (!headerRowValues) {
-      return Array.from({ length: sheet.columnCount }, (_, i) => colLetter(i));
+    if (!sheet || sheetColumnCount === 0) return [];
+    const headerRowValues = sheetRows[headerIdx];
+    if (!Array.isArray(headerRowValues)) {
+      return Array.from({ length: sheetColumnCount }, (_, i) => colLetter(i));
     }
-    return Array.from({ length: sheet.columnCount }, (_, i) => {
+    return Array.from({ length: sheetColumnCount }, (_, i) => {
       const v = headerRowValues[i];
       if (v == null || v === "") return colLetter(i);
       return `${colLetter(i)} · ${String(v)}`;
     });
-  }, [sheet, headerRow]);
+  }, [sheet, sheetRows, headerIdx, sheetColumnCount]);
 
   const mapping: FeeColumnMapping = {
-    headerRowIndex: headerRow - 1,
+    headerRowIndex: headerIdx,
     nameCol, deptCol, feeCol,
     unitCol: unitCol === UNSET ? null : unitCol,
   };
 
-  const mappingErrors = sheet ? validateFeeMapping(sheet, mapping) : [];
+  const mappingErrors = sheet ? validateFeeMapping(sheet, mapping) : ["No sheets in workbook."];
 
   const result = useMemo(() => {
     if (!sheet || mappingErrors.length > 0) return null;
     return excelToFeeExtraction(preview.fileName, sheet, mapping, existingServices);
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [preview.fileName, sheet, headerRow, nameCol, deptCol, feeCol, unitCol, existingServices, mappingErrors.length]);
+  }, [preview.fileName, sheet, headerIdx, nameCol, deptCol, feeCol, unitCol, existingServices, mappingErrors.length]);
 
-  if (!sheet) return null;
+  if (!sheet) {
+    return (
+      <div style={{
+        border: "1px solid var(--rule)", background: "var(--paper)",
+        padding: "12px 14px", fontSize: 12, color: "var(--ink-3)",
+      }}>
+        No sheets to map.
+      </div>
+    );
+  }
 
-  const dataRowsAvailable = sheet.rowCount - headerRow;
+  const dataRowsAvailable = Math.max(0, sheetRowCount - headerRow);
 
   return (
     <div style={{
@@ -236,20 +278,30 @@ function MappingPanel(props: MappingPanelProps) {
           onChange={(e) => setSheetIndex(Number(e.target.value))}
           style={selectStyle}
         >
-          {preview.sheets.map((s, i) => (
-            <option key={s.name} value={i}>
-              {s.name} — {s.rowCount.toLocaleString()} row{s.rowCount === 1 ? "" : "s"}
-            </option>
-          ))}
+          {sheets.map((s, i) => {
+            const rc = typeof s?.rowCount === "number" ? s.rowCount : 0;
+            const name = s?.name ?? `Sheet ${i + 1}`;
+            return (
+              <option key={name} value={i}>
+                {name} — {rc.toLocaleString()} row{rc === 1 ? "" : "s"}
+              </option>
+            );
+          })}
         </select>
 
         <Label>Header row</Label>
         <input
           type="number"
           min={1}
-          max={Math.max(1, sheet.rowCount)}
+          // Clamp the max to the actual row count we've seen. If the
+          // user pastes a larger value, validateFeeMapping catches it.
+          max={Math.max(1, sheetRowCount)}
           value={headerRow}
-          onChange={(e) => setHeaderRow(Math.max(1, Number(e.target.value) || 1))}
+          onChange={(e) => {
+            const n = Number(e.target.value);
+            if (!Number.isFinite(n)) { setHeaderRow(1); return; }
+            setHeaderRow(Math.max(1, Math.floor(n)));
+          }}
           style={{ ...selectStyle, width: 80 }}
         />
 
