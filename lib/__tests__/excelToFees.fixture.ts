@@ -9,7 +9,7 @@
 
 import assert from "node:assert/strict";
 import type { Service } from "../types";
-import { excelToFeeExtraction, validateFeeMapping } from "../import/excelToFees";
+import { autoMapFees, excelToFeeExtraction, validateFeeMapping } from "../import/excelToFees";
 import type { PreviewSheet } from "../import/excelPreview";
 
 function sheet(rows: (string | number | null)[][]): PreviewSheet {
@@ -92,6 +92,32 @@ const existing: Service[] = [];
   assert.equal(r.extraction.mapped[1].entity.fee, 350);
   assert.equal(r.extraction.mapped[2].entity.fee, 2500);
   console.log("  ✓ rows → ExtractionResult with sheet/row lineage");
+}
+
+// ── Full department names normalize to fee-dept codes ──────────────────
+{
+  const s: PreviewSheet = {
+    name: "data",
+    rowCount: 4,
+    columnCount: 5,
+    rows: [
+      ["name", "dept", "unit", "fee", "confidence"],
+      ["Administrative Use Permit", "Planning", "application", 4500, 0.99],
+      ["Design Review", "Planning", "application", 8500, 0.99],
+      ["Residential Building Permit", "Building", "permit", 350, 0.99],
+    ],
+  };
+  const r = excelToFeeExtraction("fees_import.xlsx", s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 3, unitCol: 2,
+  }, existing);
+
+  assert.equal(r.warnings.length, 0);
+  assert.equal(r.importedRowCount, 3);
+  assert.deepEqual(
+    r.extraction.mapped.map((row) => row.entity.dept),
+    ["PLAN", "PLAN", "BLDG"],
+  );
+  console.log("  ✓ full department names normalize to fee-dept codes");
 }
 
 // ── Validation errors emit warnings + skip the row ──────────────────────
@@ -323,6 +349,110 @@ const existing: Service[] = [];
   assert.equal(r.importedRowCount, 2);
   assert.equal(r.extraction.unmapped.length, 0);
   console.log("  ✓ defenses don't regress the happy path");
+}
+
+// ─── autoMapFees ────────────────────────────────────────────────────────
+
+// Exact canonical headers — name / dept / unit / fee — match in any order.
+{
+  const s = sheet([
+    ["name", "dept", "unit", "fee"],
+    ["Plan check", "PLAN", "Each", 100],
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.headerRowIndex, 0);
+  assert.equal(auto.nameCol, 0);
+  assert.equal(auto.deptCol, 1);
+  assert.equal(auto.unitCol, 2);
+  assert.equal(auto.feeCol, 3);
+  assert.deepEqual(auto.detected, { name: true, dept: true, fee: true, unit: true });
+  console.log("  ✓ autoMapFees: exact canonical headers");
+}
+
+// Synonyms — Service / Department / Basis / Adopted Fee — all resolve.
+{
+  const s = sheet([
+    ["Service Name", "Department", "Basis", "Adopted Fee"],
+    ["Inspection", "BLDG", "Each", 350],
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.nameCol, 0);
+  assert.equal(auto.deptCol, 1);
+  assert.equal(auto.unitCol, 2);
+  assert.equal(auto.feeCol, 3);
+  assert.deepEqual(auto.detected, { name: true, dept: true, fee: true, unit: true });
+  console.log("  ✓ autoMapFees: synonyms (Service, Department, Basis, Adopted Fee)");
+}
+
+// Case + whitespace tolerance — including punctuation that normalizes
+// to whitespace (`Fee / Service Name`, `FEE_ITEM`, `Service-Name`).
+{
+  const s = sheet([
+    ["  NAME  ", "Dept", "  Pricing Unit  ", "FEE"],
+    ["Plan check", "Planning", "Each", 100],
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.nameCol, 0);
+  assert.equal(auto.deptCol, 1);
+  assert.equal(auto.unitCol, 2);
+  assert.equal(auto.feeCol, 3);
+  console.log("  ✓ autoMapFees: case + whitespace tolerance");
+}
+
+// Punctuation normalizes to whitespace.
+{
+  const s = sheet([
+    ["Fee/Service Name", "Department", "Fee Basis", "Current Fee"],
+    ["Plan check", "Planning", "Each", 100],
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.nameCol, 0, '"Fee/Service Name" → name');
+  assert.equal(auto.deptCol, 1);
+  assert.equal(auto.unitCol, 2, '"Fee Basis" → unit');
+  assert.equal(auto.feeCol, 3, '"Current Fee" → fee');
+  console.log("  ✓ autoMapFees: punctuation normalized to whitespace");
+}
+
+// Missing required column — fee absent, only name + dept + unit present.
+// detected.fee is false; feeCol stays at -1 so the UI can prompt.
+{
+  const s = sheet([
+    ["Name", "Dept", "Unit", "Notes"],
+    ["Plan check", "PLAN", "Each", "—"],
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.feeCol, -1);
+  assert.equal(auto.detected.fee, false);
+  assert.equal(auto.detected.name, true);
+  assert.equal(auto.detected.dept, true);
+  assert.equal(auto.detected.unit, true);
+  console.log("  ✓ autoMapFees: missing required column reported via detected flag");
+}
+
+// Header row not first — common with cover/title rows at the top.
+// Picks the row with the most recognized headers (here, row 3).
+{
+  const s = sheet([
+    ["Adopted Fee Schedule"],                    // row 1 (idx 0) — title
+    [],                                          // row 2 (idx 1) — blank
+    ["name", "dept", "unit", "fee"],             // row 3 (idx 2) — headers
+    ["Plan check", "PLAN", "Each", 100],         // row 4 (idx 3) — data
+  ]);
+  const auto = autoMapFees(s);
+  assert.equal(auto.headerRowIndex, 2,
+    "header row scan picks the row with the most recognized columns");
+  assert.equal(auto.nameCol, 0);
+  assert.equal(auto.feeCol, 3);
+  console.log("  ✓ autoMapFees: header row not first (scans for max-match)");
+}
+
+// Robustness: empty sheet returns the zeroed mapping (no crash).
+{
+  const s: PreviewSheet = { name: "Empty", rowCount: 0, columnCount: 0, rows: [] };
+  const auto = autoMapFees(s);
+  assert.equal(auto.headerRowIndex, 0);
+  assert.deepEqual(auto.detected, { name: false, dept: false, fee: false, unit: false });
+  console.log("  ✓ autoMapFees: empty sheet → safe defaults");
 }
 
 console.log("\nAll excelToFees assertions passed.");

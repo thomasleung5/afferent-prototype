@@ -41,6 +41,124 @@ export interface FeeColumnMapping {
   unitCol: number | null;
 }
 
+/** Deterministic auto-detection of header row + column roles for a fee
+ *  schedule sheet. Synonym sets below cover the headers we see most
+ *  often in city fee schedules:
+ *    - name: `name`, `service`, `service name`, `fee item`, `fee/service name`
+ *    - dept: `dept`, `department`, `division`
+ *    - fee:  `fee`, `amount`, `current fee`, `adopted fee`, `price`, `rate`
+ *    - unit: `unit`, `basis`, `fee basis`, `pricing unit`
+ *
+ *  Header normalization is case-insensitive, treats punctuation as
+ *  whitespace, and collapses repeats — so "Fee / Service Name",
+ *  "FEE_ITEM", and "Service-Name" all match the listed labels. The
+ *  algorithm scans the first ~10 rows for the row with the most
+ *  recognized headers; ties favor the earlier row. Per-column matching
+ *  is left-to-right, first-match-wins, so duplicate headers don't
+ *  steal each other's roles. */
+export interface FeeAutoMapping {
+  headerRowIndex: number;
+  /** -1 when no match; UI translates this to its UNSET sentinel. */
+  nameCol: number;
+  deptCol: number;
+  feeCol: number;
+  unitCol: number;
+  detected: { name: boolean; dept: boolean; fee: boolean; unit: boolean };
+}
+
+const NAME_SYNONYMS = new Set([
+  "name", "service", "service name", "fee item", "fee service name",
+]);
+const DEPT_SYNONYMS = new Set([
+  "dept", "department", "division",
+]);
+const FEE_SYNONYMS = new Set([
+  "fee", "amount", "current fee", "adopted fee", "price", "rate",
+]);
+const UNIT_SYNONYMS = new Set([
+  "unit", "basis", "fee basis", "pricing unit",
+]);
+
+const HEADER_SCAN_ROWS = 10;
+/** A row needs at least this many recognized headers to count as a
+ *  header row. Picking 2 means a sparse first row with one stray match
+ *  ("Fee" alone) doesn't get crowned, while still catching the common
+ *  3-or-4-column schedules. */
+const HEADER_MIN_MATCHES = 2;
+
+export function autoMapFees(sheet: PreviewSheet): FeeAutoMapping {
+  const rows = Array.isArray(sheet?.rows) ? sheet.rows : [];
+  const empty: FeeAutoMapping = {
+    headerRowIndex: 0,
+    nameCol: -1, deptCol: -1, feeCol: -1, unitCol: -1,
+    detected: { name: false, dept: false, fee: false, unit: false },
+  };
+  if (rows.length === 0) return empty;
+
+  // Score each candidate row by how many recognized headers it contains.
+  // Tie-breaker: earlier row wins, so a redundant repeat header band
+  // (common in styled exports) doesn't shadow the real one.
+  let bestRow = -1;
+  let bestScore = 0;
+  const scanLimit = Math.min(rows.length, HEADER_SCAN_ROWS);
+  for (let i = 0; i < scanLimit; i++) {
+    const score = headerScore(rows[i]);
+    if (score > bestScore) {
+      bestRow = i;
+      bestScore = score;
+    }
+  }
+  const headerRowIndex = bestScore >= HEADER_MIN_MATCHES ? bestRow : 0;
+  const headerRow = rows[headerRowIndex] ?? [];
+
+  let nameCol = -1, deptCol = -1, feeCol = -1, unitCol = -1;
+  for (let c = 0; c < headerRow.length; c++) {
+    const norm = normalizeHeader(headerRow[c]);
+    if (norm === "") continue;
+    if (nameCol < 0 && NAME_SYNONYMS.has(norm)) { nameCol = c; continue; }
+    if (deptCol < 0 && DEPT_SYNONYMS.has(norm)) { deptCol = c; continue; }
+    if (feeCol  < 0 && FEE_SYNONYMS.has(norm))  { feeCol  = c; continue; }
+    if (unitCol < 0 && UNIT_SYNONYMS.has(norm)) { unitCol = c; continue; }
+  }
+
+  return {
+    headerRowIndex,
+    nameCol, deptCol, feeCol, unitCol,
+    detected: {
+      name: nameCol >= 0,
+      dept: deptCol >= 0,
+      fee:  feeCol  >= 0,
+      unit: unitCol >= 0,
+    },
+  };
+}
+
+function headerScore(row: PreviewCell[] | undefined): number {
+  if (!Array.isArray(row)) return 0;
+  let count = 0;
+  for (const cell of row) {
+    const norm = normalizeHeader(cell);
+    if (norm === "") continue;
+    if (NAME_SYNONYMS.has(norm) || DEPT_SYNONYMS.has(norm)
+        || FEE_SYNONYMS.has(norm) || UNIT_SYNONYMS.has(norm)) {
+      count += 1;
+    }
+  }
+  return count;
+}
+
+/** Lowercase, replace non-alphanumeric runs with a single space, and
+ *  trim. So "Fee / Service Name" → "fee service name", "FEE_ITEM" →
+ *  "fee item", "Service-Name" → "service name". Numbers stay (no
+ *  current synonyms use them, but they're harmless). */
+function normalizeHeader(v: PreviewCell): string {
+  if (v == null) return "";
+  return String(v)
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, " ")
+    .trim();
+}
+
 export interface ExcelFeeWarning {
   /** 1-based source row number (matches what the analyst sees in Excel). */
   row: number;
@@ -306,5 +424,38 @@ function cellToFee(v: PreviewCell): number | null {
 function normDept(v: string): Service["dept"] | null {
   const s = v.trim().toUpperCase();
   if ((FEE_DEPTS as readonly string[]).includes(s)) return s as Service["dept"];
+
+  // Excel fee schedules often carry user-facing department names rather
+  // than internal codes. Accept the common compact labels and registry
+  // names so analysts don't have to pre-normalize "Planning" → "PLAN".
+  const compact = s
+    .replace(/&/g, "AND")
+    .replace(/[^A-Z0-9]+/g, " ")
+    .trim()
+    .replace(/\s+/g, " ");
+  const aliases: Record<string, Service["dept"]> = {
+    PLANNING: "PLAN",
+    "PLANNING ADMINISTRATION": "PLAN",
+    "PLANNING AND ZONING": "PLAN",
+    BUILDING: "BLDG",
+    "BUILDING ADMINISTRATION": "BLDG",
+    "BUILDING SAFETY": "BLDG",
+    "BUILDING AND SAFETY": "BLDG",
+    ENGINEERING: "ENG",
+    "ENGINEERING ADMINISTRATION": "ENG",
+    "PUBLIC WORKS ENGINEERING": "ENG",
+    PARKS: "PARKS",
+    "PARKS RECREATION": "PARKS",
+    "PARKS AND RECREATION": "PARKS",
+    "PARKS RECREATION ADMINISTRATION": "PARKS",
+    "PARKS AND RECREATION ADMINISTRATION": "PARKS",
+    POLICE: "PD",
+    "POLICE SERVICES": "PD",
+    "POLICE SERVICES ADMINISTRATION": "PD",
+    FIRE: "FIRE",
+    "FIRE PREVENTION": "FIRE",
+    "FIRE PREVENTION ADMINISTRATION": "FIRE",
+  };
+  if (aliases[compact]) return aliases[compact];
   return null;
 }

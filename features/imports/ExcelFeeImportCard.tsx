@@ -16,8 +16,8 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Btn } from "@/components/ui";
 import {
-  excelToFeeExtraction, validateFeeMapping,
-  type ExcelFeeWarning, type FeeColumnMapping,
+  autoMapFees, excelToFeeExtraction, validateFeeMapping,
+  type ExcelFeeWarning, type FeeAutoMapping, type FeeColumnMapping,
 } from "@/lib/import/excelToFees";
 import {
   previewExcelFile,
@@ -50,20 +50,39 @@ export function ExcelFeeImportCard() {
 
   const [importStatus, setImportStatus] = useState<Status>(null);
   const [warnings, setWarnings] = useState<ExcelFeeWarning[]>([]);
+  /** Result of the most recent autoMapFees call. Null until preview
+   *  loads; used to drive the "auto-detected X" status line. */
+  const [autoMap, setAutoMap] = useState<FeeAutoMapping | null>(null);
 
-  // When the active sheet changes, reset the per-sheet mapping state.
-  // Sheets in the same workbook can have very different shapes
-  // (different column counts, different header rows), and carrying
-  // the previous sheet's column indexes / header-row into the new
-  // sheet is the most common way to produce a crash like
-  // "sheet.rows[headerIdx] is undefined".
+  // When the active sheet (or the preview itself) changes, run
+  // autoMapFees on the chosen sheet and prefill header row + column
+  // selections from the result. The user is free to override anything
+  // — these are starting values, not locks. Without this, switching
+  // sheets within a workbook would land on UNSET / row-1 every time
+  // even if the new sheet has obvious headers.
   useEffect(() => {
-    setHeaderRow(1);
-    setNameCol(UNSET);
-    setDeptCol(UNSET);
-    setFeeCol(UNSET);
-    setUnitCol(UNSET);
-  }, [sheetIndex]);
+    if (!preview) {
+      setAutoMap(null);
+      return;
+    }
+    const sheet = preview.sheets[sheetIndex];
+    if (!sheet) {
+      setAutoMap(null);
+      setHeaderRow(1);
+      setNameCol(UNSET);
+      setDeptCol(UNSET);
+      setFeeCol(UNSET);
+      setUnitCol(UNSET);
+      return;
+    }
+    const auto = autoMapFees(sheet);
+    setAutoMap(auto);
+    setHeaderRow(auto.headerRowIndex + 1);
+    setNameCol(auto.nameCol < 0 ? UNSET : auto.nameCol);
+    setDeptCol(auto.deptCol < 0 ? UNSET : auto.deptCol);
+    setFeeCol(auto.feeCol < 0 ? UNSET : auto.feeCol);
+    setUnitCol(auto.unitCol < 0 ? UNSET : auto.unitCol);
+  }, [sheetIndex, preview]);
 
   const reset = () => {
     setPreview(null);
@@ -75,6 +94,7 @@ export function ExcelFeeImportCard() {
     setUnitCol(UNSET);
     setImportStatus(null);
     setWarnings([]);
+    setAutoMap(null);
   };
 
   const handleFile = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -94,12 +114,13 @@ export function ExcelFeeImportCard() {
       // Auto-pick the first NON-EMPTY sheet. Many workbooks ship with an
       // empty default Sheet1 and the real data on a later/named sheet —
       // defaulting to index 0 lands the user on an empty sheet with a
-      // misleading "no rows" error.
+      // misleading "no rows" error. The header row + column selections
+      // are filled in by the autoMapFees effect once preview + sheetIndex
+      // settle, so we don't set them here.
       const firstNonEmpty = res.sheets.findIndex(
         (s) => s && s.rowCount > 0 && s.columnCount > 0,
       );
       setSheetIndex(firstNonEmpty >= 0 ? firstNonEmpty : 0);
-      setHeaderRow(1);
       setUploadStatus({
         ok: true,
         message: `Loaded ${res.sheets.length} sheet${res.sheets.length === 1 ? "" : "s"} from ${res.fileName}.`,
@@ -141,6 +162,7 @@ export function ExcelFeeImportCard() {
       {preview && (
         <MappingPanel
           preview={preview}
+          autoMap={autoMap}
           sheetIndex={sheetIndex} setSheetIndex={setSheetIndex}
           headerRow={headerRow} setHeaderRow={setHeaderRow}
           nameCol={nameCol} setNameCol={setNameCol}
@@ -177,6 +199,7 @@ export function ExcelFeeImportCard() {
 
 interface MappingPanelProps {
   preview: ExcelPreviewOk;
+  autoMap: FeeAutoMapping | null;
   sheetIndex: number;
   setSheetIndex: (n: number) => void;
   headerRow: number;
@@ -199,7 +222,7 @@ interface MappingPanelProps {
 
 function MappingPanel(props: MappingPanelProps) {
   const {
-    preview, sheetIndex, setSheetIndex, headerRow, setHeaderRow,
+    preview, autoMap, sheetIndex, setSheetIndex, headerRow, setHeaderRow,
     nameCol, setNameCol, deptCol, setDeptCol, feeCol, setFeeCol,
     unitCol, setUnitCol, existingServices, onImport,
   } = props;
@@ -276,6 +299,8 @@ function MappingPanel(props: MappingPanelProps) {
       display: "flex", flexDirection: "column", gap: 12,
     }}>
       <Eyebrow>Map columns</Eyebrow>
+
+      {autoMap && <AutoMapStatus auto={autoMap}/>}
 
       <div style={{ display: "grid", gridTemplateColumns: "max-content 1fr", gap: "6px 12px", alignItems: "baseline" }}>
         <Label>Sheet</Label>
@@ -473,6 +498,48 @@ function ColumnSelect({
         <option key={i} value={i}>{label}</option>
       ))}
     </select>
+  );
+}
+
+/** Inline summary of what autoMapFees found — green note when the
+ *  three required columns matched, warn-tinted note when something
+ *  still needs picking. Optional Unit isn't called out as missing. */
+function AutoMapStatus({ auto }: { auto: FeeAutoMapping }) {
+  const required: ("name" | "dept" | "fee")[] = ["name", "dept", "fee"];
+  const found = required.filter((k) => auto.detected[k]);
+  const missing = required.filter((k) => !auto.detected[k]);
+  const allRequired = missing.length === 0;
+  const noneDetected = found.length === 0 && !auto.detected.unit;
+
+  const label = (k: "name" | "dept" | "fee" | "unit"): string =>
+    k === "name" ? "name"
+    : k === "dept" ? "dept"
+    : k === "fee" ? "fee"
+    : "unit";
+
+  let message: string;
+  if (noneDetected) {
+    message = "Couldn't auto-detect columns. Pick the columns below to start.";
+  } else if (allRequired) {
+    const extras: ("name" | "dept" | "fee" | "unit")[] = auto.detected.unit
+      ? [...found, "unit"]
+      : [...found];
+    message = `Auto-detected ${extras.map(label).join(", ")}${auto.detected.unit ? "" : " — unit optional"}.`;
+  } else {
+    const foundList = found.map(label).join(", ");
+    const missingList = missing.map(label).join(", ");
+    message = `Auto-detected ${foundList || "no columns"}. Pick a column for ${missingList}.`;
+  }
+
+  const tone = noneDetected
+    ? "var(--ink-3)"
+    : allRequired
+      ? "var(--pos)"
+      : "var(--warn)";
+  return (
+    <div style={{ fontSize: 12, color: tone, lineHeight: 1.5 }}>
+      {message}
+    </div>
   );
 }
 
