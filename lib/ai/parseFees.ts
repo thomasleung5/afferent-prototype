@@ -2,6 +2,7 @@ import type { Service } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { mapLegacyUnit } from "@/lib/data/feeUnits";
+import { aiApiPost } from "./aiApi";
 import { newServiceId } from "./serviceId";
 
 interface FeeRow {
@@ -24,12 +25,8 @@ interface AiParseFeesResult {
 export async function aiParseFeesPdf(file: File): Promise<AiParseFeesResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-fees", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, fees: [], message: text || `HTTP ${res.status}` };
-  }
-  const body = await res.json() as AiParseFeesResult;
+  const body = await aiApiPost<AiParseFeesResult>("/api/ai/parse-fees", form);
+  if (!body.ok) return { ok: false, fees: [], message: body.message };
   return body;
 }
 

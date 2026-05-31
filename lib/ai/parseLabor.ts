@@ -1,6 +1,7 @@
 import type { Position } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
+import { aiApiPost } from "./aiApi";
 
 interface PositionRow {
   title: string;
@@ -19,12 +20,8 @@ interface AiParseLaborResult {
 export async function aiParseLaborPdf(file: File): Promise<AiParseLaborResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-labor", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, positions: [], message: text || `HTTP ${res.status}` };
-  }
-  const body = await res.json() as AiParseLaborResult;
+  const body = await aiApiPost<AiParseLaborResult>("/api/ai/parse-labor", form);
+  if (!body.ok) return { ok: false, positions: [], message: body.message };
   return body;
 }
 

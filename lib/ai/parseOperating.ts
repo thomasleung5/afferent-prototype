@@ -1,6 +1,7 @@
 import type { CostType, LaborType, OperatingLine, OpCategory, OpDept } from "@/lib/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import type { SourceLineage } from "@/lib/parse/types";
+import { aiApiPost } from "./aiApi";
 
 interface OperatingRow {
   code?: string;
@@ -34,12 +35,8 @@ interface AiParseOperatingResult {
 export async function aiParseOperatingPdf(file: File): Promise<AiParseOperatingResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-operating", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, operating: [], message: text || `HTTP ${res.status}` };
-  }
-  const body = await res.json() as AiParseOperatingResult;
+  const body = await aiApiPost<AiParseOperatingResult>("/api/ai/parse-operating", form);
+  if (!body.ok) return { ok: false, operating: [], message: body.message };
   return body;
 }
 

@@ -1,6 +1,7 @@
 import type { Service } from "@/lib/types";
 import type { SourceLineage } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
+import { aiApiPost } from "./aiApi";
 import { newServiceId } from "./serviceId";
 
 interface ServiceRow {
@@ -28,12 +29,8 @@ export async function aiParseServicesPdf(
   if (catalog.length > 0) {
     form.append("catalog", JSON.stringify(catalog));
   }
-  const res = await fetch("/api/ai/parse-services", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, services: [], message: text || `HTTP ${res.status}` };
-  }
-  const body = await res.json() as AiParseServicesResult;
+  const body = await aiApiPost<AiParseServicesResult>("/api/ai/parse-services", form);
+  if (!body.ok) return { ok: false, services: [], message: body.message };
   return body;
 }
 

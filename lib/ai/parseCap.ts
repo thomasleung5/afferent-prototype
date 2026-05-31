@@ -5,6 +5,7 @@ import type {
 import type { ExtractionResult, SourceLineage, UnmappedRow } from "@/lib/parse/types";
 import { SEED_ALLOCATION_BASES } from "@/lib/data/allocationBasesCatalog";
 import { INST_DEPT_CODE_LIST } from "@/lib/data/institutionalDepts";
+import { aiApiPost } from "./aiApi";
 
 // ---------------------------------------------------------------------------
 // Wire types (what the model returns over /api/ai/parse-cap)
@@ -94,16 +95,7 @@ interface AiParseCapResult {
 export async function aiParseCapPdf(file: File): Promise<AiParseCapResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-cap", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return {
-      ok: false,
-      centers: [], bases: [], basisUnits: [], pools: [], directAllocations: [],
-      message: text || `HTTP ${res.status}`,
-    };
-  }
-  const body = await res.json() as Partial<AiParseCapResult>;
+  const body = await aiApiPost<AiParseCapResult>("/api/ai/parse-cap", form);
   return {
     ok: body.ok ?? false,
     centers: Array.isArray(body.centers) ? body.centers : [],

@@ -3,6 +3,7 @@ import { FEE_DEPTS } from "@/lib/data/departments";
 import type {
   ExtractedRow, ExtractionResult, SourceLineage, UnmappedRow,
 } from "@/lib/parse/types";
+import { aiApiPost } from "./aiApi";
 
 interface VolumeItem {
   name: string;
@@ -22,12 +23,8 @@ interface AiParseVolumeResult {
 export async function aiParseVolumePdf(file: File): Promise<AiParseVolumeResult> {
   const form = new FormData();
   form.append("file", file);
-  const res = await fetch("/api/ai/parse-volume", { method: "POST", body: form });
-  if (!res.ok && res.status !== 502) {
-    const text = await res.text().catch(() => "");
-    return { ok: false, items: [], message: text || `HTTP ${res.status}` };
-  }
-  const body = await res.json() as AiParseVolumeResult;
+  const body = await aiApiPost<AiParseVolumeResult>("/api/ai/parse-volume", form);
+  if (!body.ok) return { ok: false, items: [], message: body.message };
   return body;
 }
 

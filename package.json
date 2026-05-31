@@ -10,6 +10,7 @@
     "preview": "vite preview",
     "start": "tsx server/index.ts",
     "typecheck": "tsc --noEmit",
+    "test": "npm run test:cap && npm run test:inst-depts && npm run test:productive-hours && npm run test:store-migration && npm run test:capacity && npm run test:fee-display && npm run test:calc && npm run test:fee-study && npm run test:functional-allocation && npm run test:ai-parser && npm run test:ai-auth && npm run test:ai-upload",
     "test:cap": "tsx lib/data/__tests__/capStepDownEngine.fixture.ts",
     "test:inst-depts": "tsx lib/data/__tests__/institutionalDepts.fixture.ts",
     "test:productive-hours": "tsx lib/__tests__/productiveHours.fixture.ts",
@@ -19,7 +20,9 @@
     "test:calc": "tsx lib/__tests__/calc.fixture.ts",
     "test:fee-study": "tsx lib/__tests__/feeStudyCalculations.fixture.ts",
     "test:functional-allocation": "tsx lib/__tests__/functionalAllocation.fixture.ts",
-    "test:ai-parser": "tsx server/__tests__/aiParseRunner.fixture.ts"
+    "test:ai-parser": "tsx server/__tests__/aiParseRunner.fixture.ts",
+    "test:ai-auth": "tsx server/__tests__/aiAuth.fixture.ts",
+    "test:ai-upload": "tsx server/__tests__/aiUploadValidator.fixture.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",

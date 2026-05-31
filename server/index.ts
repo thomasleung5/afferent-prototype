@@ -1,5 +1,6 @@
 import { Hono } from "hono";
 import { serve } from "@hono/node-server";
+import { requireAiBearer } from "./aiAuth";
 import { handleAiParseFees } from "./aiParseFees";
 import { handleAiParseServices } from "./aiParseServices";
 import { handleAiParseLabor } from "./aiParseLabor";
@@ -8,6 +9,11 @@ import { handleAiParseCap } from "./aiParseCap";
 import { handleAiParseVolume } from "./aiParseVolume";
 
 const app = new Hono();
+
+// Gate every /api/ai/* route on the shared bearer token. The middleware
+// itself is permissive in dev (no AI_API_TOKEN set + NODE_ENV !==
+// "production") and fail-closed in production. See server/aiAuth.ts.
+app.use("/api/ai/*", requireAiBearer());
 
 app.post("/api/ai/parse-fees", (c) => handleAiParseFees(c.req.raw));
 app.post("/api/ai/parse-services", (c) => handleAiParseServices(c.req.raw));

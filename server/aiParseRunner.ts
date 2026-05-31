@@ -22,6 +22,7 @@
  * bundle, not a single row array, so it doesn't fit `rowsKey`. */
 
 import Anthropic from "@anthropic-ai/sdk";
+import { readPdfUpload } from "./aiUploadValidator";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -74,21 +75,9 @@ export async function runPdfParser(
     }, { status: 503 });
   }
 
-  let form: FormData;
-  let pdfBase64: string;
-  let fileName: string;
-  let fileSizeKb: number;
-  try {
-    form = await req.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
-    fileName = file.name;
-    fileSizeKb = Math.round(file.size / 1024);
-    const buf = await file.arrayBuffer();
-    pdfBase64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
-  }
+  const upload = await readPdfUpload(req);
+  if (upload instanceof Response) return upload;
+  const { form, fileName, fileSizeKb, base64: pdfBase64 } = upload;
 
   let system: string;
   try {

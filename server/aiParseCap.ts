@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { readPdfUpload } from "./aiUploadValidator";
 
 const MODEL = "claude-sonnet-4-6";
 
@@ -267,20 +268,9 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
     }, { status: 503 });
   }
 
-  let pdfBase64: string;
-  let fileName: string;
-  let fileSizeKb: number;
-  try {
-    const form = await req.formData();
-    const file = form.get("file") as File | null;
-    if (!file) return json({ ok: false, message: "No file provided." }, { status: 400 });
-    fileName = file.name;
-    fileSizeKb = Math.round(file.size / 1024);
-    const buf = await file.arrayBuffer();
-    pdfBase64 = Buffer.from(buf).toString("base64");
-  } catch {
-    return json({ ok: false, message: "Could not read uploaded file." }, { status: 400 });
-  }
+  const upload = await readPdfUpload(req);
+  if (upload instanceof Response) return upload;
+  const { fileName, fileSizeKb, base64: pdfBase64 } = upload;
 
   console.log(`[ai-parse-cap] Received ${fileName} (${fileSizeKb} KB) — sending to ${MODEL}…`);
   const t0 = Date.now();
