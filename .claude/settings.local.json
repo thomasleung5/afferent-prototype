@@ -116,7 +116,8 @@
       "Bash(sed -n '1,10p' lib/data/capStepDownGl.ts)",
       "Bash(perl -i -pe ' *)",
       "Bash(npm test *)",
-      "Bash(npm audit *)"
+      "Bash(npm audit *)",
+      "Bash(git credential-osxkeychain *)"
     ]
   }
 }
