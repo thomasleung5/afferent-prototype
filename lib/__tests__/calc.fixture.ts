@@ -5,14 +5,14 @@
  * Pins the isRecoverableFeeRow contract + the aggregate gating in
  * policyImpact / feeComparisons. Load-bearing assertions:
  *
- *   - Existing seed shape (rowKind + status both undefined) stays
- *     recoverable, so the gate changes ZERO numbers for the legacy
- *     LAH / Maplewood baselines.
+ *   - Existing seed shape (no formula + no status) stays recoverable,
+ *     so the gate changes ZERO numbers for the legacy LAH / Maplewood
+ *     baselines.
  *   - Lifecycle gates: deleted / not-evaluated / moved excluded
- *     regardless of rowKind.
- *   - Non-flat rowKinds (deposit / T&M / pass-through / statutory /
- *     formula) honor the numeric-fee escape hatch: fee > 0 → in;
- *     fee = 0 → out.
+ *     regardless of formula kind.
+ *   - Non-flat formula kinds (deposit / T&M / pass-through / statutory /
+ *     the four structured-formula sub-kinds) honor the numeric-fee
+ *     escape hatch: fee > 0 → in; fee = 0 → out.
  *   - policyImpact aggregates filter on `recoverable` — a T&M row
  *     with fee=0 does NOT pollute the closeable gap. */
 
@@ -21,7 +21,19 @@ import {
   feeComparisons, isRecoverableFeeRow, policyImpact, serviceCosts,
 } from "../calc";
 import type { FBHR } from "../calc";
-import type { DeptCode, FeeRowKind, FeeScheduleStatus, Service } from "../types";
+import type { DeptCode, FeeFormula, FeeRowKind, FeeScheduleStatus, Service } from "../types";
+
+/** Minimal formula payload for each non-flat FeeRowKind — lets the
+ *  isRecoverableFeeRow loop test every kind without per-iteration
+ *  boilerplate. The "formula" rowKind collapses four FeeFormula
+ *  sub-kinds; "expression" is the simplest choice. */
+const FORMULA_FOR: Record<Exclude<FeeRowKind, "flat">, FeeFormula> = {
+  "formula":             { kind: "expression", text: "test" },
+  "deposit":             { kind: "deposit", amount: 0, balance: "actuals" },
+  "time-and-materials":  { kind: "time-and-materials" },
+  "pass-through":        { kind: "pass-through" },
+  "statutory":           { kind: "statutory" },
+};
 
 const svc = (overrides: Partial<Service> = {}): Service => ({
   id: "svc-x",
@@ -48,61 +60,45 @@ const fbhr: Record<DeptCode, FBHR> = {
 
 // ── 1. Legacy / undefined fields stay recoverable ────────────────────────
 //      THE load-bearing back-compat assertion: every existing seed row
-//      (rowKind + status both undefined) MUST stay recoverable so the
-//      gate changes zero numbers for the LAH / Maplewood baselines.
+//      (no formula + no status) MUST stay recoverable so the gate
+//      changes zero numbers for the LAH / Maplewood baselines.
 {
   assert.equal(isRecoverableFeeRow(svc()), true,
-    "legacy: undefined rowKind + status → defaults to flat/existing → recoverable");
-  assert.equal(isRecoverableFeeRow(svc({ rowKind: "flat" })), true,
-    "explicit flat is recoverable");
-  console.log("  ✓ legacy + flat shapes stay recoverable");
+    "legacy: no formula + no status → defaults to flat/existing → recoverable");
+  console.log("  ✓ legacy flat shape stays recoverable");
 }
 
-// ── 2. Lifecycle gates exclude regardless of rowKind ─────────────────────
+// ── 2. Lifecycle gates exclude regardless of formula kind ───────────────
 {
   const excluded: FeeScheduleStatus[] = ["deleted", "not-evaluated", "moved"];
   for (const status of excluded) {
     assert.equal(isRecoverableFeeRow(svc({ status })), false,
       `status "${status}" → not recoverable (even on a flat row with fee>0)`);
-    assert.equal(isRecoverableFeeRow(svc({ status, rowKind: "formula", fee: 1000 })), false,
+    assert.equal(isRecoverableFeeRow(svc({
+      status, formula: FORMULA_FOR.formula, fee: 1000,
+    })), false,
       `status "${status}" → not recoverable (even on a formula row with anchor fee)`);
   }
   console.log("  ✓ lifecycle gates (deleted / not-evaluated / moved) exclude all rowKinds");
 }
 
-// ── 3. Non-flat rowKinds: numeric-fee escape hatch ───────────────────────
+// ── 3. Non-flat formula kinds: numeric-fee escape hatch ─────────────────
 //      Without a numeric fee, non-flat rows don't contribute to recovery
 //      math. With fee > 0, the analyst has acknowledged a representative
 //      value and the row IS included.
 {
-  const nonFlatKinds: FeeRowKind[] = [
-    "formula", "deposit", "time-and-materials", "pass-through", "statutory",
-  ];
+  const nonFlatKinds = Object.keys(FORMULA_FOR) as Array<keyof typeof FORMULA_FOR>;
   for (const kind of nonFlatKinds) {
-    assert.equal(isRecoverableFeeRow(svc({ rowKind: kind, fee: 0 })), false,
-      `rowKind "${kind}" with fee=0 → NOT recoverable (no representative value)`);
-    assert.equal(isRecoverableFeeRow(svc({ rowKind: kind, fee: 500 })), true,
-      `rowKind "${kind}" with fee=500 → recoverable (analyst-supplied anchor)`);
+    const formula = FORMULA_FOR[kind];
+    assert.equal(isRecoverableFeeRow(svc({ formula, fee: 0 })), false,
+      `kind "${kind}" with fee=0 → NOT recoverable (no representative value)`);
+    assert.equal(isRecoverableFeeRow(svc({ formula, fee: 500 })), true,
+      `kind "${kind}" with fee=500 → recoverable (analyst-supplied anchor)`);
   }
   console.log("  ✓ non-flat numeric-fee escape hatch (fee>0 in, fee=0 out)");
 }
 
-// ── 4. Display text overrides do NOT affect the math gate ───────────────
-//      currentFeeText / recommendedFeeText / fullCostRecoveryFeeText are
-//      INTERNAL infrastructure for preserving imported wording — they
-//      control rendering only, never recovery math.
-{
-  const svcWithOverride = svc({
-    rowKind: "formula", fee: 1000,
-    currentFeeText: "Tiered — typical $1,000",
-    recommendedFeeText: "Tiered — full recovery",
-  });
-  assert.equal(isRecoverableFeeRow(svcWithOverride), true,
-    "*Text overrides do not change recoverable status; fee>0 still wins");
-  console.log("  ✓ display text overrides don't affect the math gate");
-}
-
-// ── 5. policyImpact aggregates filter on `recoverable` ──────────────────
+// ── 4. policyImpact aggregates filter on `recoverable` ──────────────────
 //      Baseline (one flat row) vs baseline + non-recoverable T&M row
 //      with fee=0. The aggregate must not move.
 {
@@ -119,7 +115,7 @@ const fbhr: Record<DeptCode, FBHR> = {
   // T&M row with fee=0 — non-recoverable, must not move totals.
   const tmRow = svc({
     id: "svc-tm", dept: "PLAN", volume: 20, hours: 3,
-    fee: 0, rowKind: "time-and-materials",
+    fee: 0, formula: { kind: "time-and-materials" },
   });
   const withTm = [flatRow, tmRow];
   const tmImpact = policyImpact(feeComparisons(serviceCosts(withTm, fbhr), withTm, [], []));
@@ -139,7 +135,7 @@ const fbhr: Record<DeptCode, FBHR> = {
 {
   const tmRow = svc({
     id: "svc-tm", dept: "PLAN", volume: 20, hours: 3,
-    fee: 0, rowKind: "time-and-materials",
+    fee: 0, formula: { kind: "time-and-materials" },
   });
   const costs = serviceCosts([tmRow], fbhr);
   const [cmp] = feeComparisons(costs, [tmRow], [], []);

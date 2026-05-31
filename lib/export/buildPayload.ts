@@ -3,9 +3,10 @@
  * state so the export always reflects the current edits + imports. */
 
 import type {
-  DeptCode, OperatingLine, OpCategory, PolicyException, PolicyTarget,
+  DeptCode, FeeRowKind, OperatingLine, OpCategory, PolicyException, PolicyTarget,
   ProductiveHoursRow, Service, VolumeRow, CapPool, FeeScheduleStatus,
 } from "@/lib/types";
+import { feeRowKind } from "@/lib/calc";
 import type {
   FeeComparison, PolicyImpact, ServiceCost,
 } from "@/lib/calc";
@@ -612,7 +613,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
       } else if (status === "renamed") {
         restructured.push({ ...base, rationale: lifecycleRationale("renamed", s) });
       } else {
-        const kind = s.rowKind ?? "flat";
+        const kind = feeRowKind(s);
         if (kind !== "flat") {
           restructured.push({ ...base, rationale: rowKindRationale(s) });
         }
@@ -956,10 +957,12 @@ function lifecycleRationale(
 ): string {
   const cat = s.category ? ` (${s.category})` : "";
   switch (status) {
-    case "new":
-      return s.rowKind && s.rowKind !== "flat"
-        ? `New fee${cat}, billed as ${rowKindLabel(s.rowKind)}.`
+    case "new": {
+      const kind = feeRowKind(s);
+      return kind !== "flat"
+        ? `New fee${cat}, billed as ${rowKindLabel(kind)}.`
         : `New fee${cat} introduced this cycle to recover an existing service cost.`;
+    }
     case "deleted":
       return s.notes?.[0]
         ? `Removed this cycle: ${s.notes[0]}`
@@ -975,10 +978,10 @@ function lifecycleRationale(
 
 function rowKindRationale(s: Service): string {
   const cat = s.category ? ` in ${s.category}` : "";
-  return `Pricing restructured${cat}: billed as ${rowKindLabel(s.rowKind ?? "flat")}.`;
+  return `Pricing restructured${cat}: billed as ${rowKindLabel(feeRowKind(s))}.`;
 }
 
-function rowKindLabel(kind: NonNullable<Service["rowKind"]>): string {
+function rowKindLabel(kind: FeeRowKind): string {
   switch (kind) {
     case "flat":              return "a flat fee";
     case "formula":           return "a formula (tiered / percentage / per-unit)";

@@ -1,5 +1,5 @@
 import type {
-  CapAllocation, DeptCode, OperatingLine,
+  CapAllocation, DeptCode, FeeRowKind, OperatingLine,
   PolicyException, PolicyTarget, ProductiveHoursRow, Service,
 } from "./types";
 import { FEE_DEPTS } from "./data/departments";
@@ -218,10 +218,9 @@ function targetFor(
  *      `fee` as the representative-scenario anchor (e.g., bldg-sfr's
  *      $13,500 typical-case fee at $1.5M valuation).
  *
- *  Display text overrides (currentFeeText / recommendedFeeText /
- *  fullCostRecoveryFeeText) do NOT affect this gate — they control
- *  rendering only, never math. See displayCurrentFee /
- *  displayRecommendedFee / displayCostOfService in lib/feeDisplay.ts.
+ *  The structured `formula` field doesn't affect this gate — it
+ *  controls rendering only (see summarizeFee in lib/feeDisplay.ts),
+ *  never math.
  *
  *  Non-recoverable rows still flow through serviceCosts /
  *  feeComparisons so per-row UI (cost, recommended, uplift) keeps
@@ -232,9 +231,30 @@ export function isRecoverableFeeRow(service: Service): boolean {
   if (status === "deleted" || status === "not-evaluated" || status === "moved") {
     return false;
   }
-  const kind = service.rowKind ?? "flat";
+  const kind = feeRowKind(service);
   if (kind === "flat") return true;
   return service.fee > 0;
+}
+
+/** Derive a service's FeeRowKind from its structured formula.
+ *
+ *  `formula` is the single source of truth. The four structured-formula
+ *  kinds (tiered-valuation / percentage / per-unit / expression) collapse
+ *  to `"formula"`; the rest pass through 1:1. No formula → `"flat"`. */
+export function feeRowKind(service: Service): FeeRowKind {
+  const f = service.formula;
+  if (!f) return "flat";
+  switch (f.kind) {
+    case "tiered-valuation":
+    case "percentage":
+    case "per-unit":
+    case "expression":
+      return "formula";
+    case "deposit":            return "deposit";
+    case "time-and-materials": return "time-and-materials";
+    case "pass-through":       return "pass-through";
+    case "statutory":          return "statutory";
+  }
 }
 
 export interface FeeComparison extends ServiceCost {

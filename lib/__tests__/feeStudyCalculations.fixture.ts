@@ -42,7 +42,7 @@ const services: Service[] = [
     fee: 0,
     peer: 0,
     target: 100,
-    rowKind: "time-and-materials",
+    formula: { kind: "time-and-materials" },
     source: "seed",
   },
 ];

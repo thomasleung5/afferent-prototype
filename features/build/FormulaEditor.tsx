@@ -11,11 +11,15 @@ import type { FeeFormula, FeeFormulaTier } from "@/lib/types";
  *  reuse the same component. */
 
 const FORMULA_KIND_OPTIONS = [
-  { value: "none",              label: "(none — flat row)" },
-  { value: "tiered-valuation",  label: "Tiered valuation" },
-  { value: "percentage",        label: "Percentage" },
-  { value: "per-unit",          label: "Per unit" },
-  { value: "expression",        label: "Expression (freeform)" },
+  { value: "none",                label: "(none — flat row)" },
+  { value: "tiered-valuation",    label: "Tiered valuation" },
+  { value: "percentage",          label: "Percentage" },
+  { value: "per-unit",            label: "Per unit" },
+  { value: "deposit",             label: "Deposit + balance" },
+  { value: "time-and-materials",  label: "Time and materials" },
+  { value: "pass-through",        label: "Pass-through" },
+  { value: "statutory",           label: "Statutory" },
+  { value: "expression",          label: "Expression (freeform)" },
 ];
 
 /** Default-shape helper — produces a sane starting formula for each kind
@@ -51,6 +55,36 @@ function defaultFormulaFor(
       unit: prev?.kind === "per-unit" ? prev.unit : "linear foot",
       rate: prev?.kind === "per-unit" ? prev.rate : 0,
       ...(prev?.kind === "per-unit" && prev.minFee != null ? { minFee: prev.minFee } : {}),
+    };
+  }
+  if (kind === "deposit") {
+    return {
+      kind: "deposit",
+      amount: prev?.kind === "deposit" ? prev.amount : 0,
+      balance: prev?.kind === "deposit" ? prev.balance : "actuals",
+    };
+  }
+  if (kind === "time-and-materials") {
+    return {
+      kind: "time-and-materials",
+      ...(prev?.kind === "time-and-materials" && prev.hourlyRate != null
+        ? { hourlyRate: prev.hourlyRate } : {}),
+      ...(prev?.kind === "time-and-materials" && prev.minimum != null
+        ? { minimum: prev.minimum } : {}),
+    };
+  }
+  if (kind === "pass-through") {
+    return {
+      kind: "pass-through",
+      ...(prev?.kind === "pass-through" && prev.markup != null
+        ? { markup: prev.markup } : {}),
+    };
+  }
+  if (kind === "statutory") {
+    return {
+      kind: "statutory",
+      ...(prev?.kind === "statutory" && prev.cap != null
+        ? { cap: prev.cap } : {}),
     };
   }
   return {
@@ -93,6 +127,18 @@ export function FormulaEditor({
       )}
       {value?.kind === "per-unit" && (
         <PerUnitFields value={value} onChange={(next) => onChange(next)}/>
+      )}
+      {value?.kind === "deposit" && (
+        <DepositFields value={value} onChange={(next) => onChange(next)}/>
+      )}
+      {value?.kind === "time-and-materials" && (
+        <TimeAndMaterialsFields value={value} onChange={(next) => onChange(next)}/>
+      )}
+      {value?.kind === "pass-through" && (
+        <PassThroughFields value={value} onChange={(next) => onChange(next)}/>
+      )}
+      {value?.kind === "statutory" && (
+        <StatutoryFields value={value} onChange={(next) => onChange(next)}/>
       )}
       {value?.kind === "expression" && (
         <ExpressionFields value={value} onChange={(next) => onChange(next)}/>
@@ -312,6 +358,155 @@ function ExpressionFields({
         outline: "none",
       }}
     />
+  );
+}
+
+function DepositFields({
+  value, onChange,
+}: {
+  value: Extract<FeeFormula, { kind: "deposit" }>;
+  onChange: (next: FeeFormula) => void;
+}) {
+  // Narrow the balance union once so closures capture a typed object,
+  // not the wider "actuals" | { rate, unit } form.
+  const billed = value.balance === "actuals" ? null : value.balance;
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <FormulaSubField label="Deposit">
+        <CellInput
+          type="currency"
+          value={value.amount}
+          onChange={(v) => onChange({ ...value, amount: Number(v) || 0 })}
+          prefix="$"
+          fontSize={12}
+        />
+      </FormulaSubField>
+      <FormulaSubField label="Balance">
+        <CellSelect
+          value={billed == null ? "actuals" : "rate"}
+          options={[
+            { value: "actuals", label: "Billed at actuals" },
+            { value: "rate",    label: "Billed at published rate" },
+          ]}
+          onChange={(v) => onChange({
+            ...value,
+            balance: v === "actuals"
+              ? "actuals"
+              : (billed ?? { rate: 0, unit: "hr" }),
+          })}
+        />
+      </FormulaSubField>
+      {billed && (
+        <>
+          <FormulaSubField label="Rate">
+            <CellInput
+              type="currency"
+              value={billed.rate}
+              onChange={(v) => onChange({
+                ...value,
+                balance: { ...billed, rate: Number(v) || 0 },
+              })}
+              prefix="$"
+              fontSize={12}
+            />
+          </FormulaSubField>
+          <FormulaSubField label="Unit">
+            <CellInput
+              value={billed.unit}
+              onChange={(v) => onChange({
+                ...value,
+                balance: { ...billed, unit: String(v) },
+              })}
+              placeholder="e.g. hr"
+            />
+          </FormulaSubField>
+        </>
+      )}
+    </div>
+  );
+}
+
+function TimeAndMaterialsFields({
+  value, onChange,
+}: {
+  value: Extract<FeeFormula, { kind: "time-and-materials" }>;
+  onChange: (next: FeeFormula) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <FormulaSubField label="Hourly rate">
+        <CellInput
+          type="currency"
+          value={value.hourlyRate ?? ""}
+          onChange={(v) => onChange({
+            ...value,
+            hourlyRate: v === "" ? undefined : Number(v),
+          })}
+          prefix="$" placeholder="(actuals only)"
+          fontSize={12}
+        />
+      </FormulaSubField>
+      <FormulaSubField label="Minimum">
+        <CellInput
+          type="currency"
+          value={value.minimum ?? ""}
+          onChange={(v) => onChange({
+            ...value,
+            minimum: v === "" ? undefined : Number(v),
+          })}
+          prefix="$" placeholder="(none)"
+          fontSize={12}
+        />
+      </FormulaSubField>
+    </div>
+  );
+}
+
+function PassThroughFields({
+  value, onChange,
+}: {
+  value: Extract<FeeFormula, { kind: "pass-through" }>;
+  onChange: (next: FeeFormula) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <FormulaSubField label="Admin markup">
+        <CellInput
+          type="number"
+          value={value.markup ?? ""}
+          onChange={(v) => onChange({
+            ...value,
+            markup: v === "" ? undefined : Number(v),
+          })}
+          step={0.5} min={0} suffix="%" placeholder="(none)"
+          fontSize={12}
+        />
+      </FormulaSubField>
+    </div>
+  );
+}
+
+function StatutoryFields({
+  value, onChange,
+}: {
+  value: Extract<FeeFormula, { kind: "statutory" }>;
+  onChange: (next: FeeFormula) => void;
+}) {
+  return (
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      <FormulaSubField label="Cap">
+        <CellInput
+          type="currency"
+          value={value.cap ?? ""}
+          onChange={(v) => onChange({
+            ...value,
+            cap: v === "" ? undefined : Number(v),
+          })}
+          prefix="$" placeholder="(none)"
+          fontSize={12}
+        />
+      </FormulaSubField>
+    </div>
   );
 }
 

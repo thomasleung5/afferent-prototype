@@ -50,16 +50,17 @@ export interface RoleAllocation {
  *  display layer renders this alongside the fee value. */
 export type FeeUnit = string;
 
-/** Pricing structure of an active fee — how the fee is computed, not its
- *  lifecycle state. Lifecycle (moved / deleted / not-evaluated) lives on
- *  FeeScheduleStatus instead so the two axes stay orthogonal. */
+/** Pricing structure label for an active fee — derived from
+ *  `Service.formula` via `feeRowKind()` in lib/calc.ts. Lifecycle
+ *  (moved / deleted / not-evaluated) lives on FeeScheduleStatus
+ *  instead so the two axes stay orthogonal. */
 export type FeeRowKind =
-  | "flat"               // single dollar amount (the legacy default)
-  | "formula"            // tiered or percentage formula — see FeeFormula
-  | "deposit"            // deposit required; balance billed later
-  | "time-and-materials" // billed at actual cost of staff time
-  | "pass-through"       // actual third-party / agency cost passed through
-  | "statutory";         // capped or set by state/federal statute
+  | "flat"               // no formula attached
+  | "formula"            // FeeFormula kind in {tiered-valuation,percentage,per-unit,expression}
+  | "deposit"            // FeeFormula kind: "deposit"
+  | "time-and-materials" // FeeFormula kind: "time-and-materials"
+  | "pass-through"       // FeeFormula kind: "pass-through"
+  | "statutory";         // FeeFormula kind: "statutory"
 
 /** Lifecycle state of a fee row within this study cycle. Drives the
  *  "filter to new / changed / deleted" affordance and the published
@@ -96,6 +97,11 @@ export type FeeFormula =
        *  "contract amount", "project cost"). Display-only label. */
       basis: string;
       tiers: FeeFormulaTier[];
+      /** Optional anchor basis used by `summarizeFee` to render a
+       *  representative dollar example (e.g., 1_500_000 → "Tiered (typ.
+       *  $13,500 @ $1.5M construction valuation)"). When omitted, the
+       *  summarizer falls back to a range across the tier schedule. */
+      typicalBasis?: number;
     }
   | {
       kind: "percentage";
@@ -112,6 +118,39 @@ export type FeeFormula =
       unit: string;
       rate: number;
       minFee?: number;
+    }
+  | {
+      kind: "deposit";
+      /** Up-front deposit collected at intake. */
+      amount: number;
+      /** How the balance is billed. "actuals" means staff time + direct
+       *  costs are invoiced after the work; a `{ rate, unit }` payload
+       *  means the balance accrues at a published rate (e.g.,
+       *  `{ rate: 185, unit: "hr" }` for "$185/hr"). */
+      balance: "actuals" | { rate: number; unit: string };
+    }
+  | {
+      kind: "time-and-materials";
+      /** Published hourly rate, when one exists. Omit for "billed at
+       *  actual cost" with no published rate. */
+      hourlyRate?: number;
+      /** Optional minimum charge regardless of hours logged. */
+      minimum?: number;
+    }
+  | {
+      kind: "pass-through";
+      /** Optional admin markup percent on top of the third-party cost
+       *  (e.g., 10 for "+10% admin"). Omit when the fee is the bare
+       *  pass-through amount. */
+      markup?: number;
+    }
+  | {
+      kind: "statutory";
+      /** Dollar cap set by statute (e.g., 30 for "max $30 per Cal Gov
+       *  Code §65091"). Omit when the statute prescribes the fee
+       *  exactly with no cap concept; the `Service.legalAuthority`
+       *  field carries the citation. */
+      cap?: number;
     }
   | {
       /** Freeform expression text for formulas that don't fit the
@@ -147,8 +186,8 @@ export interface Service {
   /** Fully-burdened cost per occurrence */
   cost: number;
   /** Currently adopted fee. When the fee can't be reduced to a single
-   *  dollar amount (T&M, formula, deposit + balance), set
-   *  `currentFeeText` for the display label and leave `fee` as a
+   *  dollar amount (T&M, formula, deposit + balance), set `formula`
+   *  for the structured pricing description and leave `fee` as a
    *  best-effort numeric estimate (or 0) for chart / total math. */
   fee: number;
   /** Peer-median fee. Computed from the comparable subset of
@@ -187,50 +226,17 @@ export interface Service {
   activity?: string;
   /** Free-form unit label rendered alongside the fee value. */
   unit?: FeeUnit;
-  /** Pricing structure. Defaults to "flat" semantics in display when
-   *  undefined. Recovery math gates on this so deposit / T&M /
-   *  pass-through rows aren't treated the same as flat rows. */
-  rowKind?: FeeRowKind;
   /** Lifecycle state of this row in the current study cycle. Defaults
    *  to "existing" semantics when undefined. */
   status?: FeeScheduleStatus;
-  /* ── Display-text overrides — INTERNAL INFRASTRUCTURE ─────────────
-   *
-   * These three fields preserve verbatim imported fee-schedule wording
-   * for rows that don't reduce to a single dollar amount: formula
-   * (e.g., "Tiered (typ. $13,500 @ $1.5M valuation)"), statutory
-   * caps, deposit / T&M / pass-through, moved / deleted /
-   * not-evaluated rows that carry historical labels through to
-   * display + export.
-   *
-   * They are read by displayCurrentFee / displayRecommendedFee /
-   * displayCostOfService in lib/feeDisplay.ts and must continue to
-   * round-trip cleanly through imports, parser output, persisted
-   * state, and exports. The numeric `fee` / per-row computed
-   * `recommended` / `unitCost` values stay the source of truth for
-   * recovery math — these overrides never affect calculations, only
-   * rendering.
-   *
-   * NOT user-facing controls: there is no editor on the normal Fee
-   * Schedule UI for these. They are populated by the AI parser /
-   * import path or by hand-edited seed JSON, and surfaced through
-   * the display helpers. Surfacing them as form fields invites
-   * analysts to "override" computed display in ways that drift from
-   * the math, which is exactly the bug class these fields exist to
-   * solve when used correctly (as imported wording, not free
-   * editing).
-   *
-   * TODO: Reassess after pilot usage whether display override
-   * fields are still needed or can be collapsed into normalized fee
-   * display helpers. If most imports normalize cleanly without
-   * needing the override, we can shrink the type and route
-   * everything through deterministic formatters. */
-  currentFeeText?: string;
-  recommendedFeeText?: string;
-  fullCostRecoveryFeeText?: string;
-  /** Structured formula description for "formula" rowKind rows. When
-   *  set, the display layer renders the formula breakdown instead of
-   *  a flat dollar amount. */
+  /** Structured pricing description for non-flat rows. Display layer
+   *  routes through `summarizeFee` (lib/feeDisplay.ts) to render a
+   *  deterministic narrative ("Tiered (typ. $13,500 @ $1.5M
+   *  construction valuation)", "$500 deposit, balance at actuals",
+   *  etc.) instead of a misleading dollar value derived from `fee`.
+   *  The numeric `fee` / computed `recommended` / `unitCost` stay
+   *  authoritative for recovery math — this field never affects
+   *  calculations, only rendering. */
   formula?: FeeFormula;
   /** Free-form analyst notes, one per line. Surfaced in the row
    *  drilldown and the published study's footnotes. */

@@ -3,9 +3,10 @@ import type { Service } from "../types";
 /* Source: final draft Development Services Fee Study, March 30, 2026.
  * Tables 2, 4, 7; Appendices A.1–A.3.
  *
- * Each row carries fee-schedule metadata fields (feeNo,
- * category, subcategory, unit, plus rowKind + legalAuthority where the
- * row isn't a flat fee) on top of the numeric fee / volume / hours. */
+ * Each row carries fee-schedule metadata fields (feeNo, category,
+ * subcategory, unit, plus structured `formula` + legalAuthority where
+ * the row isn't a flat fee) on top of the numeric fee / volume /
+ * hours. */
 
 export const SERVICES: Service[] = [
   // ---------- Planning (FBHR $301) — category: "Planning & Zoning" ----------
@@ -36,10 +37,11 @@ export const SERVICES: Service[] = [
   // schedule below reproduces it (see lib/types.ts FeeFormulaTier).
   {
     id: "bldg-sfr", feeNo: "BLD-5", category: "Building & Safety", subcategory: "New Construction",
-    activity: "Permit", unit: "per $1,000 valuation", rowKind: "formula",
+    activity: "Permit", unit: "per $1,000 valuation",
     formula: {
       kind: "tiered-valuation",
       basis: "construction valuation",
+      typicalBasis: 1_500_000,
       tiers: [
         { upTo:   25000, baseFee:     0, perUnit: 12,    unitSize: 1000 },
         { upTo:  100000, baseFee:   300, perUnit: 10,    unitSize: 1000 },
@@ -49,7 +51,6 @@ export const SERVICES: Service[] = [
         {                baseFee: 28050, perUnit:  8,    unitSize: 1000 },
       ],
     },
-    currentFeeText: "Tiered (typ. $13,500 @ $1.5M valuation)",
     name: "Building Permit — New SFR (tiered, typ. $1.5M)",
     dept: "BLDG", volume: 28, hours: 42, cost: 15204, fee: 13500, peer: 13800, target: 100, source: "seed",
   },
@@ -59,7 +60,8 @@ export const SERVICES: Service[] = [
   // above the statutory ceiling regardless of full-cost recovery target.
   {
     id: "bldg-solar", feeNo: "BLD-8", category: "Building & Safety", subcategory: "Specialty Permits",
-    activity: "Permit", unit: "each", rowKind: "statutory",
+    activity: "Permit", unit: "each",
+    formula: { kind: "statutory", cap: 450 },
     legalAuthority: "CA Gov Code §66015",
     notes: ["Capped at $450 by state law; full-cost recovery not achievable for this row."],
     name: "Residential Solar / PV Permit",

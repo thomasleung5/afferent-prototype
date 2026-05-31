@@ -7,7 +7,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  OperatingLine, Service, SourceTag, VolumeRow,
+  FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { defaultCenterOrder } from "./store";
 import { classifyLaborType } from "./ai/parseOperating";
@@ -18,6 +18,21 @@ const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual"];
 
 const coerceSource = (v: unknown): SourceTag =>
   typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
+
+/** Map a legacy FeeRowKind tag (now removed from Service) to a default
+ *  FeeFormula payload so persisted rows keep their kind classification
+ *  after the rowKind→formula collapse. Returns undefined for "flat"
+ *  (no formula needed) and for any unknown string. */
+function defaultFormulaForLegacyRowKind(kind: string): FeeFormula | undefined {
+  switch (kind) {
+    case "formula":            return { kind: "expression", text: "" };
+    case "deposit":            return { kind: "deposit", amount: 0, balance: "actuals" };
+    case "time-and-materials": return { kind: "time-and-materials" };
+    case "pass-through":       return { kind: "pass-through" };
+    case "statutory":          return { kind: "statutory" };
+    default:                   return undefined;
+  }
+}
 
 /** Apply every backfill the Zustand persist layer needs to bring an old
  *  persisted snapshot up to the current `BuildState` shape. Mutates
@@ -100,6 +115,21 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     );
     if (needsCoerce) {
       state.services = state.services.map((s: Service) => ({ ...s, source: coerceSource(s.source) }));
+    }
+    // Synthesize `formula` from any legacy `rowKind` tag and strip the
+    // tag. Persisted rows from before the rowKind→formula collapse may
+    // carry rowKind without a matching formula payload; without this
+    // step they'd silently classify as "flat" after the type narrowed.
+    type LegacyService = Service & { rowKind?: string };
+    const legacy = state.services as LegacyService[];
+    if (legacy.some((s) => s.rowKind != null)) {
+      state.services = legacy.map((s) => {
+        if (s.rowKind == null) return s;
+        const { rowKind, ...rest } = s;
+        if (rest.formula != null) return rest;
+        const synthesized = defaultFormulaForLegacyRowKind(rowKind);
+        return synthesized ? { ...rest, formula: synthesized } : rest;
+      });
     }
   }
   if (state.productiveHours == null) {

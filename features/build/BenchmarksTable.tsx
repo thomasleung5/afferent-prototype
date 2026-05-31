@@ -96,10 +96,10 @@ export function BenchmarksTable() {
 
   const rows = useMemo(() => applyFilter(all, "dept", dept), [all, dept]);
 
-  // Service lookup for the fee-display helpers (currentFeeText /
-  // fullCostRecoveryFeeText overrides). The Row precomputes numeric
-  // fee/cost for math + sortKey; cell display routes through the
-  // helper when the matching Service carries a text override.
+  // Service lookup so the fee-display helpers can route non-flat rows
+  // through `summarizeFee` (using the structured `formula`). The Row
+  // precomputes numeric fee/cost for math + sortKey; cell rendering
+  // pulls the Service for its structured pricing description.
   const svcById = useMemo(
     () => new Map(services.map((s) => [s.id, s])),
     [services],

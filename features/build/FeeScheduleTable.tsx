@@ -10,9 +10,9 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type {
-  DeptCode, FeeRowKind, FeeScheduleStatus, Service,
+  DeptCode, FeeScheduleStatus, Service,
 } from "@/lib/types";
-import type { FeeComparison } from "@/lib/calc";
+import { feeRowKind, type FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
 import {
   displayCostOfService, displayCurrentFee, displayRecommendedFee,
@@ -53,8 +53,8 @@ export function FeeScheduleTable() {
     setDeptFilter(searchDept);
   }, [searchDept, serviceId]);
 
-  // Full Service lookup for the display helpers (currentFeeText,
-  // recommendedFeeText, fullCostRecoveryFeeText overrides) plus the
+  // Full Service lookup for the display helpers (route non-flat rows
+  // through `summarizeFee` using the structured `formula`) plus the
   // fee identity columns (feeNo, unit). The FeeComparison rows don't
   // carry these fields, so each cell looks the Service up by id at
   // render time. Math (annualUplift, recoveryPct, etc.) still uses the
@@ -383,28 +383,15 @@ export function FeeScheduleTable() {
             </DrilldownColumn>
 
             <DrilldownColumn marker="④" title="Structure & display">
-              <div style={{ display: "flex", flexDirection: "column", gap: 14 }}>
-                <div>
-                  <div className="mono" style={{
-                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                    color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
-                  }}>Row kind</div>
-                  <CellSelect
-                    value={svc.rowKind ?? "flat"}
-                    options={ROW_KIND_OPTIONS}
-                    onChange={(v) => updateService(r.id, { rowKind: v as FeeRowKind })}
-                  />
-                </div>
-                <div>
-                  <div className="mono" style={{
-                    fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                    color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
-                  }}>Formula</div>
-                  <FormulaEditor
-                    value={svc.formula}
-                    onChange={(f) => updateService(r.id, { formula: f })}
-                  />
-                </div>
+              <div>
+                <div className="mono" style={{
+                  fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+                  color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
+                }}>Pricing</div>
+                <FormulaEditor
+                  value={svc.formula}
+                  onChange={(f) => updateService(r.id, { formula: f })}
+                />
               </div>
             </DrilldownColumn>
           </DrilldownShell>
@@ -414,15 +401,6 @@ export function FeeScheduleTable() {
     </div>
   );
 }
-
-const ROW_KIND_OPTIONS = [
-  { value: "flat",               label: "Flat" },
-  { value: "formula",            label: "Formula" },
-  { value: "deposit",            label: "Deposit" },
-  { value: "time-and-materials", label: "T&M" },
-  { value: "pass-through",       label: "Pass-through" },
-  { value: "statutory",          label: "Statutory" },
-];
 
 const LIFECYCLE_OPTIONS = [
   { value: "existing",      label: "Existing (carried forward)" },
@@ -442,7 +420,7 @@ function nonCountableChipLabel(service: Service): string | null {
   const status = service.status;
   if (status === "deleted")       return "deleted";
   if (status === "not-evaluated") return "not evaluated";
-  const kind = service.rowKind;
+  const kind = feeRowKind(service);
   if (kind === "deposit")            return "deposit";
   if (kind === "time-and-materials") return "T&M";
   if (kind === "pass-through")       return "pass-through";
