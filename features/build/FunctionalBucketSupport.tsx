@@ -23,7 +23,7 @@ import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
-  FormulaLine, FormulaPanel, MiniTable, MonoLabel,
+  FormulaLine, MiniTable, MonoLabel,
   type MiniTableColumn,
 } from "@/components/ui";
 
@@ -227,7 +227,7 @@ function ActivityCostFormulas({
   recoverableCost: number;
 }) {
   return (
-    <FormulaPanel>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       <FormulaLine
         expr="Department Total Cost = Labor + Operating + Overhead"
         subst={`= ${fmt.dollarsK(deptLabor)} + ${fmt.dollarsK(deptOperating)} + ${fmt.dollarsK(deptOverhead)}`}
@@ -243,7 +243,7 @@ function ActivityCostFormulas({
         subst={`= ${fmt.dollars(activityCost)} × ${Math.round(recoverabilityPct)}%`}
         result={fmt.dollars(recoverableCost)}
       />
-    </FormulaPanel>
+    </div>
   );
 }
 
@@ -270,14 +270,14 @@ function DeptFbhrFormula({
   );
   if (!service) return fbhrLine;
   return (
-    <FormulaPanel>
+    <div style={{ display: "flex", flexDirection: "column", gap: 6 }}>
       {fbhrLine}
       <FormulaLine
         expr={`Service cost — ${service.name} = ${service.hours} hrs × FBHR`}
         subst={`= ${service.hours} × ${fbhrLabel}`}
         result={recoverableFbhr != null ? fmt.dollars(service.hours * recoverableFbhr) : "—"}
       />
-    </FormulaPanel>
+    </div>
   );
 }
 
