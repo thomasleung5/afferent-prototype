@@ -32,6 +32,45 @@ Set `ANTHROPIC_API_KEY` in `.env.local` to enable the `/api/ai/parse-*` endpoint
 Other scripts: `npm run build` (Vite production build), `npm run preview`
 (serve the build), `npm run typecheck` (`tsc --noEmit`).
 
+## Deployment
+
+This app ships as a single Node service. The Hono server in `server/`
+hosts the `/api/*` routes AND serves the SPA build:
+
+```bash
+npm ci
+npm run build      # Vite → dist/
+PORT=8787 NODE_ENV=production npm start
+```
+
+A single process serves:
+
+- `/api/ai/*` — AI parse endpoints (CORS / origin / bearer / rate-limit
+  / body-cap middleware applied, in that order).
+- `/healthz` — JSON liveness probe (`{ ok, uptime, at }`). Intentionally
+  registered ahead of the AI middleware so it is not subject to bearer
+  auth or rate limiting.
+- `dist/assets/*` and other build artifacts — static files.
+- Everything else (non-`/api/*` GETs) — falls back to `dist/index.html`
+  so TanStack Router can hydrate the SPA.
+
+Unmatched `/api/*` requests return JSON 404, never the HTML shell.
+
+### Production environment
+
+| Variable                 | Required?       | Default | Purpose |
+|--------------------------|-----------------|---------|---------|
+| `PORT`                   | recommended     | `8787`  | TCP port the Node server binds to. |
+| `NODE_ENV`               | **yes** in prod | —       | Set to `production`. Several middlewares (origin guard, bearer auth, CORS) fail closed only when this is set, so leaving it unset weakens the gates. |
+| `ANTHROPIC_API_KEY`      | for AI parsing  | —       | Claude API key used by `server/aiParse*` handlers. PDF imports degrade gracefully when unset. |
+| `AI_API_TOKEN`           | **yes** in prod | —       | Shared bearer secret. Clients must send `Authorization: Bearer <token>` to `/api/ai/*`. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. **Do not** prefix with `VITE_` — that would bake the secret into the JS bundle. |
+| `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
+| `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. |
+| `MAX_UPLOAD_MB`          | optional        | `20`    | Per-request upload cap (MB). The streaming body limit and the parsed-size gate both honor this. |
+
+Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate
+limiter keys on it (falling back to `X-Real-IP` then `anonymous`).
+
 ## CI
 
 GitHub Actions runs `.github/workflows/ci.yml` on every push to `main`
