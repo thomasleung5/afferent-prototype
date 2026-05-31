@@ -113,7 +113,9 @@
       "Bash(sed -n '65,85p;530,545p' lib/store.ts)",
       "Bash(sed -n '28,50p;160,200p;285,335p' lib/types.ts)",
       "Bash(sed -n '1,10p' lib/data/capStepDown.ts)",
-      "Bash(sed -n '1,10p' lib/data/capStepDownGl.ts)"
+      "Bash(sed -n '1,10p' lib/data/capStepDownGl.ts)",
+      "Bash(perl -i -pe ' *)",
+      "Bash(npm test *)"
     ]
   }
 }
