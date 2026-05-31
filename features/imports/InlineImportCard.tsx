@@ -29,6 +29,18 @@ interface Props {
    *  disclosure and the inline OR divider is suppressed — PDF upload
    *  stays the primary affordance. */
   pasteAdvanced?: boolean;
+
+  /** Optional extra node rendered inside the PDF action's button row,
+   *  to the right of the Upload PDF button. Used today to slot the
+   *  Excel-import button so it sits beside Upload PDF for fee imports.
+   *  Has no effect when `onAiPdfImport` isn't wired. */
+  aiPdfAccessory?: ReactNode;
+
+  /** Optional content rendered between the PDF action panel and the
+   *  Advanced disclosure. Used today to surface the Excel mapping
+   *  panel right under Upload PDF / Upload Excel — so it sits above
+   *  the paste-JSON fallback rather than below it. */
+  aiPdfBelow?: ReactNode;
 }
 
 type Status = { ok: boolean; message: string } | null;
@@ -47,6 +59,8 @@ export function InlineImportCard({
   pasteSchema,
   onPasteJson,
   pasteAdvanced = false,
+  aiPdfAccessory,
+  aiPdfBelow,
 }: Props) {
   // Per-action state: loading flags + last status message. Independent so
   // a stale AI message doesn't get clobbered by a clipboard paste click.
@@ -108,6 +122,7 @@ export function InlineImportCard({
           loadingText="Extracting from PDF — this can take 30–60s"
           loading={aiLoading}
           status={aiStatus}
+          accessory={aiPdfAccessory}
         >
           <input
             ref={aiPdfInputRef}
@@ -118,6 +133,8 @@ export function InlineImportCard({
           />
         </ActionPanel>
       )}
+
+      {aiPdfBelow}
 
       {onAiPdfImport && onPasteJson && !pasteAdvanced && <OrDivider/>}
 
@@ -225,6 +242,7 @@ function ActionPanel({
   loadingText,
   loading,
   status,
+  accessory,
   children,
 }: {
   tone?: "primary" | "secondary";
@@ -238,6 +256,10 @@ function ActionPanel({
   loadingText: string;
   loading: boolean;
   status: Status;
+  /** Extra node rendered to the right of the primary button in the
+   *  button row — e.g. a secondary Upload Excel button slotted in by
+   *  the Fees source card. */
+  accessory?: ReactNode;
   children?: ReactNode;
 }) {
   const isPrimary = tone === "primary";
@@ -251,6 +273,7 @@ function ActionPanel({
         <Btn kind={isPrimary ? "primary" : "ghost"} onClick={onClick} disabled={buttonDisabled}>
           {icon === "sparkles" && <Icon name="sparkles" size={13}/>} {buttonText}
         </Btn>
+        {accessory}
         {helper && (
           <span style={{ fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
             {helper}

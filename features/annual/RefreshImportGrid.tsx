@@ -5,7 +5,9 @@ import {
   deriveRefreshSections, type RefreshSectionCard,
 } from "@/lib/data/annual";
 import { InlineImportCard } from "@/features/imports/InlineImportCard";
-import { ExcelFeeImportCard } from "@/features/imports/ExcelFeeImportCard";
+import {
+  ExcelFeeMappingPanel, ExcelFeeUploadButton, useExcelFeeImport,
+} from "@/features/imports/ExcelFeeImportCard";
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
@@ -123,10 +125,15 @@ function ServicesCard({ card, imports }: DomainCardProps) {
 
 function FeesCard({ card, imports }: DomainCardProps) {
   const importer = useFeesImportHandlers();
+  const excel = useExcelFeeImport();
   return (
-    <SourceCardShell card={card} imports={imports} importer={importer}>
-      <ExcelFeeImportCard/>
-    </SourceCardShell>
+    <SourceCardShell
+      card={card}
+      imports={imports}
+      importer={importer}
+      aiPdfAccessory={<ExcelFeeUploadButton state={excel}/>}
+      aiPdfBelow={<ExcelFeeMappingPanel state={excel}/>}
+    />
   );
 }
 
@@ -171,6 +178,15 @@ interface SourceCardShellProps {
    *  (Volume's unmapped rows, CAP's unbound bases). Added to the
    *  card-level low-confidence count for the collapsed badge. */
   reviewExtra?: number;
+  /** Slot rendered to the right of the Upload PDF button inside the
+   *  expanded InlineImportCard. Used by the Fees card to put the
+   *  Upload Excel button beside Upload PDF. */
+  aiPdfAccessory?: ReactNode;
+  /** Slot rendered between the PDF action panel and the Advanced
+   *  disclosure inside InlineImportCard. Used by the Fees card to
+   *  render the Excel mapping panel directly below the upload buttons,
+   *  above the paste-JSON fallback. */
+  aiPdfBelow?: ReactNode;
   children?: ReactNode;
 }
 
@@ -181,7 +197,10 @@ interface SourceCardShellProps {
  *  import controls, contextual document-type guidance, paste-JSON
  *  shape, recent import history, and domain-specific review panels
  *  (children). */
-function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }: SourceCardShellProps) {
+function SourceCardShell({
+  card, imports, importer, reviewExtra = 0,
+  aiPdfAccessory, aiPdfBelow, children,
+}: SourceCardShellProps) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
   const noun = LOADED_NOUN[card.domain];
@@ -271,6 +290,8 @@ function SourceCardShell({ card, imports, importer, reviewExtra = 0, children }:
           card={card}
           imports={imports}
           importer={importer}
+          aiPdfAccessory={aiPdfAccessory}
+          aiPdfBelow={aiPdfBelow}
         >
           {children}
         </ExpandedDetail>
@@ -283,10 +304,14 @@ interface ExpandedDetailProps {
   card: RefreshSectionCard;
   imports: BuildImportLog[];
   importer: ImportHandlerBundle;
+  aiPdfAccessory?: ReactNode;
+  aiPdfBelow?: ReactNode;
   children?: ReactNode;
 }
 
-function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailProps) {
+function ExpandedDetail({
+  card, imports, importer, aiPdfAccessory, aiPdfBelow, children,
+}: ExpandedDetailProps) {
   const supported = SUPPORTED_DOCS[card.domain];
   const history = imports
     .filter((e) => e.domain === card.domain)
@@ -323,6 +348,8 @@ function ExpandedDetail({ card, imports, importer, children }: ExpandedDetailPro
         pasteSchema={importer.pasteSchema}
         onPasteJson={importer.pasteJson}
         pasteAdvanced
+        aiPdfAccessory={aiPdfAccessory}
+        aiPdfBelow={aiPdfBelow}
       />
 
       {/* Domain-specific review (volume unmapped, cap unbound bases) */}

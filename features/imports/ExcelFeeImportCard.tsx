@@ -1,17 +1,23 @@
 /* Excel Fee Schedule mapping card.
  *
- * Self-contained import flow for fee schedules delivered as `.xlsx`.
- * Uploads to the deterministic /api/import/excel/preview endpoint,
- * lets the analyst pick sheet + header row + the four required columns
- * (name / dept / fee, plus optional unit), surfaces a live preview of
- * what would import, then routes the mapped rows through the same
+ * Import flow for fee schedules delivered as `.xlsx`. Uploads to the
+ * deterministic /api/import/excel/preview endpoint, lets the analyst
+ * pick sheet + header row + the four required columns (name / dept /
+ * fee, plus optional unit), surfaces a live preview of what would
+ * import, then routes the mapped rows through the same
  * `mergeFeeSchedule` store action the PDF/JSON paths already use. No
  * silent merge — the user has to click Import after reviewing.
  *
- * Lives in features/imports/ so this card can be reused on other
- * surfaces later (e.g. Source Data or the Fee Schedule page itself).
- * Today it's rendered alongside the existing InlineImportCard on the
- * Fees source card. */
+ * Exposed as three pieces so the upload button can sit beside the
+ * Upload PDF button (in InlineImportCard's primary-action row) while
+ * the mapping panel still renders below:
+ *
+ *   - `useExcelFeeImport()` — owns all state; call once per surface.
+ *   - `<ExcelFeeUploadButton state={...} />` — just the upload button +
+ *     hidden file input.
+ *   - `<ExcelFeeMappingPanel state={...} />` — status, mapping form,
+ *     skipped-row warnings — everything that renders after upload.
+ */
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Btn } from "@/components/ui";
@@ -32,7 +38,33 @@ const PREVIEW_DISPLAY_ROWS = 8;
 /** Fallback "pick a column" placeholder used in the select dropdowns. */
 const UNSET = -1;
 
-export function ExcelFeeImportCard() {
+export interface ExcelFeeImportState {
+  fileInputRef: React.RefObject<HTMLInputElement | null>;
+  uploading: boolean;
+  uploadStatus: Status;
+  preview: ExcelPreviewOk | null;
+  sheetIndex: number; setSheetIndex: (n: number) => void;
+  headerRow: number; setHeaderRow: (n: number) => void;
+  nameCol: number; setNameCol: (n: number) => void;
+  deptCol: number; setDeptCol: (n: number) => void;
+  feeCol: number; setFeeCol: (n: number) => void;
+  unitCol: number; setUnitCol: (n: number) => void;
+  importStatus: Status;
+  warnings: ExcelFeeWarning[];
+  autoMap: FeeAutoMapping | null;
+  /** Existing services so the mapping panel can match duplicates by name. */
+  existingServices: ReturnType<typeof useBuildState>["services"];
+  handleFile: (e: React.ChangeEvent<HTMLInputElement>) => Promise<void>;
+  applyImport: (
+    extraction: ReturnType<typeof excelToFeeExtraction>["extraction"],
+    warns: ExcelFeeWarning[],
+  ) => void;
+}
+
+/** Single-source-of-truth hook for the Excel fee import flow. Call
+ *  once per surface; pass the returned state to both
+ *  `<ExcelFeeUploadButton/>` and `<ExcelFeeMappingPanel/>`. */
+export function useExcelFeeImport(): ExcelFeeImportState {
   const { services, mergeFeeSchedule } = useBuildState();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -135,26 +167,68 @@ export function ExcelFeeImportCard() {
     }
   };
 
+  const applyImport: ExcelFeeImportState["applyImport"] = (extraction, warns) => {
+    if (!preview) return;
+    const applied = mergeFeeSchedule(extraction, preview.fileName);
+    setWarnings(warns);
+    const total = applied.mapped + applied.duplicates;
+    setImportStatus({
+      ok: true,
+      message: `Imported ${total} fee${total === 1 ? "" : "s"} (${applied.mapped} new, ${applied.duplicates} updated)${warns.length ? `; ${warns.length} row${warns.length === 1 ? "" : "s"} skipped` : ""}.`,
+    });
+  };
+
+  return {
+    fileInputRef, uploading, uploadStatus, preview,
+    sheetIndex, setSheetIndex, headerRow, setHeaderRow,
+    nameCol, setNameCol, deptCol, setDeptCol,
+    feeCol, setFeeCol, unitCol, setUnitCol,
+    importStatus, warnings, autoMap, existingServices: services,
+    handleFile, applyImport,
+  };
+}
+
+/** Just the Upload Excel button (and its hidden file input). Slotted
+ *  into InlineImportCard's primary-action row via its `aiPdfAccessory`
+ *  prop so the button sits beside Upload PDF. */
+export function ExcelFeeUploadButton({ state }: { state: ExcelFeeImportState }) {
+  return (
+    <>
+      <Btn
+        kind="ghost"
+        onClick={() => state.fileInputRef.current?.click()}
+        disabled={state.uploading}
+      >
+        {state.uploading ? "Reading workbook…" : "Upload Excel"}
+      </Btn>
+      <input
+        ref={state.fileInputRef}
+        type="file"
+        accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        style={{ display: "none" }}
+        onChange={state.handleFile}
+      />
+    </>
+  );
+}
+
+/** Everything that renders AFTER the user picks a file — upload status,
+ *  the column-mapping form, the post-import success line, and the
+ *  skipped-rows panel. Renders nothing when no upload has happened yet. */
+export function ExcelFeeMappingPanel({ state }: { state: ExcelFeeImportState }) {
+  const {
+    uploading, uploadStatus, preview, autoMap,
+    sheetIndex, setSheetIndex, headerRow, setHeaderRow,
+    nameCol, setNameCol, deptCol, setDeptCol, feeCol, setFeeCol,
+    unitCol, setUnitCol, existingServices, importStatus, warnings, applyImport,
+  } = state;
+
+  if (!uploadStatus && !preview && !importStatus && warnings.length === 0) {
+    return null;
+  }
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      <div style={{
-        display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap",
-      }}>
-        <Btn kind="ghost" onClick={() => fileInputRef.current?.click()} disabled={uploading}>
-          {uploading ? "Reading workbook…" : "Upload Excel"}
-        </Btn>
-        <span style={{ fontSize: 12, color: "var(--ink-3)", lineHeight: 1.5 }}>
-          .xlsx file. You'll pick columns before anything imports.
-        </span>
-        <input
-          ref={fileInputRef}
-          type="file"
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          style={{ display: "none" }}
-          onChange={handleFile}
-        />
-      </div>
-
       {uploadStatus && (
         <StatusLine status={uploadStatus} loading={uploading} loadingText="Parsing workbook…" label="EXCEL"/>
       )}
@@ -169,18 +243,11 @@ export function ExcelFeeImportCard() {
           deptCol={deptCol} setDeptCol={setDeptCol}
           feeCol={feeCol} setFeeCol={setFeeCol}
           unitCol={unitCol} setUnitCol={setUnitCol}
-          existingServices={services}
+          existingServices={existingServices}
           onImport={(extraction, importedCount, dupCount, warns) => {
-            const applied = mergeFeeSchedule(extraction, preview.fileName);
-            setWarnings(warns);
-            const total = applied.mapped + applied.duplicates;
-            setImportStatus({
-              ok: true,
-              message: `Imported ${total} fee${total === 1 ? "" : "s"} (${applied.mapped} new, ${applied.duplicates} updated)${warns.length ? `; ${warns.length} row${warns.length === 1 ? "" : "s"} skipped` : ""}.`,
-            });
-            // Suppress unused warnings (importedCount/dupCount are
-            // surfaced via mergeFeeSchedule's own result so we don't
-            // double-count).
+            applyImport(extraction, warns);
+            // Suppress unused — mergeFeeSchedule's own result is the
+            // source of truth so we don't double-count.
             void importedCount; void dupCount;
           }}
         />
