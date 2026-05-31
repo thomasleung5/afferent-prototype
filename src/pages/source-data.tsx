@@ -21,7 +21,7 @@ export default function SourceDataPage() {
     <Page>
       <PageHeader
         title="Source Data"
-        subtitle="Central location for staffing, operating, volume of activity, fee schedule, and CAP inputs feeding the model."
+        subtitle="Upload and manage model inputs."
       />
       <StatusRow items={[
         {
