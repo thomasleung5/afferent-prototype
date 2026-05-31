@@ -78,14 +78,14 @@ and every pull request targeting `main`. The job uses Node 26 with the
 standard `actions/setup-node` npm cache, then runs:
 
 1. `npm ci`
-2. `npm run typecheck`
-3. `npm test` — the fixture chain wired in `package.json`
-4. `npm run build`
-5. `npm audit --omit=dev` — **non-blocking, temporary**: the only
-   outstanding production finding is the known high-severity `xlsx`
-   advisory (no fix available upstream). The step still runs so the
-   report is visible in CI logs, but won't fail the workflow until we
-   migrate off xlsx or upstream ships a patch.
+2. `npm run build` — Vite production build (also generates
+   `src/routeTree.gen.ts`, which the next step needs)
+3. `npm run typecheck`
+4. `npm test` — the fixture chain wired in `package.json`
+5. `npm audit --omit=dev` — **blocking**: production dependencies must
+   stay clean. (Previously non-blocking while we carried the `xlsx`
+   advisory; that dependency has since been replaced with
+   `write-excel-file`.)
 
 ## Project structure
 

@@ -1,5 +1,6 @@
 /* Excel exporter for the Fee Benchmarks deliverable. Builds a focused
- * multi-sheet workbook via SheetJS and triggers a client-side download.
+ * multi-sheet workbook via the shared `buildXlsxBlob` helper and
+ * triggers a client-side download.
  *
  * Sheets:
  *   1. Summary     — city info + KPI counts (with-peer, above/in-line/below).
@@ -7,11 +8,15 @@
  *                    median, variance vs. median, variance vs. cost.
  *   3. Notes       — method, source, caveats.
  *
- * Mirrors lib/export/capExcel.ts and lib/export/excel.ts (fee-study). */
+ * Mirrors lib/export/capExcel.ts and lib/export/excel.ts (fee-study).
+ *
+ * Header-row freezing is intentionally NOT applied here (matches the
+ * pre-write-excel-file behavior — `addSheet` did not set `!freeze`),
+ * since the Summary and Notes sheets are key/value rather than tables
+ * with a column header. */
 
 import type { DeptCode } from "../types";
-
-type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
+import { buildXlsxBlob, h, n, type Cell, type SheetSpec } from "./xlsx";
 
 export interface BenchmarksRow {
   id: string;
@@ -44,17 +49,14 @@ export interface BenchmarksExportPayload {
 }
 
 export async function exportBenchmarksXlsx(p: BenchmarksExportPayload): Promise<Blob> {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
-
-  addSheet(XLSX, wb, "Summary",    buildSummary(p),    [28, 24]);
-  addSheet(XLSX, wb, "Benchmarks", buildBenchmarks(p), [40, 8, 12, ...new Array(p.peers.length).fill(12), 12, 12, 12]);
-  addSheet(XLSX, wb, "Notes",      buildNotes(p),      [28, 60]);
-
-  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-  return new Blob([buf], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+  const sheets: SheetSpec[] = [
+    { name: "Summary",    rows: buildSummary(p),    columnWidths: [28, 24], stickyRowsCount: 0 },
+    { name: "Benchmarks", rows: buildBenchmarks(p),
+      columnWidths: [40, 8, 12, ...new Array(p.peers.length).fill(12), 12, 12, 12],
+      stickyRowsCount: 0 },
+    { name: "Notes",      rows: buildNotes(p),      columnWidths: [28, 60], stickyRowsCount: 0 },
+  ];
+  return buildXlsxBlob(sheets);
 }
 
 // ============================================================================
@@ -128,26 +130,4 @@ function buildNotes(p: BenchmarksExportPayload): Cell[][] {
     [h("Survey window")],
     ["Adopted fees as of Jul 1, 2025 · public schedules."],
   ];
-}
-
-// ============================================================================
-// Cell helpers
-// ============================================================================
-
-function h(label: string): Cell {
-  return { v: label, t: "s", s: { font: { bold: true } } };
-}
-
-function n(value: number, format: string): Cell {
-  if (!Number.isFinite(value)) return "";
-  return { v: value, t: "n", z: format };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addSheet(XLSX: any, wb: any, name: string, rows: Cell[][], colWidths?: number[]) {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  if (colWidths) {
-    ws["!cols"] = colWidths.map((w) => ({ wch: w }));
-  }
-  XLSX.utils.book_append_sheet(wb, ws, name);
 }

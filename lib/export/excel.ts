@@ -1,5 +1,7 @@
-/* Excel exporter for the Fee Study deliverable. Builds a multi-sheet workbook
- * via SheetJS and triggers a client-side download via URL.createObjectURL.
+/* Excel exporter for the Fee Study deliverable. Builds a multi-sheet
+ * workbook via the shared `buildXlsxBlob` helper (write-excel-file
+ * under the hood) and triggers a client-side download via
+ * `URL.createObjectURL`.
  *
  * Sheets:
  *   1. Summary           — top-line numbers + cover meta
@@ -14,43 +16,35 @@
  *
  * Cell formatting:
  *   - First row of every sheet is a bold header in the institutional ink color.
- *   - Numbers get the right format (currency, percent, integer) via `z`.
- *   - Column widths are reasonable defaults; no autofit (SheetJS doesn't support it). */
+ *   - Numbers get the right format (currency, percent, integer) via Excel format strings.
+ *   - Column widths are reasonable defaults; no autofit. */
 
+import { buildXlsxBlob, downloadBlob, h, n, type Cell, type SheetSpec } from "./xlsx";
 import type { ExportPayload } from "./buildPayload";
 
-type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
+export { downloadBlob };
 
 export async function exportFeeStudyXlsx(payload: ExportPayload): Promise<Blob> {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
-
-  addSheet(XLSX, wb, "Summary", buildSummary(payload));
-  addSheet(XLSX, wb, "Fee Schedule", buildFeeSchedule(payload), [40, 8, 8, 8, 12, 12, 12, 8, 10, 12, 12, 10]);
-  addSheet(XLSX, wb, "Cost of Service", buildCostOfService(payload), [40, 8, 8, 8, 12, 8, 14, 14]);
-  addSheet(XLSX, wb, "Department Summary", buildDeptSummary(payload), [20, 10, 10, 12, 10, 10, 10, 10, 14, 14, 14, 14, 10, 8]);
-  addSheet(XLSX, wb, "Recommendations", buildRecommendations(payload), [10, 36, 8, 12, 12, 12, 14, 20, 50]);
-  addSheet(XLSX, wb, "Recovery Policy", buildPolicy(payload), [20, 12, 32, 32]);
-  addSheet(XLSX, wb, "Benchmarks", buildBenchmarks(payload), [40, 8, 12, 12, 12, 12]);
-  addSheet(XLSX, wb, "Review Flags", buildReviewFlags(payload), [20, 8, 50, 32]);
-  addSheet(XLSX, wb, "Methodology", buildMethodology(payload), [20, 80]);
-
-  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-  return new Blob([buf], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
-}
-
-/** Convenience: trigger a download in the browser. */
-export function downloadBlob(blob: Blob, fileName: string): void {
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement("a");
-  a.href = url;
-  a.download = fileName;
-  document.body.appendChild(a);
-  a.click();
-  document.body.removeChild(a);
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  const sheets: SheetSpec[] = [
+    { name: "Summary",            rows: buildSummary(payload) },
+    { name: "Fee Schedule",       rows: buildFeeSchedule(payload),
+      columnWidths: [40, 8, 8, 8, 12, 12, 12, 8, 10, 12, 12, 10] },
+    { name: "Cost of Service",    rows: buildCostOfService(payload),
+      columnWidths: [40, 8, 8, 8, 12, 8, 14, 14] },
+    { name: "Department Summary", rows: buildDeptSummary(payload),
+      columnWidths: [20, 10, 10, 12, 10, 10, 10, 10, 14, 14, 14, 14, 10, 8] },
+    { name: "Recommendations",    rows: buildRecommendations(payload),
+      columnWidths: [10, 36, 8, 12, 12, 12, 14, 20, 50] },
+    { name: "Recovery Policy",    rows: buildPolicy(payload),
+      columnWidths: [20, 12, 32, 32] },
+    { name: "Benchmarks",         rows: buildBenchmarks(payload),
+      columnWidths: [40, 8, 12, 12, 12, 12] },
+    { name: "Review Flags",       rows: buildReviewFlags(payload),
+      columnWidths: [20, 8, 50, 32] },
+    { name: "Methodology",        rows: buildMethodology(payload),
+      columnWidths: [20, 80] },
+  ];
+  return buildXlsxBlob(sheets);
 }
 
 // ============================================================================
@@ -252,32 +246,4 @@ function buildMethodology(p: ExportPayload): Cell[][] {
     rows.push([a.label, a.value]);
   }
   return rows;
-}
-
-// ============================================================================
-// Cell helpers
-// ============================================================================
-
-function h(label: string): Cell {
-  return { v: label, t: "s", s: { font: { bold: true } } };
-}
-
-function n(value: number, format: string): Cell {
-  if (!Number.isFinite(value)) return "";
-  return { v: value, t: "n", z: format };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addSheet(XLSX: any, wb: any, name: string, rows: Cell[][], colWidths?: number[]) {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  if (colWidths) {
-    ws["!cols"] = colWidths.map((w) => ({ wch: w }));
-  } else {
-    // Fall back to reasonable defaults based on first row.
-    const first = rows[0] ?? [];
-    ws["!cols"] = first.map(() => ({ wch: 18 }));
-  }
-  // First-row freeze so headers stay visible while scrolling.
-  ws["!freeze"] = { xSplit: 0, ySplit: 1 };
-  XLSX.utils.book_append_sheet(wb, ws, name);
 }

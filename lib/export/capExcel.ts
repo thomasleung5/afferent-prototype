@@ -1,5 +1,6 @@
 /* Excel exporter for the Cost Allocation Plan deliverable. Builds a
- * multi-sheet workbook via SheetJS and triggers a client-side download.
+ * multi-sheet workbook via the shared `buildXlsxBlob` helper and
+ * triggers a client-side download.
  *
  * Sheets:
  *   1. Summary            — methodology overview + step-down ordering
@@ -19,8 +20,7 @@ import type { AllocationBasis, CapPool } from "../types";
 import type { GlNode, GlStepDownModel } from "../data/capStepDownEngine";
 import { basisForPool } from "../data/capBasisRouting";
 import { FEE_DEPTS } from "../data/departments";
-
-type Cell = string | number | null | { v: string | number; t?: "s" | "n"; z?: string; s?: unknown };
+import { buildXlsxBlob, h, n, type Cell, type SheetSpec } from "./xlsx";
 
 export interface CapExportPayload {
   cityName: string;
@@ -36,21 +36,16 @@ export interface CapExportPayload {
 }
 
 export async function exportCapXlsx(p: CapExportPayload): Promise<Blob> {
-  const XLSX = await import("xlsx");
-  const wb = XLSX.utils.book_new();
-
-  addSheet(XLSX, wb, "Summary",                 buildSummary(p),              [28, 60]);
-  addSheet(XLSX, wb, "Cost Centers",            buildCenters(p),              [4, 12, 36, 16, 16, 16, 8]);
-  addSheet(XLSX, wb, "Allocation Bases",        buildBases(p),                [30, 14, 50]);
-  addSheet(XLSX, wb, "Cost Pools",              buildPools(p),                [12, 30, 38, 14, 12, 12, 14]);
-  addSheet(XLSX, wb, "Allocation by Center",    buildAllocationByCenter(p),   [4, 30, 36, 16, 12, 12, 14, 14, 14, 14]);
-  addSheet(XLSX, wb, "Allocation Matrix",       buildAllocationMatrix(p),     [12, 30, 38, ...new Array(20).fill(14)]);
-  addSheet(XLSX, wb, "FBHR Roll-up",            buildFbhrRollup(p),           [20, 16, 60]);
-
-  const buf = XLSX.write(wb, { bookType: "xlsx", type: "array" }) as ArrayBuffer;
-  return new Blob([buf], {
-    type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-  });
+  const sheets: SheetSpec[] = [
+    { name: "Summary",              rows: buildSummary(p),             columnWidths: [28, 60] },
+    { name: "Cost Centers",         rows: buildCenters(p),             columnWidths: [4, 12, 36, 16, 16, 16, 8] },
+    { name: "Allocation Bases",     rows: buildBases(p),               columnWidths: [30, 14, 50] },
+    { name: "Cost Pools",           rows: buildPools(p),               columnWidths: [12, 30, 38, 14, 12, 12, 14] },
+    { name: "Allocation by Center", rows: buildAllocationByCenter(p),  columnWidths: [4, 30, 36, 16, 12, 12, 14, 14, 14, 14] },
+    { name: "Allocation Matrix",    rows: buildAllocationMatrix(p),    columnWidths: [12, 30, 38, ...new Array(20).fill(14)] },
+    { name: "FBHR Roll-up",         rows: buildFbhrRollup(p),          columnWidths: [20, 16, 60] },
+  ];
+  return buildXlsxBlob(sheets);
 }
 
 // ============================================================================
@@ -406,28 +401,3 @@ function buildFbhrRollup(p: CapExportPayload): Cell[][] {
   return rows;
 }
 
-// ============================================================================
-// Cell helpers
-// ============================================================================
-
-function h(label: string): Cell {
-  return { v: label, t: "s", s: { font: { bold: true } } };
-}
-
-function n(value: number, format: string): Cell {
-  if (!Number.isFinite(value)) return "";
-  return { v: value, t: "n", z: format };
-}
-
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-function addSheet(XLSX: any, wb: any, name: string, rows: Cell[][], colWidths?: number[]) {
-  const ws = XLSX.utils.aoa_to_sheet(rows);
-  if (colWidths) {
-    ws["!cols"] = colWidths.map((w) => ({ wch: w }));
-  } else {
-    const first = rows[0] ?? [];
-    ws["!cols"] = first.map(() => ({ wch: 18 }));
-  }
-  ws["!freeze"] = { xSplit: 0, ySplit: 1 };
-  XLSX.utils.book_append_sheet(wb, ws, name);
-}

@@ -31,10 +31,4 @@ jobs:
 
       - run: npm test
 
-      # Temporary exception: the only outstanding production audit finding
-      # is the known `xlsx` advisory (no fix available upstream). Keep the
-      # step non-blocking so CI surfaces the report without failing PRs;
-      # tighten this once we migrate off xlsx or upstream ships a patch.
-      - name: npm audit (production) — non-blocking until xlsx is replaced
-        continue-on-error: true
-        run: npm audit --omit=dev
+      - run: npm audit --omit=dev
