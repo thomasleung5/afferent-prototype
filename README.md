@@ -45,16 +45,67 @@ PORT=8787 NODE_ENV=production npm start
 
 A single process serves:
 
-- `/api/ai/*` — AI parse endpoints (CORS / origin / bearer / rate-limit
-  / body-cap middleware applied, in that order).
+- `/api/ai/*` — **AI**-backed PDF parse endpoints (Anthropic SDK).
+  CORS / origin / bearer / rate-limit / body-cap middleware applied
+  in that order.
+- `/api/import/*` — **deterministic** import endpoints (no AI). Same
+  middleware chain as `/api/ai/*`. Today: `/api/import/excel/preview`
+  (see below).
 - `/healthz` — JSON liveness probe (`{ ok, uptime, at }`). Intentionally
-  registered ahead of the AI middleware so it is not subject to bearer
-  auth or rate limiting.
+  registered ahead of the protected middleware so it is not subject to
+  bearer auth or rate limiting.
 - `dist/assets/*` and other build artifacts — static files.
 - Everything else (non-`/api/*` GETs) — falls back to `dist/index.html`
   so TanStack Router can hydrate the SPA.
 
 Unmatched `/api/*` requests return JSON 404, never the HTML shell.
+
+### Excel import — `POST /api/import/excel/preview`
+
+Deterministic, **non-AI** path. The route accepts an `.xlsx` upload
+(`file` field, multipart/form-data), parses it server-side with
+`read-excel-file`, and returns a normalized preview each analyst can
+use to confirm column mapping before any model merge happens. AI is
+not involved — kept distinct from `/api/ai/*` so the routing + logs
+tell the story.
+
+Response shape on success:
+
+```json
+{
+  "ok": true,
+  "fileName": "workbook.xlsx",
+  "sheets": [
+    {
+      "name": "Fees",
+      "rowCount": 312,
+      "columnCount": 8,
+      "previewRows": [["Service","Dept","Fee", ...], ...]
+    }
+  ]
+}
+```
+
+Cells normalize to `string | number | boolean | null` (dates collapse
+to ISO strings). Conservative caps reject pathological workbooks
+before parsing reaches downstream code:
+
+| Cap | Default |
+|---|---|
+| Max sheets | 25 |
+| Max rows per sheet | 5,000 |
+| Max columns per row | 100 |
+| Max total cells | 200,000 |
+| Preview rows returned per sheet | 50 |
+
+Cap violations and parse failures return JSON `{ ok: false, message }`
+with status 400 (no file), 413 (oversize / cap exceeded), 415 (wrong
+type / legacy `.xls` / corrupt workbook), or 422 (blank workbook /
+no usable sheets).
+
+**Not yet implemented:** the mapping/merge step that converts a
+preview payload into Service/Volume rows. Today the endpoint only
+surfaces what's in the file.
 
 ### Production environment
 

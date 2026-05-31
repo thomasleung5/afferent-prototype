@@ -14,6 +14,7 @@ import { handleAiParseLabor } from "./aiParseLabor";
 import { handleAiParseOperating } from "./aiParseOperating";
 import { handleAiParseCap } from "./aiParseCap";
 import { handleAiParseVolume } from "./aiParseVolume";
+import { handleExcelPreview } from "./excelImport";
 
 const app = new Hono();
 
@@ -24,24 +25,28 @@ app.get("/healthz", (c) =>
   c.json({ ok: true, uptime: process.uptime(), at: new Date().toISOString() }),
 );
 
-// Middleware chain for /api/ai/*, ordered cheapest-reject-first.
-// requestLogger wraps everything so we always get an envelope log
-// even when downstream middleware rejects. aiCors runs first so OPTIONS
-// preflights can short-circuit before the origin guard / auth gates.
-app.use("/api/ai/*", requestLogger());
-app.use("/api/ai/*", aiCors());
-app.use("/api/ai/*", requireAllowedOrigin());
-app.use("/api/ai/*", requireAiBearer());
-app.use("/api/ai/*", rateLimit());
-// Body cap mirrors aiUploadValidator's MAX_UPLOAD_MB so the streaming
-// gate and the parsed-size gate agree on the limit.
-app.use("/api/ai/*", bodyLimit({
-  maxSize: resolveMaxBytes(),
-  onError: () => new Response(
-    JSON.stringify({ ok: false, message: "Upload exceeds size limit." }),
-    { status: 413, headers: { "content-type": "application/json" } },
-  ),
-}));
+// Protected API surfaces — apply the same gates to /api/ai/* (AI parse
+// routes, Anthropic-backed) and /api/import/* (deterministic import
+// routes, no AI). Ordered cheapest-reject-first. requestLogger wraps
+// everything so we always get an envelope log even when downstream
+// middleware rejects. aiCors runs first so OPTIONS preflights can
+// short-circuit before the origin guard / auth gates. The body cap
+// mirrors the upload validator's MAX_UPLOAD_MB so the streaming gate
+// and the parsed-size gate agree on the limit.
+for (const prefix of ["/api/ai/*", "/api/import/*"] as const) {
+  app.use(prefix, requestLogger());
+  app.use(prefix, aiCors());
+  app.use(prefix, requireAllowedOrigin());
+  app.use(prefix, requireAiBearer());
+  app.use(prefix, rateLimit());
+  app.use(prefix, bodyLimit({
+    maxSize: resolveMaxBytes(),
+    onError: () => new Response(
+      JSON.stringify({ ok: false, message: "Upload exceeds size limit." }),
+      { status: 413, headers: { "content-type": "application/json" } },
+    ),
+  }));
+}
 
 app.post("/api/ai/parse-fees", (c) => handleAiParseFees(c.req.raw));
 app.post("/api/ai/parse-services", (c) => handleAiParseServices(c.req.raw));
@@ -49,6 +54,8 @@ app.post("/api/ai/parse-labor", (c) => handleAiParseLabor(c.req.raw));
 app.post("/api/ai/parse-operating", (c) => handleAiParseOperating(c.req.raw));
 app.post("/api/ai/parse-cap", (c) => handleAiParseCap(c.req.raw));
 app.post("/api/ai/parse-volume", (c) => handleAiParseVolume(c.req.raw));
+
+app.post("/api/import/excel/preview", (c) => handleExcelPreview(c.req.raw));
 
 // Any unmatched /api/* request returns JSON 404. Without this catch the
 // SPA fallback below would happily serve dist/index.html for a misspelled
