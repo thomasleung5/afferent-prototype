@@ -19,11 +19,17 @@ jobs:
 
       - run: npm ci
 
+      # Build first: the TanStack Router Vite plugin writes
+      # src/routeTree.gen.ts as a side effect. The file is gitignored, so
+      # on a fresh checkout typecheck would fail with "Cannot find module
+      # './routeTree.gen'". Running the production build first generates
+      # the route tree AND validates the bundle in one shot, so we avoid
+      # a separate generator step or a duplicate build.
+      - run: npm run build
+
       - run: npm run typecheck
 
       - run: npm test
-
-      - run: npm run build
 
       # Temporary exception: the only outstanding production audit finding
       # is the known `xlsx` advisory (no fix available upstream). Keep the
