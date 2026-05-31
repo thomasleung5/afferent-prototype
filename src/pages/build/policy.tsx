@@ -19,7 +19,7 @@ export default function RecoveryPolicyPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="policy"/>}
         title="Recovery Policy"
-        subtitle="Target cost recovery by department and category."
+        subtitle="Target cost recovery levels."
       />
 
       <StatusRow items={[

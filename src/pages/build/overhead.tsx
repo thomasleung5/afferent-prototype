@@ -22,7 +22,7 @@ export default function OverheadCostsPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="overhead"/>}
         title="Overhead Costs"
-        subtitle="Citywide indirect, allocated to direct departments."
+        subtitle="Organization-wide indirect cost allocations."
         actions={
           <>
             <Btn kind="ghost" href="/source-data#cap">

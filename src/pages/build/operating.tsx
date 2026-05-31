@@ -10,7 +10,7 @@ export default function OperatingPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="operating"/>}
         title="Operating Costs"
-        subtitle="Department non-labor spend."
+        subtitle="Department non-labor expenditures."
         actions={
           <Btn kind="ghost" href="/source-data#operating">
             <Icon name="arrow-up-to-line" size={13}/> Import Data

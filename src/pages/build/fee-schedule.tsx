@@ -29,7 +29,7 @@ export default function FeeSchedulePage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="feeSchedule"/>}
         title="Fee Schedule"
-        subtitle="What fees do we adopt? Current fees compared to calculated cost."
+        subtitle="Current fees versus calculated costs."
         actions={
           <>
             <Btn kind="ghost" href="/source-data#fees">

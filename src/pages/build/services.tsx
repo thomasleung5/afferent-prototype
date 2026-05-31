@@ -9,7 +9,7 @@ export default function ServicesPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="services"/>}
         title="Services"
-        subtitle="Hours per instance, role allocation."
+        subtitle="Service definitions, hours, and staffing."
         actions={
           <Btn kind="ghost" href="/source-data#services">
             <Icon name="arrow-up-to-line" size={13}/> Import Data

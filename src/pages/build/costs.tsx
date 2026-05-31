@@ -19,7 +19,7 @@ export default function CostOfServicePage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="costs"/>}
         title="Cost of Service"
-        subtitle="Labor + Operating + Overhead Costs applied to hours"
+        subtitle="Fully loaded service cost calculations."
       />
 
       <StatusRow items={[

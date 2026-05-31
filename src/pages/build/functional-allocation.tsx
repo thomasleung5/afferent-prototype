@@ -20,9 +20,6 @@ import type {
 
 const ORDER: DeptCode[] = FEE_DEPTS;
 
-const HELPER_TEXT =
-  "Classify departmental cost into fee-recoverable activities and direct hours.";
-
 interface BucketRow {
   id: string;
   derived: FunctionalAllocationBucketDerived;
@@ -75,7 +72,7 @@ export default function FunctionalAllocationPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="functional"/>}
         title="Functional Allocation"
-        subtitle={HELPER_TEXT}
+        subtitle="Fee-recoverable activities and hours."
       />
 
       <div>

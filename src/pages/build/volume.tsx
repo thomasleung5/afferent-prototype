@@ -9,7 +9,7 @@ export default function VolumePage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="volume"/>}
         title="Volume of Activity"
-        subtitle="Annual volume per service."
+        subtitle="Annual service demand and volumes."
         actions={
           <Btn kind="ghost" href="/source-data#volume">
             <Icon name="arrow-up-to-line" size={13}/> Import Data

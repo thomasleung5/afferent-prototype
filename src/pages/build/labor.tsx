@@ -11,7 +11,7 @@ export default function LaborPage() {
       <PageHeader
         eyebrow={<NodeEyebrow node="labor"/>}
         title="Labor"
-        subtitle="Direct labor rate per department."
+        subtitle="Direct labor rates by department."
         actions={
           <Btn kind="ghost" href="/source-data#positions">
             <Icon name="arrow-up-to-line" size={13}/> Import Data
