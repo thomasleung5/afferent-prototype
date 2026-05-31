@@ -10,6 +10,7 @@ import type {
   FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { defaultCenterOrder } from "./store";
+import { mapLegacyActivity } from "./data/activities";
 import { mapLegacyUnit } from "./data/feeUnits";
 import { classifyLaborType } from "./ai/parseOperating";
 import type { BuildState, StudyVersion } from "./store";
@@ -146,6 +147,34 @@ export function migratePersistedState(state: Partial<BuildState>): void {
         return mapped
           ? { ...rest, unitLabel: mapped.label, unitType: mapped.type }
           : rest;
+      });
+    }
+    // Same migration for activity → activityLabel + activityType.
+    type LegacyActivityService = Service & { activity?: string };
+    const withLegacyActivity = state.services as LegacyActivityService[];
+    if (withLegacyActivity.some((s) => s.activity != null && s.activityLabel == null)) {
+      state.services = withLegacyActivity.map((s) => {
+        if (s.activity == null) return s;
+        const { activity, ...rest } = s;
+        if (rest.activityLabel != null) return rest;
+        const mapped = mapLegacyActivity(activity);
+        return mapped
+          ? { ...rest, activityLabel: mapped.label, activityType: mapped.type }
+          : rest;
+      });
+    }
+  }
+  // Strip the deprecated VolumeRow.unit field from any persisted rows.
+  // The activity label now lives only on Service.activityLabel; the
+  // VolumeRow.unit fallback was retired.
+  if (Array.isArray(state.volume)) {
+    type LegacyVolume = VolumeRow & { unit?: string };
+    const legacyVolume = state.volume as LegacyVolume[];
+    if (legacyVolume.some((v) => v.unit != null)) {
+      state.volume = legacyVolume.map((v) => {
+        if (v.unit == null) return v;
+        const { unit: _unit, ...rest } = v;
+        return rest;
       });
     }
   }

@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  AddRowButton, CellInput, CellSelect,
+  ActivityCombobox, AddRowButton, CellInput, CellSelect,
   DrilldownColumn, DrilldownShell, InlineLinkRow,
   MiniTable, MonoLabel, RemoveIconButton, SectionLabel, SourcePill,
   UnitCombobox,
@@ -196,6 +196,22 @@ export function ServicesTable() {
           value={r.dept}
           options={DEPT_OPTIONS}
           onChange={(v) => updateService(r.id, { dept: v as DeptCode })}
+        />
+      ),
+    },
+    {
+      key: "activity",
+      label: "Activity",
+      width: "140px",
+      sortable: true,
+      sortKey: (r) => r.activityLabel ?? "",
+      render: (r) => (
+        <ActivityCombobox
+          value={r.activityLabel != null
+            ? { label: r.activityLabel, type: r.activityType ?? "CUSTOM" }
+            : undefined}
+          onChange={(next) =>
+            updateService(r.id, { activityLabel: next.label, activityType: next.type })}
         />
       ),
     },

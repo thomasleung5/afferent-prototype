@@ -13,10 +13,9 @@ interface Row {
   name: string;
   feeNo?: string;
   dept: DeptCode;
-  /** Activity label — Services is the canonical owner (Service.activity).
-   *  Falls back to the legacy VolumeRow.unit for rows whose Service has
-   *  no activity set. Distinct from the FEE PRICING unit (each / per
-   *  hour / etc.) which stays on Services + Fee Schedule. */
+  /** Activity label — sourced from Service.activityLabel. Distinct
+   *  from the FEE PRICING unit (Each / Hour / etc.) which stays on
+   *  Services + Fee Schedule. */
   activity: string;
   prior: number | null;
   current: number | null;
@@ -44,7 +43,7 @@ export function VolumeTable() {
       name: svc?.name ?? w.id,
       feeNo: svc?.feeNo,
       dept: (svc?.dept ?? "PLAN") as DeptCode,
-      activity: svc?.activity ?? w.unit ?? "",
+      activity: svc?.activityLabel ?? "",
       prior: w.prior,
       current: w.current,
       status: w.status,

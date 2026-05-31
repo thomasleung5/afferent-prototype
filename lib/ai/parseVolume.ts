@@ -142,7 +142,6 @@ export function volumeToExtractionResult(
       id: matched.id,
       prior: priorNum,
       current: currentNum,
-      unit: row.unit?.trim() || "units",
       source: "imported",
       status: "Imported",
       sourceFile: fileName,

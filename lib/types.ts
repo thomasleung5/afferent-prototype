@@ -60,6 +60,19 @@ export type UnitType =
   | "COUNT" | "PROJECT" | "TIME" | "AREA" | "LENGTH"
   | "LAND" | "VALUATION" | "DEPOSIT" | "CUSTOM";
 
+/** Categorical type for `Service.activityLabel` — what KIND of work
+ *  the service represents. Hidden from analysts today; reserved for
+ *  future analytics + reporting. CUSTOM means the analyst entered
+ *  free text that didn't match any catalog entry. */
+export type ActivityType =
+  | "INTAKE"      // Application / submittal / intake
+  | "ISSUANCE"    // Permit / certificate
+  | "REVIEW"      // Plan check / review / audit
+  | "INSPECTION"  // Field inspection
+  | "MEETING"     // Meeting / consultation
+  | "ADJUDICATION" // Appeal / hearing
+  | "CUSTOM";
+
 /** Pricing structure label for an active fee — derived from
  *  `Service.formula` via `feeRowKind()` in lib/calc.ts. Lifecycle
  *  (moved / deleted / not-evaluated) lives on FeeScheduleStatus
@@ -226,14 +239,19 @@ export interface Service {
   /** Subgrouping under category (e.g., "Discretionary Permits",
    *  "Plan Check"). Optional second-level axis. */
   subcategory?: string;
-  /** The operational thing being counted — Permit / Application /
-   *  Review / Inspection / Meeting / Plan check / etc. Services is
-   *  the canonical owner of this label; the Volume page reads it
-   *  through to its Activity column so the same value appears in both
-   *  workflows. Distinct from `unit` below, which is the FEE PRICING
-   *  unit ("each", "per hour", "per $1,000 valuation") — activity
-   *  describes WHAT is counted, unit describes HOW the fee is charged. */
-  activity?: string;
+  /** What KIND of work the service represents — Application / Permit /
+   *  Plan Check / Inspection / Meeting / etc. Sourced from the
+   *  canonical ACTIVITIES catalog (lib/data/activities.ts) when
+   *  possible; arbitrary text is preserved as a "Custom..." entry.
+   *  The Volume page reads this through to its Activity column so the
+   *  same value appears in both workflows. Distinct from `unitLabel`
+   *  below — activity describes WHAT was done, unitLabel describes
+   *  HOW the fee is charged. Always paired with `activityType`. */
+  activityLabel?: string;
+  /** Categorical type for `activityLabel` — hidden from users today;
+   *  used by future analytics + reporting. CUSTOM means free text.
+   *  See ACTIVITIES in lib/data/activities.ts. */
+  activityType?: ActivityType;
   /** Pricing-unit label rendered alongside the fee value (e.g.,
    *  "Each", "Hour", "Per $1,000 Valuation"). Sourced from the
    *  canonical FEE_UNITS catalog when possible; arbitrary text is
@@ -554,12 +572,6 @@ export interface VolumeRow {
   id: string;
   prior: number | null;
   current: number | null;
-  /** Legacy activity label kept on the row for parser / import / export
-   *  back-compat. The Volume table now reads its Activity column from
-   *  the linked `Service.activity` field (Services owns the canonical
-   *  value); this field is only consulted as a fallback when a
-   *  matching Service has no activity set. */
-  unit?: string;
   /** Row provenance — set at creation, not mutated by edits. Uses the
    *  shared SourceTag enum; "seed" was added in the source standardization. */
   source: SourceTag;

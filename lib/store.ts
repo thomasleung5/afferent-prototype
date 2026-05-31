@@ -15,6 +15,7 @@ import { SERVICES } from "@/lib/data/services";
 import { POLICY_TARGETS, POLICY_EXCEPTIONS } from "@/lib/data/policy";
 import { IMPORTS } from "@/lib/data/imports";
 import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
+import { mapLegacyActivity } from "@/lib/data/activities";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
   DirectAllocationRow, FunctionalAllocationBucket, OperatingLine,
@@ -997,9 +998,13 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         if (!name || !dept) return null;
         const prior = typeof cells.prior === "number" ? cells.prior : null;
         const current = typeof cells.current === "number" ? cells.current : null;
-        const unit = typeof cells.unit === "string" && cells.unit.trim()
-          ? cells.unit.trim()
-          : "units";
+        // The raw `unit` cell on a volume import describes the activity
+        // being counted (e.g., "Permit", "Application") — promote it
+        // onto the new Service as activityLabel + activityType via the
+        // canonical-catalog mapper.
+        const activity = typeof cells.unit === "string"
+          ? mapLegacyActivity(cells.unit)
+          : undefined;
         const id = newServiceId(dept, name);
         const sourceFile = u.lineage.file;
         const newService: Service = {
@@ -1012,9 +1017,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           target: 100,
           source: "imported",
           sourceFile,
+          ...(activity ? { activityLabel: activity.label, activityType: activity.type } : {}),
         };
         const newVolume: VolumeRow = {
-          id, prior, current, unit,
+          id, prior, current,
           source: "imported",
           status: "Imported",
           sourceFile,
@@ -1034,12 +1040,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         const cells = u.lineage.rawCells ?? {};
         const prior = typeof cells.prior === "number" ? cells.prior : null;
         const current = typeof cells.current === "number" ? cells.current : null;
-        const unit = typeof cells.unit === "string" && cells.unit.trim()
-          ? cells.unit.trim()
-          : "units";
         const sourceFile = u.lineage.file;
         const newVolume: VolumeRow = {
-          id: serviceId, prior, current, unit,
+          id: serviceId, prior, current,
           source: "imported",
           status: "Imported",
           sourceFile,

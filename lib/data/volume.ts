@@ -7,12 +7,8 @@ import { SERVICES } from "./services";
  * seed rows carry source: "seed"; the status / flag mix below
  * exercises the review-state variety the UI needs to handle.
  *
- * Activity labels for the Volume page come from `Service.activity` —
- * Services is the canonical owner. `VolumeRow.unit` stays optional on
- * the type so persisted imports and parser/export round-trips keep
- * working; the seed no longer populates it. The display layer reads
- * Service.activity directly and falls back to the row-level unit only
- * when an imported row's Service has no activity set. */
+ * Activity labels for the Volume page come from
+ * `Service.activityLabel` — Services is the canonical owner. */
 
 function vary(volume: number, i: number): number {
   return Math.max(1, Math.round(volume * (0.85 + (i % 5) * 0.06)));
