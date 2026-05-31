@@ -32,6 +32,22 @@ Set `ANTHROPIC_API_KEY` in `.env.local` to enable the `/api/ai/parse-*` endpoint
 Other scripts: `npm run build` (Vite production build), `npm run preview`
 (serve the build), `npm run typecheck` (`tsc --noEmit`).
 
+## CI
+
+GitHub Actions runs `.github/workflows/ci.yml` on every push to `main`
+and every pull request targeting `main`. The job uses Node 26 with the
+standard `actions/setup-node` npm cache, then runs:
+
+1. `npm ci`
+2. `npm run typecheck`
+3. `npm test` — the fixture chain wired in `package.json`
+4. `npm run build`
+5. `npm audit --omit=dev` — **non-blocking, temporary**: the only
+   outstanding production finding is the known high-severity `xlsx`
+   advisory (no fix available upstream). The step still runs so the
+   report is visible in CI logs, but won't fail the workflow until we
+   migrate off xlsx or upstream ships a patch.
+
 ## Project structure
 
 ```

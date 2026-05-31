@@ -1,0 +1,34 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '26'
+          cache: 'npm'
+
+      - run: npm ci
+
+      - run: npm run typecheck
+
+      - run: npm test
+
+      - run: npm run build
+
+      # Temporary exception: the only outstanding production audit finding
+      # is the known `xlsx` advisory (no fix available upstream). Keep the
+      # step non-blocking so CI surfaces the report without failing PRs;
+      # tighten this once we migrate off xlsx or upstream ships a patch.
+      - name: npm audit (production) — non-blocking until xlsx is replaced
+        continue-on-error: true
+        run: npm audit --omit=dev
