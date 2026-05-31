@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from "react";
+import { createPortal } from "react-dom";
 import { ACTIVITIES, type ActivityOption } from "@/lib/data/activities";
 
 interface Props {
@@ -19,9 +20,11 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
   const [highlight, setHighlight] = useState(0);
   const [customText, setCustomText] = useState("");
 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const triggerRef = useRef<HTMLButtonElement>(null);
+  const panelRef = useRef<HTMLDivElement>(null);
   const searchRef = useRef<HTMLInputElement>(null);
   const customRef = useRef<HTMLInputElement>(null);
+  const [anchor, setAnchor] = useState<{ top: number; left: number; width: number } | null>(null);
 
   const filtered = useMemo(() => {
     const q = query.trim().toLowerCase();
@@ -29,12 +32,34 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
     return ACTIVITIES.filter((a) => a.label.toLowerCase().includes(q));
   }, [query]);
 
+  // Measure the trigger so the portal'd panel can position itself in
+  // viewport coords. Re-measure on scroll/resize so the panel stays
+  // pinned even when the table scrolls underneath it.
+  useEffect(() => {
+    if (!open) return;
+    const measure = () => {
+      const rect = triggerRef.current?.getBoundingClientRect();
+      if (!rect) return;
+      setAnchor({ top: rect.bottom + 2, left: rect.left, width: rect.width });
+    };
+    measure();
+    window.addEventListener("scroll", measure, true);
+    window.addEventListener("resize", measure);
+    return () => {
+      window.removeEventListener("scroll", measure, true);
+      window.removeEventListener("resize", measure);
+    };
+  }, [open]);
+
+  // Close on click outside — checks both the trigger and the portal'd
+  // panel since they're no longer in the same DOM subtree.
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
-      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
-        close();
-      }
+      const target = e.target as Node;
+      const inTrigger = triggerRef.current?.contains(target);
+      const inPanel = panelRef.current?.contains(target);
+      if (!inTrigger && !inPanel) close();
     };
     document.addEventListener("mousedown", onClick);
     return () => document.removeEventListener("mousedown", onClick);
@@ -101,38 +126,18 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
 
   const labelText = value?.label;
 
-  return (
-    <div ref={containerRef} style={{ position: "relative" }}>
-      <button
-        type="button"
-        onClick={() => setOpen((o) => !o)}
-        onClickCapture={(e) => e.stopPropagation()}
-        style={{
-          display: "block", width: "100%", textAlign: "left",
-          padding: "2px 4px",
-          background: "transparent", border: "1px solid transparent",
-          cursor: "pointer", borderRadius: 0,
-          fontFamily: "var(--ff-ui)",
-        }}
-        onFocus={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
-        onBlur={(e) => { e.currentTarget.style.background = "transparent"; }}
-      >
-        <span style={{
-          fontSize: "var(--t-l7)",
-          color: labelText ? "var(--ink)" : "var(--ink-4)",
-        }}>
-          {labelText ?? placeholder}
-        </span>
-      </button>
-
-      {open && (
-        <div style={{
-          position: "absolute", top: "calc(100% + 2px)", left: 0, zIndex: 30,
-          minWidth: 200, maxWidth: 280,
-          background: "var(--paper)",
-          border: "1px solid var(--rule-strong)",
-          boxShadow: "0 6px 18px rgba(29,34,54,0.08)",
-        }}>
+  const panel = open && anchor && createPortal(
+    <div
+      ref={panelRef}
+      onClick={(e) => e.stopPropagation()}
+      style={{
+        position: "fixed", top: anchor.top, left: anchor.left, zIndex: 50,
+        minWidth: Math.max(200, anchor.width), maxWidth: 320,
+        background: "var(--paper)",
+        border: "1px solid var(--rule-strong)",
+        boxShadow: "0 6px 18px rgba(29,34,54,0.08)",
+      }}
+    >
           {mode === "list" && (
             <>
               <input
@@ -258,8 +263,34 @@ export function ActivityCombobox({ value, onChange, placeholder = "Select activi
               </div>
             </div>
           )}
-        </div>
-      )}
-    </div>
+    </div>,
+    document.body,
+  );
+
+  return (
+    <>
+      <button
+        ref={triggerRef}
+        type="button"
+        onClick={(e) => { e.stopPropagation(); setOpen((o) => !o); }}
+        style={{
+          display: "block", width: "100%", textAlign: "left",
+          padding: "2px 4px",
+          background: "transparent", border: "1px solid transparent",
+          cursor: "pointer", borderRadius: 0,
+          fontFamily: "var(--ff-ui)",
+        }}
+        onFocus={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
+        onBlur={(e) => { e.currentTarget.style.background = "transparent"; }}
+      >
+        <span style={{
+          fontSize: "var(--t-l7)",
+          color: labelText ? "var(--ink)" : "var(--ink-4)",
+        }}>
+          {labelText ?? placeholder}
+        </span>
+      </button>
+      {panel}
+    </>
   );
 }
