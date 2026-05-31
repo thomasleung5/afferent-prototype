@@ -126,6 +126,55 @@ const existing: Service[] = [];
   console.log("  ✓ row-level errors emit warnings + skip the row");
 }
 
+// ── Invalid rows ALSO land in extraction.unmapped (persistent review) ───
+//      Critical: warnings are session-local; extraction.unmapped is what
+//      mergeFeeSchedule pushes into pendingReview.fees so the rows are
+//      still discoverable later (e.g., in the Fee Study Excel export's
+//      Review Flags sheet). Reason codes use the shared UnmappedRow
+//      vocabulary so downstream review surfaces don't need a separate
+//      Excel-only code path.
+{
+  const s: PreviewSheet = {
+    name: "Schedule",
+    rowCount: 5,
+    columnCount: 3,
+    rows: [
+      ["Service", "Dept", "Fee"],
+      ["", "PLAN", 100],            // missing name
+      ["Permit", "UNKNOWN", 200],   // ambiguous dept
+      ["Inspection", "BLDG", "n/a"],// schema mismatch (fee)
+      ["Plan check", "PLAN", 500],  // good
+    ],
+  };
+  const r = excelToFeeExtraction("review.xlsx", s, {
+    headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
+  }, existing);
+
+  assert.equal(r.extraction.unmapped.length, 3);
+  assert.equal(r.extraction.stats.unmapped, 3,
+    "stats.unmapped reflects the actual reject count");
+  assert.deepEqual(
+    r.extraction.unmapped.map((u) => u.reason),
+    ["missing-required-field", "ambiguous-dept", "schema-mismatch"],
+    "reason codes come from the shared UnmappedRow vocabulary",
+  );
+  for (const u of r.extraction.unmapped) {
+    assert.equal(u.lineage.file, "review.xlsx");
+    assert.equal(u.lineage.sheet, "Schedule");
+    assert.equal(u.lineage.confidence, "review",
+      "rejected rows carry confidence: 'review' so the queue can sort them");
+    assert.ok(typeof u.lineage.row === "number" && u.lineage.row >= 2,
+      "lineage row is the real 1-based Excel source row");
+    assert.ok(u.lineage.rawCells, "rawCells preserved for the review panel drilldown");
+    assert.ok(Array.isArray(u.raw) && u.raw.length === 4,
+      "raw array carries the per-column source values (name/dept/fee/unit)");
+  }
+  // Ambiguous-dept row carries the raw "UNKNOWN" string so a reviewer
+  // can fix it without re-opening the workbook.
+  assert.equal(r.extraction.unmapped[1].lineage.rawCells?.dept, "UNKNOWN");
+  console.log("  ✓ invalid rows land in extraction.unmapped with reason codes + lineage");
+}
+
 // ── Blank trailing rows are silently dropped (NOT warnings) ─────────────
 {
   const s = sheet([

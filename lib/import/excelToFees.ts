@@ -5,17 +5,25 @@
  * Mirrors `feesToExtractionResult` in lib/ai/parseFees.ts but with
  * deterministic, Excel-flavored lineage (real sheet name + real
  * source row number, instead of "AI parsed" / sequential index).
- * Each emitted row carries `confidence: "high"` because this path is
- * NOT AI-backed — the user explicitly mapped each column, so we
- * don't have the same low-confidence escape hatch the AI parser uses.
+ * Successfully-mapped rows carry `confidence: "high"` because this
+ * path is NOT AI-backed — the user explicitly mapped each column.
  *
- * Rows that fail validation (missing required cells, invalid fee,
- * unknown dept code) are dropped from the extraction and surfaced
- * separately as `warnings`, so the UI can show the analyst exactly
- * which rows were skipped and why. */
+ * Rows that fail validation (missing name, unknown dept, invalid
+ * fee) are routed to BOTH:
+ *   - `extraction.unmapped` (persistent — flows through
+ *     mergeFeeSchedule → pendingReview.fees → Fee Study export's
+ *     Review Flags sheet) with reason codes from the shared
+ *     UnmappedRow vocabulary.
+ *   - `warnings` (session-local — drives the inline "Skipped rows"
+ *     panel in the import UI for immediate feedback).
+ * Both surfaces are kept so an analyst sees what was dropped right
+ * after import AND can still find those rows in the review queue
+ * later. */
 
 import type { Service } from "@/lib/types";
-import type { ExtractedRow, ExtractionResult, SourceLineage } from "@/lib/parse/types";
+import type {
+  ExtractedRow, ExtractionResult, SourceLineage, UnmappedRow,
+} from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
 import { mapLegacyUnit } from "@/lib/data/feeUnits";
 import { newServiceId } from "@/lib/ai/serviceId";
@@ -87,10 +95,31 @@ export function excelToFeeExtraction(
 
   const mapped: ExtractedRow<Service>[] = [];
   const duplicates: ExtractedRow<Service>[] = [];
+  const unmapped: UnmappedRow[] = [];
   const warnings: ExcelFeeWarning[] = [];
   let skipped = 0;
 
   const data = sheet.rows.slice(mapping.headerRowIndex + 1);
+
+  // Build the rejection lineage from the same per-row fields the happy
+  // path uses, so reviewers see the actual workbook values for every
+  // dropped row.
+  const buildRejectLineage = (
+    sourceRow: number,
+    row: PreviewCell[],
+  ): SourceLineage => ({
+    file: fileName,
+    sheet: sheet.name,
+    row: sourceRow,
+    rawCells: {
+      name: cellToString(row[mapping.nameCol]),
+      dept: cellToString(row[mapping.deptCol]),
+      fee: cellToString(row[mapping.feeCol]),
+      unit: mapping.unitCol != null ? cellToString(row[mapping.unitCol]) : null,
+    },
+    confidence: "review",
+    importedAt: now,
+  });
 
   data.forEach((row, i) => {
     // Source row number as the analyst sees it in Excel (1-based, accounting
@@ -103,29 +132,55 @@ export function excelToFeeExtraction(
     const unitCell = mapping.unitCol != null ? row[mapping.unitCol] : null;
 
     // Skip rows that look like trailing blanks — common at the bottom of
-    // fee schedules (footers, formatting padding). NOT a warning.
+    // fee schedules (footers, formatting padding). NOT a warning, not
+    // routed to review; those rows carry no analyst-actionable data.
     if (isBlankCell(nameCell) && isBlankCell(deptCell) && isBlankCell(feeCell)) {
       skipped += 1;
       return;
     }
 
+    const rawArr = [
+      cellToString(nameCell),
+      cellToString(deptCell),
+      cellToString(feeCell),
+      mapping.unitCol != null ? cellToString(unitCell) : "",
+    ];
+
     const name = cellToString(nameCell).trim();
     if (!name) {
-      warnings.push({ row: sourceRow, reason: "Missing fee/service name." });
+      const reason = "Missing fee/service name.";
+      warnings.push({ row: sourceRow, reason });
+      unmapped.push({
+        reason: "missing-required-field",
+        raw: rawArr,
+        lineage: buildRejectLineage(sourceRow, row),
+      });
       skipped += 1;
       return;
     }
 
     const dept = normDept(cellToString(deptCell));
     if (!dept) {
-      warnings.push({ row: sourceRow, reason: `Unknown department "${cellToString(deptCell)}".` });
+      const reason = `Unknown department "${cellToString(deptCell)}".`;
+      warnings.push({ row: sourceRow, reason });
+      unmapped.push({
+        reason: "ambiguous-dept",
+        raw: rawArr,
+        lineage: buildRejectLineage(sourceRow, row),
+      });
       skipped += 1;
       return;
     }
 
     const fee = cellToFee(feeCell);
     if (fee == null) {
-      warnings.push({ row: sourceRow, reason: `Could not read fee amount "${cellToString(feeCell)}".` });
+      const reason = `Could not read fee amount "${cellToString(feeCell)}".`;
+      warnings.push({ row: sourceRow, reason });
+      unmapped.push({
+        reason: "schema-mismatch",
+        raw: rawArr,
+        lineage: buildRejectLineage(sourceRow, row),
+      });
       skipped += 1;
       return;
     }
@@ -177,13 +232,13 @@ export function excelToFeeExtraction(
   const extraction: ExtractionResult<Service> = {
     mapped,
     lowConfidence: [],
-    unmapped: [],
+    unmapped,
     duplicates,
     stats: {
       total: data.length,
       mapped: mapped.length,
       lowConfidence: 0,
-      unmapped: 0,
+      unmapped: unmapped.length,
       duplicates: duplicates.length,
       detected: `Fee schedule (Excel · ${sheet.name})`,
     },
