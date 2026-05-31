@@ -6,12 +6,20 @@
  * verify every rejection path emits the right status + JSON error
  * shape, and the happy path returns the parsed File + base64 payload.
  *
- * isPdf and resolveMaxBytes are exercised directly since they're pure. */
+ * Also exercises the generic `readUpload` directly (no PDF / no
+ * format-specific assumptions) so future format validators —
+ * starting with `readExcelUpload` — have a clear contract to layer
+ * on top of.
+ *
+ * isPdf, hasPdfMagicBytes, hasZipMagicBytes and resolveMaxBytes are
+ * exercised directly since they're pure. */
 
 import assert from "node:assert/strict";
 import {
-  hasPdfMagicBytes, isPdf, readPdfUpload, resolveMaxBytes,
+  hasPdfMagicBytes, hasZipMagicBytes, isPdf,
+  readExcelUpload, readPdfUpload,
 } from "../aiUploadValidator";
+import { readUpload, resolveMaxBytes } from "../uploadValidator";
 
 /** Build a multipart/form-data Request with the given form fields. */
 function makeRequest(form: FormData): Request {
@@ -84,9 +92,71 @@ async function readJsonBody(res: Response): Promise<{ ok: boolean; message?: str
   console.log("  ✓ hasPdfMagicBytes accepts %PDF, rejects junk + short buffers");
 }
 
+// ── 2c. hasZipMagicBytes — pure-function check ───────────────────────────
+{
+  const validZipPrefix = new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14]).buffer;
+  assert.equal(hasZipMagicBytes(validZipPrefix), true);
+
+  const pdfBytes = new Uint8Array([0x25, 0x50, 0x44, 0x46]).buffer;
+  assert.equal(hasZipMagicBytes(pdfBytes), false,
+    "PDF bytes must not pass the ZIP check (xlsx-shape sniff stays distinct)");
+
+  assert.equal(hasZipMagicBytes(new ArrayBuffer(0)), false);
+  assert.equal(
+    hasZipMagicBytes(new Uint8Array([0x50, 0x4b]).buffer), false,
+    "too-short buffers can't be a ZIP header",
+  );
+  console.log("  ✓ hasZipMagicBytes accepts PK\\x03\\x04, rejects junk + short buffers");
+}
+
 // readPdfUpload assertions need top-level await — wrap in an async
 // main() so tsx's CJS transform can execute them.
 async function main() {
+  // ── GENERIC: readUpload makes no PDF assumptions ──────────────────────
+  //   Pins the contract future format-validators (Excel, etc.) layer on
+  //   top of. The generic layer accepts any bytes once it has a `file`
+  //   field within the size cap and reaches an ArrayBuffer.
+  {
+    const form = new FormData();
+    const file = new File(
+      [new Uint8Array([0x01, 0x02, 0x03])],
+      "nonsense.bin",
+      { type: "application/octet-stream" },
+    );
+    form.append("file", file);
+    form.append("metadata", "hello");
+    const result = await readUpload(makeRequest(form));
+    assert.ok(!(result instanceof Response),
+      "non-PDF bytes must NOT be rejected by the generic helper");
+    if (!(result instanceof Response)) {
+      assert.equal(result.ok, true);
+      assert.equal(result.fileName, "nonsense.bin");
+      assert.equal(result.buffer.byteLength, 3,
+        "raw bytes preserved for caller-side magic-byte sniffing");
+      assert.equal(result.form.get("metadata"), "hello",
+        "side fields stay accessible on the returned FormData");
+    }
+    console.log("  ✓ readUpload accepts arbitrary bytes (no PDF assumptions)");
+  }
+
+  // GENERIC: missing file still 400 at the generic layer
+  {
+    const result = await readUpload(makeRequest(new FormData()));
+    assert.ok(result instanceof Response);
+    assert.equal((result as Response).status, 400);
+    console.log("  ✓ readUpload returns 400 when `file` field is missing");
+  }
+
+  // GENERIC: oversize still 413 at the generic layer
+  {
+    const form = new FormData();
+    form.append("file", new File(["1234567890123"], "x.bin"));
+    const result = await readUpload(makeRequest(form), { maxBytes: 10 });
+    assert.ok(result instanceof Response);
+    assert.equal((result as Response).status, 413);
+    console.log("  ✓ readUpload returns 413 when file exceeds maxBytes");
+  }
+
   // ── 3. Missing file field → 400 ───────────────────────────────────────
   {
     const form = new FormData();
@@ -184,6 +254,57 @@ async function main() {
       assert.equal(result.base64, "JVBERi0=");
     }
     console.log("  ✓ happy path returns form + file + base64");
+  }
+
+  // ── 8. Excel placeholder — validator wired but no parser yet ──────────
+  //      readExcelUpload is exported so a future Excel-import route can
+  //      slot in. Today: confirm it rejects non-xlsx shapes (415) and
+  //      accepts a real .xlsx-shaped upload (ZIP magic). No workbook
+  //      parsing happens here — the OK payload only carries the raw
+  //      buffer for the parser to consume later.
+  {
+    // PDF bytes routed through the Excel validator → 415
+    const pdfForm = new FormData();
+    pdfForm.append("file", new File(
+      [new Uint8Array([0x25, 0x50, 0x44, 0x46, 0x2d])],
+      "doc.pdf",
+      { type: "application/pdf" },
+    ));
+    const pdfResult = await readExcelUpload(makeRequest(pdfForm));
+    assert.ok(pdfResult instanceof Response);
+    assert.equal((pdfResult as Response).status, 415);
+
+    // Legacy .xls rejected with a more specific message
+    const xlsForm = new FormData();
+    xlsForm.append("file", new File(
+      ["legacy"],
+      "old.xls",
+      { type: "application/vnd.ms-excel" },
+    ));
+    const xlsResult = await readExcelUpload(makeRequest(xlsForm));
+    assert.ok(xlsResult instanceof Response);
+    assert.equal((xlsResult as Response).status, 415);
+    assert.match(
+      (await readJsonBody(xlsResult as Response)).message ?? "", /\.xls/,
+      "legacy .xls returns a message that names the format",
+    );
+
+    // .xlsx-shaped happy path (ZIP magic bytes + xlsx MIME)
+    const okForm = new FormData();
+    okForm.append("file", new File(
+      [new Uint8Array([0x50, 0x4b, 0x03, 0x04, 0x14, 0x00, 0x00])],
+      "workbook.xlsx",
+      { type: "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet" },
+    ));
+    const okResult = await readExcelUpload(makeRequest(okForm));
+    assert.ok(!(okResult instanceof Response));
+    if (!(okResult instanceof Response)) {
+      assert.equal(okResult.ok, true);
+      assert.equal(okResult.fileName, "workbook.xlsx");
+      assert.equal(okResult.buffer.byteLength, 7,
+        "raw buffer preserved for the future parser");
+    }
+    console.log("  ✓ readExcelUpload validates xlsx shape without parsing");
   }
 }
 
