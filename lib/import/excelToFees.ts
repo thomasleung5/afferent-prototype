@@ -73,7 +73,7 @@ export function validateFeeMapping(
   const rows = Array.isArray(sheet?.rows) ? sheet.rows : [];
 
   if (rowCount === 0 || rows.length === 0) {
-    errors.push("Sheet has no rows.");
+    errors.push("This sheet is empty. Pick another sheet from the dropdown above.");
     return errors;
   }
 

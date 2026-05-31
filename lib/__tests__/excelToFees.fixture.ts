@@ -223,7 +223,8 @@ const existing: Service[] = [];
   const errors = validateFeeMapping(s, {
     headerRowIndex: 0, nameCol: 0, deptCol: 1, feeCol: 2, unitCol: null,
   });
-  assert.ok(errors.some((e) => /no rows/i.test(e)), "empty sheet → 'no rows' error");
+  assert.ok(errors.some((e) => /empty/i.test(e)),
+    "empty sheet → friendly error pointing at the sheet dropdown");
 
   // The extraction call must not throw — returns an empty, well-formed result.
   const r = excelToFeeExtraction("empty.xlsx", s, {

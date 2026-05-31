@@ -91,8 +91,14 @@ export function ExcelFeeImportCard() {
         return;
       }
       setPreview(res);
-      // Auto-pick the first sheet, header row 1.
-      setSheetIndex(0);
+      // Auto-pick the first NON-EMPTY sheet. Many workbooks ship with an
+      // empty default Sheet1 and the real data on a later/named sheet —
+      // defaulting to index 0 lands the user on an empty sheet with a
+      // misleading "no rows" error.
+      const firstNonEmpty = res.sheets.findIndex(
+        (s) => s && s.rowCount > 0 && s.columnCount > 0,
+      );
+      setSheetIndex(firstNonEmpty >= 0 ? firstNonEmpty : 0);
       setHeaderRow(1);
       setUploadStatus({
         ok: true,
