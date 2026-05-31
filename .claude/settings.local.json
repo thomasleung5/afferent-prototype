@@ -117,7 +117,12 @@
       "Bash(perl -i -pe ' *)",
       "Bash(npm test *)",
       "Bash(npm audit *)",
-      "Bash(git credential-osxkeychain *)"
+      "Bash(git credential-osxkeychain *)",
+      "Bash(npm view *)",
+      "Bash(rm -rf package.json package-lock.json node_modules)",
+      "Bash(npm init *)",
+      "Bash(python3 -c 'import json,sys; p=json.load\\(sys.stdin\\); print\\(\"main:\",p.get\\(\"main\"\\)\\); print\\(\"module:\",p.get\\(\"module\"\\)\\); print\\(\"types:\",p.get\\(\"types\"\\)\\); print\\(\"exports:\", list\\(p.get\\(\"exports\",{}\\).keys\\(\\)\\)\\)')",
+      "Bash(echo \"audit-exit=$?\")"
     ]
   }
 }
