@@ -47,6 +47,7 @@ import {
 } from "@/lib/data/jurisdictions";
 import type { ExtractionResult, ImportApplyResult, SourceLineage, UnmappedRow } from "@/lib/parse";
 import { newServiceId } from "@/lib/ai/serviceId";
+import { mergeImportedServices } from "@/lib/import/mergeImportedServices";
 import { createBuildSnapshot, makeStudyVersion } from "./storeSnapshot";
 import { migratePersistedState } from "./storeMigration";
 
@@ -963,9 +964,11 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergeServices: (r, fileName) => {
         const result = toApplyResult("services", fileName, r);
         set((s) => {
-          const { merged, lineagePatch } = mergeRows(s.services, r);
+          const { services, volume, lineagePatch } =
+            mergeImportedServices(s.services, s.volume, r);
           return {
-            services: merged,
+            services,
+            volume,
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, services: [...s.pendingReview.services, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "services", result, at: new Date().toISOString() }],
@@ -977,9 +980,11 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       mergeFeeSchedule: (r, fileName) => {
         const result = toApplyResult("fees", fileName, r);
         set((s) => {
-          const { merged, lineagePatch } = mergeRows(s.services, r);
+          const { services, volume, lineagePatch } =
+            mergeImportedServices(s.services, s.volume, r);
           return {
-            services: merged,
+            services,
+            volume,
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, fees: [...s.pendingReview.fees, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "fees", result, at: new Date().toISOString() }],
