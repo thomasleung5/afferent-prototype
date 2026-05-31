@@ -70,9 +70,13 @@ export async function runPdfParser(
 ): Promise<Response> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    logEvent({
+      level: "error", tag: spec.tag,
+      msg: "ANTHROPIC_API_KEY not configured — refusing request",
+    });
     return json({
       ok: false,
-      message: "AI parsing is not configured. Set ANTHROPIC_API_KEY in .env.local to enable it.",
+      message: "AI parsing is temporarily unavailable. Please try again later.",
     }, { status: 503 });
   }
 

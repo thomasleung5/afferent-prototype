@@ -265,9 +265,13 @@ function json(body: ParseCapResponse, init?: ResponseInit): Response {
 export async function handleAiParseCap(req: Request): Promise<Response> {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) {
+    logEvent({
+      level: "error", tag: TAG,
+      msg: "ANTHROPIC_API_KEY not configured — refusing request",
+    });
     return json({
       ok: false,
-      message: "AI parsing is not configured. Set ANTHROPIC_API_KEY in .env.local to enable it.",
+      message: "AI parsing is temporarily unavailable. Please try again later.",
     }, { status: 503 });
   }
 
