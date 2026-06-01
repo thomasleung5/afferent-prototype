@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ModelSettingsMenu } from "./ModelSettingsMenu";
+import { StudyMenu } from "@/features/studies/StudyMenu";
 import { useAuth } from "@/lib/auth/AuthContext";
 
 interface NavItem {
@@ -46,6 +47,7 @@ export function TopBar() {
         <div style={{ width: 1, height: 18, background: "var(--rule)" }}/>
 
         <ModelSettingsMenu/>
+        <StudyMenu/>
 
         <div style={{ flex: 1 }}/>
         <AuthChip/>

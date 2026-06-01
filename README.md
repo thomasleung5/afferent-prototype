@@ -210,9 +210,40 @@ doesn't permit the action. 413 when the snapshot body exceeds the
 cap. 422 when the body fails validation.
 
 The browser-side adapter for these endpoints lives in
-`lib/studies/studiesApi.ts` — UI-agnostic so the eventual
-save-on-debounce / load-on-study-switch flow can plug it in without
-coupling to React / Zustand.
+`lib/studies/studiesApi.ts` — UI-agnostic so callers and tests can
+import it without coupling to React / Zustand.
+
+### Save / Load UI
+
+A small **Studies** popover lives in the top bar
+(`features/studies/StudyMenu.tsx`, mounted next to the
+fiscal-year / settings control). It appears only when Supabase auth
+is configured **and** the user is signed in. Otherwise the popover
+is hidden and the localStorage editing model is the only path —
+no banner, no broken control.
+
+From the popover, signed-in users can:
+
+| Action | Effect |
+|---|---|
+| **Pick a study** | Selects the target for Save / Load actions. The selection is persisted to `localStorage["afferent.activeStudyId"]` so refreshing the page keeps the same target. |
+| **Save draft** | Calls `createBuildSnapshot(useBuildStore.getState())` and `PUT /api/studies/:id/snapshot`. Doesn't touch localStorage. |
+| **Load draft** | `GET /api/studies/:id`, runs the returned snapshot through `migratePersistedState` (via `lib/studies/snapshotCoercion.ts`), then calls the store's `loadSnapshot` action. Confirms first — local edits are replaced. |
+| **Cut version…** | Prompts for a label, then `POST /api/studies/:id/versions` with the current snapshot. Immutable on the server. |
+| **New study…** | Prompts for name + optional fiscal year, then `POST /api/studies`. Creates inside the organization the caller's existing studies live in (no org-selector UI in this pass). |
+
+When the server returns `503 not configured` from `/api/studies` (no
+`SUPABASE_SERVICE_ROLE_KEY` in this deployment), the popover shows a
+quiet "Server study storage isn't configured" notice and the
+localStorage editing flow continues to work as the only persistence
+path.
+
+The Zustand store's `persist({ name: "afferent.build.v1" })` is
+unchanged — every edit still flushes to localStorage. Server save /
+load is layered on top, not replacing it. Loading a server draft
+goes through the same `migratePersistedState` helper as
+`lib/snapshotIO.ts:parseSnapshotJson`, so older server-stored
+snapshots round-trip cleanly when the schema evolves.
 
 ### Applying the schema
 
