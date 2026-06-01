@@ -118,14 +118,14 @@ PORT=8787 NODE_ENV=production npm start
 A single process serves:
 
 - `/api/ai/*` — **AI**-backed PDF parse endpoints (Anthropic SDK).
-  CORS / origin / bearer / rate-limit / body-cap middleware applied
-  in that order.
+  Middleware chain (cheapest-reject-first): request log / CORS /
+  origin allowlist / Supabase user-JWT auth / rate limit / body cap.
 - `/api/import/*` — **deterministic** import endpoints (no AI). Same
   middleware chain as `/api/ai/*`. Today: `/api/import/excel/preview`
   (see below).
 - `/healthz` — JSON liveness probe (`{ ok, uptime, at }`). Intentionally
   registered ahead of the protected middleware so it is not subject to
-  bearer auth or rate limiting.
+  user auth or rate limiting.
 - `dist/assets/*` and other build artifacts — static files.
 - Everything else (non-`/api/*` GETs) — falls back to `dist/index.html`
   so TanStack Router can hydrate the SPA.
@@ -183,7 +183,7 @@ surfaces what's in the file.
 | Variable                 | Required?       | Default | Purpose |
 |--------------------------|-----------------|---------|---------|
 | `PORT`                   | recommended     | `8787`  | TCP port the Node server binds to. |
-| `NODE_ENV`               | **yes** in prod | —       | Set to `production`. Several middlewares (origin guard, bearer auth, CORS) fail closed only when this is set, so leaving it unset weakens the gates. |
+| `NODE_ENV`               | **yes** in prod | —       | Set to `production`. Several middlewares (origin guard, Supabase auth, CORS) fail closed only when this is set, so leaving it unset weakens the gates. |
 | `ANTHROPIC_API_KEY`      | for AI parsing  | —       | Claude API key used by `server/aiParse*` handlers. PDF imports degrade gracefully when unset. |
 | `SUPABASE_URL`           | **yes** in prod | —       | Supabase project URL; used to fetch the JWKS for verifying user access_tokens on `/api/ai/*` + `/api/import/*`. With `NODE_ENV=production` and this unset, those endpoints respond `503 Not configured`. **Server-side only** — never `VITE_`-prefix. |
 | `VITE_SUPABASE_URL`      | **yes** in prod | —       | Supabase project URL. Inlined at SPA build time — public by design. Typically the same value as `SUPABASE_URL`. |
