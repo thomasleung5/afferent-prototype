@@ -24,15 +24,20 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { createBuildSnapshot, useBuildActions, useBuildStore } from "@/lib/store";
 import {
   createStudy, createStudyVersion, getStudy, listOrganizations, listStudies,
-  saveStudySnapshot,
   type Organization, type Study,
 } from "@/lib/studies/studiesApi";
 import { coerceServerSnapshot } from "@/lib/studies/snapshotCoercion";
+import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
+import {
+  syncStatusLabel, syncStatusIsRetryable, syncStatusTone,
+  type SyncStatus, type SyncTone,
+} from "@/lib/studies/syncStatus";
+import { useAutoSaveStudy } from "./useAutoSaveStudy";
 
 const ACTIVE_STUDY_STORAGE_KEY = "afferent.activeStudyId";
 
 type ServerState = "idle" | "loading" | "ok" | "not-configured" | "error";
-type WorkingKind = "save" | "load" | "create" | "version" | null;
+type WorkingKind = "load" | "create" | "version" | null;
 type Status = { kind: "ok" | "warn" | "error"; message: string } | null;
 
 export function StudyMenu() {
@@ -156,25 +161,34 @@ function StudyMenuMounted() {
     return creatableOrgs?.[0]?.id ?? null;
   }, [activeStudy, creatableOrgs]);
 
-  async function handleSave() {
-    if (!activeId) return;
-    setWorking("save");
-    setStatus(null);
-    try {
-      const snap = createBuildSnapshot(useBuildStore.getState());
-      const res = await saveStudySnapshot(activeId, snap);
-      if (!res.ok) {
-        setStatus({ kind: "error", message: res.message });
-        return;
-      }
+  // Auto-save the active study's snapshot in the background. Returns
+  // the live sync status + a saveNow flush (used by the retry button)
+  // and a markSynced hook (called after a successful Load so the
+  // status line reads "Saved · now" rather than "Idle").
+  const autosave = useAutoSaveStudy({
+    activeStudyId: activeId,
+    enabled: serverState === "ok" && activeId != null,
+    isNotConfigured: serverState === "not-configured",
+    onStudyMissing: () => {
+      // Server says this study no longer exists or membership was
+      // revoked — clear the local active id and surface a notice.
+      setActiveId(null);
       setStatus({
-        kind: "ok",
-        message: `Saved to ${activeStudy?.name ?? "study"}.`,
+        kind: "warn",
+        message: "Active study is no longer accessible. Reverted to local-only.",
       });
       void refresh();
-    } finally {
-      setWorking(null);
-    }
+    },
+  });
+
+  async function handleSaveNow() {
+    if (!activeId) return;
+    setStatus(null);
+    await autosave.saveNow();
+    // Don't refresh here — autosave handles its own status; refreshing
+    // the list mainly matters when updated_at changes, which the
+    // server bumps on every snapshot upsert and the next user-driven
+    // refresh will pick up.
   }
 
   async function handleLoad() {
@@ -196,7 +210,7 @@ function StudyMenuMounted() {
       if (!res.draft) {
         setStatus({
           kind: "warn",
-          message: "No saved draft exists for this study yet. Save the current state first.",
+          message: "No saved draft exists for this study yet. Edit anything and it'll auto-save.",
         });
         return;
       }
@@ -205,7 +219,12 @@ function StudyMenuMounted() {
         setStatus({ kind: "error", message: coerced.message });
         return;
       }
-      loadSnapshot(coerced.snapshot);
+      // Suppress autosave around the store mutation so the loaded
+      // snapshot doesn't immediately ricochet back to the server.
+      withSuppressedAutosave(() => {
+        loadSnapshot(coerced.snapshot);
+      });
+      autosave.markSynced(Date.now());
       setStatus({ kind: "ok", message: `Loaded ${target}.` });
     } finally {
       setWorking(null);
@@ -269,7 +288,8 @@ function StudyMenuMounted() {
   }
 
   const triggerLabel = activeStudy?.name ?? "Studies";
-  const triggerDisabled = working === "save" || working === "load";
+  const triggerDisabled = working === "load";
+  const syncTone = syncStatusTone(autosave.status);
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -279,7 +299,7 @@ function StudyMenuMounted() {
         disabled={triggerDisabled}
         aria-expanded={open}
         aria-haspopup="menu"
-        title={activeStudy ? `Active study: ${activeStudy.name}` : "Studies"}
+        title={`${activeStudy ? `Active study: ${activeStudy.name}` : "Studies"} · ${syncStatusLabel(autosave.status)}`}
         style={{
           all: "unset",
           cursor: triggerDisabled ? "not-allowed" : "pointer",
@@ -293,6 +313,7 @@ function StudyMenuMounted() {
           opacity: triggerDisabled ? 0.6 : 1,
         }}
       >
+        <SyncDot tone={syncTone} pulse={autosave.status.kind === "saving"}/>
         <span style={{
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>{working ? `${labelForWorking(working)}…` : triggerLabel}</span>
@@ -341,17 +362,20 @@ function StudyMenuMounted() {
             </div>
           )}
 
+          {serverState === "ok" && activeId && (
+            <SyncStatusRow
+              status={autosave.status}
+              onSaveNow={() => { void handleSaveNow(); }}
+            />
+          )}
+
           {serverState === "ok" && (
             <>
               <SectionHeader
                 label="Actions"
-                hint={activeId ? "Targets the selected study above." : "Select a study first."}
-              />
-              <MenuAction
-                label="Save draft"
-                sub="Push the current local snapshot to the selected study."
-                disabled={!activeId || working === "save"}
-                onClick={() => { void handleSave(); }}
+                hint={activeId
+                  ? "Auto-save runs in the background. Other actions target the selected study."
+                  : "Select a study first."}
               />
               <MenuAction
                 label="Load draft"
@@ -395,11 +419,79 @@ function StudyMenuMounted() {
 
 function labelForWorking(w: NonNullable<WorkingKind>): string {
   switch (w) {
-    case "save":    return "Saving";
     case "load":    return "Loading";
     case "create":  return "Creating";
     case "version": return "Cutting version";
   }
+}
+
+function SyncDot({ tone, pulse }: { tone: SyncTone; pulse: boolean }) {
+  const color = toneColor(tone);
+  return (
+    <span
+      aria-hidden
+      style={{
+        width: 6, height: 6, borderRadius: "50%",
+        background: color,
+        flexShrink: 0,
+        opacity: pulse ? 0.5 : 1,
+        transition: "opacity 600ms ease",
+      }}
+    />
+  );
+}
+
+function toneColor(tone: SyncTone): string {
+  switch (tone) {
+    case "pos":     return "var(--pos)";
+    case "warn":    return "var(--warn)";
+    case "neg":     return "var(--neg)";
+    case "neutral": return "var(--ink-3)";
+  }
+}
+
+function SyncStatusRow({
+  status, onSaveNow,
+}: { status: SyncStatus; onSaveNow: () => void }) {
+  const tone = syncStatusTone(status);
+  const label = syncStatusLabel(status);
+  const showRetry = syncStatusIsRetryable(status);
+  return (
+    <div style={{
+      padding: "8px 14px",
+      borderBottom: "1px solid var(--rule)",
+      background: "var(--paper-2)",
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      <SyncDot tone={tone} pulse={status.kind === "saving"}/>
+      <span style={{
+        flex: 1,
+        fontSize: "var(--t-l7)",
+        color: tone === "neg" ? "var(--neg)" : "var(--ink-2)",
+        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+      }} title={status.kind === "error" ? status.message : undefined}>
+        {label}
+      </span>
+      {showRetry && (
+        <button
+          type="button"
+          onClick={onSaveNow}
+          style={{
+            all: "unset",
+            cursor: "pointer",
+            fontSize: "var(--t-l8)",
+            fontWeight: 500,
+            color: "var(--ink)",
+            padding: "2px 8px",
+            border: "1px solid var(--rule-strong)",
+            background: "var(--paper)",
+          }}
+        >
+          Save now
+        </button>
+      )}
+    </div>
+  );
 }
 
 const popoverStyle: CSSProperties = {

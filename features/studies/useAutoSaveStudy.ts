@@ -1,0 +1,216 @@
+/* Auto-save sync for the active server-side study.
+ *
+ * Subscribes to the Zustand build store and pushes the current
+ * snapshot to PUT /api/studies/:id/snapshot whenever it changes,
+ * debounced to coalesce edit bursts.
+ *
+ * Concerns:
+ *   1. **Loop avoidance.** Loading a server snapshot back into the
+ *      store would fire the subscription and re-queue a save of the
+ *      same data. The load path wraps `loadSnapshot` in
+ *      `withSuppressedAutosave` (see lib/studies/autosaveGuard.ts);
+ *      our subscribe callback checks `isAutosaveSuppressed()` and
+ *      skips scheduling during the suppressed window.
+ *
+ *   2. **Burst coalescing.** A single in-flight save at a time. New
+ *      edits during a save set a `queued` flag and trigger a fresh
+ *      debounce only after the in-flight save resolves.
+ *
+ *   3. **Stale active study.** A 404 from the server (study deleted
+ *      or membership revoked) calls `onStudyMissing` so the caller
+ *      can clear the active id and drop back to local-only mode.
+ *
+ *   4. **Disable conditions.** No active study, DB unconfigured, or
+ *      `enabled === false` → the subscription is torn down and the
+ *      status reports local-only / not-configured. */
+
+import { useCallback, useEffect, useRef, useState } from "react";
+import { createBuildSnapshot, useBuildStore } from "@/lib/store";
+import { saveStudySnapshot } from "@/lib/studies/studiesApi";
+import { isAutosaveSuppressed } from "@/lib/studies/autosaveGuard";
+import type { SyncStatus } from "@/lib/studies/syncStatus";
+
+const DEFAULT_DELAY_MS = 1500;
+
+export interface UseAutoSaveStudyArgs {
+  /** Study id to save snapshots to. `null` → local-only mode. */
+  activeStudyId: string | null;
+  /** Master enable switch (signed in, DB configured, etc.). When false,
+   *  the hook stays in `local-only` / `not-configured` and never
+   *  subscribes to store changes. */
+  enabled: boolean;
+  /** True when the server returned 503 / "not configured" for the
+   *  current session — surfaces the dedicated status label. */
+  isNotConfigured: boolean;
+  /** Override for the debounce window (ms). Default 1500. */
+  delayMs?: number;
+  /** Called when the server reports the active study no longer exists
+   *  or is no longer accessible. Caller should clear its local
+   *  active-id reference. */
+  onStudyMissing?: () => void;
+}
+
+export interface UseAutoSaveStudyApi {
+  status: SyncStatus;
+  /** Cancel any pending debounce and save immediately. Resolves once
+   *  the save (success or error) completes. */
+  saveNow: () => Promise<void>;
+  /** Mark the current local state as already-in-sync with the server.
+   *  Used by the load handler after pushing a server snapshot into
+   *  the store, so the status reads "Saved · now" rather than "Idle". */
+  markSynced: (at: number) => void;
+}
+
+export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyApi {
+  const {
+    activeStudyId, enabled, isNotConfigured,
+    delayMs = DEFAULT_DELAY_MS, onStudyMissing,
+  } = args;
+
+  const [status, setStatus] = useState<SyncStatus>(() =>
+    initialStatus({ enabled, isNotConfigured, activeStudyId }),
+  );
+
+  // Mutable refs so the subscribe callback always reads current values
+  // without re-subscribing on every render.
+  const activeStudyIdRef = useRef(activeStudyId);
+  activeStudyIdRef.current = activeStudyId;
+  const enabledRef = useRef(enabled);
+  enabledRef.current = enabled;
+  const delayMsRef = useRef(delayMs);
+  delayMsRef.current = delayMs;
+  const onStudyMissingRef = useRef(onStudyMissing);
+  onStudyMissingRef.current = onStudyMissing;
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const inFlightRef = useRef(false);
+  const queuedRef = useRef(false);
+  const lastSavedAtRef = useRef<number | null>(null);
+
+  const cancelTimer = useCallback(() => {
+    if (timerRef.current != null) {
+      clearTimeout(timerRef.current);
+      timerRef.current = null;
+    }
+  }, []);
+
+  const performSave = useCallback(async () => {
+    const id = activeStudyIdRef.current;
+    if (!id) return;
+    if (inFlightRef.current) {
+      // Save is mid-flight — mark a follow-up so we don't drop the
+      // most recent edits.
+      queuedRef.current = true;
+      return;
+    }
+    inFlightRef.current = true;
+    setStatus({ kind: "saving" });
+    try {
+      const snap = createBuildSnapshot(useBuildStore.getState());
+      const res = await saveStudySnapshot(id, snap);
+      if (!res.ok) {
+        // 404 → study was deleted or membership revoked. Tell the
+        // caller so it can drop the active id; we report the error
+        // but it's the caller's job to actually clear local state.
+        if (/not found/i.test(res.message)) {
+          onStudyMissingRef.current?.();
+        }
+        setStatus({
+          kind: "error",
+          message: res.message,
+          lastSavedAt: lastSavedAtRef.current,
+        });
+        return;
+      }
+      const at = Date.now();
+      lastSavedAtRef.current = at;
+      setStatus({ kind: "saved", at });
+    } finally {
+      inFlightRef.current = false;
+      if (queuedRef.current) {
+        queuedRef.current = false;
+        // Edit happened during the save — start a fresh debounce so
+        // we eventually land the latest snapshot.
+        if (enabledRef.current && activeStudyIdRef.current) {
+          if (timerRef.current != null) clearTimeout(timerRef.current);
+          timerRef.current = setTimeout(() => {
+            timerRef.current = null;
+            void performSave();
+          }, delayMsRef.current);
+        }
+      }
+    }
+  }, []);
+
+  const scheduleSave = useCallback(() => {
+    if (!enabledRef.current || !activeStudyIdRef.current) return;
+    if (timerRef.current != null) clearTimeout(timerRef.current);
+    setStatus({ kind: "saving" });
+    timerRef.current = setTimeout(() => {
+      timerRef.current = null;
+      void performSave();
+    }, delayMsRef.current);
+  }, [performSave]);
+
+  // Resolve the status whenever the enable / activeStudyId / config
+  // flags change. Cancels any pending timer.
+  useEffect(() => {
+    if (isNotConfigured) {
+      cancelTimer();
+      setStatus({ kind: "not-configured" });
+      return;
+    }
+    if (!enabled || !activeStudyId) {
+      cancelTimer();
+      setStatus({ kind: "local-only" });
+      return;
+    }
+    // Active study + enabled + DB configured — start in idle. If we
+    // already have a known last-saved time from this session, show
+    // it; otherwise default to "Synced".
+    cancelTimer();
+    setStatus(lastSavedAtRef.current != null
+      ? { kind: "saved", at: lastSavedAtRef.current }
+      : { kind: "idle" });
+  }, [activeStudyId, enabled, isNotConfigured, cancelTimer]);
+
+  // Subscribe to store changes while we have an active study. The
+  // callback is a stable closure that reads current ids/flags from
+  // refs so we don't re-subscribe on every render.
+  useEffect(() => {
+    if (!enabled || !activeStudyId || isNotConfigured) return;
+    const unsub = useBuildStore.subscribe(() => {
+      if (isAutosaveSuppressed()) return;
+      scheduleSave();
+    });
+    return () => {
+      unsub();
+      cancelTimer();
+    };
+  }, [activeStudyId, enabled, isNotConfigured, scheduleSave, cancelTimer]);
+
+  // Best-effort flush on unmount: cancel any pending timer; the
+  // in-flight save (if any) is allowed to complete on its own.
+  useEffect(() => () => { cancelTimer(); }, [cancelTimer]);
+
+  const saveNow = useCallback(async () => {
+    cancelTimer();
+    await performSave();
+  }, [cancelTimer, performSave]);
+
+  const markSynced = useCallback((at: number) => {
+    cancelTimer();
+    lastSavedAtRef.current = at;
+    setStatus({ kind: "saved", at });
+  }, [cancelTimer]);
+
+  return { status, saveNow, markSynced };
+}
+
+function initialStatus(args: {
+  enabled: boolean; isNotConfigured: boolean; activeStudyId: string | null;
+}): SyncStatus {
+  if (args.isNotConfigured) return { kind: "not-configured" };
+  if (!args.enabled || !args.activeStudyId) return { kind: "local-only" };
+  return { kind: "idle" };
+}

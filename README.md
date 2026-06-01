@@ -227,24 +227,57 @@ From the popover, signed-in users can:
 
 | Action | Effect |
 |---|---|
-| **Pick a study** | Selects the target for Save / Load actions. The selection is persisted to `localStorage["afferent.activeStudyId"]` so refreshing the page keeps the same target. |
-| **Save draft** | Calls `createBuildSnapshot(useBuildStore.getState())` and `PUT /api/studies/:id/snapshot`. Doesn't touch localStorage. |
-| **Load draft** | `GET /api/studies/:id`, runs the returned snapshot through `migratePersistedState` (via `lib/studies/snapshotCoercion.ts`), then calls the store's `loadSnapshot` action. Confirms first — local edits are replaced. |
+| **Pick a study** | Selects the target for auto-save. The selection is persisted to `localStorage["afferent.activeStudyId"]` so refreshing the page keeps the same target. |
+| *(automatic)* **Auto-save** | While an active study is selected, every store change debounces 1500 ms and flushes via `PUT /api/studies/:id/snapshot`. A single save is in-flight at a time; edits during a save are coalesced into one follow-up. |
+| **Save now** | Manual flush / retry. Cancels the debounce timer and saves immediately. Shown next to the status label when a previous save failed; available implicitly on every store change otherwise. |
+| **Load draft** | `GET /api/studies/:id`, runs the returned snapshot through `migratePersistedState` (via `lib/studies/snapshotCoercion.ts`), then calls the store's `loadSnapshot` action. Confirms first — local edits are replaced. The load wraps the store mutation in `withSuppressedAutosave` so it doesn't ricochet straight back to the server. |
 | **Cut version…** | Prompts for a label, then `POST /api/studies/:id/versions` with the current snapshot. Immutable on the server. |
-| **New study…** | Prompts for name + optional fiscal year, then `POST /api/studies`. Creates inside the organization the caller's existing studies live in (no org-selector UI in this pass). |
+| **New study…** | Prompts for name + optional fiscal year, then `POST /api/studies`. Targets the first organization the caller has owner / admin / analyst membership in (via `GET /api/organizations`); a proper picker for multi-org users is future polish. |
 
-When the server returns `503 not configured` from `/api/studies` (no
-`SUPABASE_SERVICE_ROLE_KEY` in this deployment), the popover shows a
-quiet "Server study storage isn't configured" notice and the
-localStorage editing flow continues to work as the only persistence
-path.
+#### Sync status
+
+A small colored dot in the trigger button + a status row at the top
+of the popover surface where the active study is in its save
+lifecycle:
+
+| Label | When | Tone |
+|---|---|---|
+| `Local only` | No active study selected, or the user isn't signed in. Editing stays in localStorage. | neutral |
+| `Storage not configured` | Server returned `503` for `/api/studies` (no `SUPABASE_SERVICE_ROLE_KEY` on the deployment). Editing stays in localStorage. | neutral |
+| `Synced` | Active study selected, no edits pending, no save in flight. | positive |
+| `Saving…` | Debounce timer running or save in flight. | neutral (pulses) |
+| `Saved · 12s ago` | Last save completed; relative timestamp updates as time passes. | positive |
+| `Save failed` | Most recent save errored. The full error message is in the tooltip; the **Save now** button beside the label retries. | negative |
+
+Failed saves preserve the in-flight local state — nothing is
+discarded. If the server reports the active study no longer exists
+(404), the menu clears the local active-id, drops back to
+`Local only`, and surfaces a notice; the localStorage snapshot is
+left intact.
+
+#### Loop avoidance
+
+Loading a server snapshot would normally re-trigger autosave because
+the store subscription fires on every change. To avoid the ricochet:
+
+- `lib/studies/autosaveGuard.ts` exposes a `withSuppressedAutosave`
+  scope (a refcount, not a boolean, so nested scopes compose).
+- `handleLoad` wraps the `loadSnapshot(...)` call in that scope; the
+  autosave subscription checks `isAutosaveSuppressed()` synchronously
+  during the same `set()` invocation and skips scheduling.
+- After the load, `useAutoSaveStudy.markSynced(at)` updates the
+  status to `Saved · just now` so the UI reflects that local + server
+  are aligned.
+
+#### localStorage fallback
 
 The Zustand store's `persist({ name: "afferent.build.v1" })` is
-unchanged — every edit still flushes to localStorage. Server save /
-load is layered on top, not replacing it. Loading a server draft
-goes through the same `migratePersistedState` helper as
-`lib/snapshotIO.ts:parseSnapshotJson`, so older server-stored
-snapshots round-trip cleanly when the schema evolves.
+**unchanged** — every edit still flushes to localStorage independent
+of any server activity. Server persistence is layered on top, not
+replacing it. If the server is unreachable, the deployment
+unconfigured, or the user signs out, editing continues to work
+locally and the popover surfaces the appropriate status label
+without any broken affordances.
 
 ### Applying the schema
 

@@ -28,6 +28,9 @@
 src/routeTree.gen.ts
 .tanstack/
 
+# supabase CLI local artifacts (link state, cached versions, etc.)
+supabase/.temp/
+
 # misc
 .DS_Store
 *.pem
