@@ -151,7 +151,9 @@
       "Bash(grep -E '^\\\\| `[A-Z_]+')",
       "Bash(grep -oE '`[A-Z_]+`')",
       "Bash(npx playwright *)",
-      "Bash(gh run *)"
+      "Bash(gh run *)",
+      "Bash(ANALYZE=1 npm run build)",
+      "Bash(sort -t: -k2 -nr)"
     ]
   }
 }
