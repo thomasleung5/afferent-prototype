@@ -7,6 +7,7 @@ import { aiCors } from "./aiCors";
 import { requireAllowedOrigin } from "./aiOriginGuard";
 import { rateLimit } from "./aiRateLimit";
 import { requestLogger } from "./requestLogger";
+import { logEvent } from "./logger";
 import { resolveMaxBytes } from "./aiUploadValidator";
 import { handleAiParseFees } from "./aiParseFees";
 import { handleAiParseServices } from "./aiParseServices";
@@ -18,23 +19,49 @@ import { handleExcelPreview } from "./excelImport";
 
 const app = new Hono();
 
-// /healthz is intentionally registered before any AI middleware so
+// Global onError → JSON 500 for any unhandled exception escaping an
+// /api/* handler. Echoes the req_id back to the caller so an analyst
+// can pull the matching log line. Non-API routes fall back to Hono's
+// default error response (HTML, no JSON shape promise).
+app.onError((err, c) => {
+  const route = new URL(c.req.url).pathname;
+  if (!route.startsWith("/api/")) throw err;
+  const requestId = (c.get as (k: "requestId") => string | undefined)("requestId");
+  logEvent({
+    level: "error",
+    msg: "unhandled exception",
+    method: c.req.method,
+    route,
+    req_id: requestId,
+    error: err instanceof Error ? err.message : String(err),
+    error_name: err instanceof Error ? err.name : undefined,
+  });
+  return c.json(
+    { ok: false, message: "Internal server error.", req_id: requestId },
+    500,
+  );
+});
+
+// /healthz is intentionally registered before any other middleware so
 // uptime probes don't trip the origin / auth / rate-limit gates and
-// don't appear in the bearer-token audit logs.
+// don't show up in the per-request log stream.
 app.get("/healthz", (c) =>
   c.json({ ok: true, uptime: process.uptime(), at: new Date().toISOString() }),
 );
 
+// Per-request structured log line for EVERY /api/* request — including
+// /api/import/* and any future un-protected /api/public/* surfaces.
+// Logs method, route, status, latency_ms, and a per-request id that
+// downstream handlers can use to correlate their own log lines.
+app.use("/api/*", requestLogger());
+
 // Protected API surfaces — apply the same gates to /api/ai/* (AI parse
 // routes, Anthropic-backed) and /api/import/* (deterministic import
-// routes, no AI). Ordered cheapest-reject-first. requestLogger wraps
-// everything so we always get an envelope log even when downstream
-// middleware rejects. aiCors runs first so OPTIONS preflights can
-// short-circuit before the origin guard / auth gates. The body cap
-// mirrors the upload validator's MAX_UPLOAD_MB so the streaming gate
-// and the parsed-size gate agree on the limit.
+// routes, no AI). Ordered cheapest-reject-first. aiCors runs first so
+// OPTIONS preflights can short-circuit before the origin guard / auth
+// gates. The body cap mirrors the upload validator's MAX_UPLOAD_MB so
+// the streaming gate and the parsed-size gate agree on the limit.
 for (const prefix of ["/api/ai/*", "/api/import/*"] as const) {
-  app.use(prefix, requestLogger());
   app.use(prefix, aiCors());
   app.use(prefix, requireAllowedOrigin());
   // Real user auth (Supabase JWT). Replaces the legacy shared-bearer

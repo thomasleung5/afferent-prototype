@@ -196,6 +196,77 @@ surfaces what's in the file.
 Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate
 limiter keys on it (falling back to `X-Real-IP` then `anonymous`).
 
+## Observability
+
+The server emits **one structured JSON log line per `/api/*` request**
+to stdout. No log shipper is required — every collector we'd
+realistically pipe this into (Datadog, Loki, Cloud Logging, fluent-bit)
+parses single-line JSON natively.
+
+### What gets logged
+
+Per-request envelope (always emitted, regardless of handler):
+
+| Field        | Example                          | Notes |
+|--------------|----------------------------------|-------|
+| `ts`         | `2026-06-01T03:14:22.117Z`       | ISO 8601 timestamp |
+| `level`      | `"info" / "warn" / "error"`      | 2xx→info, 4xx→warn, 5xx→error |
+| `msg`        | `"request"`                      | Always `"request"` for the envelope line |
+| `method`     | `"POST"`                         | HTTP method |
+| `route`      | `"/api/ai/parse-fees"`           | Request path (no query string) |
+| `status`     | `200`                            | HTTP status code |
+| `latency_ms` | `347`                            | Request lifetime |
+| `req_id`     | `"6c4d…"`                        | Per-request UUID — echoed back to the client in `{ok:false,…,req_id}` on any 500 so an analyst can correlate the report with the log line |
+
+Domain handlers (AI parsers, Excel preview, etc.) may emit additional
+log lines tagged with their domain — for example the AI parse routes
+add a `tag: "ai-parse-fees"` line on Anthropic round-trip start /
+finish. Those domain lines share the same `req_id` as the envelope.
+
+A separate `unhandled exception` line is emitted whenever the global
+`onError` handler converts an unexpected throw into a 500 response.
+It carries the same `req_id` as the envelope.
+
+### What is intentionally NOT logged
+
+These are privacy/security invariants — the observability fixture
+asserts the negative case so a future refactor that started dumping
+headers into log fields would fail tests:
+
+- **`Authorization` header values** (Supabase access_tokens).
+- **Request bodies** — uploaded PDF/Excel content, multipart form data.
+- **Query strings** — may carry recovery tokens during the password
+  reset flow.
+- **User emails or any other PII** beyond what the user-id claim
+  exposes (a Supabase UUID is logged only when a handler explicitly
+  emits it; the envelope itself does not).
+- **Stack traces in error responses** — clients see
+  `{ok: false, message: "Internal server error.", req_id}` and never
+  the underlying exception string.
+
+### Viewing logs
+
+**Local development.** Log lines stream to the terminal running
+`npm run dev:api` (or `npm run dev`'s api pane). Pretty-print:
+
+```bash
+npm run dev:api | jq -c .
+```
+
+**Production.** `npm start` writes the same JSON lines to stdout —
+forward via your container/runtime's log collector. Tail with `jq`,
+parse with anything that understands one-JSON-object-per-line.
+
+**Client side.** Render errors are caught by the `<ErrorBoundary/>`
+in `components/ErrorBoundary.tsx` and logged via `console.error`
+("[ErrorBoundary] render error" prefix). API fetch failures from
+`lib/ai/aiApi.ts` and `lib/import/excelPreview.ts` log to
+`console.warn` (non-2xx response) / `console.error` (thrown fetch).
+Visible in browser dev tools; production deployments that want
+durable client error logs can subscribe a client log collector
+(Sentry RUM, Datadog Browser, etc.) — the boundary's `componentDidCatch`
+is the obvious hook point.
+
 ## Browser smoke tests
 
 A tiny Playwright suite under `tests/smoke/` runs the production-critical

@@ -38,21 +38,34 @@ export type ExcelPreviewResponse = ExcelPreviewOk | ExcelPreviewFail;
 /** POST an .xlsx File to /api/import/excel/preview and return the
  *  server's preview payload. Transport / parse errors are surfaced
  *  as `{ ok: false, message }` so the caller only has to switch on
- *  the discriminator. */
+ *  the discriminator.
+ *
+ *  Non-2xx responses + thrown fetch errors are logged to the browser
+ *  console (warn / error tone depending on severity). Only endpoint
+ *  + HTTP status are logged — workbook bytes, file name, and auth
+ *  headers never enter the log. */
 export async function previewExcelFile(file: File): Promise<ExcelPreviewResponse> {
+  const path = "/api/import/excel/preview";
   const form = new FormData();
   form.append("file", file);
 
   let res: Response;
   try {
-    res = await fetch("/api/import/excel/preview", {
+    res = await fetch(path, {
       method: "POST",
       body: form,
       headers: await aiAuthHeaders(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error.";
+    // eslint-disable-next-line no-console
+    console.error("[api] fetch failed", { path, message });
     return { ok: false, message };
+  }
+
+  if (res.status >= 400) {
+    // eslint-disable-next-line no-console
+    console.warn("[api] non-2xx response", { path, status: res.status });
   }
 
   const contentType = res.headers.get("content-type") ?? "";

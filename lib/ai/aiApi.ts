@@ -29,16 +29,37 @@ export async function aiAuthHeaders(): Promise<Record<string, string>> {
  *  JSON body when the response is JSON-shaped (any status), or
  *  synthesizes a `{ ok: false, message }` body from the raw text /
  *  HTTP status when the server returned plaintext (e.g. an upstream
- *  proxy 502 with an HTML error page). */
+ *  proxy 502 with an HTML error page).
+ *
+ *  Non-2xx responses + thrown fetch errors are logged to the browser
+ *  console (warn / error tone depending on severity) so failures
+ *  show up in dev tools without surfacing scary stack traces to the
+ *  user. Endpoint path + HTTP status are the only things logged —
+ *  uploaded file contents, request bodies, and `Authorization`
+ *  headers never enter the log. */
 export async function aiApiPost<T extends { ok: boolean; message?: string }>(
   path: string,
   body: FormData,
 ): Promise<T> {
-  const res = await fetch(path, {
-    method: "POST",
-    body,
-    headers: await aiAuthHeaders(),
-  });
+  let res: Response;
+  try {
+    res = await fetch(path, {
+      method: "POST",
+      body,
+      headers: await aiAuthHeaders(),
+    });
+  } catch (err) {
+    const message = err instanceof Error ? err.message : "Network error.";
+    // eslint-disable-next-line no-console
+    console.error("[api] fetch failed", { path, message });
+    return { ok: false, message } as T;
+  }
+
+  if (res.status >= 400) {
+    // eslint-disable-next-line no-console
+    console.warn("[api] non-2xx response", { path, status: res.status });
+  }
+
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {
     return res.json() as Promise<T>;

@@ -24,10 +24,12 @@ export type LogLevel = "info" | "warn" | "error";
 export interface LogFields {
   level?: LogLevel;
   msg: string;
+  method?: string;
   route?: string;
   status?: number;
   latency_ms?: number;
   tag?: string;
+  req_id?: string;
   [key: string]: unknown;
 }
 
