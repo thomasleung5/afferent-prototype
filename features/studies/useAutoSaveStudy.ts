@@ -96,7 +96,11 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
   }, []);
 
   const performSave = useCallback(async () => {
-    const id = activeStudyIdRef.current;
+    // Prefer the module's id over the React-state-derived ref — the
+    // ref is updated during render so a save fired from the same
+    // event handler that just called setActiveStudy() would otherwise
+    // see the previous id.
+    const id = getActiveStudyId() ?? activeStudyIdRef.current;
     if (!id) return;
     if (inFlightRef.current) {
       // Save is mid-flight — mark a follow-up so we don't drop the
@@ -154,25 +158,28 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
   }, [performSave]);
 
   // Resolve the status whenever the enable / activeStudyId / config
-  // flags change. Cancels any pending timer.
+  // flags change. Cancels any pending timer. Also resets the
+  // per-study save-timestamp cache: a previously-saved A doesn't
+  // mean B has been saved.
   useEffect(() => {
     if (isNotConfigured) {
       cancelTimer();
+      lastSavedAtRef.current = null;
       setStatus({ kind: "not-configured" });
       return;
     }
     if (!enabled || !activeStudyId) {
       cancelTimer();
+      lastSavedAtRef.current = null;
       setStatus({ kind: "local-only" });
       return;
     }
-    // Active study + enabled + DB configured — start in idle. If we
-    // already have a known last-saved time from this session, show
-    // it; otherwise default to "Synced".
+    // Active study + enabled + DB configured — start in idle. The
+    // previous study's timestamp was cleared on switch, so this is
+    // always a fresh-per-study idle state.
     cancelTimer();
-    setStatus(lastSavedAtRef.current != null
-      ? { kind: "saved", at: lastSavedAtRef.current }
-      : { kind: "idle" });
+    lastSavedAtRef.current = null;
+    setStatus({ kind: "idle" });
   }, [activeStudyId, enabled, isNotConfigured, cancelTimer]);
 
   // Subscribe to store changes while we have an active study. The

@@ -399,6 +399,7 @@ docker build \
 docker run --rm -p 8787:8787 \
   -e NODE_ENV=production \
   -e SUPABASE_URL=https://<project>.supabase.co \
+  -e SUPABASE_SERVICE_ROLE_KEY=<service-role secret> \
   -e ALLOWED_ORIGINS=https://<your-domain> \
   -e ANTHROPIC_API_KEY=<optional> \
   afferent
@@ -407,6 +408,37 @@ docker run --rm -p 8787:8787 \
 The image runs as the non-root `node` user and ships only the runtime
 `dependencies` from `package.json` plus the build outputs — no source,
 no devDeps.
+
+`SUPABASE_SERVICE_ROLE_KEY` is required at boot in production — the
+container exits non-zero with a clear message if it's missing.
+
+### Production smoke
+
+`scripts/prod-smoke.sh` (wrapped as `npm run smoke:prod`) boots the
+compiled `dist-server/index.mjs` with the production env contract and
+asserts `/healthz` returns 2xx. When `SMOKE_BEARER` is set, it also
+exercises `GET /api/studies` with a real bearer to confirm the
+service-role path is wired end-to-end.
+
+```bash
+# Requires `npm run build` to have run.
+SUPABASE_URL=https://<project>.supabase.co \
+SUPABASE_SERVICE_ROLE_KEY=<service-role secret> \
+ALLOWED_ORIGINS=http://localhost:8789 \
+  npm run smoke:prod
+
+# Authenticated round-trip — grab the access_token via
+# supabase.auth.getSession() in the SPA's browser dev tools and
+# export it as SMOKE_BEARER. Keep it out of shell history.
+SMOKE_BEARER='eyJ…' \
+SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… ALLOWED_ORIGINS=… \
+  npm run smoke:prod
+```
+
+Secrets are passed through env, never logged, and never committed —
+the script reads them from the calling shell. `.env.local` is
+gitignored; production deployments should source these from the
+platform's secret manager rather than a checked-in file.
 
 A single process serves:
 
@@ -496,7 +528,7 @@ client store it has to mutate.
 | `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
 | `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. The default limiter is in-process (a `Map<key, ts[]>` per replica). For multi-replica production, replace it with a shared backend via `rateLimit({ adapter })` — see `server/aiRateLimit.ts`'s `RateLimitAdapter` interface. |
 | `MAX_UPLOAD_MB`          | optional        | `20`    | Per-request upload cap (MB). The streaming body limit and the parsed-size gate both honor this. |
-| `SUPABASE_SERVICE_ROLE_KEY` | study persistence | —     | Server-side Supabase admin key used by `/api/studies/*` to read + write the persistence tables. Bypasses RLS by design — the handlers enforce authorization in code using the user id from `requireAuth()` plus the role helpers in `server/studies/authorization.ts`. **Server-side only — never `VITE_`-prefix.** When unset, `/api/studies/*` responds `503 not configured`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | **yes** in prod | —     | Server-side Supabase admin key used by `/api/studies/*` to read + write the persistence tables. Bypasses RLS by design — handlers enforce authorization in code using the user id from `requireAuth()` plus the role helpers in `server/studies/authorization.ts`. **Server-side only — never `VITE_`-prefix.** Required at boot in production now that study persistence is a core feature (see `server/env.ts`). In local dev `/api/studies/*` returns `503 not configured` when unset; the SPA's localStorage editing path keeps working. |
 | `STUDY_SNAPSHOT_MAX_MB`  | optional        | `5`     | JSON body cap (MB) for `PUT /api/studies/:id/snapshot` and `POST /api/studies/:id/versions`. Snapshots above the cap return 413. |
 
 Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate

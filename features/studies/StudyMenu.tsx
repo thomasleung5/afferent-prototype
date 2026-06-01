@@ -24,6 +24,7 @@ import { useAuth } from "@/lib/auth/AuthContext";
 import { createBuildSnapshot, useBuildActions, useBuildStore } from "@/lib/store";
 import {
   createStudy, createStudyVersion, getStudy, listOrganizations, listStudies,
+  saveStudySnapshot,
   type Organization, type Study,
 } from "@/lib/studies/studiesApi";
 import { coerceServerSnapshot } from "@/lib/studies/snapshotCoercion";
@@ -259,7 +260,23 @@ function StudyMenuMounted() {
         return;
       }
       setActiveStudy({ id: res.study.id, name: res.study.name });
-      setStatus({ kind: "ok", message: `Created "${res.study.name}".` });
+      // Initial baseline save — capture the current local state as
+      // the new study's draft so a later "Load draft" doesn't return
+      // null. Done synchronously here (rather than waiting for the
+      // autosave hook's debounce) so the new study has a draft from
+      // the moment of creation. Errors here are non-fatal — the
+      // autosave subscription will retry on the next edit.
+      const snap = createBuildSnapshot(useBuildStore.getState());
+      const seedRes = await saveStudySnapshot(res.study.id, snap);
+      if (seedRes.ok) {
+        autosave.markSynced(Date.now());
+        setStatus({ kind: "ok", message: `Created "${res.study.name}" and saved initial draft.` });
+      } else {
+        setStatus({
+          kind: "warn",
+          message: `Created "${res.study.name}" but initial save failed (${seedRes.message}). Edit anything to retry.`,
+        });
+      }
       void refresh();
     } finally {
       setWorking(null);
@@ -299,6 +316,7 @@ function StudyMenuMounted() {
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
       <button
         type="button"
+        data-testid="study-menu-trigger"
         onClick={() => setOpen((o) => !o)}
         disabled={triggerDisabled}
         aria-expanded={open}

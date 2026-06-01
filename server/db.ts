@@ -24,9 +24,9 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 
 let cached: SupabaseClient | null = null;
 
-/** Return the singleton service-role client, or null when the
- *  required env vars aren't set. Callers should 503 on null. */
-export function getDbClient(): SupabaseClient | null {
+/** Default provider — builds the service-role client from env on first
+ *  call. Test fixtures swap this out via `setDbClientProviderForTests`. */
+function defaultProvider(): SupabaseClient | null {
   if (cached) return cached;
   const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
@@ -37,9 +37,35 @@ export function getDbClient(): SupabaseClient | null {
   return cached;
 }
 
+let provider: () => SupabaseClient | null = defaultProvider;
+
+/** Return the singleton service-role client, or null when the
+ *  required env vars aren't set. Callers should 503 on null. */
+export function getDbClient(): SupabaseClient | null {
+  return provider();
+}
+
 /** Test seam — clears the cached client so a fixture can swap in a
  *  fake or re-read env. Not used by production code. */
 export function resetDbClient(): void {
+  cached = null;
+}
+
+/** Test seam — inject a fake SupabaseClient (or any object that
+ *  satisfies the subset of the client API the handlers actually use).
+ *  Pass `null` to simulate "DB not configured" (handlers should 503).
+ *  Call `resetDbClientProviderForTests()` to restore the env-driven
+ *  default after each fixture. */
+export function setDbClientProviderForTests(
+  next: () => SupabaseClient | null,
+): void {
+  provider = next;
+  cached = null;
+}
+
+/** Restore the default env-driven provider. */
+export function resetDbClientProviderForTests(): void {
+  provider = defaultProvider;
   cached = null;
 }
 

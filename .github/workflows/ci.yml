@@ -43,6 +43,7 @@ jobs:
           NODE_ENV: production
           PORT: '8788'
           SUPABASE_URL: https://dummy.supabase.co
+          SUPABASE_SERVICE_ROLE_KEY: dummy-service-role-key
           ALLOWED_ORIGINS: http://localhost:8788
         run: |
           node dist-server/index.mjs &

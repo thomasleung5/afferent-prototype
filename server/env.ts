@@ -11,8 +11,12 @@
  * routes traffic to it.
  *
  * Required at runtime in production:
- *   SUPABASE_URL     — server-side JWKS verification of user tokens.
- *   ALLOWED_ORIGINS  — comma-separated origin allowlist for CORS gate.
+ *   SUPABASE_URL              — server-side JWKS verification of user tokens.
+ *   SUPABASE_SERVICE_ROLE_KEY — service-role key for /api/studies/* CRUD.
+ *                               Persistence is a core feature now, so its
+ *                               absence in production is treated as a
+ *                               misconfiguration rather than a soft 503.
+ *   ALLOWED_ORIGINS           — comma-separated origin allowlist for CORS gate.
  *
  * NOT validated here (build-time concerns inlined into the SPA bundle):
  *   VITE_SUPABASE_URL, VITE_SUPABASE_ANON_KEY — see
@@ -20,7 +24,9 @@
  *   because by the time it runs, the bundle has already been built.
  *
  * Local development is intentionally exempt: empty env + dev bypass
- * via .env.local + AUTH_DEV_BYPASS=1 stays a single-line setup. */
+ * via .env.local + AUTH_DEV_BYPASS=1 stays a single-line setup, and
+ * /api/studies/* will return 503 "not configured" rather than blocking
+ * boot. */
 
 export interface EnvValidationResult {
   ok: boolean;
@@ -34,7 +40,11 @@ export interface EnvValidationResult {
   dbEnabled: boolean;
 }
 
-const PROD_REQUIRED = ["SUPABASE_URL", "ALLOWED_ORIGINS"] as const;
+const PROD_REQUIRED = [
+  "SUPABASE_URL",
+  "SUPABASE_SERVICE_ROLE_KEY",
+  "ALLOWED_ORIGINS",
+] as const;
 
 /** Pure check — accepts a snapshot of the env so fixtures can drive it
  *  without touching process.env. */

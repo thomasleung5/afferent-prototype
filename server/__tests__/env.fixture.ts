@@ -33,12 +33,15 @@ let passed = 0;
   passed++;
 }
 
-// Prod with nothing set → both vars missing.
+// Prod with nothing set → all three required vars in missing.
 {
   const r = validateEnv({ NODE_ENV: "production" });
   assert.equal(r.ok, false);
   assert.equal(r.isProduction, true);
-  assert.deepEqual(r.missing.sort(), ["ALLOWED_ORIGINS", "SUPABASE_URL"]);
+  assert.deepEqual(
+    r.missing.sort(),
+    ["ALLOWED_ORIGINS", "SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_URL"],
+  );
   passed++;
 }
 
@@ -49,7 +52,22 @@ let passed = 0;
     SUPABASE_URL: "https://x.supabase.co",
   });
   assert.equal(r.ok, false);
-  assert.deepEqual(r.missing, ["ALLOWED_ORIGINS"]);
+  assert.deepEqual(
+    r.missing.sort(),
+    ["ALLOWED_ORIGINS", "SUPABASE_SERVICE_ROLE_KEY"],
+  );
+  passed++;
+}
+
+// Prod missing only the service-role key.
+{
+  const r = validateEnv({
+    NODE_ENV: "production",
+    SUPABASE_URL: "https://x.supabase.co",
+    ALLOWED_ORIGINS: "https://app.example",
+  });
+  assert.equal(r.ok, false);
+  assert.deepEqual(r.missing, ["SUPABASE_SERVICE_ROLE_KEY"]);
   passed++;
 }
 
@@ -58,10 +76,11 @@ let passed = 0;
   const r = validateEnv({
     NODE_ENV: "production",
     SUPABASE_URL: "   ",
+    SUPABASE_SERVICE_ROLE_KEY: "",
     ALLOWED_ORIGINS: "",
   });
   assert.equal(r.ok, false);
-  assert.equal(r.missing.length, 2);
+  assert.equal(r.missing.length, 3);
   passed++;
 }
 
@@ -70,6 +89,7 @@ let passed = 0;
   const r = validateEnv({
     NODE_ENV: "production",
     SUPABASE_URL: "https://x.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-secret",
     ALLOWED_ORIGINS: "https://app.example",
   });
   assert.equal(r.ok, true);
