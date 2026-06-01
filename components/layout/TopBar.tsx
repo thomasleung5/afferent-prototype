@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ModelSettingsMenu } from "./ModelSettingsMenu";
+import { useAuth } from "@/lib/auth/AuthContext";
 
 interface NavItem {
   href: string;
@@ -21,12 +22,6 @@ export function TopBar() {
   const pathname = useRouterState({ select: (s) => s.location.pathname });
   // Print/export routes get a clean shell — no app chrome.
   if (pathname.startsWith("/export")) return null;
-  const isActive = (n: NavItem) => {
-    const base = n.prefix ?? n.href;
-    if (base === "/") return pathname === "/";
-    return pathname === base || pathname.startsWith(base + "/");
-  };
-
   return (
     <div style={{
       borderBottom: "1px solid var(--rule)",
@@ -53,39 +48,96 @@ export function TopBar() {
         <ModelSettingsMenu/>
 
         <div style={{ flex: 1 }}/>
-        <div className="mono" style={{
-          width: 28, height: 28,
-          border: "1px solid var(--rule-strong)",
-          display: "flex", alignItems: "center", justifyContent: "center",
-          fontSize: "var(--t-l4)", fontWeight: 600,
-          background: "var(--paper-2)",
-        }}>MR</div>
+        <AuthChip/>
       </div>
 
-      <div style={{
-        borderTop: "1px solid var(--rule)",
-        background: "var(--paper-2)",
-        padding: "0 28px",
-        display: "flex", gap: 0, height: 38, alignItems: "stretch",
-      }}>
-        {NAV.map((n) => {
-          const on = isActive(n);
-          return (
-            <Link key={n.href} to={n.href} style={{
-              padding: "0 14px",
-              display: "inline-flex", alignItems: "center",
-              fontSize: "var(--t-l7)", fontWeight: 500,
-              color: on ? "var(--ink)" : "var(--ink-3)",
-              borderBottom: on ? "2px solid var(--ink)" : "2px solid transparent",
-              marginBottom: -1,
-              whiteSpace: "nowrap",
-              textDecoration: "none",
-            }}>{n.label}</Link>
-          );
-        })}
-      </div>
-
+      <SubNav pathname={pathname}/>
     </div>
   );
 }
 
+function SubNav({ pathname }: { pathname: string }) {
+  const isActive = (n: NavItem) => {
+    const base = n.prefix ?? n.href;
+    if (base === "/") return pathname === "/";
+    return pathname === base || pathname.startsWith(base + "/");
+  };
+  return (
+    <div style={{
+      borderTop: "1px solid var(--rule)",
+      background: "var(--paper-2)",
+      padding: "0 28px",
+      display: "flex", gap: 0, height: 38, alignItems: "stretch",
+    }}>
+      {NAV.map((n) => {
+        const on = isActive(n);
+        return (
+          <Link key={n.href} to={n.href} style={{
+            padding: "0 14px",
+            display: "inline-flex", alignItems: "center",
+            fontSize: "var(--t-l7)", fontWeight: 500,
+            color: on ? "var(--ink)" : "var(--ink-3)",
+            borderBottom: on ? "2px solid var(--ink)" : "2px solid transparent",
+            marginBottom: -1,
+            whiteSpace: "nowrap",
+            textDecoration: "none",
+          }}>{n.label}</Link>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Right-side chip — shows initials when signed in, plus a Sign out
+ *  action. Falls back to the legacy "MR" stub when Supabase isn't
+ *  configured (local dev). */
+function AuthChip() {
+  const { session, signOut, configured } = useAuth();
+  if (!configured) {
+    return (
+      <div className="mono" style={chipBaseStyle}>MR</div>
+    );
+  }
+  const email = session?.user.email ?? "";
+  const initials = initialsFromEmail(email);
+  return (
+    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+      <div
+        className="mono"
+        style={chipBaseStyle}
+        title={email || undefined}
+      >
+        {initials || "?"}
+      </div>
+      <button
+        type="button"
+        onClick={() => { void signOut(); }}
+        style={{
+          all: "unset",
+          cursor: "pointer",
+          fontSize: "var(--t-l8)",
+          color: "var(--ink-3)",
+          padding: "4px 6px",
+        }}
+      >
+        Sign out
+      </button>
+    </div>
+  );
+}
+
+const chipBaseStyle: React.CSSProperties = {
+  width: 28, height: 28,
+  border: "1px solid var(--rule-strong)",
+  display: "flex", alignItems: "center", justifyContent: "center",
+  fontSize: "var(--t-l4)", fontWeight: 600,
+  background: "var(--paper-2)",
+};
+
+function initialsFromEmail(email: string): string {
+  const local = email.split("@")[0] ?? "";
+  const parts = local.split(/[.\-_]+/).filter(Boolean);
+  if (parts.length === 0) return "";
+  if (parts.length === 1) return parts[0].slice(0, 2).toUpperCase();
+  return (parts[0][0] + parts[1][0]).toUpperCase();
+}

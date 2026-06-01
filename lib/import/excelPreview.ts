@@ -48,7 +48,7 @@ export async function previewExcelFile(file: File): Promise<ExcelPreviewResponse
     res = await fetch("/api/import/excel/preview", {
       method: "POST",
       body: form,
-      headers: aiAuthHeaders(),
+      headers: await aiAuthHeaders(),
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error.";

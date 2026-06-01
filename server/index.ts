@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { bodyLimit } from "hono/body-limit";
 import { serve } from "@hono/node-server";
 import { serveStatic } from "@hono/node-server/serve-static";
-import { requireAiBearer } from "./aiAuth";
+import { requireAuth } from "./requireAuth";
 import { aiCors } from "./aiCors";
 import { requireAllowedOrigin } from "./aiOriginGuard";
 import { rateLimit } from "./aiRateLimit";
@@ -37,7 +37,11 @@ for (const prefix of ["/api/ai/*", "/api/import/*"] as const) {
   app.use(prefix, requestLogger());
   app.use(prefix, aiCors());
   app.use(prefix, requireAllowedOrigin());
-  app.use(prefix, requireAiBearer());
+  // Real user auth (Supabase JWT). Replaces the legacy shared-bearer
+  // gate — that token was baked into the SPA bundle and never a real
+  // authn boundary. The middleware honors a documented dev escape
+  // hatch (AUTH_DEV_BYPASS=1 + NODE_ENV!=production).
+  app.use(prefix, requireAuth());
   app.use(prefix, rateLimit());
   app.use(prefix, bodyLimit({
     maxSize: resolveMaxBytes(),

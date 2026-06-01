@@ -1,33 +1,28 @@
-/* Thin wrapper around fetch for the /api/ai/* endpoints.
+/* Thin wrapper around fetch for the /api/ai/* + /api/import/*
+ * endpoints.
  *
  * Centralizes two concerns:
- *   1. Attach `Authorization: Bearer <token>` when the build-time
- *      env var VITE_AI_API_TOKEN is configured (matches the server's
- *      AI_API_TOKEN gate — see server/aiAuth.ts).
+ *   1. Attach `Authorization: Bearer <supabase access_token>` so the
+ *      server's requireAuth middleware can verify the user's JWT.
+ *      The token is read live from the Supabase session — never from
+ *      a build-time env var, since that path was the legacy
+ *      VITE_AI_API_TOKEN model that wasn't real authn.
  *   2. Normalize the response shape so each adapter doesn't repeat
  *      the same "non-2xx without 502 → text body; otherwise JSON"
- *      handling.
- *
- * Security note: VITE_* env vars are baked into the SPA bundle and
- * are therefore PUBLIC. The bearer pair (server AI_API_TOKEN +
- * frontend VITE_AI_API_TOKEN) is a basic API gate — it stops random
- * unauthenticated requests against the proxy, but anyone who can
- * load the SPA can read the token. Pair with rate limiting / origin
- * checks / real user auth for stronger protection. */
+ *      handling. */
 
-const TOKEN: string | undefined = (() => {
-  // Read via the import.meta.env bag so build-tooling can inline the
-  // value at SPA build time. Guarded with optional chaining so this
-  // module is safe to import from non-Vite contexts (e.g. fixture
-  // tests that may pull it transitively).
-  const env = (import.meta as { env?: Record<string, string | undefined> }).env;
-  return env?.VITE_AI_API_TOKEN;
-})();
+import { getSupabaseClient } from "@/lib/auth/supabaseClient";
 
-/** Auth headers for /api/ai/* requests. Empty object when no token is
- *  configured at build time (matches the server's permissive dev mode). */
-export function aiAuthHeaders(): Record<string, string> {
-  return TOKEN ? { Authorization: `Bearer ${TOKEN}` } : {};
+/** Auth headers for /api/ai/* + /api/import/* requests. Reads the
+ *  current Supabase session live (via getSession). Returns an empty
+ *  object when no session is active — the server will then 401 the
+ *  request, which the caller surfaces as a sign-in prompt. */
+export async function aiAuthHeaders(): Promise<Record<string, string>> {
+  const supabase = getSupabaseClient();
+  if (!supabase) return {};
+  const { data } = await supabase.auth.getSession();
+  const token = data.session?.access_token;
+  return token ? { Authorization: `Bearer ${token}` } : {};
 }
 
 /** Generic POST helper for the AI parse routes. Returns the parsed
@@ -42,7 +37,7 @@ export async function aiApiPost<T extends { ok: boolean; message?: string }>(
   const res = await fetch(path, {
     method: "POST",
     body,
-    headers: aiAuthHeaders(),
+    headers: await aiAuthHeaders(),
   });
   const contentType = res.headers.get("content-type") ?? "";
   if (contentType.includes("application/json")) {

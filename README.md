@@ -32,6 +32,54 @@ Set `ANTHROPIC_API_KEY` in `.env.local` to enable the `/api/ai/parse-*` endpoint
 Other scripts: `npm run build` (Vite production build), `npm run preview`
 (serve the build), `npm run typecheck` (`tsc --noEmit`).
 
+## Authentication
+
+Real user authentication is wired through **Supabase Auth**. The
+browser uses the public anon key to sign in; the server verifies the
+resulting access_token's HS256 signature locally via `jose` — no
+network round-trip and no service-role key on this server.
+
+### Configure a Supabase project
+
+1. Create a project at https://supabase.com.
+2. Settings → API: copy **Project URL**, **anon public key**, and
+   **JWT Secret**.
+3. Add users via the Supabase dashboard (Auth → Users → Add user).
+4. Set the env vars below in `.env.local` (dev) and your deployment
+   environment (prod).
+
+### Required env vars
+
+| Variable | Side | Required? | Purpose |
+|---|---|---|---|
+| `VITE_SUPABASE_URL`        | client (SPA build)  | **yes** in prod | Project URL — inlined at build time. |
+| `VITE_SUPABASE_ANON_KEY`   | client (SPA build)  | **yes** in prod | Anon (publishable) key — inlined at build time. **Not** a secret. |
+| `SUPABASE_JWT_SECRET`      | server              | **yes** in prod | HS256 secret used to verify the access_token signature. |
+| `AUTH_DEV_BYPASS`          | server (dev only)   | optional        | Set to `1` to skip JWT verification entirely. Only honored when `NODE_ENV !== "production"`. Injects a synthetic dev user — useful for `npm run dev` without a Supabase project. |
+
+`/api/ai/*` and `/api/import/*` require a valid bearer token (or the
+dev bypass). Missing / invalid tokens return `401` with the standard
+`{ ok: false, message }` JSON shape. `/healthz` is public.
+
+### Local development
+
+The easiest path for local dev is:
+
+```bash
+# In .env.local
+NODE_ENV=development
+AUTH_DEV_BYPASS=1
+```
+
+The SPA still renders without `VITE_SUPABASE_*` configured — the
+login page surfaces a friendly "Auth isn't configured" notice, and
+the route guard passes through. The server's dev bypass is what
+actually allows the protected API calls in this mode.
+
+For end-to-end testing of the real auth flow locally, set both the
+client `VITE_*` vars and the server `SUPABASE_JWT_SECRET` to match
+your Supabase project and skip the bypass.
+
 ## Deployment
 
 This app ships as a single Node service. The Hono server in `server/`
@@ -113,7 +161,10 @@ surfaces what's in the file.
 | `PORT`                   | recommended     | `8787`  | TCP port the Node server binds to. |
 | `NODE_ENV`               | **yes** in prod | —       | Set to `production`. Several middlewares (origin guard, bearer auth, CORS) fail closed only when this is set, so leaving it unset weakens the gates. |
 | `ANTHROPIC_API_KEY`      | for AI parsing  | —       | Claude API key used by `server/aiParse*` handlers. PDF imports degrade gracefully when unset. |
-| `AI_API_TOKEN`           | **yes** in prod | —       | Shared bearer secret. Clients must send `Authorization: Bearer <token>` to `/api/ai/*`. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. **Do not** prefix with `VITE_` — that would bake the secret into the JS bundle. |
+| `SUPABASE_JWT_SECRET`    | **yes** in prod | —       | HS256 secret used to verify Supabase user access_tokens on `/api/ai/*` + `/api/import/*`. With `NODE_ENV=production` and this unset, those endpoints respond `503 Not configured`. **Server-side only** — never `VITE_`-prefix. |
+| `VITE_SUPABASE_URL`      | **yes** in prod | —       | Supabase project URL. Inlined at SPA build time — public by design. |
+| `VITE_SUPABASE_ANON_KEY` | **yes** in prod | —       | Supabase anon (publishable) key. Inlined at SPA build time — public by design. |
+| `AUTH_DEV_BYPASS`        | dev only        | —       | When `1` + `NODE_ENV !== "production"`, skips JWT verification on `/api/ai/*` + `/api/import/*` and injects a synthetic dev user. Has no effect in production even when set. |
 | `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
 | `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. |
 | `MAX_UPLOAD_MB`          | optional        | `20`    | Per-request upload cap (MB). The streaming body limit and the parsed-size gate both honor this. |
