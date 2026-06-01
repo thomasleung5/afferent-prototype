@@ -150,7 +150,8 @@
       "Bash(pkill -f \"tsx server/index.ts\")",
       "Bash(grep -E '^\\\\| `[A-Z_]+')",
       "Bash(grep -oE '`[A-Z_]+`')",
-      "Bash(npx playwright *)"
+      "Bash(npx playwright *)",
+      "Bash(gh run *)"
     ]
   }
 }
