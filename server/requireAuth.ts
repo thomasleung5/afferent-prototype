@@ -55,8 +55,8 @@ export const DEV_BYPASS_USER: AuthUser = {
   role: "authenticated",
 };
 
-/** Hono middleware factory. Reads SUPABASE_JWT_SECRET + AUTH_DEV_BYPASS
- *  + NODE_ENV at request time so tests + tsx watch pick up env changes
+/** Hono middleware factory. Reads SUPABASE_URL + AUTH_DEV_BYPASS +
+ *  NODE_ENV at request time so tests + tsx watch pick up env changes
  *  without restart. */
 export function requireAuth(): MiddlewareHandler<AuthEnv> {
   return async (c, next) => {
