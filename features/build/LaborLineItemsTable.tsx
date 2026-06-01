@@ -193,7 +193,7 @@ export function LaborLineItemsTable() {
         >
           <span style={{
             position: "absolute", top: 2, left: r.include ? 18 : 2,
-            width: 16, height: 16, borderRadius: "50%", background: "#fff",
+            width: 16, height: 16, borderRadius: "50%", background: "var(--paper)",
             transition: "left 100ms",
           }}/>
         </button>
