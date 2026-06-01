@@ -35,26 +35,43 @@ Other scripts: `npm run build` (Vite production build), `npm run preview`
 ## Authentication
 
 Real user authentication is wired through **Supabase Auth**. The
-browser uses the public anon key to sign in; the server verifies the
-resulting access_token's HS256 signature locally via `jose` — no
-network round-trip and no service-role key on this server.
+browser uses the publishable API key to sign in; the server verifies
+the resulting access_token by fetching the project's JWKS (one fetch
+per process, cached) and validating the asymmetric signature locally
+via `jose` — no per-request Supabase round-trip and no service-role
+key on this server.
 
 ### Configure a Supabase project
 
 1. Create a project at https://supabase.com.
-2. Settings → API: copy **Project URL**, **anon public key**, and
-   **JWT Secret**.
+2. Settings → API: copy the **Project URL** and the **Publishable API
+   Key**.
 3. Add users via the Supabase dashboard (Auth → Users → Add user).
-4. Set the env vars below in `.env.local` (dev) and your deployment
+4. **Authentication → URL Configuration**: add the password-recovery
+   redirect URLs to the allowlist (Supabase will refuse to send users
+   anywhere not on the list):
+   - `http://localhost:3000/reset-password` (local dev)
+   - `https://your-prod-domain/reset-password` (production)
+
+   Set the **Site URL** to your production origin (e.g.
+   `https://your-prod-domain`). Recovery emails use it as the
+   default redirect base; our login page also passes an explicit
+   `redirectTo` of `${window.location.origin}/reset-password` so the
+   right page receives the recovery hash even when an analyst clicks
+   the link from a different device.
+5. Set the env vars below in `.env.local` (dev) and your deployment
    environment (prod).
+
+The **Secret API Key** is not used by this app's server — keep it
+out of the env file.
 
 ### Required env vars
 
 | Variable | Side | Required? | Purpose |
 |---|---|---|---|
 | `VITE_SUPABASE_URL`        | client (SPA build)  | **yes** in prod | Project URL — inlined at build time. |
-| `VITE_SUPABASE_ANON_KEY`   | client (SPA build)  | **yes** in prod | Anon (publishable) key — inlined at build time. **Not** a secret. |
-| `SUPABASE_JWT_SECRET`      | server              | **yes** in prod | HS256 secret used to verify the access_token signature. |
+| `VITE_SUPABASE_ANON_KEY`   | client (SPA build)  | **yes** in prod | Publishable API key — inlined at build time. **Not** a secret. |
+| `SUPABASE_URL`             | server              | **yes** in prod | Same project URL; used to derive the JWKS endpoint for verification. Server-side only (no `VITE_` prefix). |
 | `AUTH_DEV_BYPASS`          | server (dev only)   | optional        | Set to `1` to skip JWT verification entirely. Only honored when `NODE_ENV !== "production"`. Injects a synthetic dev user — useful for `npm run dev` without a Supabase project. |
 
 `/api/ai/*` and `/api/import/*` require a valid bearer token (or the
@@ -161,9 +178,9 @@ surfaces what's in the file.
 | `PORT`                   | recommended     | `8787`  | TCP port the Node server binds to. |
 | `NODE_ENV`               | **yes** in prod | —       | Set to `production`. Several middlewares (origin guard, bearer auth, CORS) fail closed only when this is set, so leaving it unset weakens the gates. |
 | `ANTHROPIC_API_KEY`      | for AI parsing  | —       | Claude API key used by `server/aiParse*` handlers. PDF imports degrade gracefully when unset. |
-| `SUPABASE_JWT_SECRET`    | **yes** in prod | —       | HS256 secret used to verify Supabase user access_tokens on `/api/ai/*` + `/api/import/*`. With `NODE_ENV=production` and this unset, those endpoints respond `503 Not configured`. **Server-side only** — never `VITE_`-prefix. |
-| `VITE_SUPABASE_URL`      | **yes** in prod | —       | Supabase project URL. Inlined at SPA build time — public by design. |
-| `VITE_SUPABASE_ANON_KEY` | **yes** in prod | —       | Supabase anon (publishable) key. Inlined at SPA build time — public by design. |
+| `SUPABASE_URL`           | **yes** in prod | —       | Supabase project URL; used to fetch the JWKS for verifying user access_tokens on `/api/ai/*` + `/api/import/*`. With `NODE_ENV=production` and this unset, those endpoints respond `503 Not configured`. **Server-side only** — never `VITE_`-prefix. |
+| `VITE_SUPABASE_URL`      | **yes** in prod | —       | Supabase project URL. Inlined at SPA build time — public by design. Typically the same value as `SUPABASE_URL`. |
+| `VITE_SUPABASE_ANON_KEY` | **yes** in prod | —       | Supabase publishable API key. Inlined at SPA build time — public by design. |
 | `AUTH_DEV_BYPASS`        | dev only        | —       | When `1` + `NODE_ENV !== "production"`, skips JWT verification on `/api/ai/*` + `/api/import/*` and injects a synthetic dev user. Has no effect in production even when set. |
 | `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
 | `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. |

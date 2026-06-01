@@ -1,17 +1,17 @@
 /* Hono auth middleware for /api/ai/* and /api/import/*.
  *
- * Replaces the legacy shared-bearer gate (server/aiAuth.ts) with real
- * user-JWT verification against Supabase. The shared-bearer model was
- * never user-level authn — VITE_AI_API_TOKEN gets baked into the SPA
- * bundle and is therefore PUBLIC.
+ * Real user-JWT verification against Supabase. Tokens are verified
+ * against the project's JWKS (asymmetric signing) — no shared secret
+ * and no service-role key on this server.
  *
  * Three modes, chosen at request time from the environment:
  *
- *   1. SUPABASE_JWT_SECRET configured → verify the bearer token's
- *      HS256 signature + `aud: "authenticated"` + `exp`. Mismatch or
- *      absent header → 401.
+ *   1. SUPABASE_URL configured → fetch JWKS lazily from
+ *      <SUPABASE_URL>/auth/v1/.well-known/jwks.json (cached after
+ *      first hit) and verify the bearer token. Mismatch or absent
+ *      header → 401.
  *
- *   2. SUPABASE_JWT_SECRET unset + NODE_ENV === "production"
+ *   2. SUPABASE_URL unset + NODE_ENV === "production"
  *      → 503 fail-closed. Production must opt into auth explicitly.
  *
  *   3. AUTH_DEV_BYPASS=1 + NODE_ENV !== "production" → allow without
@@ -71,14 +71,14 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
       return next();
     }
 
-    const jwtSecret = process.env.SUPABASE_JWT_SECRET;
-    if (!jwtSecret) {
+    const supabaseUrl = process.env.SUPABASE_URL;
+    if (!supabaseUrl) {
       // Misconfigured server. In prod this is a hard failure; in dev
       // we still 401 (not 503) so the client gets a consistent error
       // shape — the dev bypass is the documented dev path.
       return jsonDeny(
         isProduction
-          ? "Authentication is not configured. SUPABASE_JWT_SECRET must be set in production."
+          ? "Authentication is not configured. SUPABASE_URL must be set in production."
           : "Authentication required. Set AUTH_DEV_BYPASS=1 for local development.",
         isProduction ? 503 : 401,
       );
@@ -86,7 +86,7 @@ export function requireAuth(): MiddlewareHandler<AuthEnv> {
 
     const result = await verifySupabaseJwt({
       authorization: c.req.header("authorization"),
-      jwtSecret,
+      supabaseUrl,
     });
     if (!result.ok) {
       return jsonDeny(messageForReason(result.reason), 401);
