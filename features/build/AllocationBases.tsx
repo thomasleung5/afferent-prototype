@@ -46,7 +46,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "records",
     unitLong: "Records or documents",
     fmt: "int",
-    note: "Imported CAP document records or Laserfiche volume schedule",
+    note: "Imported Cost Allocation Plan document records or Laserfiche volume schedule",
   },
   EQUAL: {
     label: "EQUAL",
@@ -54,7 +54,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "units",
     unitLong: "Equal-weight units",
     fmt: "decimal",
-    note: "Imported CAP equal-allocation schedule",
+    note: "Imported Cost Allocation Plan equal-allocation schedule",
   },
   MEETING_HOURS: {
     label: "MTG HRS",
@@ -62,7 +62,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "hrs",
     unitLong: "Meeting hours supported",
     fmt: "decimal",
-    note: "Imported CAP meeting-hour schedule",
+    note: "Imported Cost Allocation Plan meeting-hour schedule",
   },
   MEETINGS: {
     label: "MEETINGS",
@@ -70,7 +70,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "mtgs",
     unitLong: "Meetings supported",
     fmt: "int",
-    note: "Imported CAP meeting-count schedule",
+    note: "Imported Cost Allocation Plan meeting-count schedule",
   },
   APPLICATIONS: {
     label: "APPS",
@@ -78,7 +78,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "count",
     unitLong: "Applications, permits, or cases",
     fmt: "int",
-    note: "Imported CAP application-volume schedule",
+    note: "Imported Cost Allocation Plan application-volume schedule",
   },
   RECRUITMENTS: {
     label: "RECRUIT",
@@ -86,7 +86,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "count",
     unitLong: "Recruitment counts",
     fmt: "int",
-    note: "Imported CAP recruitment-count schedule",
+    note: "Imported Cost Allocation Plan recruitment-count schedule",
   },
   CLAIMS: {
     label: "CLAIMS",
@@ -94,7 +94,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "claims",
     unitLong: "Claims or claim-history units",
     fmt: "int",
-    note: "Imported CAP claims-history schedule",
+    note: "Imported Cost Allocation Plan claims-history schedule",
   },
   RENTAL_HOURS: {
     label: "RENT HRS",
@@ -102,7 +102,7 @@ const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">
     unit: "hrs",
     unitLong: "Rental or facility-use hours",
     fmt: "decimal",
-    note: "Imported CAP rental-hour schedule",
+    note: "Imported Cost Allocation Plan rental-hour schedule",
   },
 };
 
@@ -116,7 +116,7 @@ function fallbackColumn(key: BasisKey, basisNames: string[]): BasisColumn {
     unit: fallback?.unit ?? "units",
     unitLong: fallback?.unitLong ?? "Allocation units",
     fmt: fallback?.fmt ?? "decimal",
-    note: fallback?.note ?? (basisNames.length > 0 ? `Imported basis: ${basisNames.join(", ")}` : "Imported CAP basis"),
+    note: fallback?.note ?? (basisNames.length > 0 ? `Imported basis: ${basisNames.join(", ")}` : "Imported Cost Allocation Plan basis"),
   };
 }
 
