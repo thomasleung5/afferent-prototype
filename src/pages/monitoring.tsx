@@ -14,7 +14,8 @@ import {
 } from "@/lib/data/monitoring";
 import { DEPTS } from "@/lib/data/departments";
 import { useActiveJurisdiction } from "@/lib/active";
-import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { downloadBlob } from "@/lib/export/xlsx";
+import { exportMonitoringXlsx } from "@/lib/export/monitoringExcel";
 import { slugCity } from "@/lib/printing";
 import { useBuildState } from "@/lib/store";
 import { Link } from "@tanstack/react-router";
@@ -237,45 +238,13 @@ export default function RevenueMonitoringPage() {
 
   const pdfHref = "/export/monitoring";
 
-  const exportBrief = useCallback(() => {
-    const csv = buildCsv([
-      ["Section", "Field", "Value"],
-      ["Summary", "Citywide recovery", `${summary.citywideRecovery}%`],
-      ["Summary", "Policy target", `${summary.policyTarget}%`],
-      ["Summary", "Revenue drift", `${fmt.dollars(summary.revenueDrift)}/yr`],
-      ["Summary", "Subsidy exposure", `${fmt.dollars(summary.subsidyExposure)}/yr`],
-      ["Summary", "Fees below target", String(summary.feesBelowTarget)],
-      ["Summary", "Last model update", summary.lastModelUpdate],
-      null,
-      ["Dept health", "Dept", "Target · Current · Drift · Status"],
-      ...deptHealth.map((d) => [
-        "Dept health",
-        d.dept,
-        `${d.target}% · ${d.current}% · ${d.drift > 0 ? "+" : ""}${d.drift} pts · ${d.status}`,
-      ]),
-      null,
-      ["Drift drivers", "Driver", "Area · Annual impact · Evidence"],
-      ...driftDrivers.map((r) => [
-        "Drift drivers",
-        r.driver,
-        `${r.area} · ${fmt.dollars(r.annualImpact)} gap · ${r.evidence}`,
-      ]),
-      null,
-      ["Recovery alerts", "Alert", "Dept · Impact · Trigger · Action · Severity"],
-      ...recoveryAlerts.map((a) => [
-        "Recovery alerts",
-        a.alert,
-        `${a.dept} · +${fmt.dollars(a.impact)} · ${a.trigger} · ${a.action} · ${a.severity}`,
-      ]),
-      null,
-      ["Staff actions", "Title", "Rationale · Next step · Fiscal impact"],
-      ...staffActions.map((a) => [
-        "Staff actions",
-        a.title,
-        `${a.rationale} · ${a.nextStep} · ${fmt.dollars(a.fiscalImpact)}`,
-      ]),
-    ]);
-    downloadCsv(csv, `${slugCity(jurisdiction.name)}-monitoring-brief.csv`);
+  const exportBrief = useCallback(async () => {
+    const blob = await exportMonitoringXlsx({
+      cityName: jurisdiction.name,
+      generatedAt: new Date().toISOString(),
+      monitoring: { summary, deptHealth, driftDrivers, recoveryAlerts, staffActions },
+    });
+    downloadBlob(blob, `${slugCity(jurisdiction.name)}-monitoring-brief.xlsx`);
   }, [summary, deptHealth, driftDrivers, recoveryAlerts, staffActions, jurisdiction.name]);
 
   const alertCols: Column<RecoveryAlert>[] = [
@@ -344,11 +313,11 @@ export default function RevenueMonitoringPage() {
         actions={
           <ExportMenu
             pdfHref={pdfHref}
-            onDownloadExcel={async () => exportBrief()}
+            onDownloadExcel={exportBrief}
             pdfLabel="Revenue monitoring brief (PDF)"
             pdfSub="Print-formatted, council-ready"
-            excelLabel="CSV (.csv)"
-            excelSub="Summary · dept health · drivers · alerts"
+            excelLabel="Excel workbook (.xlsx)"
+            excelSub="Summary · dept health · drivers · alerts · actions"
           />
         }
       />
