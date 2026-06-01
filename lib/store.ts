@@ -317,6 +317,11 @@ interface BuildActions {
   addFunctionalAllocation: (dept: DeptCode) => void;
   resetAll: () => void;
   clearAll: () => void;
+  /** Replace every BuildSnapshot field with the supplied snapshot.
+   *  Versions, comparisonVersionId, and actions are left untouched.
+   *  Used by the snapshot JSON import flow (`lib/snapshotIO.ts`) and
+   *  eventually by the server-persistence migration path. */
+  loadSnapshot: (snapshot: BuildSnapshot) => void;
 }
 
 /* ── Helpers ── */
@@ -1438,6 +1443,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           comparisonVersionId: null,
         });
       },
+
+      // Bulk replace of the BuildSnapshot slice. Zustand `set` does a
+      // shallow merge, so spreading a snapshot leaves versions /
+      // comparisonVersionId / actions untouched while overwriting
+      // every persisted field at once. Used by lib/snapshotIO.ts.
+      loadSnapshot: (snapshot) => set({ ...snapshot }),
     }),
     {
       name: STORAGE_KEY,

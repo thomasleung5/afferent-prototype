@@ -164,6 +164,43 @@ For end-to-end testing of the real auth flow locally, set both the
 client `VITE_*` vars and the server `SUPABASE_URL` to match your
 Supabase project and skip the bypass.
 
+## Persistence
+
+The build model lives in the Zustand store (`lib/store.ts`) and is
+persisted to **browser localStorage** under the key
+`afferent.build.v1`. Versions cut via `makeStudyVersion` live in the
+same store. This is fine for the demo / single-analyst flow but not
+adequate for production — see
+[`docs/persistence-design.md`](docs/persistence-design.md) for the
+Supabase schema (studies / versions / drafts / imports), RLS
+expectations, save / load / publish API surface, and the migration
+path from existing localStorage snapshots.
+
+As a manual interim, `lib/snapshotIO.ts` exposes pure helpers for
+exporting and importing the live store as a JSON file:
+
+```ts
+import { snapshotBlob, defaultSnapshotFilename, parseSnapshotJson } from "@/lib/snapshotIO";
+import { useBuildStore, createBuildSnapshot } from "@/lib/store";
+
+// Export
+const snap = createBuildSnapshot(useBuildStore.getState());
+const blob = snapshotBlob(snap);
+const url = URL.createObjectURL(blob);
+// hand `url` to an <a download={defaultSnapshotFilename(snap)}>
+
+// Import
+const text = await file.text();
+const res = parseSnapshotJson(text);
+if (res.ok) useBuildStore.getState().loadSnapshot(res.snapshot);
+```
+
+The JSON envelope (`{ format: "afferent.snapshot", formatVersion,
+exportedAt, snapshot }`) is the same shape the eventual server
+migration endpoint will accept. Old snapshots are upgraded by the
+shared `migratePersistedState` helper at parse time so exports
+made before a schema bump round-trip cleanly.
+
 ## Deployment
 
 This app ships as a single Node service. The Hono server in `server/`
@@ -271,9 +308,20 @@ with status 400 (no file), 413 (oversize / cap exceeded), 415 (wrong
 type / legacy `.xls` / corrupt workbook), or 422 (blank workbook /
 no usable sheets).
 
-**Not yet implemented:** the mapping/merge step that converts a
-preview payload into Service/Volume rows. Today the endpoint only
-surfaces what's in the file.
+**Server scope is preview-only.** The endpoint returns the parsed,
+size-checked sheet payload and nothing else — no mapping logic, no
+domain conversion, no writes to anything the server owns (today, the
+server owns no persistent state). The SPA does the rest:
+`features/imports/ExcelImportCard.tsx` drives a per-domain mapping
+panel (header row + column dropdowns + auto-detect), then calls the
+domain converters in `lib/import/excelTo{Fees,Services,Volume,Labor,
+Operating}.ts` and the matching `merge*` action on the Zustand store
+(`lib/store.ts`). Fees / Services / Volume / Labor / Operating are
+all wired this way today via `features/imports/excelDomainHooks.tsx`.
+
+This separation is deliberate: the server's deterministic preview is
+cheap and side-effect-free, and the merge logic lives next to the
+client store it has to mutate.
 
 ### Production environment
 
@@ -287,7 +335,7 @@ surfaces what's in the file.
 | `VITE_SUPABASE_ANON_KEY` | **yes** in prod | —       | Supabase publishable API key. Inlined at SPA build time — public by design. |
 | `AUTH_DEV_BYPASS`        | dev only        | —       | When `1` + `NODE_ENV !== "production"`, skips JWT verification on `/api/ai/*` + `/api/import/*` and injects a synthetic dev user. Has no effect in production even when set. |
 | `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
-| `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. |
+| `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. The default limiter is in-process (a `Map<key, ts[]>` per replica). For multi-replica production, replace it with a shared backend via `rateLimit({ adapter })` — see `server/aiRateLimit.ts`'s `RateLimitAdapter` interface. |
 | `MAX_UPLOAD_MB`          | optional        | `20`    | Per-request upload cap (MB). The streaming body limit and the parsed-size gate both honor this. |
 
 Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate
@@ -354,15 +402,40 @@ npm run dev:api | jq -c .
 forward via your container/runtime's log collector. Tail with `jq`,
 parse with anything that understands one-JSON-object-per-line.
 
-**Client side.** Render errors are caught by the `<ErrorBoundary/>`
-in `components/ErrorBoundary.tsx` and logged via `console.error`
-("[ErrorBoundary] render error" prefix). API fetch failures from
-`lib/ai/aiApi.ts` and `lib/import/excelPreview.ts` log to
-`console.warn` (non-2xx response) / `console.error` (thrown fetch).
-Visible in browser dev tools; production deployments that want
-durable client error logs can subscribe a client log collector
-(Sentry RUM, Datadog Browser, etc.) — the boundary's `componentDidCatch`
-is the obvious hook point.
+**Client side.** Browser errors are a separate stream from the
+server's stdout JSON above — they run through
+`lib/telemetry/clientErrorReporter.ts`, which is a tiny indirection
+over `console.warn` / `console.error` with a swappable backend.
+
+| Source | Trigger |
+|---|---|
+| `errorBoundary` | Render-time exceptions caught by `<ErrorBoundary/>` in `components/ErrorBoundary.tsx`. |
+| `apiFetch` | Thrown `fetch` errors from `lib/ai/aiApi.ts` and `lib/import/excelPreview.ts`. |
+| `apiResponse` | Non-2xx responses from the same fetch helpers. |
+
+The default reporter writes a single line to the dev-tools console —
+exactly the behavior the code shipped with before the indirection.
+Production deployments that want durable client-error capture
+(Sentry, Datadog Browser RUM, Highlight, etc.) replace the reporter
+once at app boot:
+
+```ts
+import { setClientErrorReporter } from "@/lib/telemetry/clientErrorReporter";
+setClientErrorReporter({
+  report({ source, level, message, fields }) {
+    Sentry.captureMessage(`[${source}] ${message}`, {
+      level,
+      tags: { source },
+      extra: fields,
+    });
+  },
+});
+```
+
+Call sites pass `{ source, level, message, fields }`. By convention
+`fields` carries only safe metadata (endpoint path, HTTP status,
+error name, component stack) — never request bodies, auth headers,
+or full URLs (which may contain recovery-token query strings).
 
 ## Browser smoke tests
 

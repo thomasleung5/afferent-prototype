@@ -10,6 +10,7 @@
  * React still requires class components for componentDidCatch. */
 
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { reportClientError } from "@/lib/telemetry/clientErrorReporter";
 
 interface State {
   hasError: boolean;
@@ -27,14 +28,17 @@ export class ErrorBoundary extends Component<Props, State> {
   }
 
   override componentDidCatch(error: unknown, info: ErrorInfo): void {
-    // Browser-side breadcrumb. Production deployments that hook up a
-    // client log collector (Sentry, Datadog RUM, etc.) can subscribe
-    // to console events or wrap this method directly.
-    // eslint-disable-next-line no-console
-    console.error("[ErrorBoundary] render error", {
+    // Browser-side breadcrumb. Default reporter prints to the dev
+    // console; production deployments can swap a Sentry/Datadog
+    // collector in via `setClientErrorReporter` at app boot.
+    reportClientError({
+      source: "errorBoundary",
+      level: "error",
       message: error instanceof Error ? error.message : String(error),
-      name: error instanceof Error ? error.name : undefined,
-      componentStack: info.componentStack,
+      fields: {
+        name: error instanceof Error ? error.name : undefined,
+        componentStack: info.componentStack ?? undefined,
+      },
     });
   }
 

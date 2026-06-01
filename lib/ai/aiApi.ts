@@ -12,6 +12,7 @@
  *      handling. */
 
 import { getSupabaseClient } from "@/lib/auth/supabaseClient";
+import { reportClientError } from "@/lib/telemetry/clientErrorReporter";
 
 /** Auth headers for /api/ai/* + /api/import/* requests. Reads the
  *  current Supabase session live (via getSession). Returns an empty
@@ -50,14 +51,22 @@ export async function aiApiPost<T extends { ok: boolean; message?: string }>(
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error.";
-    // eslint-disable-next-line no-console
-    console.error("[api] fetch failed", { path, message });
+    reportClientError({
+      source: "apiFetch",
+      level: "error",
+      message,
+      fields: { path },
+    });
     return { ok: false, message } as T;
   }
 
   if (res.status >= 400) {
-    // eslint-disable-next-line no-console
-    console.warn("[api] non-2xx response", { path, status: res.status });
+    reportClientError({
+      source: "apiResponse",
+      level: "warn",
+      message: `non-2xx response`,
+      fields: { path, status: res.status },
+    });
   }
 
   const contentType = res.headers.get("content-type") ?? "";

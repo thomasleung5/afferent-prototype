@@ -1,23 +1,59 @@
-/* Per-key sliding-window rate limit for /api/ai/* routes.
+/* Per-key sliding-window rate limit for /api/ai/* + /api/import/*.
  *
- * In-memory only — no external store, no persistence across
- * restarts. Right tradeoff for a single-instance deploy where the
- * goal is to stop a runaway client from burning Anthropic tokens,
- * not survive node restarts or coordinate across replicas.
+ * Two layers, chosen for the multi-instance story:
  *
- * For multi-replica deployments swap in a shared Redis-backed
- * counter; the pure-function decision logic (recordRequest) stays
- * the same, just the store changes. */
+ *   1. `recordRequest` — pure sliding-window decision against a
+ *      `RateLimitStore`. The store is a thin `get(key) / set(key, ts[])`
+ *      interface that a `Map<string, number[]>` satisfies out of the
+ *      box. This layer is sync and stays in memory.
+ *
+ *   2. `RateLimitAdapter` — the surface the Hono middleware actually
+ *      calls. The default `createInMemoryAdapter` wraps `recordRequest`
+ *      with a `Map`-backed store. To move to a shared backend later
+ *      (Redis / Cloudflare KV / etc.) implement this interface with
+ *      an async `record()` — the middleware already awaits — and pass
+ *      it via `rateLimit({ adapter })`. The pure decision function
+ *      stays untouched; only the storage hop changes.
+ *
+ * Multi-replica deployments REQUIRE swapping the adapter. With the
+ * in-memory default each replica counts its own bucket, so the
+ * effective per-client cap is `perMinute × replicaCount` — fine for
+ * cost containment on a single VM, not adequate as a real shared cap.
+ *
+ * Right tradeoff today: stop a runaway client from burning Anthropic
+ * tokens on the single-instance deploy we ship by default; expose a
+ * clean swap point for the day we scale out. */
 
 import type { MiddlewareHandler } from "hono";
 
 const WINDOW_MS = 60_000;
 const DEFAULT_PER_MINUTE = 30;
 
-/** Map of rate-limit key → ascending request timestamps within the
- *  current window. Older timestamps are dropped on each recorded
- *  request so the map doesn't grow unbounded for idle keys. */
-export type RateLimitStore = Map<string, number[]>;
+export type RateLimitDecision =
+  | { allowed: true }
+  | { allowed: false; retryAfterSec: number };
+
+/** Storage interface for the in-process sliding window. `Map<string, number[]>`
+ *  is structurally compatible — no wrapper needed. Implementations only
+ *  need to round-trip a timestamp list per key; the trimming and decision
+ *  live in `recordRequest`. */
+export interface RateLimitStore {
+  get(key: string): number[] | undefined;
+  set(key: string, value: number[]): unknown;
+}
+
+/** Higher-level adapter that the middleware calls. The default
+ *  in-memory implementation delegates to `recordRequest`. A future
+ *  Redis-backed adapter would replace the body with a Lua INCR/EXPIRE
+ *  script (or a transactional GET+SET) and return a Promise — the
+ *  middleware already awaits the result. */
+export interface RateLimitAdapter {
+  record(args: {
+    key: string;
+    now: number;
+    perMinute: number;
+  }): Promise<RateLimitDecision> | RateLimitDecision;
+}
 
 /** Pure decision — exported for fixture testing without needing a
  *  real Hono context. Records the new request iff allowed; an
@@ -29,7 +65,7 @@ export function recordRequest(args: {
   now: number;
   perMinute: number;
   store: RateLimitStore;
-}): { allowed: true } | { allowed: false; retryAfterSec: number } {
+}): RateLimitDecision {
   const { key, now, perMinute, store } = args;
   const windowStart = now - WINDOW_MS;
   const previous = store.get(key) ?? [];
@@ -49,6 +85,14 @@ export function recordRequest(args: {
   recent.push(now);
   store.set(key, recent);
   return { allowed: true };
+}
+
+/** Default adapter — wraps a Map-backed store with `recordRequest`.
+ *  Optionally accepts a pre-built store so tests can inspect contents. */
+export function createInMemoryAdapter(store: RateLimitStore = new Map()): RateLimitAdapter {
+  return {
+    record: (args) => recordRequest({ ...args, store }),
+  };
 }
 
 /** Resolve the per-minute cap from the environment. Invalid /
@@ -75,27 +119,33 @@ export function clientKey(headers: {
   return "anonymous";
 }
 
-/** Module-level store. Tests pass their own to keep state isolated. */
-const sharedStore: RateLimitStore = new Map();
+/** Module-level adapter. Tests typically pass their own via `opts.store`
+ *  or `opts.adapter` to keep state isolated. */
+const sharedAdapter: RateLimitAdapter = createInMemoryAdapter();
 
 /** Hono middleware. Reads the cap at request time. Returns 429 with
- *  a Retry-After header when the caller exhausts the window. */
+ *  a Retry-After header when the caller exhausts the window.
+ *
+ *  Backwards-compatible options:
+ *    - `store`   — Map-compatible store; wraps it as an in-memory adapter.
+ *    - `adapter` — full adapter; takes precedence over `store`. */
 export function rateLimit(opts: {
   store?: RateLimitStore;
+  adapter?: RateLimitAdapter;
   perMinute?: () => number;
 } = {}): MiddlewareHandler {
-  const store = opts.store ?? sharedStore;
+  const adapter = opts.adapter
+    ?? (opts.store ? createInMemoryAdapter(opts.store) : sharedAdapter);
   const getPerMinute = opts.perMinute ?? resolvePerMinute;
   return async (c, next) => {
     const key = clientKey({
       forwarded: c.req.header("x-forwarded-for"),
       realIp: c.req.header("x-real-ip"),
     });
-    const result = recordRequest({
+    const result = await adapter.record({
       key,
       now: Date.now(),
       perMinute: getPerMinute(),
-      store,
     });
     if (!result.allowed) {
       return new Response(

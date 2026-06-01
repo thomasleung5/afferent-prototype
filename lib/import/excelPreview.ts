@@ -10,6 +10,7 @@
  * that's a follow-up task that will read this payload as input. */
 
 import { aiAuthHeaders } from "../ai/aiApi";
+import { reportClientError } from "@/lib/telemetry/clientErrorReporter";
 
 export type PreviewCell = string | number | boolean | null;
 
@@ -58,14 +59,22 @@ export async function previewExcelFile(file: File): Promise<ExcelPreviewResponse
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : "Network error.";
-    // eslint-disable-next-line no-console
-    console.error("[api] fetch failed", { path, message });
+    reportClientError({
+      source: "apiFetch",
+      level: "error",
+      message,
+      fields: { path },
+    });
     return { ok: false, message };
   }
 
   if (res.status >= 400) {
-    // eslint-disable-next-line no-console
-    console.warn("[api] non-2xx response", { path, status: res.status });
+    reportClientError({
+      source: "apiResponse",
+      level: "warn",
+      message: `non-2xx response`,
+      fields: { path, status: res.status },
+    });
   }
 
   const contentType = res.headers.get("content-type") ?? "";
