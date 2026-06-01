@@ -59,6 +59,16 @@ export function LoginPage() {
     setPassword("");
   };
 
+  /** Clear the "recovery sent" lock as soon as the user edits the
+   *  email field — otherwise a single typo'd send leaves the Submit
+   *  button disabled and the user has to toggle modes to recover.
+   *  Also clears any inline error so the form stays scannable. */
+  const onEmailChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setEmail(e.target.value);
+    if (recoverySent) setRecoverySent(false);
+    if (error) setError(null);
+  };
+
   return (
     <div style={pageWrap}>
       <div style={cardStyle}>
@@ -94,7 +104,7 @@ export function LoginPage() {
               autoComplete="username"
               required
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={onEmailChange}
               style={inputStyle}
             />
           </label>

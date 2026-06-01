@@ -102,8 +102,14 @@ export function ResetPasswordPage() {
     }
     // Sign out so the user re-authenticates with the new password.
     // The /login redirect happens via the root route guard once the
-    // session clears.
-    await signOut();
+    // session clears. We swallow errors here because the password
+    // update itself already succeeded — the user MUST see the
+    // "done" state so they don't think the reset silently failed.
+    try {
+      await signOut();
+    } catch {
+      // Intentionally ignored — see comment above.
+    }
     setPhase({ kind: "done" });
   };
 

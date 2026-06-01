@@ -59,6 +59,13 @@ key on this server.
    `redirectTo` of `${window.location.origin}/reset-password` so the
    right page receives the recovery hash even when an analyst clicks
    the link from a different device.
+
+   **Email template:** Leave **Authentication → Email Templates →
+   Reset Password** at the default template. The default uses
+   `{{ .ConfirmationURL }}` — Supabase fills it with the link
+   carrying the recovery hash and respecting the `redirectTo`
+   parameter. A customized template that hard-codes a URL or drops
+   the placeholder will break the flow.
 5. Set the env vars below in `.env.local` (dev) and your deployment
    environment (prod).
 
