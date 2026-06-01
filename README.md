@@ -196,6 +196,44 @@ surfaces what's in the file.
 Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate
 limiter keys on it (falling back to `X-Real-IP` then `anonymous`).
 
+## Browser smoke tests
+
+A tiny Playwright suite under `tests/smoke/` runs the production-critical
+flows in headless chromium. Coverage today:
+
+- App shell renders at `/`; nav links visible.
+- Direct refresh of `/source-data` resolves to the right page (TanStack
+  Router deep-link works).
+- `/login` and `/reset-password` render; "Forgot password?" toggle swaps
+  the form into recovery mode.
+- Source Data → Fees card → both `Upload PDF` and `Upload Excel` buttons
+  appear.
+- Fee Schedule page → Export menu opens with the "Excel workbook (.xlsx)"
+  item.
+
+Auth is deliberately disabled for these tests via the build-time flag
+`VITE_AUTH_DISABLED=1` (read by `lib/auth/supabaseClient.ts`), so no
+Supabase credentials are needed — the SPA mounts in "no-supabase"
+mode and the route guard passes through. The flag has no effect in
+production (it's only honored at build time, and production builds
+never set it).
+
+```bash
+# First time only: install chromium + system deps
+npm run test:smoke:install
+
+# Run the suite
+npm run test:smoke
+
+# Watch what the browser is doing
+npm run test:smoke:headed
+```
+
+The suite starts its own Vite dev server on port `3100` (separate
+from your regular `npm run dev` on `:3000`), so it can run alongside
+day-to-day development. CI runs the same suite after the unit tests
++ build — see `.github/workflows/ci.yml`.
+
 ## CI
 
 GitHub Actions runs `.github/workflows/ci.yml` on every push to `main`
@@ -211,6 +249,9 @@ standard `actions/setup-node` npm cache, then runs:
    stay clean. (Previously non-blocking while we carried the `xlsx`
    advisory; that dependency has since been replaced with
    `write-excel-file`.)
+6. `npm run test:smoke` — Playwright browser smoke suite (chromium
+   only). Adds ~30 s of CI time including browser install. Uploads
+   a `playwright-report` artifact on failure.
 
 ## Project structure
 

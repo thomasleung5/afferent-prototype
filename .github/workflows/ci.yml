@@ -32,3 +32,21 @@ jobs:
       - run: npm test
 
       - run: npm audit --omit=dev
+
+      # Browser smoke tests — chromium only, runs the SPA against the
+      # Vite dev server with VITE_AUTH_DISABLED=1 (no Supabase
+      # credentials required). Covers app-shell render, deep-route
+      # refresh, login + reset-password pages, PDF/Excel upload UIs,
+      # and the Excel export menu. ~10s total.
+      - name: Install Playwright (chromium)
+        run: npx playwright install --with-deps chromium
+
+      - run: npm run test:smoke
+
+      - name: Upload Playwright report on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7

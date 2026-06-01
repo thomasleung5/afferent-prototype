@@ -30,7 +30,10 @@
     "test:ai-origin": "tsx server/__tests__/aiOriginGuard.fixture.ts",
     "test:ai-rate-limit": "tsx server/__tests__/aiRateLimit.fixture.ts",
     "test:logger": "tsx server/__tests__/logger.fixture.ts",
-    "test:excel-preview": "tsx server/__tests__/excelPreview.fixture.ts"
+    "test:excel-preview": "tsx server/__tests__/excelPreview.fixture.ts",
+    "test:smoke": "playwright test",
+    "test:smoke:headed": "playwright test --headed",
+    "test:smoke:install": "playwright install --with-deps chromium"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.95.1",
@@ -49,6 +52,7 @@
     "zustand": "^5.0.13"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tanstack/router-plugin": "^1.167.35",
     "@types/node": "^20",
     "@types/react": "^19",
