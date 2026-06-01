@@ -125,7 +125,13 @@
       "Bash(echo \"audit-exit=$?\")",
       "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:8787/healthz)",
       "Bash(curl -sS -o /dev/null -w \"HTTP %{http_code}\\\\n\" http://localhost:8787/api/ai/parse-fees -X POST)",
-      "Bash(curl -sS -o /tmp/x.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST http://localhost:8787/api/import/excel/preview)"
+      "Bash(curl -sS -o /tmp/x.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST http://localhost:8787/api/import/excel/preview)",
+      "Bash(pkill -f \"concurrently.*dev:client.*dev:api\")",
+      "Bash(pkill -f \"npm run dev:client\")",
+      "Bash(pkill -f \"tsx watch.*server/index.ts\")",
+      "Bash(lsof -nP -iTCP:8787 -sTCP:LISTEN -iTCP:3000 -sTCP:LISTEN)",
+      "Bash(curl -sS http://localhost:8787/healthz)",
+      "Bash(curl -sS -o /tmp/jwks.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" https://hrvqmivefnqjskywtjpk.supabase.co/auth/v1/.well-known/jwks.json)"
     ]
   }
 }
