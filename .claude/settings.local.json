@@ -131,7 +131,13 @@
       "Bash(pkill -f \"tsx watch.*server/index.ts\")",
       "Bash(lsof -nP -iTCP:8787 -sTCP:LISTEN -iTCP:3000 -sTCP:LISTEN)",
       "Bash(curl -sS http://localhost:8787/healthz)",
-      "Bash(curl -sS -o /tmp/jwks.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" https://hrvqmivefnqjskywtjpk.supabase.co/auth/v1/.well-known/jwks.json)"
+      "Bash(curl -sS -o /tmp/jwks.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" https://hrvqmivefnqjskywtjpk.supabase.co/auth/v1/.well-known/jwks.json)",
+      "Bash(curl -sS -o /tmp/h.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:8787/healthz)",
+      "Bash(curl -sS -o /tmp/a.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST http://localhost:8787/api/ai/parse-fees)",
+      "Bash(curl -sS -o /tmp/e.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST http://localhost:8787/api/import/excel/preview)",
+      "Bash(curl -sS -o /tmp/b.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Authorization: Bearer not-a-real-jwt\" http://localhost:8787/api/ai/parse-fees)",
+      "Bash(curl -sS -o /tmp/l.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:3000/login)",
+      "Bash(curl -sS -o /tmp/r.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:3000/reset-password)"
     ]
   }
 }
