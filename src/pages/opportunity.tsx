@@ -4,7 +4,8 @@ import { Btn, Icon, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useActiveJurisdiction } from "@/lib/active";
 import { useBuildState } from "@/lib/store";
-import { buildCsv, downloadCsv } from "@/lib/export/csv";
+import { downloadBlob } from "@/lib/export/xlsx";
+import { exportOpportunityXlsx } from "@/lib/export/opportunityExcel";
 import { slugCity } from "@/lib/printing";
 import { deptName, FEE_DEPTS } from "@/lib/data/departments";
 import { AnswerHeader } from "@/features/revenue-opportunity/AnswerHeader";
@@ -57,35 +58,22 @@ export default function RevenueOpportunityPage() {
     { direct: 0, operating: 0, cap: 0 },
   );
 
-  const exportBrief = useCallback(() => {
-    // Top fixes: services where adopting the recommended fee would close
-    // the biggest single-row opportunity. Sort by absolute annual uplift.
-    const topFixes = [...comparisons]
-      .filter((c) => Math.abs(c.annualUplift) >= 1)
-      .sort((a, b) => Math.abs(b.annualUplift) - Math.abs(a.annualUplift))
-      .slice(0, 20);
-    const csv = buildCsv([
-      ["Section", "Metric", "Value"],
-      ["Headline", "Annual gap", fmt.dollars(annualGap)],
-      ["Headline", "Current revenue", fmt.dollars(impact.currentRevenue)],
-      ["Headline", "Total cost", fmt.dollars(totalCost)],
-      ["Headline", "Fees below target", `${feesBelowTarget} of ${totalFees}`],
-      ["Headline", "Departments below policy", `${deptsBelowPolicy} of ${activeFeeDepts}`],
-      ["Headline", "Top opportunity department",
-        topOpportunity ? `${deptName(topOpportunity.dept)} · ${fmt.dollars(topOpportunity.subsidy)}/yr` : "—"],
-      null,
-      ["Drivers", "Labor", fmt.dollars(drivers.direct)],
-      ["Drivers", "Operating Costs", fmt.dollars(drivers.operating)],
-      ["Drivers", "Overhead Costs", fmt.dollars(drivers.cap)],
-      null,
-      ["Top fixes", "Fee Item", "Dept · Current → Recommended · Annual uplift"],
-      ...topFixes.map((c) => [
-        "Top fixes",
-        c.name,
-        `${c.dept} · ${fmt.dollars(c.fee)} → ${fmt.dollars(c.recommended)} · ${c.annualUplift >= 0 ? "+" : ""}${fmt.dollars(c.annualUplift)}/yr`,
-      ]),
-    ]);
-    downloadCsv(csv, `${slugCity(jurisdiction.name)}-revenue-opportunity-brief.csv`);
+  const exportBrief = useCallback(async () => {
+    const blob = await exportOpportunityXlsx({
+      cityName: jurisdiction.name,
+      generatedAt: new Date().toISOString(),
+      annualGap,
+      currentRevenue: impact.currentRevenue,
+      totalCost,
+      feesBelowTarget,
+      totalFees,
+      deptsBelowPolicy,
+      activeFeeDepts,
+      topOpportunity,
+      drivers,
+      comparisons,
+    });
+    downloadBlob(blob, `${slugCity(jurisdiction.name)}-revenue-opportunity-brief.xlsx`);
   }, [annualGap, impact.currentRevenue, totalCost, feesBelowTarget, totalFees, deptsBelowPolicy, activeFeeDepts, topOpportunity, drivers, comparisons, jurisdiction.name]);
 
   return (
