@@ -94,8 +94,8 @@ the route guard passes through. The server's dev bypass is what
 actually allows the protected API calls in this mode.
 
 For end-to-end testing of the real auth flow locally, set both the
-client `VITE_*` vars and the server `SUPABASE_JWT_SECRET` to match
-your Supabase project and skip the bypass.
+client `VITE_*` vars and the server `SUPABASE_URL` to match your
+Supabase project and skip the bypass.
 
 ## Deployment
 
