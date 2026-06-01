@@ -22,6 +22,7 @@
 # production
 /build
 /dist
+/dist-server
 
 # tanstack router (generated)
 src/routeTree.gen.ts

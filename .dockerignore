@@ -1,0 +1,14 @@
+node_modules
+dist
+dist-server
+.git
+.github
+.env*
+playwright-report
+test-results
+.tanstack
+.vscode
+.idea
+*.log
+*.tsbuildinfo
+.DS_Store

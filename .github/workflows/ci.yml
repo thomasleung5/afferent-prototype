@@ -31,6 +31,35 @@ jobs:
 
       - run: npm test
 
+      # Prod-server smoke: the `npm run build` step above already
+      # produced dist/ and dist-server/index.mjs via esbuild. Boot the
+      # compiled bundle the same way `npm start` does, with dummy but
+      # validation-passing env, and hit /healthz. Catches:
+      #   - server-bundle ESM mismatch / missing-runtime-dep regressions
+      #   - env validator changes that would break a real deploy
+      #   - SPA-fallback / static-route accidental removal
+      - name: Prod server smoke (/healthz)
+        env:
+          NODE_ENV: production
+          PORT: '8788'
+          SUPABASE_URL: https://dummy.supabase.co
+          ALLOWED_ORIGINS: http://localhost:8788
+        run: |
+          node dist-server/index.mjs &
+          SERVER_PID=$!
+          for i in 1 2 3 4 5 6 7 8 9 10; do
+            if curl -sf http://localhost:8788/healthz > /dev/null; then
+              echo "healthz ok"
+              kill $SERVER_PID
+              wait $SERVER_PID 2>/dev/null || true
+              exit 0
+            fi
+            sleep 0.5
+          done
+          echo "healthz failed to respond"
+          kill $SERVER_PID 2>/dev/null || true
+          exit 1
+
       - run: npm audit --omit=dev
 
       # Browser smoke tests — chromium only, runs the SPA against the

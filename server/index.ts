@@ -9,6 +9,7 @@ import { rateLimit } from "./aiRateLimit";
 import { requestLogger } from "./requestLogger";
 import { logEvent } from "./logger";
 import { resolveMaxBytes } from "./aiUploadValidator";
+import { ensureValidOrExit, logEnvSummary, validateEnv } from "./env";
 import { handleAiParseFees } from "./aiParseFees";
 import { handleAiParseServices } from "./aiParseServices";
 import { handleAiParseLabor } from "./aiParseLabor";
@@ -103,6 +104,13 @@ app.all("/api/*", (c) =>
 // the client side directly on :3000 in that mode.
 app.use("*", serveStatic({ root: "./dist" }));
 app.get("*", serveStatic({ path: "./dist/index.html" }));
+
+// Validate prod env before opening the listener so a misconfigured
+// deploy crashes the container before the load balancer routes any
+// traffic to it. In development this is a no-op.
+const envResult = validateEnv(process.env);
+ensureValidOrExit(envResult);
+logEnvSummary(envResult);
 
 const port = Number(process.env.PORT ?? 8787);
 serve({ fetch: app.fetch, port }, ({ port }) => {

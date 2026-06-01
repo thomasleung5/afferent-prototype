@@ -171,9 +171,46 @@ hosts the `/api/*` routes AND serves the SPA build:
 
 ```bash
 npm ci
-npm run build      # Vite → dist/
-PORT=8787 NODE_ENV=production npm start
+npm run build      # vite client → dist/, esbuild server → dist-server/
+PORT=8787 NODE_ENV=production \
+  SUPABASE_URL=https://<project>.supabase.co \
+  ALLOWED_ORIGINS=https://<your-domain> \
+  npm start         # node dist-server/index.mjs — no tsx, no devDeps
 ```
+
+`npm run build` chains `build:client` (Vite → `dist/`) and `build:server`
+(esbuild → `dist-server/index.mjs`, ESM, externalized deps). `npm start`
+runs the compiled bundle directly — `tsx` and TypeScript are not on the
+production runtime path.
+
+The server fail-fasts at boot if `NODE_ENV=production` and either
+`SUPABASE_URL` or `ALLOWED_ORIGINS` is missing — much better than 50%
+of `/api/*` requests succeeding while the other 50% return 503s. The
+client build prints a `[build-env warn]` line if `VITE_SUPABASE_URL` /
+`VITE_SUPABASE_ANON_KEY` are missing; set `STRICT_BUILD=1` (the
+`Dockerfile` does this) to turn that warning into a hard fail.
+
+### Docker
+
+A `Dockerfile` ships the two-stage build:
+
+```bash
+docker build \
+  --build-arg VITE_SUPABASE_URL=https://<project>.supabase.co \
+  --build-arg VITE_SUPABASE_ANON_KEY=<publishable-key> \
+  -t afferent .
+
+docker run --rm -p 8787:8787 \
+  -e NODE_ENV=production \
+  -e SUPABASE_URL=https://<project>.supabase.co \
+  -e ALLOWED_ORIGINS=https://<your-domain> \
+  -e ANTHROPIC_API_KEY=<optional> \
+  afferent
+```
+
+The image runs as the non-root `node` user and ships only the runtime
+`dependencies` from `package.json` plus the build outputs — no source,
+no devDeps.
 
 A single process serves:
 
