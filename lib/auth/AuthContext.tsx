@@ -25,6 +25,12 @@ interface AuthContextValue {
   configured: boolean;
   signInWithPassword: (email: string, password: string) => Promise<{ ok: boolean; message?: string }>;
   signOut: () => Promise<void>;
+  /** Trigger a password-recovery email. Supabase will send a link that
+   *  lands the user at `redirectTo`; that page calls `updatePassword`
+   *  to finish the flow. */
+  requestPasswordRecovery: (email: string, redirectTo: string) => Promise<{ ok: boolean; message?: string }>;
+  /** Update the signed-in (or recovery-session) user's password. */
+  updatePassword: (password: string) => Promise<{ ok: boolean; message?: string }>;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -74,9 +80,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await supabase.auth.signOut();
   }, []);
 
+  const requestPasswordRecovery = useCallback(async (email: string, redirectTo: string) => {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return {
+        ok: false,
+        message: "Auth is not configured. Set VITE_SUPABASE_URL + VITE_SUPABASE_ANON_KEY.",
+      };
+    }
+    const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
+  }, []);
+
+  const updatePassword = useCallback(async (password: string) => {
+    const supabase = getSupabaseClient();
+    if (!supabase) {
+      return { ok: false, message: "Auth is not configured." };
+    }
+    const { error } = await supabase.auth.updateUser({ password });
+    if (error) return { ok: false, message: error.message };
+    return { ok: true };
+  }, []);
+
   const value = useMemo<AuthContextValue>(() => ({
-    session, loading, configured, signInWithPassword, signOut,
-  }), [session, loading, configured, signInWithPassword, signOut]);
+    session, loading, configured,
+    signInWithPassword, signOut,
+    requestPasswordRecovery, updatePassword,
+  }), [session, loading, configured, signInWithPassword, signOut, requestPasswordRecovery, updatePassword]);
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
