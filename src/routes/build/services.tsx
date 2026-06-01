@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import ServicesPage from "@/src/pages/build/services";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 interface ServicesSearch {
   serviceId?: string;
 }
@@ -13,5 +11,5 @@ export const Route = createFileRoute("/build/services")({
     const id = search.serviceId;
     return { serviceId: typeof id === "string" && id.length > 0 ? id : undefined };
   },
-  component: ServicesPage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/services")),
 });

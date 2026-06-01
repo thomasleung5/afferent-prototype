@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import AnnualUpdatePage from "@/src/pages/annual";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 export const Route = createFileRoute("/annual/")({
-  component: AnnualUpdatePage,
+  component: lazyRouteComponent(() => import("@/src/pages/annual")),
 });

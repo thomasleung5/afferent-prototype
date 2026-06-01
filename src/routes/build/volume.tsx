@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import VolumePage from "@/src/pages/build/volume";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 export const Route = createFileRoute("/build/volume")({
-  component: VolumePage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/volume")),
 });

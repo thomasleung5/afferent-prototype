@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import CostsPage from "@/src/pages/build/costs";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { coerceDeptCode, type DeptSearch } from "@/lib/data/deptSearch";
 
 interface CostsSearch extends DeptSearch {
@@ -18,5 +17,5 @@ export const Route = createFileRoute("/build/costs")({
       dept: coerceDeptCode(search.dept),
     };
   },
-  component: CostsPage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/costs")),
 });

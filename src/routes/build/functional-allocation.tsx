@@ -1,5 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import FunctionalAllocationPage from "@/src/pages/build/functional-allocation";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { coerceDeptCode, type DeptSearch } from "@/lib/data/deptSearch";
 
 export const Route = createFileRoute("/build/functional-allocation")({
@@ -8,5 +7,5 @@ export const Route = createFileRoute("/build/functional-allocation")({
   validateSearch: (search: Record<string, unknown>): DeptSearch => ({
     dept: coerceDeptCode(search.dept),
   }),
-  component: FunctionalAllocationPage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/functional-allocation")),
 });

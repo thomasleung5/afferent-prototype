@@ -1,10 +1,9 @@
-import { createFileRoute } from "@tanstack/react-router";
-import OperatingPage from "@/src/pages/build/operating";
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 import { coerceDeptCode, type DeptSearch } from "@/lib/data/deptSearch";
 
 export const Route = createFileRoute("/build/operating")({
   validateSearch: (search: Record<string, unknown>): DeptSearch => ({
     dept: coerceDeptCode(search.dept),
   }),
-  component: OperatingPage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/operating")),
 });

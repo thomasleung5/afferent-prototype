@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import CapAllocationExportPage from "@/src/pages/export/cap-allocation";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 export const Route = createFileRoute("/export/cap-allocation")({
-  component: CapAllocationExportPage,
+  component: lazyRouteComponent(() => import("@/src/pages/export/cap-allocation")),
 });

@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import BenchmarksPage from "@/src/pages/build/benchmarks";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 interface BenchmarksSearch {
   serviceId?: string;
 }
@@ -14,5 +12,5 @@ export const Route = createFileRoute("/build/benchmarks")({
     const id = search.serviceId;
     return { serviceId: typeof id === "string" && id.length > 0 ? id : undefined };
   },
-  component: BenchmarksPage,
+  component: lazyRouteComponent(() => import("@/src/pages/build/benchmarks")),
 });

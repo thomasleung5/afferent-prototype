@@ -1,6 +1,4 @@
-import { createFileRoute } from "@tanstack/react-router";
-import SourceDataPage from "@/src/pages/source-data";
-
+import { createFileRoute, lazyRouteComponent } from "@tanstack/react-router";
 export const Route = createFileRoute("/source-data")({
-  component: SourceDataPage,
+  component: lazyRouteComponent(() => import("@/src/pages/source-data")),
 });
