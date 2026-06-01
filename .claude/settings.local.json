@@ -137,7 +137,19 @@
       "Bash(curl -sS -o /tmp/e.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST http://localhost:8787/api/import/excel/preview)",
       "Bash(curl -sS -o /tmp/b.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Authorization: Bearer not-a-real-jwt\" http://localhost:8787/api/ai/parse-fees)",
       "Bash(curl -sS -o /tmp/l.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:3000/login)",
-      "Bash(curl -sS -o /tmp/r.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:3000/reset-password)"
+      "Bash(curl -sS -o /tmp/r.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:3000/reset-password)",
+      "Bash(PORT=8787 NODE_ENV=production SUPABASE_URL=https://hrvqmivefnqjskywtjpk.supabase.co ALLOWED_ORIGINS=http://localhost:8787 AI_API_TOKEN=unused-but-set npm start *)",
+      "Bash(curl -sS -o /tmp/root.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:8787/)",
+      "Bash(curl -sS -o /tmp/o.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:8787/opportunity)",
+      "Bash(curl -sS -o /tmp/u.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" http://localhost:8787/api/typo404)",
+      "Bash(curl -sS -o /tmp/a.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Origin: http://localhost:8787\" http://localhost:8787/api/ai/parse-fees)",
+      "Bash(curl -sS -o /tmp/x.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Origin: http://localhost:8787\" http://localhost:8787/api/import/excel/preview)",
+      "Bash(curl -sS -o /tmp/b.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Origin: http://localhost:8787\" -H \"Authorization: Bearer not-a-real-jwt\" http://localhost:8787/api/ai/parse-fees)",
+      "Bash(PORT=8787 NODE_ENV=production ALLOWED_ORIGINS=http://localhost:8787 npm start *)",
+      "Bash(curl -sS -o /tmp/c.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Origin: http://localhost:8787\" http://localhost:8787/api/ai/parse-fees)",
+      "Bash(pkill -f \"tsx server/index.ts\")",
+      "Bash(grep -E '^\\\\| `[A-Z_]+')",
+      "Bash(grep -oE '`[A-Z_]+`')"
     ]
   }
 }
