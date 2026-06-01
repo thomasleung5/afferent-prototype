@@ -8,6 +8,13 @@ import { InlineImportCard } from "@/features/imports/InlineImportCard";
 import {
   ExcelFeeMappingPanel, ExcelFeeUploadButton, useExcelFeeImport,
 } from "@/features/imports/ExcelFeeImportCard";
+import { ExcelUploadButton } from "@/features/imports/ExcelImportCard";
+import {
+  ExcelLaborMappingPanel,    useExcelLaborImport,
+  ExcelOperatingMappingPanel, useExcelOperatingImport,
+  ExcelServicesMappingPanel,  useExcelServicesImport,
+  ExcelVolumeMappingPanel,    useExcelVolumeImport,
+} from "@/features/imports/excelDomainHooks";
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
@@ -110,17 +117,38 @@ interface DomainCardProps {
 
 function PositionsCard({ card, imports }: DomainCardProps) {
   const importer = useLaborImportHandlers();
-  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
+  const excel = useExcelLaborImport();
+  return (
+    <SourceCardShell
+      card={card} imports={imports} importer={importer}
+      aiPdfAccessory={<ExcelUploadButton state={excel}/>}
+      aiPdfBelow={<ExcelLaborMappingPanel state={excel}/>}
+    />
+  );
 }
 
 function OperatingCard({ card, imports }: DomainCardProps) {
   const importer = useOperatingImportHandlers();
-  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
+  const excel = useExcelOperatingImport();
+  return (
+    <SourceCardShell
+      card={card} imports={imports} importer={importer}
+      aiPdfAccessory={<ExcelUploadButton state={excel}/>}
+      aiPdfBelow={<ExcelOperatingMappingPanel state={excel}/>}
+    />
+  );
 }
 
 function ServicesCard({ card, imports }: DomainCardProps) {
   const importer = useServicesImportHandlers();
-  return <SourceCardShell card={card} imports={imports} importer={importer}/>;
+  const excel = useExcelServicesImport();
+  return (
+    <SourceCardShell
+      card={card} imports={imports} importer={importer}
+      aiPdfAccessory={<ExcelUploadButton state={excel}/>}
+      aiPdfBelow={<ExcelServicesMappingPanel state={excel}/>}
+    />
+  );
 }
 
 function FeesCard({ card, imports }: DomainCardProps) {
@@ -139,9 +167,14 @@ function FeesCard({ card, imports }: DomainCardProps) {
 
 function VolumeCard({ card, imports }: DomainCardProps) {
   const importer = useVolumeImportHandlers();
+  const excel = useExcelVolumeImport();
   const reviewExtra = importer.unmapped.length;
   return (
-    <SourceCardShell card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}>
+    <SourceCardShell
+      card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}
+      aiPdfAccessory={<ExcelUploadButton state={excel}/>}
+      aiPdfBelow={<ExcelVolumeMappingPanel state={excel}/>}
+    >
       {importer.unmapped.length > 0 && (
         <VolumeUnmappedPanel
           unmapped={importer.unmapped}
