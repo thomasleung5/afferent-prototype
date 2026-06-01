@@ -17,6 +17,7 @@ import { handleAiParseOperating } from "./aiParseOperating";
 import { handleAiParseCap } from "./aiParseCap";
 import { handleAiParseVolume } from "./aiParseVolume";
 import { handleExcelPreview } from "./excelImport";
+import { studiesRoutes, resolveStudySnapshotMaxBytes } from "./studies";
 
 const app = new Hono();
 
@@ -79,6 +80,22 @@ for (const prefix of ["/api/ai/*", "/api/import/*"] as const) {
     ),
   }));
 }
+
+// /api/studies/* — protected DB persistence surface. Same CORS / origin
+// / auth gates as the AI + import paths, but no AI rate limiter (these
+// are cheap DB ops and shouldn't share the Anthropic-spend quota), and
+// the body cap is the JSON-snapshot cap rather than the upload cap.
+app.use("/api/studies/*", aiCors());
+app.use("/api/studies/*", requireAllowedOrigin());
+app.use("/api/studies/*", requireAuth());
+app.use("/api/studies/*", bodyLimit({
+  maxSize: resolveStudySnapshotMaxBytes(),
+  onError: () => new Response(
+    JSON.stringify({ ok: false, message: "Snapshot exceeds size limit." }),
+    { status: 413, headers: { "content-type": "application/json" } },
+  ),
+}));
+app.route("/api/studies", studiesRoutes);
 
 app.post("/api/ai/parse-fees", (c) => handleAiParseFees(c.req.raw));
 app.post("/api/ai/parse-services", (c) => handleAiParseServices(c.req.raw));

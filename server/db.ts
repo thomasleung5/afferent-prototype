@@ -1,0 +1,49 @@
+/* Server-side Supabase client backed by the service-role key.
+ *
+ * Used by the protected /api/studies/* handlers to query and write
+ * the persistence tables defined in supabase/migrations/. The
+ * service-role key bypasses RLS by design — handlers enforce
+ * authorization in code via requireAuth() + the role helpers in
+ * server/studies/authorization.ts. RLS policies on the tables are
+ * defense-in-depth and the contract for any future direct-PostgREST
+ * read path.
+ *
+ *   ┌────────────────────────────────────────────────────────────┐
+ *   │ NEVER pass this client (or the service-role key) to the    │
+ *   │ browser. It can read / write every row regardless of user. │
+ *   └────────────────────────────────────────────────────────────┘
+ *
+ * Lazy singleton — the client is constructed on first use so:
+ *   - test fixtures that import server modules don't try to build a
+ *     Supabase client at import time;
+ *   - the server can boot even when SUPABASE_SERVICE_ROLE_KEY is
+ *     unset (the studies endpoints will return 503 in that case).
+ */
+
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+
+let cached: SupabaseClient | null = null;
+
+/** Return the singleton service-role client, or null when the
+ *  required env vars aren't set. Callers should 503 on null. */
+export function getDbClient(): SupabaseClient | null {
+  if (cached) return cached;
+  const url = process.env.SUPABASE_URL;
+  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
+  if (!url || !key) return null;
+  cached = createClient(url, key, {
+    auth: { autoRefreshToken: false, persistSession: false },
+  });
+  return cached;
+}
+
+/** Test seam — clears the cached client so a fixture can swap in a
+ *  fake or re-read env. Not used by production code. */
+export function resetDbClient(): void {
+  cached = null;
+}
+
+/** Boot-time predicate for the env summary log line. */
+export function isDbConfigured(): boolean {
+  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
+}

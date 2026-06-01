@@ -169,12 +169,84 @@ Supabase project and skip the bypass.
 The build model lives in the Zustand store (`lib/store.ts`) and is
 persisted to **browser localStorage** under the key
 `afferent.build.v1`. Versions cut via `makeStudyVersion` live in the
-same store. This is fine for the demo / single-analyst flow but not
-adequate for production — see
-[`docs/persistence-design.md`](docs/persistence-design.md) for the
-Supabase schema (studies / versions / drafts / imports), RLS
-expectations, save / load / publish API surface, and the migration
-path from existing localStorage snapshots.
+same store. This is the editing model the SPA uses today and is not
+changing.
+
+A **production persistence layer** is also wired in alongside it:
+the migration in
+[`supabase/migrations/`](supabase/migrations/) provisions the
+`organizations`, `organization_members`, `studies`, `study_drafts`,
+`study_versions`, `study_imports`, and `study_audit_events` tables
+with row-level security, and the protected API under `/api/studies`
+(see below) reads + writes those tables on behalf of authenticated
+callers. The browser store still owns the live edit; the server-side
+tables are where saved drafts and named versions live.
+
+The detailed schema, RLS policy expectations, and migration path
+from existing localStorage snapshots are in
+[`docs/persistence-design.md`](docs/persistence-design.md).
+
+### Server study API — `/api/studies/*`
+
+Protected by the same CORS / origin / Supabase-JWT-auth chain as the
+AI + import paths. No AI rate limit (cheap DB ops shouldn't share
+the Anthropic-spend quota). JSON body cap is `STUDY_SNAPSHOT_MAX_MB`
+(default 5).
+
+| Method · Path | Purpose |
+|---|---|
+| `GET    /api/studies`                  | List studies the caller's organization memberships make visible. |
+| `POST   /api/studies`                  | Create a study in an organization the caller has owner/admin/analyst membership in. |
+| `GET    /api/studies/:id`              | Load study metadata + the current draft (`{ snapshot, updated_at, updated_by }` or `null`). |
+| `PUT    /api/studies/:id/snapshot`     | Upsert the draft snapshot. Body: `{ snapshot: BuildSnapshot }`. Owner/admin/analyst only. |
+| `GET    /api/studies/:id/versions`     | List named versions (no snapshot bodies — fetch per id when needed). |
+| `POST   /api/studies/:id/versions`     | Cut an immutable named version. Body: `{ label, status?, notes?, snapshot? }` — when `snapshot` is omitted, the current draft is used. |
+
+All responses follow the project's `{ ok: true, ... }` /
+`{ ok: false, message }` convention. 503 is returned when the server
+isn't configured for persistence (i.e. `SUPABASE_SERVICE_ROLE_KEY` is
+unset). 401 on missing/invalid auth. 403 when the caller's role
+doesn't permit the action. 413 when the snapshot body exceeds the
+cap. 422 when the body fails validation.
+
+The browser-side adapter for these endpoints lives in
+`lib/studies/studiesApi.ts` — UI-agnostic so the eventual
+save-on-debounce / load-on-study-switch flow can plug it in without
+coupling to React / Zustand.
+
+### Applying the schema
+
+Locally:
+
+```bash
+# One-time: install the Supabase CLI.
+npm install -g supabase
+
+# Link to your project (uses the same URL as `VITE_SUPABASE_URL`).
+supabase link --project-ref <project-ref>
+
+# Push migrations.
+supabase db push
+```
+
+A self-hosted Postgres without the Supabase CLI can apply the SQL
+file directly:
+
+```bash
+psql "$DATABASE_URL" -f supabase/migrations/20260601000000_initial_persistence_schema.sql
+```
+
+The migration is idempotent (`create table if not exists`, etc.) so
+re-running on an up-to-date schema is a no-op.
+
+### Local dev without a database
+
+`AUTH_DEV_BYPASS=1` keeps `/api/ai/*` and `/api/import/*` working
+without Supabase. `/api/studies/*` requires a real DB — without
+`SUPABASE_URL` + `SUPABASE_SERVICE_ROLE_KEY` set, those endpoints
+respond `503 Study persistence is not configured on this server.`
+The SPA's localStorage editing flow continues to work in that mode;
+only the server-backed save/load API is gated.
 
 As a manual interim, `lib/snapshotIO.ts` exposes pure helpers for
 exporting and importing the live store as a JSON file:
@@ -337,6 +409,8 @@ client store it has to mutate.
 | `ALLOWED_ORIGINS`        | **yes** in prod | —       | Comma-separated `scheme://host[:port]` allowlist for the origin guard and CORS reflection. With `NODE_ENV=production` and this unset, AI endpoints respond `503 Not configured`. |
 | `AI_RATE_LIMIT_PER_MIN`  | optional        | `30`    | Per-client requests per minute on `/api/ai/*` before 429. The default limiter is in-process (a `Map<key, ts[]>` per replica). For multi-replica production, replace it with a shared backend via `rateLimit({ adapter })` — see `server/aiRateLimit.ts`'s `RateLimitAdapter` interface. |
 | `MAX_UPLOAD_MB`          | optional        | `20`    | Per-request upload cap (MB). The streaming body limit and the parsed-size gate both honor this. |
+| `SUPABASE_SERVICE_ROLE_KEY` | study persistence | —     | Server-side Supabase admin key used by `/api/studies/*` to read + write the persistence tables. Bypasses RLS by design — the handlers enforce authorization in code using the user id from `requireAuth()` plus the role helpers in `server/studies/authorization.ts`. **Server-side only — never `VITE_`-prefix.** When unset, `/api/studies/*` responds `503 not configured`. |
+| `STUDY_SNAPSHOT_MAX_MB`  | optional        | `5`     | JSON body cap (MB) for `PUT /api/studies/:id/snapshot` and `POST /api/studies/:id/versions`. Snapshots above the cap return 413. |
 
 Behind a reverse proxy, ensure `X-Forwarded-For` is forwarded — the rate
 limiter keys on it (falling back to `X-Real-IP` then `anonymous`).

@@ -104,11 +104,43 @@ let passed = 0;
   passed++;
 }
 
+// dbEnabled — both SUPABASE_URL + SUPABASE_SERVICE_ROLE_KEY set.
+{
+  const r = validateEnv({
+    NODE_ENV: "development",
+    SUPABASE_URL: "https://x.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "service-role-xxx",
+  });
+  assert.equal(r.dbEnabled, true, "both set → dbEnabled true");
+  passed++;
+}
+
+// dbEnabled — only URL set → false.
+{
+  const r = validateEnv({
+    NODE_ENV: "development",
+    SUPABASE_URL: "https://x.supabase.co",
+  });
+  assert.equal(r.dbEnabled, false, "service-role key required for dbEnabled");
+  passed++;
+}
+
+// dbEnabled — blank service-role key → false.
+{
+  const r = validateEnv({
+    NODE_ENV: "development",
+    SUPABASE_URL: "https://x.supabase.co",
+    SUPABASE_SERVICE_ROLE_KEY: "   ",
+  });
+  assert.equal(r.dbEnabled, false, "whitespace-only key does not count");
+  passed++;
+}
+
 // ensureValidOrExit — passes through on ok=true.
 {
   let exited = false;
   ensureValidOrExit(
-    { ok: true, isProduction: true, missing: [], aiEnabled: false },
+    { ok: true, isProduction: true, missing: [], aiEnabled: false, dbEnabled: false },
     () => { /* silenced */ },
     (() => { exited = true; }) as never,
   );
@@ -126,6 +158,7 @@ let passed = 0;
       isProduction: true,
       missing: ["SUPABASE_URL", "ALLOWED_ORIGINS"],
       aiEnabled: false,
+      dbEnabled: false,
     },
     (s) => errLines.push(s),
     ((code: number) => { exitCode = code; }) as never,
@@ -137,29 +170,32 @@ let passed = 0;
   passed++;
 }
 
-// logEnvSummary — formats mode + ai status.
+// logEnvSummary — formats mode + ai + db status.
 {
   const lines: string[] = [];
   logEnvSummary(
-    { ok: true, isProduction: true, missing: [], aiEnabled: true },
+    { ok: true, isProduction: true, missing: [], aiEnabled: true, dbEnabled: true },
     (s) => lines.push(s),
   );
   assert.equal(lines.length, 1);
   assert.match(lines[0], /mode=production/);
   assert.match(lines[0], /ai=enabled/);
+  assert.match(lines[0], /db=enabled/);
   passed++;
 }
 
-// logEnvSummary — ai disabled message includes the hint.
+// logEnvSummary — ai + db disabled messages include the hint.
 {
   const lines: string[] = [];
   logEnvSummary(
-    { ok: true, isProduction: false, missing: [], aiEnabled: false },
+    { ok: true, isProduction: false, missing: [], aiEnabled: false, dbEnabled: false },
     (s) => lines.push(s),
   );
   assert.match(lines[0], /mode=development/);
   assert.match(lines[0], /ai=disabled/);
   assert.match(lines[0], /ANTHROPIC_API_KEY/);
+  assert.match(lines[0], /db=disabled/);
+  assert.match(lines[0], /SUPABASE_SERVICE_ROLE_KEY/);
   passed++;
 }
 

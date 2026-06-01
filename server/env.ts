@@ -27,6 +27,11 @@ export interface EnvValidationResult {
   isProduction: boolean;
   missing: string[];
   aiEnabled: boolean;
+  /** True iff both SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY are set.
+   *  Drives /api/studies/* availability — endpoints respond 503 when
+   *  this is false. Not required-in-prod here; the studies surface
+   *  fails closed at request time rather than blocking server boot. */
+  dbEnabled: boolean;
 }
 
 const PROD_REQUIRED = ["SUPABASE_URL", "ALLOWED_ORIGINS"] as const;
@@ -42,11 +47,17 @@ export function validateEnv(env: NodeJS.ProcessEnv): EnvValidationResult {
       })
     : [];
   const aiKey = env.ANTHROPIC_API_KEY;
+  const supabaseUrl = env.SUPABASE_URL;
+  const serviceRoleKey = env.SUPABASE_SERVICE_ROLE_KEY;
   return {
     ok: missing.length === 0,
     isProduction,
     missing,
     aiEnabled: Boolean(aiKey && aiKey.trim() !== ""),
+    dbEnabled: Boolean(
+      supabaseUrl && supabaseUrl.trim() !== ""
+      && serviceRoleKey && serviceRoleKey.trim() !== "",
+    ),
   };
 }
 
@@ -77,5 +88,8 @@ export function logEnvSummary(
   const ai = r.aiEnabled
     ? "enabled"
     : "disabled (ANTHROPIC_API_KEY unset — /api/ai/* will return not-configured)";
-  log(`[server] mode=${mode} ai=${ai}`);
+  const db = r.dbEnabled
+    ? "enabled"
+    : "disabled (SUPABASE_SERVICE_ROLE_KEY unset — /api/studies/* will return not-configured)";
+  log(`[server] mode=${mode} ai=${ai} db=${db}`);
 }

@@ -1,13 +1,26 @@
 # Persistence design — server-side study storage
 
 Design doc for moving the build model off browser `localStorage` and
-onto Supabase, with row-level security and a clean migration path from
-existing localStorage snapshots. **Not yet implemented in code.** The
-working app today still persists to localStorage (`lib/store.ts`,
-`STORAGE_KEY = "afferent.build.v1"`).
+onto Supabase, with row-level security and a clean migration path
+from existing localStorage snapshots.
 
-This is a design contract for the next step, not a description of
-the current state.
+**Status (as of this commit): first persistence layer is shipped.**
+The migration in
+[`supabase/migrations/`](../supabase/migrations/) provisions the
+schema; the `/api/studies/*` Hono routes in `server/studies/`
+implement CRUD over `studies`, `study_drafts`, and `study_versions`
+with explicit authorization; and the browser adapter in
+`lib/studies/studiesApi.ts` exposes the endpoints to UI code. The
+SPA's Zustand/localStorage editing model is intentionally
+unchanged — see "Migration path" below for how the two layers
+will eventually compose.
+
+**Naming note.** The implementation went with `organizations` /
+`organization_members` rather than the `jurisdictions` /
+`memberships` names used in earlier drafts of this doc. Tenant
+boundary is unchanged; the names just match the Supabase
+ecosystem's conventional terminology more closely. Existing
+references below have been updated.
 
 ## Current state
 
@@ -45,66 +58,86 @@ v4" in-app), but they don't outlive a single browser.
 
 ## Target architecture
 
-Single Postgres database in Supabase, accessed through Supabase's
-PostgREST + RLS layer using the user JWT we already verify on the
-server (`server/auth.ts` + `server/requireAuth.ts`). No new auth
-hop; row visibility is enforced by Postgres policies, not by app
-code.
+Single Postgres database in Supabase. The implemented first cut
+goes through the Hono server with the service-role key
+(`server/db.ts`), with authorization enforced in code via
+`requireAuth()` plus the role helpers in
+`server/studies/authorization.ts`. RLS is still enabled on every
+table as defense-in-depth and as the contract for future direct
+PostgREST reads from the browser.
 
-### Tables
+A later iteration is expected to move list / read paths to direct
+PostgREST + the publishable key so they ride Supabase's edge cache,
+keeping the Hono server in the loop only for the writes that need
+transactional guarantees (version cuts, atomic multi-row updates).
+The schema is identical either way.
+
+### Tables (implemented)
+
+The schema below matches `supabase/migrations/20260601000000_initial_persistence_schema.sql`
+exactly. Roles are `owner | admin | analyst | viewer`.
 
 ```
-jurisdictions      ── one row per municipal client (city of …, county of …).
+organizations            ── one row per municipal client / engagement.
   id              uuid pk
-  name            text not null
+  name            text not null         -- ≤ 200 chars
   created_at      timestamptz default now()
 
-memberships       ── user ↔ jurisdiction with a role.
-  user_id         uuid not null references auth.users
-  jurisdiction_id uuid not null references jurisdictions
-  role            text not null   -- 'owner' | 'analyst' | 'viewer'
-  primary key (user_id, jurisdiction_id)
-
-studies            ── one row per cost-of-service study (e.g. "FY26 fee study").
-  id              uuid pk
-  jurisdiction_id uuid not null references jurisdictions
-  name            text not null
-  fiscal_year     text not null
-  created_by      uuid not null references auth.users
+organization_members     ── user ↔ org with a role.
+  organization_id uuid references organizations
+  user_id         uuid references auth.users
+  role            text not null         -- owner | admin | analyst | viewer
   created_at      timestamptz default now()
+  primary key (organization_id, user_id)
+
+studies                  ── one row per study.
+  id              uuid pk
+  organization_id uuid references organizations
+  name            text not null         -- ≤ 200 chars
+  fiscal_year     text                  -- nullable, ≤ 50 chars
+  created_by      uuid references auth.users
+  created_at      timestamptz default now()
+  updated_at      timestamptz default now()
   archived_at     timestamptz
 
-study_versions    ── immutable snapshots; one per "save" / "publish" cut.
+study_drafts             ── the live, mutable edit slice (one per study).
+  study_id    uuid pk references studies
+  snapshot    jsonb not null            -- BuildSnapshot from lib/store.ts
+  updated_by  uuid references auth.users
+  updated_at  timestamptz default now()
+
+study_versions           ── immutable named cuts.
   id              uuid pk
-  study_id        uuid not null references studies
-  version_number  int  not null
-  label           text
-  status          text not null   -- 'draft' | 'review' | 'published' | 'adopted' | 'archived'
-  notes           text
-  snapshot        jsonb not null  -- BuildSnapshot shape from lib/storeSnapshot.ts
-  created_by      uuid not null references auth.users
+  study_id        uuid references studies
+  version_number  int  not null         -- assigned server-side, > 0
+  label           text not null         -- ≤ 200 chars
+  status          text not null         -- draft|review|published|adopted|archived
+  notes           text                  -- ≤ 10 000 chars
+  snapshot        jsonb not null
+  created_by      uuid references auth.users
   created_at      timestamptz default now()
   unique (study_id, version_number)
 
-study_drafts      ── the live, mutable edit slice (one per study).
-  study_id        uuid pk references studies
-  snapshot        jsonb not null
-  updated_by      uuid not null references auth.users
-  updated_at      timestamptz default now()
+study_imports            ── per-file import audit; original bytes NOT stored.
+  id               uuid pk
+  study_id         uuid references studies
+  domain           text not null        -- fees|services|volume|labor|operating|cap
+  source           text not null        -- pdf-ai|excel-deterministic|manual-paste
+  file_name        text not null
+  file_size_bytes  bigint not null
+  mapped_count     int    not null default 0
+  duplicate_count  int    not null default 0
+  skipped_count    int    not null default 0
+  imported_by      uuid references auth.users
+  imported_at      timestamptz default now()
 
-study_imports     ── per-file import audit (PDFs, Excel workbooks, AI parses).
-  id              uuid pk
-  study_id        uuid not null references studies
-  domain          text not null   -- 'fees' | 'services' | 'volume' | 'labor' | 'operating' | 'cap'
-  file_name       text not null
-  file_size_bytes int  not null
-  source          text not null   -- 'pdf-ai' | 'excel-deterministic' | 'manual-paste'
-  mapped_count    int  not null
-  duplicate_count int  not null
-  skipped_count   int  not null
-  imported_by     uuid not null references auth.users
-  imported_at     timestamptz default now()
-  -- file bytes are NOT stored; only the structured result + audit metadata
+study_audit_events       ── append-only granular audit.
+  id             uuid pk
+  study_id       uuid references studies
+  event_type     text not null         -- e.g. 'draft.upsert', 'version.created'
+  payload        jsonb                 -- structured context; never raw bodies
+  actor_user_id  uuid references auth.users
+  occurred_at    timestamptz default now()
 ```
 
 Note: we deliberately do not store the original uploaded file bytes
@@ -114,77 +147,96 @@ Trade-off is privacy-positive (no long-lived PDF/Excel content) and
 matches the observability invariants in
 [`README.md → What is intentionally NOT logged`](../README.md).
 
-### Row-level security expectations
+### Row-level security (implemented)
 
-Every table above ships with RLS enabled and the following policies:
+Every table ships with RLS enabled. Policies are written against
+`auth.uid()` and join through `organization_members`:
 
-- **`jurisdictions`** — `SELECT` allowed iff
-  `auth.uid()` has a `memberships` row for that jurisdiction.
-  `INSERT` allowed for service-role only (jurisdictions are
-  provisioned by an admin script, not by analysts).
+- **`organizations`** — `SELECT` allowed iff `auth.uid()` has an
+  `organization_members` row for that org. Writes are service-role only.
 
-- **`memberships`** — `SELECT` allowed for the same `user_id` (an
-  analyst can see their own memberships). `INSERT` / `UPDATE` /
-  `DELETE` for service-role only.
+- **`organization_members`** — `SELECT` returns the caller's own
+  rows. Writes are service-role only (membership grants are an
+  admin op out of band).
 
-- **`studies`** — `SELECT` allowed iff the caller has a membership
-  for that `jurisdiction_id`. `INSERT` allowed for `role IN
-  ('owner','analyst')`. `UPDATE` (rename, archive) and `DELETE`
-  restricted to `role = 'owner'`.
+- **`studies`** — `SELECT` follows the membership. `INSERT` requires
+  `role IN ('owner','admin','analyst')`. `UPDATE` restricted to
+  `role IN ('owner','admin')`.
+
+- **`study_drafts`** — `SELECT` follows the parent study.
+  `INSERT` / `UPDATE` require `role IN ('owner','admin','analyst')`.
 
 - **`study_versions`** — `SELECT` follows the parent study. `INSERT`
-  allowed for `role IN ('owner','analyst')`. `UPDATE` /
-  `DELETE` denied for everyone — versions are immutable; "delete
-  the v3 draft" is modeled as `status = 'archived'`.
+  requires `role IN ('owner','admin','analyst')`. No `UPDATE` /
+  `DELETE` policy → immutable by RLS default. Status changes will
+  be modeled as new rows (future "publish" endpoint).
 
-- **`study_drafts`** — same `SELECT` rule as the parent study.
-  `INSERT` and `UPDATE` allowed for `role IN ('owner','analyst')`.
-  `DELETE` allowed for `role = 'owner'`.
+- **`study_imports`** — `SELECT` follows the parent study. `INSERT`
+  requires `role IN ('owner','admin','analyst')`. No `UPDATE` /
+  `DELETE` — append-only audit.
 
-- **`study_imports`** — `SELECT` follows the parent study.
-  `INSERT` allowed for `role IN ('owner','analyst')`. No `UPDATE`,
-  no `DELETE` — audit trail.
+- **`study_audit_events`** — `SELECT` follows the parent study.
+  `INSERT` requires `role IN ('owner','admin','analyst')`. No
+  `UPDATE` / `DELETE` — append-only.
 
-All policies are written against `auth.uid()` and join through
-`memberships`, so a user JWT (the one we already verify in
-`server/auth.ts`) is sufficient. The server never needs the
-service-role key for normal traffic; admin provisioning runs out of
-band.
+The current `/api/studies/*` handlers use the service-role key
+(which bypasses RLS), so they enforce the same contract in code
+via `requireAuth()` plus
+`server/studies/authorization.ts`. RLS remains the source of truth
+for the day the SPA queries Supabase directly with the publishable
+key.
 
-### API surface
+### API surface (implemented today)
 
-Two layers:
+All reads and writes go through `/api/studies/*` in this first cut.
+The browser adapter is in `lib/studies/studiesApi.ts`.
 
-1. **Direct PostgREST from the browser** for `study_drafts` reads /
-   writes and `study_versions` reads. The autosave loop in the SPA
-   talks to Supabase directly using the same publishable key the
-   login flow uses. RLS makes this safe — the browser cannot see
-   rows it doesn't have a membership for.
+```
+GET    /api/studies                      list visible studies
+POST   /api/studies                      create a study (owner|admin|analyst)
+GET    /api/studies/:id                  metadata + current draft
+PUT    /api/studies/:id/snapshot         upsert draft (owner|admin|analyst)
+GET    /api/studies/:id/versions         list named versions (no snapshot body)
+POST   /api/studies/:id/versions         cut an immutable version (owner|admin|analyst)
+```
 
-2. **A small new server surface on the Hono app** for the operations
-   that need server-side authority:
+The handlers (`server/studies/index.ts`) emit a `study_audit_events`
+row on every state-changing call. Audit insert failures are logged
+through `server/logger.ts` but do not roll back the user-visible
+write.
 
-   ```
-   POST   /api/studies                     create study     (auth + 'owner'|'analyst')
-   POST   /api/studies/:id/versions        cut a version    (auth, transactional)
-   POST   /api/studies/:id/publish         publish version  (auth + 'owner')
-   POST   /api/studies/:id/import          record an import (auth)
-   ```
+### Future API work (not yet implemented)
 
-   These wrap multi-statement writes that we want to bound to the
-   server's `req_id` / structured-log envelope. Each handler reuses
-   `requireAuth` and emits a tag-line into `server/logger.ts` for
-   correlation.
+- **Direct PostgREST from the browser** for hot read paths
+  (`study_drafts` reads, `study_versions` list with snapshot
+  hydration on demand). Lands once the RLS policies have been
+  exercised against the user JWT in a staging environment.
+- **`POST /api/studies/:id/publish`** — atomic "make this version
+  the published one" — currently the `status` field on
+  `study_versions` carries the intent but the publish workflow is
+  manual.
+- **`POST /api/studies/:id/imports`** — record the existing client
+  ImportApplyResult shape into `study_imports` for cross-device
+  audit. Today, the client only persists imports into the localStorage
+  `imports` array.
 
-3. **No `/api/studies/:id/load` etc.** Reads stay direct-to-Supabase
-   so they ride the publishable-key cache path and don't fan
-   through the Hono process.
+### Browser-side composition (not yet implemented)
 
-The browser store wraps Supabase reads + writes behind the same
-`useBuildState` hook callers use today. The Zustand store stops
-calling `persist({ name: "afferent.build.v1" })`; instead, a small
-sync adapter pushes diffs to `study_drafts.snapshot` (debounced,
-e.g. 1 s) and pulls a fresh snapshot on study switch.
+The Zustand store keeps its `persist({ name: "afferent.build.v1" })`
+configuration today — the localStorage editing model is unchanged.
+The intended next step is a small sync adapter that:
+
+1. Hydrates the store from `GET /api/studies/:id` on study switch
+   (running the snapshot through `migratePersistedState` first, the
+   same way `parseSnapshotJson` does).
+2. Pushes diffs to `PUT /api/studies/:id/snapshot` on a debounced
+   timer (1 s is the planned default).
+3. Promotes localStorage entries on first sign-in via the migration
+   flow described below.
+
+Until that adapter ships, the server-side `/api/studies/*` surface
+is exercised only by external callers / power-user scripts. The SPA
+keeps editing locally.
 
 ## Migration path
 
