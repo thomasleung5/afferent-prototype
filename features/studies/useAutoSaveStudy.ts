@@ -28,6 +28,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { createBuildSnapshot, useBuildStore } from "@/lib/store";
 import { saveStudySnapshot } from "@/lib/studies/studiesApi";
 import { isAutosaveSuppressed } from "@/lib/studies/autosaveGuard";
+import { getActiveStudyId } from "@/lib/studies/activeStudy";
 import type { SyncStatus } from "@/lib/studies/syncStatus";
 
 const DEFAULT_DELAY_MS = 1500;
@@ -181,6 +182,13 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     if (!enabled || !activeStudyId || isNotConfigured) return;
     const unsub = useBuildStore.subscribe(() => {
       if (isAutosaveSuppressed()) return;
+      // Defensive: check the centralized module synchronously.
+      // ModelSettingsMenu's demo-switch flow calls clearActiveStudy()
+      // BEFORE mutating the store, but the React state propagation
+      // through this hook's props takes another render cycle — the
+      // ref-based check would still see a stale id during that gap.
+      // The module is authoritative and updates synchronously.
+      if (getActiveStudyId() == null) return;
       scheduleSave();
     });
     return () => {

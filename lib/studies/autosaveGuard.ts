@@ -29,17 +29,45 @@ export function isAutosaveSuppressed(): boolean {
   return suppressionCount > 0;
 }
 
-/** Run `fn` with autosave suppressed for its duration. Synchronous —
- *  do not `await` inside, or the suppression flag will lift while the
- *  promise is still in flight and async store mutations would slip
- *  through. */
+/** Run `fn` with autosave suppressed for its duration. Works for
+ *  both synchronous and asynchronous callbacks:
+ *
+ *    - Sync return value → suppression lifts immediately after `fn`
+ *      completes (same shape as the original implementation).
+ *    - Returned Promise / thenable → suppression remains active until
+ *      the Promise settles (resolve or reject). Used by the
+ *      ModelSettingsMenu demo-switch flow, where switchJurisdiction
+ *      awaits a seed-overlay fetch and mutates the store both before
+ *      AND after the await.
+ *
+ *  Throws are forwarded; suppression always releases. */
 export function withSuppressedAutosave<T>(fn: () => T): T {
   beginAutosaveSuppression();
-  try {
-    return fn();
-  } finally {
+  let released = false;
+  const release = () => {
+    if (released) return;
+    released = true;
     endAutosaveSuppression();
+  };
+  let result: T;
+  try {
+    result = fn();
+  } catch (err) {
+    release();
+    throw err;
   }
+  // Detect thenables — covers native Promise plus any duck-typed
+  // equivalent. The `then` arms forward both branches and release
+  // suppression before propagating.
+  const maybeThen = (result as unknown as { then?: unknown } | null);
+  if (maybeThen && typeof maybeThen.then === "function") {
+    return (result as unknown as Promise<unknown>).then(
+      (v) => { release(); return v; },
+      (e) => { release(); throw e; },
+    ) as unknown as T;
+  }
+  release();
+  return result;
 }
 
 /** Test seam — reset the counter. Production code never calls this. */

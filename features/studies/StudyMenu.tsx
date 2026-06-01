@@ -29,12 +29,13 @@ import {
 import { coerceServerSnapshot } from "@/lib/studies/snapshotCoercion";
 import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
 import {
+  clearActiveStudy, setActiveStudy, useActiveStudy,
+} from "@/lib/studies/activeStudy";
+import {
   syncStatusLabel, syncStatusIsRetryable, syncStatusTone,
   type SyncStatus, type SyncTone,
 } from "@/lib/studies/syncStatus";
 import { useAutoSaveStudy } from "./useAutoSaveStudy";
-
-const ACTIVE_STUDY_STORAGE_KEY = "afferent.activeStudyId";
 
 type ServerState = "idle" | "loading" | "ok" | "not-configured" | "error";
 type WorkingKind = "load" | "create" | "version" | null;
@@ -57,20 +58,14 @@ function StudyMenuMounted() {
   const [organizations, setOrganizations] = useState<Organization[] | null>(null);
   const [serverState, setServerState] = useState<ServerState>("idle");
   const [serverError, setServerError] = useState<string>("");
-  const [activeId, setActiveIdState] = useState<string | null>(() => {
-    try { return localStorage.getItem(ACTIVE_STUDY_STORAGE_KEY); } catch { return null; }
-  });
+  // Active server study lives in lib/studies/activeStudy.ts so that
+  // ModelSettingsMenu can read + clear it during demo-switch flows
+  // without prop-drilling through TopBar.
+  const active = useActiveStudy();
+  const activeId = active?.id ?? null;
   const [working, setWorking] = useState<WorkingKind>(null);
   const [status, setStatus] = useState<Status>(null);
   const wrapRef = useRef<HTMLDivElement>(null);
-
-  function setActiveId(id: string | null) {
-    setActiveIdState(id);
-    try {
-      if (id) localStorage.setItem(ACTIVE_STUDY_STORAGE_KEY, id);
-      else localStorage.removeItem(ACTIVE_STUDY_STORAGE_KEY);
-    } catch { /* ignore */ }
-  }
 
   // Outside-click + ESC close — same pattern as ModelSettingsMenu.
   useEffect(() => {
@@ -123,9 +118,18 @@ function StudyMenuMounted() {
     // If the stored active id no longer matches any visible study,
     // clear it so the trigger label doesn't show a stale name.
     if (activeId && !studiesRes.studies.some((s) => s.id === activeId)) {
-      setActiveId(null);
+      clearActiveStudy();
+      return;
     }
-  }, [activeId]);
+    // Backfill the stored name if it was missing (e.g., legacy id-only
+    // localStorage entry, or the name changed on the server).
+    const match = activeId
+      ? studiesRes.studies.find((s) => s.id === activeId) ?? null
+      : null;
+    if (match && match.name !== active?.name) {
+      setActiveStudy({ id: match.id, name: match.name });
+    }
+  }, [activeId, active]);
 
   // Lazy first load when the menu opens.
   useEffect(() => {
@@ -172,7 +176,7 @@ function StudyMenuMounted() {
     onStudyMissing: () => {
       // Server says this study no longer exists or membership was
       // revoked — clear the local active id and surface a notice.
-      setActiveId(null);
+      clearActiveStudy();
       setStatus({
         kind: "warn",
         message: "Active study is no longer accessible. Reverted to local-only.",
@@ -254,7 +258,7 @@ function StudyMenuMounted() {
         setStatus({ kind: "error", message: res.message });
         return;
       }
-      setActiveId(res.study.id);
+      setActiveStudy({ id: res.study.id, name: res.study.name });
       setStatus({ kind: "ok", message: `Created "${res.study.name}".` });
       void refresh();
     } finally {
@@ -356,7 +360,7 @@ function StudyMenuMounted() {
                   s={s}
                   isFirst={i === 0}
                   isActive={s.id === activeId}
-                  onSelect={() => setActiveId(s.id)}
+                  onSelect={() => setActiveStudy({ id: s.id, name: s.name })}
                 />
               ))}
             </div>

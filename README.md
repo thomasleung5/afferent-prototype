@@ -279,6 +279,28 @@ unconfigured, or the user signs out, editing continues to work
 locally and the popover surfaces the appropriate status label
 without any broken affordances.
 
+#### Destructive actions vs. the active study
+
+`Reset to seed`, `Clear all data`, and demo workspace switching all
+mutate the Zustand store. With auto-save running, every store
+change normally lands on `study_drafts.snapshot` for the active
+study. That's the right behavior in most cases, but it has to be
+explicit. The model-settings popover in the top bar handles them
+differently:
+
+| Action | When a server study is active | When in local-only |
+|---|---|---|
+| **Reset to seed** | Confirmation says `Because "<study>" is active, auto-save will also update that server draft.` Auto-save runs normally — the seed lands on the server. | Standard "Local edits will be discarded" confirmation. |
+| **Clear all data** | Confirmation explicitly mentions the server-draft side-effect, same shape as Reset. Auto-save runs normally — the empty state lands on the server. | Standard "Clear all build data" confirmation. |
+| **Load Demo (jurisdiction switch)** | Treated as a sandbox action. Confirmation explains the active study will be **detached** and its draft will NOT be modified. On confirm: `clearActiveStudy()` runs *before* the store mutation, and the entire `switchJurisdiction` async flow is wrapped in `withSuppressedAutosave` so any subscriber that races ahead of React's re-render sees suppression active. | No confirmation needed — non-destructive. |
+
+After a demo switch, the Studies popover drops back to `Local only`
+until the user picks or creates a study again. The active-study
+selection lives in `lib/studies/activeStudy.ts` (a tiny module with
+its own localStorage round-trip + `useSyncExternalStore` hook) so
+the model-settings popover can read + clear it without
+prop-drilling through TopBar.
+
 ### Applying the schema
 
 Locally:

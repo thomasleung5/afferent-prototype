@@ -2,6 +2,11 @@ import { useEffect, useRef, useState } from "react";
 import { switchJurisdiction, useActiveFiscalYear, useActiveJurisdiction } from "@/lib/active";
 import { JURISDICTIONS, type Jurisdiction } from "@/lib/data/jurisdictions";
 import { useBuildActions } from "@/lib/store";
+import { clearActiveStudy, useActiveStudy } from "@/lib/studies/activeStudy";
+import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
+import {
+  clearConfirmCopy, resetConfirmCopy, switchConfirmCopy,
+} from "@/lib/studies/destructiveCopy";
 
 /** TopBar settings popover anchored to the fiscal-year badge. Houses the
  *  three model-wide, infrequent, destructive actions that previously
@@ -16,6 +21,7 @@ import { useBuildActions } from "@/lib/store";
 export function ModelSettingsMenu() {
   const fiscalYear = useActiveFiscalYear();
   const active = useActiveJurisdiction();
+  const activeStudy = useActiveStudy();
   const { resetAll, clearAll } = useBuildActions((s) => ({
     resetAll: s.resetAll,
     clearAll: s.clearAll,
@@ -23,6 +29,7 @@ export function ModelSettingsMenu() {
   const [open, setOpen] = useState(false);
   const [working, setWorking] = useState(false);
   const wrapRef = useRef<HTMLDivElement>(null);
+  const activeStudyName = activeStudy?.name ? activeStudy.name : null;
 
   useEffect(() => {
     if (!open) return;
@@ -40,27 +47,51 @@ export function ModelSettingsMenu() {
 
   async function handleSelect(j: Jurisdiction) {
     if (!j.dataAvailable) return;
+    // Demo workspace switching is a SANDBOX action — it must not push
+    // the swapped-in seed to the active server study. Confirm if a
+    // study is currently active so the user knows the active id will
+    // be detached.
+    const decision = switchConfirmCopy({
+      jurisdictionName: j.name,
+      activeStudyName,
+    });
+    if (decision.needsConfirm && !window.confirm(decision.message)) return;
     setOpen(false);
     setWorking(true);
-    try { await switchJurisdiction(j.id); }
-    finally { setWorking(false); }
+    try {
+      // 1) Detach the active study FIRST so the autosave subscription
+      //    (which reads getActiveStudyId() defensively) skips the
+      //    upcoming store mutations.
+      if (activeStudy) clearActiveStudy();
+      // 2) Belt-and-braces: suppress autosave across the entire async
+      //    switch (resetAll + seed fetch + setState).
+      //    withSuppressedAutosave is async-aware — the suppression
+      //    extends until switchJurisdiction's Promise settles.
+      await withSuppressedAutosave(() => switchJurisdiction(j.id));
+    } finally {
+      setWorking(false);
+    }
   }
 
   function confirmReset() {
     setOpen(false);
-    const ok = window.confirm(
-      `Reset ${active.name} to the seed model?\n\nLocal edits will be discarded.`,
-    );
+    // Reset is intentionally NOT autosave-suppressed: when a server
+    // study is active and the user confirms, that study's draft SHOULD
+    // be updated to match the new local state. The copy makes the
+    // side-effect explicit so the confirmation is informed.
+    const ok = window.confirm(resetConfirmCopy({
+      jurisdictionName: active.name,
+      activeStudyName,
+    }));
     if (ok) resetAll();
   }
 
   function confirmClear() {
     setOpen(false);
-    const ok = window.confirm(
-      `Clear all build data for ${active.name}?\n\n`
-      + "This empties every input slice — including the seed. "
-      + "You can re-seed afterward with Reset.",
-    );
+    const ok = window.confirm(clearConfirmCopy({
+      jurisdictionName: active.name,
+      activeStudyName,
+    }));
     if (ok) clearAll();
   }
 
