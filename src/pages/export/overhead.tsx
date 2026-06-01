@@ -11,7 +11,7 @@ import { basisForPool } from "@/lib/data/capBasisRouting";
 import type { CapExportPayload } from "@/lib/export/capExcel";
 import { useAutoPrint, useStoreHydrated } from "@/lib/printing";
 
-export default function CapAllocationExportPage() {
+export default function OverheadExportPage() {
   const hydrated = useStoreHydrated();
   const state = useBuildState();
 

@@ -18,7 +18,7 @@ export default function OverheadCostsPage() {
     <Page>
       {/* In-app uses "Overhead Costs". The published PDF deliverable
         * uses the formal name "Cost Allocation Plan" — see
-        * src/pages/export/cap-allocation.tsx. */}
+        * src/pages/export/overhead.tsx. */}
       <PageHeader
         eyebrow={<NodeEyebrow node="overhead"/>}
         title="Overhead Costs"

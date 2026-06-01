@@ -31,7 +31,7 @@ export function useOverheadExport() {
     downloadBlob(blob, `${city}-cost-allocation-plan.xlsx`);
   }, [buildPayload]);
 
-  const pdfHref = "/export/cap-allocation";
+  const pdfHref = "/export/overhead";
 
   return { downloadExcel, pdfHref };
 }
