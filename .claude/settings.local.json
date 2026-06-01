@@ -149,7 +149,8 @@
       "Bash(curl -sS -o /tmp/c.txt -w \"HTTP %{http_code} | content-type=%{content_type}\\\\n\" -X POST -H \"Origin: http://localhost:8787\" http://localhost:8787/api/ai/parse-fees)",
       "Bash(pkill -f \"tsx server/index.ts\")",
       "Bash(grep -E '^\\\\| `[A-Z_]+')",
-      "Bash(grep -oE '`[A-Z_]+`')"
+      "Bash(grep -oE '`[A-Z_]+`')",
+      "Bash(npx playwright *)"
     ]
   }
 }
