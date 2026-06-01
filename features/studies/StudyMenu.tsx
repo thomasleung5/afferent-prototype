@@ -23,8 +23,9 @@ import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, 
 import { useAuth } from "@/lib/auth/AuthContext";
 import { createBuildSnapshot, useBuildActions, useBuildStore } from "@/lib/store";
 import {
-  createStudy, createStudyVersion, getStudy, listStudies, saveStudySnapshot,
-  type Study,
+  createStudy, createStudyVersion, getStudy, listOrganizations, listStudies,
+  saveStudySnapshot,
+  type Organization, type Study,
 } from "@/lib/studies/studiesApi";
 import { coerceServerSnapshot } from "@/lib/studies/snapshotCoercion";
 
@@ -48,6 +49,7 @@ function StudyMenuMounted() {
   const { loadSnapshot } = useBuildActions((s) => ({ loadSnapshot: s.loadSnapshot }));
   const [open, setOpen] = useState(false);
   const [studies, setStudies] = useState<Study[] | null>(null);
+  const [organizations, setOrganizations] = useState<Organization[] | null>(null);
   const [serverState, setServerState] = useState<ServerState>("idle");
   const [serverError, setServerError] = useState<string>("");
   const [activeId, setActiveIdState] = useState<string | null>(() => {
@@ -83,24 +85,39 @@ function StudyMenuMounted() {
   const refresh = useCallback(async () => {
     setServerState("loading");
     setServerError("");
-    const res = await listStudies();
-    if (!res.ok) {
-      // 503 from the server: parse the message tone so we can show
-      // the "DB not configured" branch with a friendly note instead
-      // of a red error.
-      if (/not configured/i.test(res.message)) {
+    // Fetch in parallel — the menu needs both lists to render
+    // correctly (studies for the picker, organizations for the
+    // "New study…" target inference).
+    const [studiesRes, orgsRes] = await Promise.all([
+      listStudies(),
+      listOrganizations(),
+    ]);
+    // 503 from either endpoint maps to the friendly "not configured"
+    // branch (same env contract — both surfaces share the DB).
+    if (!studiesRes.ok) {
+      if (/not configured/i.test(studiesRes.message)) {
         setServerState("not-configured");
       } else {
         setServerState("error");
-        setServerError(res.message);
+        setServerError(studiesRes.message);
       }
       return;
     }
-    setStudies(res.studies);
+    if (!orgsRes.ok) {
+      if (/not configured/i.test(orgsRes.message)) {
+        setServerState("not-configured");
+      } else {
+        setServerState("error");
+        setServerError(orgsRes.message);
+      }
+      return;
+    }
+    setStudies(studiesRes.studies);
+    setOrganizations(orgsRes.organizations);
     setServerState("ok");
     // If the stored active id no longer matches any visible study,
     // clear it so the trigger label doesn't show a stale name.
-    if (activeId && !res.studies.some((s) => s.id === activeId)) {
+    if (activeId && !studiesRes.studies.some((s) => s.id === activeId)) {
       setActiveId(null);
     }
   }, [activeId]);
@@ -117,14 +134,27 @@ function StudyMenuMounted() {
     [activeId, studies],
   );
 
-  // The create flow piggybacks on whatever organization the caller's
-  // existing studies are in. Full org-selector UI is explicitly out
-  // of scope for this first integration pass — admins provision the
-  // first study, the menu surfaces "create more" from there.
+  // Orgs the caller can create studies in (owner / admin / analyst —
+  // matches server/studies/authorization.ts:canCreateStudy and the RLS
+  // policy on `studies` INSERT). Viewers see organizations they belong
+  // to in `organizations` but cannot create through this menu.
+  const creatableOrgs = useMemo(() => {
+    if (!organizations) return null;
+    return organizations.filter((o) =>
+      o.role === "owner" || o.role === "admin" || o.role === "analyst",
+    );
+  }, [organizations]);
+
+  // Org id for the next "New study…" action. Prefers the active
+  // study's org (so create-more lands in the same place); otherwise
+  // the first creatable membership. Multi-org users see all options
+  // in this same first slot today — a proper picker is future polish.
   const inferredOrgId = useMemo(() => {
-    if (!studies || studies.length === 0) return null;
-    return studies[0].organization_id;
-  }, [studies]);
+    if (activeStudy && creatableOrgs?.some((o) => o.id === activeStudy.organization_id)) {
+      return activeStudy.organization_id;
+    }
+    return creatableOrgs?.[0]?.id ?? null;
+  }, [activeStudy, creatableOrgs]);
 
   async function handleSave() {
     if (!activeId) return;
@@ -292,8 +322,9 @@ function StudyMenuMounted() {
 
           {serverState === "ok" && studies && studies.length === 0 && (
             <Body>
-              No studies yet. Ask your admin to provision the first study for
-              your organization, or use “New study…” below.
+              {inferredOrgId
+                ? "No studies yet. Use “New study…” below to create the first one."
+                : "No studies yet, and you don't have permission to create studies in any organization. Ask your admin."}
             </Body>
           )}
           {serverState === "ok" && studies && studies.length > 0 && (
@@ -337,8 +368,8 @@ function StudyMenuMounted() {
               <MenuAction
                 label="New study…"
                 sub={inferredOrgId
-                  ? "Create a study in your organization."
-                  : "No organization yet — contact your admin."}
+                  ? `Create a study in ${nameOfOrg(organizations, inferredOrgId) ?? "your organization"}.`
+                  : "You don't have permission to create studies in any organization."}
                 disabled={!inferredOrgId || working === "create"}
                 onClick={() => { void handleCreate(); }}
               />
@@ -482,4 +513,9 @@ function MenuAction({
 function formatTimestamp(ts: string): string {
   try { return new Date(ts).toLocaleString(); }
   catch { return ts; }
+}
+
+function nameOfOrg(orgs: Organization[] | null, id: string): string | null {
+  if (!orgs) return null;
+  return orgs.find((o) => o.id === id)?.name ?? null;
 }

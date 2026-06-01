@@ -18,6 +18,16 @@ import type { BuildSnapshot } from "@/lib/store";
 // Row shapes (mirror server query SELECTs in server/studies/index.ts)
 // ====================================================================
 
+export type OrganizationRole = "owner" | "admin" | "analyst" | "viewer";
+
+export interface Organization {
+  id: string;
+  name: string;
+  /** The caller's role in this organization. */
+  role: OrganizationRole;
+  created_at: string;
+}
+
 export interface Study {
   id: string;
   organization_id: string;
@@ -97,6 +107,14 @@ async function studiesFetch<T>(path: string, init: RequestInit = {}): Promise<Ap
   }
   const text = await res.text().catch(() => "");
   return { ok: false, message: text || `HTTP ${res.status}` };
+}
+
+// ====================================================================
+// Organizations
+// ====================================================================
+
+export function listOrganizations(): Promise<ApiResult<{ organizations: Organization[] }>> {
+  return studiesFetch("/api/organizations");
 }
 
 // ====================================================================

@@ -18,6 +18,7 @@ import { handleAiParseCap } from "./aiParseCap";
 import { handleAiParseVolume } from "./aiParseVolume";
 import { handleExcelPreview } from "./excelImport";
 import { studiesRoutes, resolveStudySnapshotMaxBytes } from "./studies";
+import { organizationsRoutes } from "./organizations";
 
 const app = new Hono();
 
@@ -96,6 +97,15 @@ app.use("/api/studies/*", bodyLimit({
   ),
 }));
 app.route("/api/studies", studiesRoutes);
+
+// /api/organizations/* — sibling surface to /api/studies/*. Same CORS
+// / origin / auth gates. GET-only today (lists the caller's
+// memberships); no body limit needed but the auth chain is kept
+// identical for predictability.
+app.use("/api/organizations/*", aiCors());
+app.use("/api/organizations/*", requireAllowedOrigin());
+app.use("/api/organizations/*", requireAuth());
+app.route("/api/organizations", organizationsRoutes);
 
 app.post("/api/ai/parse-fees", (c) => handleAiParseFees(c.req.raw));
 app.post("/api/ai/parse-services", (c) => handleAiParseServices(c.req.raw));

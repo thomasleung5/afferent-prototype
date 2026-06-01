@@ -201,6 +201,7 @@ the Anthropic-spend quota). JSON body cap is `STUDY_SNAPSHOT_MAX_MB`
 | `PUT    /api/studies/:id/snapshot`     | Upsert the draft snapshot. Body: `{ snapshot: BuildSnapshot }`. Owner/admin/analyst only. |
 | `GET    /api/studies/:id/versions`     | List named versions (no snapshot bodies — fetch per id when needed). |
 | `POST   /api/studies/:id/versions`     | Cut an immutable named version. Body: `{ label, status?, notes?, snapshot? }` — when `snapshot` is omitted, the current draft is used. |
+| `GET    /api/organizations`            | List organizations the caller has membership in (with role). Used by the StudyMenu "New study…" flow so a user with a membership but zero studies can still create the first one. |
 
 All responses follow the project's `{ ok: true, ... }` /
 `{ ok: false, message }` convention. 503 is returned when the server
