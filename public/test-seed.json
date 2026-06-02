@@ -2712,7 +2712,248 @@
   "directBills": {},
   "serviceRoleAllocations": {},
   "capCenterDisallowed": {},
-  "functionalAllocation": [],
+  "functionalAllocation": [
+    {
+      "id": "fa-plan-current",
+      "dept": "PLAN",
+      "name": "Current Planning",
+      "description": "Entitlement review, discretionary permits, applicant coordination, environmental review, and hearing support for active development applications.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 45,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-plan-counter",
+      "dept": "PLAN",
+      "name": "Planning Counter",
+      "description": "Zoning questions, permit intake support, pre-application guidance, and general public assistance not always tied to a billable application.",
+      "recoverabilityPct": 60,
+      "hoursSharePct": 20,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-plan-long-range",
+      "dept": "PLAN",
+      "name": "Long Range Planning",
+      "description": "General Plan maintenance, zoning ordinance updates, housing policy, and community planning work funded as broad public benefit activity.",
+      "recoverabilityPct": 0,
+      "hoursSharePct": 25,
+      "rateBasisHours": false,
+      "source": "seed"
+    },
+    {
+      "id": "fa-plan-code",
+      "dept": "PLAN",
+      "name": "Code Compliance",
+      "description": "Zoning and land-use compliance investigations, notices, follow-up inspections, and recoverable enforcement activity where allowed.",
+      "recoverabilityPct": 40,
+      "hoursSharePct": 10,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-bldg-plan-check",
+      "dept": "BLDG",
+      "name": "Plan Check",
+      "description": "Building code review of construction documents, structural review, energy review, accessibility review, and correction cycles.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 35,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-bldg-inspections",
+      "dept": "BLDG",
+      "name": "Inspections",
+      "description": "Field inspections, reinspection work, inspection scheduling, and inspection record administration through project completion.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 40,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-bldg-permits",
+      "dept": "BLDG",
+      "name": "Permit Issuance",
+      "description": "Permit intake, valuation review, fee calculation, issuance, records, and applicant-facing permit administration.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 15,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-bldg-public-assistance",
+      "dept": "BLDG",
+      "name": "Public Assistance",
+      "description": "General code questions, owner-builder guidance, counter assistance, and non-project-specific public information.",
+      "recoverabilityPct": 50,
+      "hoursSharePct": 10,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-eng-private-development",
+      "dept": "ENG",
+      "name": "Private Development Review",
+      "description": "Engineering review of grading, drainage, frontage improvements, subdivisions, and development conditions of approval.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 40,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-eng-encroachment",
+      "dept": "ENG",
+      "name": "Encroachment Permits",
+      "description": "Review, inspection, and closeout of work in the public right-of-way, including utility and frontage work.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 20,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-eng-cip",
+      "dept": "ENG",
+      "name": "Capital Projects",
+      "description": "Design, delivery, and coordination of City capital infrastructure projects funded through capital appropriations.",
+      "recoverabilityPct": 0,
+      "hoursSharePct": 25,
+      "rateBasisHours": false,
+      "source": "seed"
+    },
+    {
+      "id": "fa-eng-traffic",
+      "dept": "ENG",
+      "name": "Traffic and Transportation Review",
+      "description": "Traffic impact review, transportation conditions, work-zone traffic control, and citywide transportation support.",
+      "recoverabilityPct": 50,
+      "hoursSharePct": 15,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-parks-facility-rentals",
+      "dept": "PARKS",
+      "name": "Facility Rentals",
+      "description": "Reservation intake, facility coordination, rental support, setup review, and customer service for rentable public facilities.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 30,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-parks-special-events",
+      "dept": "PARKS",
+      "name": "Special Events",
+      "description": "Event permit review, interdepartmental routing, site coordination, and event-day public service support.",
+      "recoverabilityPct": 80,
+      "hoursSharePct": 25,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-parks-programs",
+      "dept": "PARKS",
+      "name": "Recreation Programs",
+      "description": "Program registration, class coordination, instructor support, and fee-supported recreation programming.",
+      "recoverabilityPct": 70,
+      "hoursSharePct": 25,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-parks-community-benefit",
+      "dept": "PARKS",
+      "name": "Community Benefit",
+      "description": "Open access park support, community outreach, non-fee events, and general recreation services with broad public benefit.",
+      "recoverabilityPct": 0,
+      "hoursSharePct": 20,
+      "rateBasisHours": false,
+      "source": "seed"
+    },
+    {
+      "id": "fa-pd-records",
+      "dept": "PD",
+      "name": "Records and Reports",
+      "description": "Police report processing, records requests, clearance letters, and recoverable public records services.",
+      "recoverabilityPct": 80,
+      "hoursSharePct": 25,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-pd-permits",
+      "dept": "PD",
+      "name": "Permits and Reviews",
+      "description": "Alarm permits, special event review, background review, and other fee-supported police administrative permits.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 20,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-pd-code-support",
+      "dept": "PD",
+      "name": "Code and Parking Support",
+      "description": "Parking enforcement support, municipal code response, and recoverable enforcement activity where legally allowed.",
+      "recoverabilityPct": 50,
+      "hoursSharePct": 20,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-pd-patrol-public-safety",
+      "dept": "PD",
+      "name": "Patrol and Public Safety",
+      "description": "Core patrol, emergency response, investigations, and general public safety activity funded as public benefit service.",
+      "recoverabilityPct": 0,
+      "hoursSharePct": 35,
+      "rateBasisHours": false,
+      "source": "seed"
+    },
+    {
+      "id": "fa-fire-plan-review",
+      "dept": "FIRE",
+      "name": "Fire Plan Review",
+      "description": "Fire code review of development and construction plans, fire protection systems, access, and life-safety requirements.",
+      "recoverabilityPct": 100,
+      "hoursSharePct": 30,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-fire-inspections",
+      "dept": "FIRE",
+      "name": "Fire Inspections",
+      "description": "Operational permits, business inspections, reinspection work, and inspection record administration.",
+      "recoverabilityPct": 90,
+      "hoursSharePct": 30,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-fire-prevention-programs",
+      "dept": "FIRE",
+      "name": "Prevention Programs",
+      "description": "Public education, defensible space outreach, emergency preparedness, and community risk-reduction programs.",
+      "recoverabilityPct": 25,
+      "hoursSharePct": 20,
+      "rateBasisHours": true,
+      "source": "seed"
+    },
+    {
+      "id": "fa-fire-emergency-response",
+      "dept": "FIRE",
+      "name": "Emergency Response",
+      "description": "Emergency response readiness and response activity funded primarily as broad public safety service.",
+      "recoverabilityPct": 0,
+      "hoursSharePct": 20,
+      "rateBasisHours": false,
+      "source": "seed"
+    }
+  ],
   "activeJurisdictionId": "city-of-maplewood",
   "activeFiscalYear": "FY 2027-28",
   "studyContext": {
