@@ -1285,7 +1285,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 157,
-      "peer": 0,
+      "peer": 160,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-001",
@@ -1304,7 +1304,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 279,
-      "peer": 0,
+      "peer": 285,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-002",
@@ -1313,7 +1313,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 240,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueText": "Deposit $100 + actual",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 250,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 285,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "bldg-bld-003-residential-solar-photovoltaic-system-15kw-or-less",
@@ -1323,7 +1355,7 @@
       "hours": 2.5,
       "cost": 0,
       "fee": 450,
-      "peer": 0,
+      "peer": 450,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-003",
@@ -1342,7 +1374,7 @@
       "hours": 5.5,
       "cost": 0,
       "fee": 1000,
-      "peer": 0,
+      "peer": 1060,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-004",
@@ -1351,7 +1383,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueText": "T&M w/ $300 deposit",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 945,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1090,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1040,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 880,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "bldg-bld-005-service-panel-upgrade-residential",
@@ -1361,7 +1425,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 209,
-      "peer": 0,
+      "peer": 195,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-005",
@@ -1380,7 +1444,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 279,
-      "peer": 0,
+      "peer": 270,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-006",
@@ -1389,7 +1453,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 240,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 325,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 295,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 260,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "bldg-bld-007-water-heater-change-out",
@@ -1399,7 +1495,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 157,
-      "peer": 0,
+      "peer": 165,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-007",
@@ -1418,7 +1514,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 209,
-      "peer": 0,
+      "peer": 205,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-008",
@@ -1437,7 +1533,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 279,
-      "peer": 0,
+      "peer": 260,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-009",
@@ -1446,7 +1542,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 250,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 275,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 255,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 280,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 275,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "bldg-bld-010-demolition",
@@ -1456,7 +1584,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 209,
-      "peer": 0,
+      "peer": 195,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-010",
@@ -1475,7 +1603,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 209,
-      "peer": 0,
+      "peer": 220,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-011",
@@ -1494,7 +1622,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 279,
-      "peer": 0,
+      "peer": 270,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-012",
@@ -1503,7 +1631,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 295,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 280,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 325,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueText": "By contract",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 285,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "bldg-bld-013-window-sliding-glass-door-new-or-alteration-up-to-5",
@@ -1513,7 +1673,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 372,
-      "peer": 0,
+      "peer": 355,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-013",
@@ -1532,7 +1692,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 154,
-      "peer": 0,
+      "peer": 165,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-014",
@@ -1551,7 +1711,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 93,
-      "peer": 0,
+      "peer": 90,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-015",
@@ -1570,7 +1730,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 279,
-      "peer": 0,
+      "peer": 295,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-016",
@@ -1589,7 +1749,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 139,
-      "peer": 0,
+      "peer": 140,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-017",
@@ -1608,7 +1768,7 @@
       "hours": 3.75,
       "cost": 0,
       "fee": 557,
-      "peer": 0,
+      "peer": 595,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-018",
@@ -1617,7 +1777,39 @@
       "activityLabel": "Inspection",
       "activityType": "INSPECTION",
       "unitLabel": "per survey",
-      "unitType": "CUSTOM"
+      "unitType": "CUSTOM",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 500,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 645,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 520,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 590,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueText": "Deposit $200 + actual",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        }
+      ]
     },
     {
       "id": "bldg-bld-019-after-hours-inspection",
@@ -1627,7 +1819,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 223,
-      "peer": 0,
+      "peer": 230,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-019",
@@ -1646,7 +1838,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 186,
-      "peer": 0,
+      "peer": 180,
       "target": 100,
       "source": "seed",
       "feeNo": "BLD-020",
@@ -1665,7 +1857,7 @@
       "hours": 5.25,
       "cost": 0,
       "fee": 755,
-      "peer": 0,
+      "peer": 720,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-001",
@@ -1684,7 +1876,7 @@
       "hours": 3.5,
       "cost": 0,
       "fee": 493,
-      "peer": 0,
+      "peer": 480,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-002",
@@ -1703,7 +1895,7 @@
       "hours": 32,
       "cost": 0,
       "fee": 5000,
-      "peer": 0,
+      "peer": 5020,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-003",
@@ -1722,7 +1914,7 @@
       "hours": 63.5,
       "cost": 0,
       "fee": 10000,
-      "peer": 0,
+      "peer": 10680,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-004",
@@ -1731,7 +1923,39 @@
       "activityLabel": "Deposit",
       "activityType": "INTAKE",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 11410,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 9240,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 8810,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 11310,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 11020,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-005-antenna-permit-administrative",
@@ -1741,7 +1965,7 @@
       "hours": 35,
       "cost": 0,
       "fee": 5500,
-      "peer": 0,
+      "peer": 5110,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-005",
@@ -1750,7 +1974,39 @@
       "activityLabel": "Application",
       "activityType": "INTAKE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 6290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 5330,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 5390,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 5710,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 6080,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-006-antenna-permit-hearing-level",
@@ -1760,7 +2016,7 @@
       "hours": 63.5,
       "cost": 0,
       "fee": 10000,
-      "peer": 0,
+      "peer": 10700,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-006",
@@ -1779,7 +2035,7 @@
       "hours": 10.25,
       "cost": 0,
       "fee": 1000,
-      "peer": 0,
+      "peer": 995,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-007",
@@ -1798,7 +2054,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 75,
-      "peer": 0,
+      "peer": 80,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-008",
@@ -1817,7 +2073,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 203,
-      "peer": 0,
+      "peer": 190,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-009",
@@ -1836,7 +2092,7 @@
       "hours": 3.75,
       "cost": 0,
       "fee": 581,
-      "peer": 0,
+      "peer": 585,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-010",
@@ -1855,7 +2111,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 41,
-      "peer": 0,
+      "peer": 40,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-011",
@@ -1874,7 +2130,7 @@
       "hours": 25.75,
       "cost": 0,
       "fee": 4000,
-      "peer": 0,
+      "peer": 4240,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-012",
@@ -1893,7 +2149,7 @@
       "hours": 2.25,
       "cost": 0,
       "fee": 377,
-      "peer": 0,
+      "peer": 350,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-013",
@@ -1912,7 +2168,7 @@
       "hours": 7.75,
       "cost": 0,
       "fee": 581,
-      "peer": 0,
+      "peer": 535,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-014",
@@ -1931,7 +2187,7 @@
       "hours": 22.75,
       "cost": 0,
       "fee": 3000,
-      "peer": 0,
+      "peer": 2910,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-015",
@@ -1940,7 +2196,39 @@
       "activityLabel": "Deposit",
       "activityType": "HEARING",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 3170,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 2570,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 3330,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 3010,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 2890,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-016-development-agreement",
@@ -1950,7 +2238,7 @@
       "hours": 94.75,
       "cost": 0,
       "fee": 15000,
-      "peer": 0,
+      "peer": 15700,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-016",
@@ -1969,7 +2257,7 @@
       "hours": 37.75,
       "cost": 0,
       "fee": 6000,
-      "peer": 0,
+      "peer": 5710,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-017",
@@ -1988,7 +2276,7 @@
       "hours": 4.5,
       "cost": 0,
       "fee": 726,
-      "peer": 0,
+      "peer": 690,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-018",
@@ -2007,7 +2295,7 @@
       "hours": 41.75,
       "cost": 0,
       "fee": 6000,
-      "peer": 0,
+      "peer": 6570,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-019",
@@ -2016,7 +2304,39 @@
       "activityLabel": "Deposit",
       "activityType": "HEARING",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 6050,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 6110,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 6170,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueText": "Cost recovery",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 5980,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-020-lot-line-adjustment-merger",
@@ -2026,7 +2346,7 @@
       "hours": 19.25,
       "cost": 0,
       "fee": 3000,
-      "peer": 0,
+      "peer": 2940,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-020",
@@ -2035,7 +2355,39 @@
       "activityLabel": "Deposit",
       "activityType": "INTAKE",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 2610,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 3500,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 3170,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 2790,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 3190,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-021-minor-administrative-permit-review",
@@ -2045,7 +2397,7 @@
       "hours": 2.25,
       "cost": 0,
       "fee": 290,
-      "peer": 0,
+      "peer": 280,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-021",
@@ -2064,7 +2416,7 @@
       "hours": 3.25,
       "cost": 0,
       "fee": 522,
-      "peer": 0,
+      "peer": 565,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-022",
@@ -2083,7 +2435,7 @@
       "hours": 18.75,
       "cost": 0,
       "fee": 3000,
-      "peer": 0,
+      "peer": 2960,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-023",
@@ -2102,7 +2454,7 @@
       "hours": 15.75,
       "cost": 0,
       "fee": 2500,
-      "peer": 0,
+      "peer": 2730,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-024",
@@ -2121,7 +2473,7 @@
       "hours": 3.5,
       "cost": 0,
       "fee": 464,
-      "peer": 0,
+      "peer": 470,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-025",
@@ -2140,7 +2492,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 197,
-      "peer": 0,
+      "peer": 185,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-026",
@@ -2159,7 +2511,7 @@
       "hours": 35.5,
       "cost": 0,
       "fee": 5000,
-      "peer": 0,
+      "peer": 5300,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-027",
@@ -2178,7 +2530,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 163,
-      "peer": 0,
+      "peer": 150,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-028",
@@ -2197,7 +2549,7 @@
       "hours": 1.75,
       "cost": 0,
       "fee": 157,
-      "peer": 0,
+      "peer": 150,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-029",
@@ -2216,7 +2568,7 @@
       "hours": 48,
       "cost": 0,
       "fee": 7000,
-      "peer": 0,
+      "peer": 7290,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-030",
@@ -2225,7 +2577,39 @@
       "activityLabel": "Deposit",
       "activityType": "HEARING",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 7050,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 6930,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 7440,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 8120,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 6460,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "plan-pln-031-tree-protection-plan",
@@ -2235,7 +2619,7 @@
       "hours": 3.5,
       "cost": 0,
       "fee": 552,
-      "peer": 0,
+      "peer": 570,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-031",
@@ -2254,7 +2638,7 @@
       "hours": 2.25,
       "cost": 0,
       "fee": 348,
-      "peer": 0,
+      "peer": 375,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-032",
@@ -2273,7 +2657,7 @@
       "hours": 9.5,
       "cost": 0,
       "fee": 1500,
-      "peer": 0,
+      "peer": 1580,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-033",
@@ -2292,7 +2676,7 @@
       "hours": 22.75,
       "cost": 0,
       "fee": 3000,
-      "peer": 0,
+      "peer": 2970,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-034",
@@ -2311,7 +2695,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 327,
-      "peer": 0,
+      "peer": 335,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-035",
@@ -2330,7 +2714,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 196,
-      "peer": 0,
+      "peer": 185,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-036",
@@ -2349,7 +2733,7 @@
       "hours": 4,
       "cost": 0,
       "fee": 639,
-      "peer": 0,
+      "peer": 700,
       "target": 100,
       "source": "seed",
       "feeNo": "PLN-037",
@@ -2368,7 +2752,7 @@
       "hours": 11.5,
       "cost": 0,
       "fee": 2322,
-      "peer": 0,
+      "peer": 2330,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-001",
@@ -2377,7 +2761,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 2610,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 2220,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 2730,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 2450,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 2160,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "eng-eng-002-debris-box-encroachment-permit",
@@ -2387,7 +2803,7 @@
       "hours": 8.5,
       "cost": 0,
       "fee": 1742,
-      "peer": 0,
+      "peer": 1740,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-002",
@@ -2396,7 +2812,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 1910,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1610,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1980,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1580,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 1790,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "eng-eng-003-recordable-encroachment-permit",
@@ -2406,7 +2854,7 @@
       "hours": 5.5,
       "cost": 0,
       "fee": 1000,
-      "peer": 0,
+      "peer": 925,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-003",
@@ -2415,7 +2863,39 @@
       "activityLabel": "Deposit",
       "activityType": "INTAKE",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 885,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1120,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1070,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 990,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueText": "T&M w/ $300 deposit",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        }
+      ]
     },
     {
       "id": "eng-eng-004-homeowner-encroachment-permit",
@@ -2425,7 +2905,7 @@
       "hours": 1.75,
       "cost": 0,
       "fee": 348,
-      "peer": 0,
+      "peer": 375,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-004",
@@ -2444,7 +2924,7 @@
       "hours": 3,
       "cost": 0,
       "fee": 610,
-      "peer": 0,
+      "peer": 655,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-005",
@@ -2463,7 +2943,7 @@
       "hours": 1.75,
       "cost": 0,
       "fee": 377,
-      "peer": 0,
+      "peer": 385,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-006",
@@ -2482,7 +2962,7 @@
       "hours": 3.75,
       "cost": 0,
       "fee": 755,
-      "peer": 0,
+      "peer": 785,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-007",
@@ -2491,7 +2971,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 860,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 800,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 870,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 865,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 845,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "eng-eng-008-grading-permit-major",
@@ -2501,7 +3013,7 @@
       "hours": 5.75,
       "cost": 0,
       "fee": 1161,
-      "peer": 0,
+      "peer": 1070,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-008",
@@ -2520,7 +3032,7 @@
       "hours": 36.75,
       "cost": 0,
       "fee": 7500,
-      "peer": 0,
+      "peer": 8020,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-009",
@@ -2539,7 +3051,7 @@
       "hours": 9.75,
       "cost": 0,
       "fee": 2000,
-      "peer": 0,
+      "peer": 2070,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-010",
@@ -2558,7 +3070,7 @@
       "hours": 3.25,
       "cost": 0,
       "fee": 500,
-      "peer": 0,
+      "peer": 530,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-011",
@@ -2577,7 +3089,7 @@
       "hours": 2.5,
       "cost": 0,
       "fee": 500,
-      "peer": 0,
+      "peer": 525,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-012",
@@ -2596,7 +3108,7 @@
       "hours": 7.25,
       "cost": 0,
       "fee": 1500,
-      "peer": 0,
+      "peer": 1400,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-013",
@@ -2605,7 +3117,39 @@
       "activityLabel": "Deposit",
       "activityType": "REVIEW",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 1560,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1680,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueText": "By contract",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1340,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 1320,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "eng-eng-014-map-review-1-to-4-lots",
@@ -2615,7 +3159,7 @@
       "hours": 34.25,
       "cost": 0,
       "fee": 7000,
-      "peer": 0,
+      "peer": 6820,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-014",
@@ -2634,7 +3178,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 90,
-      "peer": 0,
+      "peer": 85,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-015",
@@ -2653,7 +3197,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 204,
-      "peer": 0,
+      "peer": 190,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-016",
@@ -2672,7 +3216,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 203,
-      "peer": 0,
+      "peer": 220,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-017",
@@ -2691,7 +3235,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 313,
-      "peer": 0,
+      "peer": 335,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-018",
@@ -2710,7 +3254,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 232,
-      "peer": 0,
+      "peer": 235,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-019",
@@ -2729,7 +3273,7 @@
       "hours": 12.25,
       "cost": 0,
       "fee": 2322,
-      "peer": 0,
+      "peer": 2160,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-020",
@@ -2738,7 +3282,39 @@
       "activityLabel": "Deposit",
       "activityType": "INSPECTION",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 2210,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 2140,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 2040,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 2230,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 2080,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "eng-eng-021-pavement-repair-and-trench-inspection",
@@ -2748,7 +3324,7 @@
       "hours": 2.25,
       "cost": 0,
       "fee": 325,
-      "peer": 0,
+      "peer": 305,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-021",
@@ -2767,7 +3343,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 145,
-      "peer": 0,
+      "peer": 135,
       "target": 100,
       "source": "seed",
       "feeNo": "ENG-022",
@@ -2786,7 +3362,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 380,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-001",
@@ -2805,7 +3381,7 @@
       "hours": 2.75,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 380,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-002",
@@ -2824,7 +3400,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 178,
-      "peer": 0,
+      "peer": 185,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-003",
@@ -2843,7 +3419,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 266,
-      "peer": 0,
+      "peer": 280,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-004",
@@ -2862,7 +3438,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 266,
-      "peer": 0,
+      "peer": 265,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-005",
@@ -2871,7 +3447,39 @@
       "activityLabel": "Plan review",
       "activityType": "REVIEW",
       "unitLabel": "per vertical standpipe",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 250,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 275,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 295,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 310,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 250,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "fire-fir-006-fire-pump-plan-review",
@@ -2881,7 +3489,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 355,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-006",
@@ -2900,7 +3508,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 355,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-007",
@@ -2919,7 +3527,7 @@
       "hours": 2.75,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 350,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-008",
@@ -2938,7 +3546,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 178,
-      "peer": 0,
+      "peer": 175,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-009",
@@ -2957,7 +3565,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 266,
-      "peer": 0,
+      "peer": 290,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-010",
@@ -2966,7 +3574,39 @@
       "activityLabel": "Plan review",
       "activityType": "REVIEW",
       "unitLabel": "per system",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 315,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 265,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 305,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 310,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "fire-fir-011-other-fire-construction-permit-plan-review",
@@ -2976,7 +3616,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 380,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-011",
@@ -2995,7 +3635,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 178,
-      "peer": 0,
+      "peer": 175,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-012",
@@ -3014,7 +3654,7 @@
       "hours": 3,
       "cost": 0,
       "fee": 533,
-      "peer": 0,
+      "peer": 555,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-013",
@@ -3023,7 +3663,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per tank",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 475,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 580,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 550,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueText": "Cost recovery",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueText": "T&M w/ $150 deposit",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        }
+      ]
     },
     {
       "id": "fire-fir-014-underground-tank-installation-new-system",
@@ -3033,7 +3705,7 @@
       "hours": 8,
       "cost": 0,
       "fee": 1421,
-      "peer": 0,
+      "peer": 1450,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-014",
@@ -3042,7 +3714,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per tank",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 1290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1400,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1520,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 1460,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "fire-fir-015-operational-permit-amusement-building",
@@ -3052,7 +3756,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 345,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-015",
@@ -3071,7 +3775,7 @@
       "hours": 5,
       "cost": 0,
       "fee": 888,
-      "peer": 0,
+      "peer": 960,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-016",
@@ -3080,7 +3784,39 @@
       "activityLabel": "Permit",
       "activityType": "ISSUANCE",
       "unitLabel": "per permit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 1040,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueText": "T&M w/ $250 deposit",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 805,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1040,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 775,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "fire-fir-017-operational-permit-places-of-assembly-under-300-occupant",
@@ -3090,7 +3826,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 375,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-017",
@@ -3109,7 +3845,7 @@
       "hours": 3,
       "cost": 0,
       "fee": 533,
-      "peer": 0,
+      "peer": 520,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-018",
@@ -3128,7 +3864,7 @@
       "hours": 2.75,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 335,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-019",
@@ -3147,7 +3883,7 @@
       "hours": 1.75,
       "cost": 0,
       "fee": 174,
-      "peer": 0,
+      "peer": 170,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-020",
@@ -3166,7 +3902,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 178,
-      "peer": 0,
+      "peer": 170,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-021",
@@ -3185,7 +3921,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 174,
-      "peer": 0,
+      "peer": 180,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-022",
@@ -3204,7 +3940,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 348,
-      "peer": 0,
+      "peer": 325,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-023",
@@ -3223,7 +3959,7 @@
       "hours": 2,
       "cost": 0,
       "fee": 355,
-      "peer": 0,
+      "peer": 370,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-024",
@@ -3242,7 +3978,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 89,
-      "peer": 0,
+      "peer": 80,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-025",
@@ -3261,7 +3997,7 @@
       "hours": 8.25,
       "cost": 0,
       "fee": 1450,
-      "peer": 0,
+      "peer": 1410,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-026",
@@ -3270,7 +4006,39 @@
       "activityLabel": "Response",
       "activityType": "OTHER",
       "unitLabel": "per alarm",
-      "unitType": "CUSTOM"
+      "unitType": "CUSTOM",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueText": "By contract",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1540,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1610,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueText": "Cost recovery",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 1400,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "fire-fir-027-fire-prevention-services-not-listed",
@@ -3280,7 +4048,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 178,
-      "peer": 0,
+      "peer": 180,
       "target": 100,
       "source": "seed",
       "feeNo": "FIR-027",
@@ -3299,7 +4067,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 100,
-      "peer": 0,
+      "peer": 105,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-001",
@@ -3308,7 +4076,39 @@
       "activityLabel": "Release",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 95,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 100,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 100,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueText": "Cost recovery",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 110,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "pd-pol-002-animal-release-small-companion-animal",
@@ -3318,7 +4118,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 40,
-      "peer": 0,
+      "peer": 40,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-002",
@@ -3337,7 +4137,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 45,
-      "peer": 0,
+      "peer": 40,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-003",
@@ -3356,7 +4156,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 29,
-      "peer": 0,
+      "peer": 30,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-004",
@@ -3375,7 +4175,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 20,
-      "peer": 0,
+      "peer": 20,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-005",
@@ -3394,7 +4194,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 40,
-      "peer": 0,
+      "peer": 40,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-006",
@@ -3413,7 +4213,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 100,
-      "peer": 0,
+      "peer": 105,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-007",
@@ -3422,7 +4222,39 @@
       "activityLabel": "Response",
       "activityType": "OTHER",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 110,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 115,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 95,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 115,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 115,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "pd-pol-008-fingerprint-live-scan",
@@ -3432,7 +4264,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 35,
-      "peer": 0,
+      "peer": 35,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-008",
@@ -3451,7 +4283,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 58,
-      "peer": 0,
+      "peer": 65,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-009",
@@ -3470,7 +4302,7 @@
       "hours": 1.5,
       "cost": 0,
       "fee": 100,
-      "peer": 0,
+      "peer": 105,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-010",
@@ -3479,7 +4311,39 @@
       "activityLabel": "Response",
       "activityType": "OTHER",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 85,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 115,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 90,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 95,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 100,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "pd-pol-011-photograph-reproduction",
@@ -3489,7 +4353,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 20,
-      "peer": 0,
+      "peer": 20,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-011",
@@ -3508,7 +4372,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 20,
-      "peer": 0,
+      "peer": 20,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-012",
@@ -3527,7 +4391,7 @@
       "hours": 0.5,
       "cost": 0,
       "fee": 35,
-      "peer": 0,
+      "peer": 35,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-013",
@@ -3546,7 +4410,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 10,
-      "peer": 0,
+      "peer": 10,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-014",
@@ -3565,7 +4429,7 @@
       "hours": 4.25,
       "cost": 0,
       "fee": 302,
-      "peer": 0,
+      "peer": 295,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-015",
@@ -3574,7 +4438,39 @@
       "activityLabel": "Review",
       "activityType": "REVIEW",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueText": "By contract",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 350,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 290,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 300,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 345,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "pd-pol-016-special-event-review-minor",
@@ -3584,7 +4480,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 58,
-      "peer": 0,
+      "peer": 55,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-016",
@@ -3603,7 +4499,7 @@
       "hours": 1.75,
       "cost": 0,
       "fee": 116,
-      "peer": 0,
+      "peer": 120,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-017",
@@ -3622,7 +4518,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 75,
-      "peer": 0,
+      "peer": 80,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-018",
@@ -3631,7 +4527,39 @@
       "activityLabel": "Verification",
       "activityType": "REVIEW",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 70,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 85,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 85,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 85,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 85,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "pd-pol-019-tobacco-retailer-license-new-or-renewal",
@@ -3641,7 +4569,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 70,
-      "peer": 0,
+      "peer": 75,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-019",
@@ -3660,7 +4588,7 @@
       "hours": 18.25,
       "cost": 0,
       "fee": 1000,
-      "peer": 0,
+      "peer": 1070,
       "target": 100,
       "source": "seed",
       "feeNo": "POL-020",
@@ -3669,7 +4597,39 @@
       "activityLabel": "Appeal",
       "activityType": "HEARING",
       "unitLabel": "per appeal",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueText": "Deposit $400 + actual",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 1020,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1150,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1170,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 930,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-001-special-event-application-51-to-200-people-resident",
@@ -3679,7 +4639,7 @@
       "hours": 3.25,
       "cost": 0,
       "fee": 150,
-      "peer": 0,
+      "peer": 150,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-001",
@@ -3688,7 +4648,39 @@
       "activityLabel": "Application",
       "activityType": "INTAKE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 145,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 135,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 160,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 130,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 160,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-002-special-event-application-more-than-200-people-resident",
@@ -3698,7 +4690,7 @@
       "hours": 5,
       "cost": 0,
       "fee": 250,
-      "peer": 0,
+      "peer": 255,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-002",
@@ -3707,7 +4699,39 @@
       "activityLabel": "Application",
       "activityType": "INTAKE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 285,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 230,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 240,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 245,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 240,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-003-special-event-security-deposit-51-to-200-people",
@@ -3717,7 +4741,7 @@
       "hours": 9.5,
       "cost": 0,
       "fee": 500,
-      "peer": 0,
+      "peer": 520,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-003",
@@ -3726,7 +4750,39 @@
       "activityLabel": "Deposit",
       "activityType": "INTAKE",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 555,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 435,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 555,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 535,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 430,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-004-special-event-security-deposit-more-than-200-people",
@@ -3736,7 +4792,7 @@
       "hours": 18.75,
       "cost": 0,
       "fee": 1000,
-      "peer": 0,
+      "peer": 960,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-004",
@@ -3745,7 +4801,39 @@
       "activityLabel": "Deposit",
       "activityType": "INTAKE",
       "unitLabel": "deposit",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 1130,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueText": "T&M w/ $300 deposit",
+          "comparable": false,
+          "sourceNote": "FY24-25 fee schedule (text-only entry)"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 1090,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 1170,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 1020,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-005-daily-use-fee-up-to-50-people-resident",
@@ -3755,7 +4843,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 75,
-      "peer": 0,
+      "peer": 80,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-005",
@@ -3774,7 +4862,7 @@
       "hours": 4.5,
       "cost": 0,
       "fee": 250,
-      "peer": 0,
+      "peer": 245,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-006",
@@ -3783,7 +4871,39 @@
       "activityLabel": "Reservation",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 270,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 270,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 260,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 225,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 250,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-007-daily-use-fee-more-than-200-people-resident",
@@ -3793,7 +4913,7 @@
       "hours": 9,
       "cost": 0,
       "fee": 500,
-      "peer": 0,
+      "peer": 535,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-007",
@@ -3802,7 +4922,39 @@
       "activityLabel": "Reservation",
       "activityType": "ISSUANCE",
       "unitLabel": "fixed fee",
-      "unitType": "COUNT"
+      "unitType": "COUNT",
+      "peerSurvey": [
+        {
+          "agency": "Walnut Grove",
+          "valueNumber": 500,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Cedar Springs",
+          "valueNumber": 440,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Riverton",
+          "valueNumber": 490,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Northfield",
+          "valueNumber": 525,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        },
+        {
+          "agency": "Greenbrook",
+          "valueNumber": 535,
+          "comparable": true,
+          "sourceNote": "FY24-25 published fee schedule"
+        }
+      ]
     },
     {
       "id": "parks-prk-008-amplified-sound-use-resident",
@@ -3812,7 +4964,7 @@
       "hours": 1.25,
       "cost": 0,
       "fee": 75,
-      "peer": 0,
+      "peer": 80,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-008",
@@ -3831,7 +4983,7 @@
       "hours": 0.75,
       "cost": 0,
       "fee": 40,
-      "peer": 0,
+      "peer": 45,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-009",
@@ -3850,7 +5002,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 10,
-      "peer": 0,
+      "peer": 10,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-010",
@@ -3869,7 +5021,7 @@
       "hours": 1,
       "cost": 0,
       "fee": 50,
-      "peer": 0,
+      "peer": 50,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-011",
@@ -3888,7 +5040,7 @@
       "hours": 0.25,
       "cost": 0,
       "fee": 15,
-      "peer": 0,
+      "peer": 15,
       "target": 100,
       "source": "seed",
       "feeNo": "PRK-012",
