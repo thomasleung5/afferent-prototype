@@ -170,7 +170,8 @@
       "Bash(docker info *)",
       "Bash(curl -sf http://localhost:8789/healthz)",
       "Bash(kill 66938)",
-      "Bash(git check-ignore *)"
+      "Bash(git check-ignore *)",
+      "Bash(git checkout *)"
     ]
   }
 }
