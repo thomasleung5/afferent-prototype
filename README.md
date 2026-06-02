@@ -184,7 +184,15 @@ tables are where saved drafts and named versions live.
 
 The detailed schema, RLS policy expectations, and migration path
 from existing localStorage snapshots are in
-[`docs/persistence-design.md`](docs/persistence-design.md).
+[`docs/persistence-design.md`](docs/persistence-design.md). For the
+launch-time checklist (migrations applied, RLS verified, redirect
+URLs, seed data, service-role handling, recovery email template,
+and manual verification steps), see
+[`docs/supabase-readiness.md`](docs/supabase-readiness.md). For
+on-call expectations after launch (backups + restore, audit
+retention, log review, health check, rollback plan, smoke cadence,
+and incident triage for auth / persistence / imports / AI parse),
+see [`docs/operational-readiness.md`](docs/operational-readiness.md).
 
 ### Server study API — `/api/studies/*`
 
@@ -384,8 +392,24 @@ The server fail-fasts at boot if `NODE_ENV=production` and either
 `SUPABASE_URL` or `ALLOWED_ORIGINS` is missing — much better than 50%
 of `/api/*` requests succeeding while the other 50% return 503s. The
 client build prints a `[build-env warn]` line if `VITE_SUPABASE_URL` /
-`VITE_SUPABASE_ANON_KEY` are missing; set `STRICT_BUILD=1` (the
-`Dockerfile` does this) to turn that warning into a hard fail.
+`VITE_SUPABASE_ANON_KEY` are missing; set `STRICT_BUILD=1` to turn
+that warning into a hard fail (`exit 1`).
+
+**The contract:**
+
+| Context | `STRICT_BUILD` | `VITE_SUPABASE_*` | Result |
+|---|---|---|---|
+| Local dev (`npm run dev`) | unset | unset | Vite dev server; checker not invoked. |
+| Local prod build, no creds | unset | unset | `[build-env warn]` to stderr; build succeeds. |
+| Docker build (`docker build`) | **`1`** (set in `Dockerfile`) | **required** (`--build-arg`) | Missing var → `exit 1`. |
+| GitHub Actions CI | **`1`** (set in `ci.yml`) | dummy values | Strict path exercised; bundle not served. |
+| Playwright smoke (`npm run test:smoke`) | unset | unset (uses `VITE_AUTH_DISABLED=1`) | Checker silently exits 0; uses Vite dev mode anyway. |
+
+`VITE_AUTH_DISABLED=1` short-circuits the checker before `STRICT_BUILD`
+is consulted, so smoke-test builds never need to provide Supabase
+credentials. Any other build environment that ships a real SPA bundle
+**must** set `STRICT_BUILD=1` so the deploy fails loud instead of
+silently shipping a bundle that can't talk to auth.
 
 ### Docker
 
@@ -421,20 +445,145 @@ asserts `/healthz` returns 2xx. When `SMOKE_BEARER` is set, it also
 exercises `GET /api/studies` with a real bearer to confirm the
 service-role path is wired end-to-end.
 
+#### Pre-flight checklist
+
+Run through this every time you smoke a production-shaped build —
+before promoting an image, before a release window, after touching
+`server/env.ts` / `server/index.ts` / any Supabase env contract.
+
+**1. Build with the strict env contract.**
+
 ```bash
-# Requires `npm run build` to have run.
+STRICT_BUILD=1 \
+VITE_SUPABASE_URL=https://<project>.supabase.co \
+VITE_SUPABASE_ANON_KEY=<publishable-key> \
+  npm run build
+```
+
+- `VITE_SUPABASE_URL`, `VITE_SUPABASE_ANON_KEY` — **build-time**.
+  Inlined into the SPA bundle. Use the same project URL you'll point
+  the runtime at. The anon/publishable key is public by design — it's
+  the value the browser hands to Supabase auth.
+- `STRICT_BUILD=1` — turns the "missing client var" warning into a
+  hard fail. Don't ship a bundle without this set. See the
+  build-contract table earlier in this README.
+- If either VITE var is unset, the build exits non-zero with
+  `[build-env error] Production client build is missing: …`.
+
+**2. Set the runtime env contract.**
+
+| Var | Purpose | Notes |
+|---|---|---|
+| `SUPABASE_URL` | Server-side base URL | Same project as `VITE_SUPABASE_URL`. |
+| `SUPABASE_SERVICE_ROLE_KEY` | Server-side write key | **Secret** — never log, never commit. |
+| `ALLOWED_ORIGINS` | CORS + origin allowlist | Comma-separated; the smoke uses the first entry as the test `Origin` header. |
+| `PORT` | Listen port (optional) | Default `8789` for the smoke — picks a free port so it doesn't collide with a dev `npm start` on `8787`. |
+| `SMOKE_BEARER` | Optional user JWT | When set, runs the authed `/api/studies` check below. |
+| `ANTHROPIC_API_KEY` | Optional | When unset, `/api/ai/*` returns 503; smoke doesn't exercise this. |
+
+The server's prod env validator (`server/env.ts`) requires the three
+non-optional rows; it exits at boot if any are missing.
+
+**3. Smoke the healthz path (always).**
+
+```bash
 SUPABASE_URL=https://<project>.supabase.co \
 SUPABASE_SERVICE_ROLE_KEY=<service-role secret> \
-ALLOWED_ORIGINS=http://localhost:8789 \
-  npm run smoke:prod
-
-# Authenticated round-trip — grab the access_token via
-# supabase.auth.getSession() in the SPA's browser dev tools and
-# export it as SMOKE_BEARER. Keep it out of shell history.
-SMOKE_BEARER='eyJ…' \
-SUPABASE_URL=… SUPABASE_SERVICE_ROLE_KEY=… ALLOWED_ORIGINS=… \
+ALLOWED_ORIGINS=https://<your-app-host> \
   npm run smoke:prod
 ```
+
+Expected pass output (suffix; the leading log line shows the PID and port):
+
+```
+[prod-smoke] starting dist-server/index.mjs on :8789
+[prod-smoke] /healthz ok: {"ok":true,"uptime":0.42,"at":"2026-…"}
+[prod-smoke] SMOKE_BEARER unset — skipping /api/studies auth round-trip.
+[prod-smoke] PASS
+```
+
+Common failure modes:
+
+| Symptom | Meaning |
+|---|---|
+| `error: SUPABASE_URL is required` | Env var missing in the calling shell. |
+| `error: dist-server/index.mjs not found. Run \`npm run build\` first.` | Skipped step 1, or `npm run build` failed quietly upstream. |
+| `[prod-smoke] server exited during boot. tail of log:` followed by an env validator message | Runtime env contract not satisfied (e.g. wrong `ALLOWED_ORIGINS` shape). |
+| `[prod-smoke] /healthz did not respond within ~5s` | Port collision, supabase URL DNS, or a crash; the tail of `/tmp/afferent-prod-smoke.log` is printed for triage. |
+
+**4. (Optional) Smoke the authed studies path.**
+
+```bash
+# 1. In the SPA browser dev tools while signed in, run:
+#      (await window.supabaseClient.auth.getSession()).data.session.access_token
+#    (Or use any other path — Supabase CLI, `curl /auth/v1/token`, etc.
+#     The token must belong to a user with an organization_members row
+#     in the target Supabase project.)
+#
+# 2. Export it for ONE shell command. Don't add it to .env or rc files.
+#    The leading space keeps it out of bash history when HISTCONTROL
+#    includes ignorespace.
+ SMOKE_BEARER='eyJhbGciOi…' \
+ SUPABASE_URL=https://<project>.supabase.co \
+ SUPABASE_SERVICE_ROLE_KEY=<service-role secret> \
+ ALLOWED_ORIGINS=https://<your-app-host> \
+   npm run smoke:prod
+```
+
+Expected pass output (suffix):
+
+```
+[prod-smoke] /healthz ok: {"ok":true,…}
+[prod-smoke] GET /api/studies (Origin: https://<your-app-host>) with bearer …
+[prod-smoke] /api/studies status: 200
+[prod-smoke] /api/studies ok
+[prod-smoke] PASS
+```
+
+Failure interpretations:
+
+| `/api/studies status` | Likely cause |
+|---|---|
+| `401` | Token expired or wrong project — `SMOKE_BEARER` is from a different Supabase instance than `SUPABASE_URL`. |
+| `403` | The token's user has no `organization_members` row (or only `viewer` role for a write check — the GET path needs at least `viewer`, which doesn't apply here). |
+| `403 CORS / Origin not allowed` | `ALLOWED_ORIGINS` doesn't include the Origin header the script sent (first entry of `ALLOWED_ORIGINS`). Add the smoke origin or change the order. |
+| `503 not configured` | `SUPABASE_SERVICE_ROLE_KEY` mismatch / typo. |
+
+#### Running against a staging or prod-like Supabase project
+
+Point at a non-production project with the same migrations applied
+(see `supabase/migrations/` — both 0000 and 00001 must have run; the
+optimistic-lock column is required). At minimum the project needs:
+
+1. The full `supabase/migrations/` history applied (`supabase db push`
+   from a checked-out repo, or migrations replayed via the dashboard).
+2. At least one row in `organizations` and `organization_members` for
+   the user whose bearer you'll smoke with — otherwise the authed
+   check returns 200 with an empty `studies` list, which is correct
+   behavior but tests less of the path.
+3. Supabase Auth redirect URLs configured for the host you're hitting.
+
+Treat the smoke as a deploy-gate against staging before promoting:
+fail of any single line above → halt the promotion.
+
+#### Avoiding secret leakage
+
+- The script reads `SMOKE_BEARER`, `SUPABASE_SERVICE_ROLE_KEY`,
+  `SUPABASE_URL` from the calling shell — it never echoes them and
+  never writes them to `/tmp/afferent-prod-smoke.log`. The server
+  logger (`server/logger.ts`) strips authorization headers and
+  request bodies from its structured output.
+- Don't put `SUPABASE_SERVICE_ROLE_KEY` or `SMOKE_BEARER` in
+  `.env.local` or any committed file. `.env*` is in `.gitignore` as
+  a safety net.
+- If you must capture a smoke transcript, redact before sharing:
+  `npm run smoke:prod 2>&1 | tee /tmp/transcript.log` then
+  `sed -i '' 's|Bearer [^"]*|Bearer …redacted…|g' /tmp/transcript.log`
+  (the script itself only logs the status code and the body of a
+  failed `/api/studies` call — error bodies don't include the token).
+- `set -x` is **never** enabled in the script; enabling it would
+  echo the bearer when curl runs. Don't add `-v` to the curl call
+  either — it dumps request headers including Authorization.
 
 Secrets are passed through env, never logged, and never committed —
 the script reads them from the calling shell. `.env.local` is

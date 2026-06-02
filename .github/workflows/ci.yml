@@ -25,7 +25,20 @@ jobs:
       # './routeTree.gen'". Running the production build first generates
       # the route tree AND validates the bundle in one shot, so we avoid
       # a separate generator step or a duplicate build.
-      - run: npm run build
+      #
+      # STRICT_BUILD=1 mirrors the Dockerfile so any future regression
+      # that drops the missing-var guard fails CI loudly (today the
+      # check is enforced in scripts/checkBuildEnv.mjs). The dummy
+      # VITE_SUPABASE_* values satisfy the strict guard without
+      # disabling the path under test; the resulting bundle is never
+      # served — it's compiled only to validate route-tree generation
+      # + the esbuild server bundle the prod-server smoke boots below.
+      - name: Build (strict)
+        env:
+          STRICT_BUILD: '1'
+          VITE_SUPABASE_URL: https://dummy.supabase.co
+          VITE_SUPABASE_ANON_KEY: dummy-anon-key
+        run: npm run build
 
       - run: npm run typecheck
 
