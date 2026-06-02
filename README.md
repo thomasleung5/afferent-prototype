@@ -197,8 +197,8 @@ the Anthropic-spend quota). JSON body cap is `STUDY_SNAPSHOT_MAX_MB`
 |---|---|
 | `GET    /api/studies`                  | List studies the caller's organization memberships make visible. |
 | `POST   /api/studies`                  | Create a study in an organization the caller has owner/admin/analyst membership in. |
-| `GET    /api/studies/:id`              | Load study metadata + the current draft (`{ snapshot, updated_at, updated_by }` or `null`). |
-| `PUT    /api/studies/:id/snapshot`     | Upsert the draft snapshot. Body: `{ snapshot: BuildSnapshot }`. Owner/admin/analyst only. |
+| `GET    /api/studies/:id`              | Load study metadata + the current draft (`{ snapshot, updated_at, updated_by, revision_id }` or `null`). |
+| `PUT    /api/studies/:id/snapshot`     | Upsert the draft snapshot. Body: `{ snapshot: BuildSnapshot, expected_revision_id?: uuid }`. Owner/admin/analyst only. Returns `{ ok: true, revision_id }` on success; `409 { ok: false, message: "stale revision", current_revision_id }` when `expected_revision_id` is supplied and the server's current revision has moved. |
 | `GET    /api/studies/:id/versions`     | List named versions (no snapshot bodies — fetch per id when needed). |
 | `POST   /api/studies/:id/versions`     | Cut an immutable named version. Body: `{ label, status?, notes?, snapshot? }` — when `snapshot` is omitted, the current draft is used. |
 | `GET    /api/organizations`            | List organizations the caller has membership in (with role). Used by the StudyMenu "New study…" flow so a user with a membership but zero studies can still create the first one. |
@@ -248,6 +248,7 @@ lifecycle:
 | `Saving…` | Debounce timer running or save in flight. | neutral (pulses) |
 | `Saved · 12s ago` | Last save completed; relative timestamp updates as time passes. | positive |
 | `Save failed` | Most recent save errored. The full error message is in the tooltip; the **Save now** button beside the label retries. | negative |
+| `Conflict — reload to resolve` | The server-side draft moved between the last load/save and this save attempt (optimistic-lock 409). Local edits are **not** discarded. Retry is deliberately not offered (it would just re-conflict); the user reloads the server draft or explicitly overwrites. | warn |
 
 Failed saves preserve the in-flight local state — nothing is
 discarded. If the server reports the active study no longer exists

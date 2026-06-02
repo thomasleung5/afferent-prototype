@@ -100,6 +100,12 @@ const SNAPSHOT_CANONICAL_FIELDS = [
 
 export interface SnapshotPayloadInput {
   snapshot: Record<string, unknown>;
+  /** Optimistic-lock guard — when present, the snapshot handler will
+   *  reject the save with 409 if the current draft's revision_id has
+   *  drifted from this value. Omit for the first-ever save against a
+   *  study (no row to lock against) or when the client deliberately
+   *  wants last-writer-wins semantics. */
+  expectedRevisionId?: string;
 }
 
 export function validateSnapshotPayload(body: unknown): ValidationResult<SnapshotPayloadInput> {
@@ -107,7 +113,22 @@ export function validateSnapshotPayload(body: unknown): ValidationResult<Snapsho
     return { ok: false, message: "Body must be a JSON object." };
   }
   const o = body as Record<string, unknown>;
-  return validateSnapshotField(o.snapshot);
+
+  const snap = validateSnapshotField(o.snapshot);
+  if (!snap.ok) return snap;
+
+  let expectedRevisionId: string | undefined;
+  if (o.expected_revision_id != null) {
+    if (typeof o.expected_revision_id !== "string" || !isUuid(o.expected_revision_id)) {
+      return { ok: false, message: "expected_revision_id must be a UUID when set." };
+    }
+    expectedRevisionId = o.expected_revision_id;
+  }
+
+  return {
+    ok: true,
+    value: { snapshot: snap.value.snapshot, expectedRevisionId },
+  };
 }
 
 /** Shared snapshot field check, used by both the standalone payload

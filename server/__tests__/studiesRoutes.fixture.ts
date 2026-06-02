@@ -231,17 +231,36 @@ async function main(): Promise<void> {
       error: null,
     });
     // Draft row.
+    const REV = "aaaaaaaa-1111-2222-3333-444444444444";
     mock.queueResponse("study_drafts", {
-      data: { snapshot: VALID_SNAPSHOT, updated_by: TEST_USER.id, updated_at: "z" },
+      data: {
+        snapshot: VALID_SNAPSHOT,
+        updated_by: TEST_USER.id,
+        updated_at: "z",
+        revision_id: REV,
+      },
       error: null,
     });
     setDbClientProviderForTests(() => mock.client);
     const res = await app.request(`/api/studies/${STUDY_A_ID}`, { method: "GET" });
     assert.equal(res.status, 200);
-    const body = await res.json() as { ok: boolean; study: { id: string }; draft: { snapshot: unknown } | null };
+    const body = await res.json() as {
+      ok: boolean;
+      study: { id: string };
+      draft: { snapshot: unknown; revision_id: string } | null;
+    };
     assert.equal(body.ok, true);
     assert.equal(body.study.id, STUDY_A_ID);
     assert.ok(body.draft);
+    assert.equal(body.draft?.revision_id, REV);
+    // GET selected revision_id (so clients can echo it on next save).
+    const draftCall = mock.calls.find((c) => c.table === "study_drafts");
+    const selectFilter = draftCall?.filters.find((f) => f.kind === "select");
+    assert.ok(
+      typeof selectFilter?.args[0] === "string"
+      && selectFilter.args[0].includes("revision_id"),
+      "GET /:id should select revision_id from study_drafts",
+    );
     passed++;
   }
 
@@ -259,7 +278,7 @@ async function main(): Promise<void> {
     passed++;
   }
 
-  // ── PUT /:id/snapshot — happy path upserts + audits ──────────
+  // ── PUT /:id/snapshot — happy path upserts + audits + returns revision ─
   {
     const mock = createMockDb();
     // lookupRoleForStudy.
@@ -282,18 +301,162 @@ async function main(): Promise<void> {
       body: JSON.stringify({ snapshot: VALID_SNAPSHOT }),
     });
     assert.equal(res.status, 200);
-    const body = await res.json() as { ok: boolean };
+    const body = await res.json() as { ok: boolean; revision_id?: string };
     assert.equal(body.ok, true);
-    // Upsert was actually issued with the user_id and the snapshot.
+    // Server-minted revision_id is returned so the client can quote it
+    // on the next save.
+    assert.ok(typeof body.revision_id === "string" && body.revision_id.length > 0,
+      "PUT response must carry the freshly-minted revision_id");
+    // Upsert was actually issued with the user_id, snapshot, AND a
+    // new revision_id (handler-side mint).
     const upsert = mock.calls.find((c) => c.table === "study_drafts" && c.op === "upsert");
-    const payload = upsert?.payload as { study_id: string; updated_by: string; snapshot: unknown } | undefined;
+    const payload = upsert?.payload as {
+      study_id: string;
+      updated_by: string;
+      snapshot: unknown;
+      revision_id: string;
+    } | undefined;
     assert.equal(payload?.study_id, STUDY_A_ID);
     assert.equal(payload?.updated_by, TEST_USER.id);
     assert.ok(payload?.snapshot);
+    assert.equal(payload?.revision_id, body.revision_id,
+      "upserted revision_id must match the one returned to the client");
     // Audit recorded.
     const audit = mock.calls.find((c) => c.table === "study_audit_events");
     const auditPayload = audit?.payload as { event_type?: string };
     assert.equal(auditPayload?.event_type, "draft.upsert");
+    passed++;
+  }
+
+  // ── PUT /:id/snapshot — matching expected_revision_id passes ──
+  {
+    const REV_CURRENT = "11111111-aaaa-bbbb-cccc-dddddddddddd";
+    const mock = createMockDb();
+    mock.queueResponse("studies", {
+      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "owner" }, error: null,
+    });
+    // Optimistic-lock check: current revision_id matches what the
+    // client quoted.
+    mock.queueResponse("study_drafts", {
+      data: { revision_id: REV_CURRENT }, error: null,
+    });
+    // Subsequent upsert + study bump + audit.
+    mock.queueResponse("study_drafts", { data: null, error: null });
+    mock.queueResponse("studies", { data: null, error: null });
+    mock.queueResponse("study_audit_events", { data: null, error: null });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(`/api/studies/${STUDY_A_ID}/snapshot`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot: VALID_SNAPSHOT,
+        expected_revision_id: REV_CURRENT,
+      }),
+    });
+    assert.equal(res.status, 200);
+    const body = await res.json() as { ok: boolean; revision_id?: string };
+    assert.equal(body.ok, true);
+    assert.ok(typeof body.revision_id === "string");
+    assert.notEqual(body.revision_id, REV_CURRENT,
+      "successful save must rotate the revision_id, not reuse it");
+    passed++;
+  }
+
+  // ── PUT /:id/snapshot — mismatched expected_revision_id → 409 ──
+  {
+    const REV_EXPECTED = "22222222-aaaa-bbbb-cccc-dddddddddddd";
+    const REV_CURRENT  = "33333333-aaaa-bbbb-cccc-dddddddddddd";
+    const mock = createMockDb();
+    mock.queueResponse("studies", {
+      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "analyst" }, error: null,
+    });
+    // Current revision doesn't match what the client quoted.
+    mock.queueResponse("study_drafts", {
+      data: { revision_id: REV_CURRENT }, error: null,
+    });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(`/api/studies/${STUDY_A_ID}/snapshot`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot: VALID_SNAPSHOT,
+        expected_revision_id: REV_EXPECTED,
+      }),
+    });
+    assert.equal(res.status, 409);
+    const body = await res.json() as {
+      ok: boolean;
+      message: string;
+      current_revision_id?: string | null;
+    };
+    assert.equal(body.ok, false);
+    assert.equal(body.message, "stale revision");
+    assert.equal(body.current_revision_id, REV_CURRENT);
+    // Handler stopped after the lock check — no upsert / audit.
+    assert.equal(
+      mock.calls.filter((c) => c.table === "study_drafts" && c.op === "upsert").length,
+      0,
+      "no upsert on conflict",
+    );
+    assert.equal(
+      mock.calls.filter((c) => c.table === "study_audit_events").length,
+      0,
+      "no audit event on conflict",
+    );
+    passed++;
+  }
+
+  // ── PUT /:id/snapshot — expected_revision_id with no draft → 409 ─
+  // (Client thinks it knows the revision but no row exists yet.)
+  {
+    const REV_EXPECTED = "44444444-aaaa-bbbb-cccc-dddddddddddd";
+    const mock = createMockDb();
+    mock.queueResponse("studies", {
+      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "owner" }, error: null,
+    });
+    // No draft row exists yet — null != quoted revision.
+    mock.queueResponse("study_drafts", { data: null, error: null });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(`/api/studies/${STUDY_A_ID}/snapshot`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot: VALID_SNAPSHOT,
+        expected_revision_id: REV_EXPECTED,
+      }),
+    });
+    assert.equal(res.status, 409);
+    const body = await res.json() as {
+      ok: boolean; message: string; current_revision_id: string | null;
+    };
+    assert.equal(body.message, "stale revision");
+    assert.equal(body.current_revision_id, null);
+    passed++;
+  }
+
+  // ── PUT /:id/snapshot — bad expected_revision_id shape → 422 ──
+  {
+    setDbClientProviderForTests(() => createMockDb().client);
+    const res = await app.request(`/api/studies/${STUDY_A_ID}/snapshot`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot: VALID_SNAPSHOT,
+        expected_revision_id: "not-a-uuid",
+      }),
+    });
+    assert.equal(res.status, 422);
+    const body = await res.json() as { ok: boolean; message: string };
+    assert.match(body.message, /expected_revision_id.*UUID/);
     passed++;
   }
 

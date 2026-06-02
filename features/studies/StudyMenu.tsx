@@ -219,7 +219,9 @@ function StudyMenuMounted() {
       const coerced = coerceServerSnapshot(res.draft.snapshot);
       if (!coerced.ok) { setStatus({ kind: "error", message: coerced.message }); return; }
       withSuppressedAutosave(() => { loadSnapshot(coerced.snapshot); });
-      autosave.markSynced(Date.now());
+      // Seed the optimistic-lock token from the freshly-loaded draft so
+      // the very next autosave can detect a parallel writer.
+      autosave.markSynced(Date.now(), res.draft.revision_id);
       setStatus({ kind: "ok", message: `Loaded ${target}.` });
     } finally {
       setWorking(null);
@@ -251,7 +253,9 @@ function StudyMenuMounted() {
       const snap = createBuildSnapshot(useBuildStore.getState());
       const seedRes = await saveStudySnapshot(res.study.id, snap);
       if (seedRes.ok) {
-        autosave.markSynced(Date.now());
+        // First-ever save just minted a revision_id — track it so the
+        // next save can quote it as expected_revision_id.
+        autosave.markSynced(Date.now(), seedRes.revision_id);
         setStatus({ kind: "ok", message: `Created "${res.study.name}" and saved initial draft.` });
       } else {
         setStatus({
@@ -545,6 +549,7 @@ function triggerSyncLabel(s: SyncStatus): string {
     case "idle":           return "Saved";
     case "local-only":     return "Local";
     case "not-configured": return "Local";
+    case "conflict":       return "Conflict";
   }
 }
 

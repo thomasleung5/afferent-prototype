@@ -237,7 +237,7 @@ studiesRoutes.get("/:id", async (c) => {
 
   const { data: draft } = await db
     .from("study_drafts")
-    .select("snapshot, updated_by, updated_at")
+    .select("snapshot, updated_by, updated_at, revision_id")
     .eq("study_id", id)
     .maybeSingle();
 
@@ -249,10 +249,6 @@ studiesRoutes.get("/:id", async (c) => {
 // ====================================================================
 
 studiesRoutes.put("/:id/snapshot", async (c) => {
-  // TODO(conflict-detection): accept body.expected_revision_id +
-  // check against study_drafts.revision_id; return 409 on mismatch.
-  // See docs/persistence-design.md "Concurrency: optimistic locking"
-  // for the full migration + handler + client plan.
   const db = getDbClient();
   if (!db) return notConfigured(c);
   const user = getAuthUser(c);
@@ -270,6 +266,31 @@ studiesRoutes.put("/:id/snapshot", async (c) => {
     return forbidden(c, "You don't have permission to edit this study.");
   }
 
+  // Optimistic-lock check: if the caller quoted a revision they expect
+  // the server to still hold, confirm it matches before clobbering.
+  // See docs/persistence-design.md → "Concurrency: optimistic locking".
+  if (validation.value.expectedRevisionId != null) {
+    const { data: current, error: currentErr } = await db
+      .from("study_drafts")
+      .select("revision_id")
+      .eq("study_id", id)
+      .maybeSingle();
+    if (currentErr) {
+      return serverError(c, "PUT /api/studies/:id/snapshot", currentErr.message);
+    }
+    const currentRevId = (current as { revision_id?: string } | null)?.revision_id ?? null;
+    if (currentRevId !== validation.value.expectedRevisionId) {
+      return c.json(
+        { ok: false, message: "stale revision", current_revision_id: currentRevId },
+        409,
+      );
+    }
+  }
+
+  // Mint a fresh revision for the new draft state. The handler-side
+  // mint keeps the migration triggerless; see the migration header for
+  // the rationale.
+  const newRevisionId = crypto.randomUUID();
   const { error } = await db
     .from("study_drafts")
     .upsert(
@@ -278,6 +299,7 @@ studiesRoutes.put("/:id/snapshot", async (c) => {
         snapshot: validation.value.snapshot,
         updated_by: user.id,
         updated_at: new Date().toISOString(),
+        revision_id: newRevisionId,
       },
       { onConflict: "study_id" },
     );
@@ -295,7 +317,7 @@ studiesRoutes.put("/:id/snapshot", async (c) => {
     actorUserId: user.id,
   });
 
-  return c.json({ ok: true });
+  return c.json({ ok: true, revision_id: newRevisionId });
 });
 
 // ====================================================================

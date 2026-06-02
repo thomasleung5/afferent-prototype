@@ -274,18 +274,11 @@ development), the JSON snapshot export/import helper in
 `lib/snapshotIO.ts` provides a manual escape hatch — the same JSON
 shape the migration endpoint accepts.
 
-## Concurrency: optimistic locking (design, not yet implemented)
+## Concurrency: optimistic locking (implemented)
 
-Current behavior is last-writer-wins on `study_drafts.upsert`. Two
-analysts saving simultaneously will see whichever request lands at
-Postgres second "win"; the first analyst's edits between their last
-load and the conflicting save are silently lost. That's fine for
-the typical handoff workflow but inadequate as soon as more than
-one analyst is in the same study.
-
-The plan below is what the next pass should implement. Search the
-codebase for `TODO(conflict-detection)` to find the change sites
-in `server/studies/index.ts` and `features/studies/useAutoSaveStudy.ts`.
+Previously last-writer-wins on `study_drafts.upsert`; two analysts
+saving simultaneously would silently lose the earlier writer's
+edits. The shipped implementation matches the plan below.
 
 ### Migration (sketch)
 

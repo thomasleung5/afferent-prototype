@@ -58,8 +58,10 @@ export interface UseAutoSaveStudyApi {
   saveNow: () => Promise<void>;
   /** Mark the current local state as already-in-sync with the server.
    *  Used by the load handler after pushing a server snapshot into
-   *  the store, so the status reads "Saved · now" rather than "Idle". */
-  markSynced: (at: number) => void;
+   *  the store, so the status reads "Saved · now" rather than "Idle".
+   *  `revisionId`, when supplied, seeds the optimistic-lock token used
+   *  on subsequent saves (omit on local-only paths). */
+  markSynced: (at: number, revisionId?: string | null) => void;
 }
 
 export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyApi {
@@ -87,6 +89,12 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
   const inFlightRef = useRef(false);
   const queuedRef = useRef(false);
   const lastSavedAtRef = useRef<number | null>(null);
+  // Optimistic-lock token. Updated on every successful load / save;
+  // null until the first one of those completes. Sent back to the
+  // server as `expected_revision_id` on the next save so the server
+  // can detect a conflicting write from another client. See
+  // docs/persistence-design.md → "Concurrency: optimistic locking".
+  const lastKnownRevisionIdRef = useRef<string | null>(null);
 
   const cancelTimer = useCallback(() => {
     if (timerRef.current != null) {
@@ -112,18 +120,27 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     setStatus({ kind: "saving" });
     try {
       const snap = createBuildSnapshot(useBuildStore.getState());
-      // TODO(conflict-detection): pass expected_revision_id from a
-      // ref updated on load / save / version-load; on 409 surface a
-      // new SyncStatus.kind = "conflict" with refresh/overwrite UI.
-      // See docs/persistence-design.md → "Concurrency: optimistic
-      // locking".
-      const res = await saveStudySnapshot(id, snap);
+      const expected = lastKnownRevisionIdRef.current ?? undefined;
+      const res = await saveStudySnapshot(id, snap, expected);
       if (!res.ok) {
         // 404 → study was deleted or membership revoked. Tell the
         // caller so it can drop the active id; we report the error
         // but it's the caller's job to actually clear local state.
         if (/not found/i.test(res.message)) {
           onStudyMissingRef.current?.();
+        }
+        // Optimistic-lock conflict — the server-side draft moved
+        // since our last sync. Surface a distinct status so the UI
+        // can offer a non-destructive reload; do NOT auto-retry
+        // (the next save would just re-conflict) and do NOT discard
+        // local edits (the user's work stays in the store).
+        if (res.message === "stale revision") {
+          queuedRef.current = false;
+          setStatus({
+            kind: "conflict",
+            currentRevisionId: res.current_revision_id ?? null,
+          });
+          return;
         }
         setStatus({
           kind: "error",
@@ -134,6 +151,7 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
       }
       const at = Date.now();
       lastSavedAtRef.current = at;
+      lastKnownRevisionIdRef.current = res.revision_id;
       setStatus({ kind: "saved", at });
     } finally {
       inFlightRef.current = false;
@@ -170,20 +188,23 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     if (isNotConfigured) {
       cancelTimer();
       lastSavedAtRef.current = null;
+      lastKnownRevisionIdRef.current = null;
       setStatus({ kind: "not-configured" });
       return;
     }
     if (!enabled || !activeStudyId) {
       cancelTimer();
       lastSavedAtRef.current = null;
+      lastKnownRevisionIdRef.current = null;
       setStatus({ kind: "local-only" });
       return;
     }
     // Active study + enabled + DB configured — start in idle. The
-    // previous study's timestamp was cleared on switch, so this is
-    // always a fresh-per-study idle state.
+    // previous study's timestamp + revision were cleared on switch,
+    // so this is always a fresh-per-study idle state.
     cancelTimer();
     lastSavedAtRef.current = null;
+    lastKnownRevisionIdRef.current = null;
     setStatus({ kind: "idle" });
   }, [activeStudyId, enabled, isNotConfigured, cancelTimer]);
 
@@ -218,9 +239,15 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     await performSave();
   }, [cancelTimer, performSave]);
 
-  const markSynced = useCallback((at: number) => {
+  const markSynced = useCallback((at: number, revisionId?: string | null) => {
     cancelTimer();
     lastSavedAtRef.current = at;
+    // `undefined` → caller doesn't know the revision (e.g. local
+    // markSynced on a brand-new save path), so leave the existing
+    // ref untouched. Explicit `null` clears it.
+    if (revisionId !== undefined) {
+      lastKnownRevisionIdRef.current = revisionId;
+    }
     setStatus({ kind: "saved", at });
   }, [cancelTimer]);
 

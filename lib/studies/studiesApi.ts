@@ -45,6 +45,10 @@ export interface StudyDraft {
   snapshot: unknown;
   updated_by: string;
   updated_at: string;
+  /** Optimistic-lock token. Clients echo this back as
+   *  `expected_revision_id` on subsequent saves; the server mints a
+   *  new one on each successful upsert. */
+  revision_id: string;
 }
 
 export interface StudyVersionRow {
@@ -148,14 +152,30 @@ export function getStudy(
 // Drafts
 // ====================================================================
 
-export function saveStudySnapshot(
+/** Snapshot-save result. The error variant carries `current_revision_id`
+ *  on a 409 stale-revision conflict so callers can decide whether to
+ *  reload, force-overwrite, or surface the divergence — local edits are
+ *  NEVER discarded silently. The success variant always carries the
+ *  freshly-minted revision the caller should echo back on the next save. */
+export type SaveSnapshotResult =
+  | { ok: true; revision_id: string }
+  | { ok: false; message: string; current_revision_id?: string | null };
+
+export async function saveStudySnapshot(
   id: string,
   snapshot: BuildSnapshot,
-): Promise<ApiResult<Record<string, never>>> {
-  return studiesFetch(`/api/studies/${id}/snapshot`, {
-    method: "PUT",
-    body: JSON.stringify({ snapshot }),
-  });
+  expectedRevisionId?: string,
+): Promise<SaveSnapshotResult> {
+  const body: Record<string, unknown> = { snapshot };
+  if (expectedRevisionId != null) body.expected_revision_id = expectedRevisionId;
+  // studiesFetch's generic ApiResult<T> shape doesn't model the
+  // 409's extra `current_revision_id` field; the cast widens the
+  // error branch so callers can read it without an unchecked any.
+  const result = await studiesFetch<{ revision_id: string }>(
+    `/api/studies/${id}/snapshot`,
+    { method: "PUT", body: JSON.stringify(body) },
+  );
+  return result as SaveSnapshotResult;
 }
 
 // ====================================================================

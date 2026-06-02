@@ -139,6 +139,44 @@ let passed = 0;
   passed++;
 }
 
+// ── validateSnapshotPayload: expected_revision_id passes through ──
+{
+  const REV = "550e8400-e29b-41d4-a716-446655440000";
+  const r = validateSnapshotPayload({
+    snapshot: VALID_SNAPSHOT,
+    expected_revision_id: REV,
+  });
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value.expectedRevisionId, REV);
+  passed++;
+}
+
+// ── validateSnapshotPayload: omitted expected_revision_id is fine ─
+{
+  const r = validateSnapshotPayload({ snapshot: VALID_SNAPSHOT });
+  assert.equal(r.ok, true);
+  if (r.ok) assert.equal(r.value.expectedRevisionId, undefined);
+  passed++;
+}
+
+// ── validateSnapshotPayload: bad expected_revision_id shape ───────
+{
+  const r1 = validateSnapshotPayload({
+    snapshot: VALID_SNAPSHOT,
+    expected_revision_id: "not-a-uuid",
+  });
+  assert.equal(r1.ok, false);
+  if (!r1.ok) assert.match(r1.message, /expected_revision_id.*UUID/);
+
+  const r2 = validateSnapshotPayload({
+    snapshot: VALID_SNAPSHOT,
+    expected_revision_id: 42,
+  });
+  assert.equal(r2.ok, false);
+  if (!r2.ok) assert.match(r2.message, /expected_revision_id.*UUID/);
+  passed++;
+}
+
 // ── validateSnapshotField: accepts each canonical field ───────────
 {
   for (const k of ["services", "operating", "studyContext", "productiveHours", "activeFiscalYear"]) {

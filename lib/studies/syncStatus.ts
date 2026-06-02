@@ -18,7 +18,12 @@ export type SyncStatus =
   | { kind: "saved"; at: number }
   /** The most recent save failed. `lastSavedAt` is preserved so the
    *  UI can show "Save failed; last good save was 12m ago" if useful. */
-  | { kind: "error"; message: string; lastSavedAt: number | null };
+  | { kind: "error"; message: string; lastSavedAt: number | null }
+  /** Optimistic-lock conflict: the server-side draft moved between
+   *  our last load/save and this save attempt. Local edits are NOT
+   *  discarded — the UI surfaces the divergence and lets the user
+   *  reload (replacing local) or force-overwrite explicitly. */
+  | { kind: "conflict"; currentRevisionId: string | null };
 
 export type SyncTone = "neutral" | "pos" | "warn" | "neg";
 
@@ -32,6 +37,7 @@ export function syncStatusTone(s: SyncStatus): SyncTone {
     case "saving":         return "neutral";
     case "saved":          return "pos";
     case "error":          return "neg";
+    case "conflict":       return "warn";
   }
 }
 
@@ -44,11 +50,14 @@ export function syncStatusLabel(s: SyncStatus, now: number = Date.now()): string
     case "saving":         return "Saving…";
     case "saved":          return `Saved · ${formatRelativeTime(s.at, now)}`;
     case "error":          return "Save failed";
+    case "conflict":       return "Conflict — reload to resolve";
   }
 }
 
 /** Whether this status has a recoverable failure the user should be
- *  offered a retry for. */
+ *  offered a retry for. Conflicts deliberately don't show "Save now"
+ *  — retrying would just re-conflict; the user has to reload or
+ *  explicitly overwrite via a separate flow. */
 export function syncStatusIsRetryable(s: SyncStatus): boolean {
   return s.kind === "error";
 }

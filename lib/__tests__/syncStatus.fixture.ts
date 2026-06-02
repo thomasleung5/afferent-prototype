@@ -27,6 +27,11 @@ let passed = 0;
     syncStatusTone({ kind: "error", message: "x", lastSavedAt: null }),
     "neg",
   );
+  assert.equal(
+    syncStatusTone({ kind: "conflict", currentRevisionId: null }),
+    "warn",
+    "conflict reads as a warning, not an error — local edits aren't lost",
+  );
   passed++;
 }
 
@@ -37,6 +42,17 @@ let passed = 0;
   assert.equal(
     syncStatusIsRetryable({ kind: "error", message: "x", lastSavedAt: null }),
     true,
+  );
+  // Conflict is deliberately NOT retryable — clicking "Save now"
+  // would re-conflict; the user resolves by reload or explicit
+  // overwrite via a separate flow.
+  assert.equal(
+    syncStatusIsRetryable({ kind: "conflict", currentRevisionId: null }),
+    false,
+  );
+  assert.equal(
+    syncStatusIsRetryable({ kind: "conflict", currentRevisionId: "abc" }),
+    false,
   );
   passed++;
 }
@@ -55,6 +71,10 @@ let passed = 0;
   assert.equal(
     syncStatusLabel({ kind: "error", message: "boom", lastSavedAt: null }, now),
     "Save failed",
+  );
+  assert.equal(
+    syncStatusLabel({ kind: "conflict", currentRevisionId: null }, now),
+    "Conflict — reload to resolve",
   );
   passed++;
 }
