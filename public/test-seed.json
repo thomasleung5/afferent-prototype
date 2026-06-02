@@ -998,8 +998,8 @@
       "pool": "Administrative Oversight",
       "allocationPercent": 25,
       "amount": 48956,
-      "basisId": "bas-fte-budget",
-      "basis": "Compensated labor hours / FTE",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1011,8 +1011,8 @@
       "pool": "General Fiscal Oversight",
       "allocationPercent": 25,
       "amount": 48956,
-      "basisId": "bas-op-expend",
-      "basis": "Net operating expense",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1024,8 +1024,8 @@
       "pool": "Capital Fiscal Oversight",
       "allocationPercent": 50,
       "amount": 97913,
-      "basisId": "bas-op-expend-pw",
-      "basis": "Capital asset value (infrastructure)",
+      "basisId": "seb-capital-asset-value",
+      "basis": "Capital Asset Value (Infrastructure)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1037,8 +1037,8 @@
       "pool": "Administrative Management",
       "allocationPercent": 18.05,
       "amount": 126046,
-      "basisId": "bas-fte-budget",
-      "basis": "Compensated labor hours / FTE",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1050,8 +1050,8 @@
       "pool": "General Fiscal Management",
       "allocationPercent": 50.44,
       "amount": 352246,
-      "basisId": "bas-op-expend",
-      "basis": "Net operating expense",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1063,8 +1063,8 @@
       "pool": "Capital Fiscal Management",
       "allocationPercent": 31.52,
       "amount": 220093,
-      "basisId": "bas-op-expend-pw",
-      "basis": "Capital asset value (infrastructure)",
+      "basisId": "seb-capital-asset-value",
+      "basis": "Capital Asset Value (Infrastructure)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1076,8 +1076,8 @@
       "pool": "Citywide Service",
       "allocationPercent": 100,
       "amount": 647900,
-      "basisId": "bas-op-expend",
-      "basis": "Net operating expense",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1089,8 +1089,8 @@
       "pool": "Citywide Service",
       "allocationPercent": 100,
       "amount": 335603,
-      "basisId": "bas-op-expend",
-      "basis": "Net operating expense",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1102,8 +1102,8 @@
       "pool": "Citywide Accounting / Budget",
       "allocationPercent": 35.47,
       "amount": 500543,
-      "basisId": "bas-op-expend",
-      "basis": "Net operating expense",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1115,8 +1115,8 @@
       "pool": "Utility Billing & Support",
       "allocationPercent": 24.14,
       "amount": 340734,
-      "basisId": "bas-acct-tx",
-      "basis": "Utility accounts",
+      "basisId": "seb-utility-accounts",
+      "basis": "Utility Accounts",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1128,8 +1128,8 @@
       "pool": "Payroll",
       "allocationPercent": 6.76,
       "amount": 95362,
-      "basisId": "bas-payroll-tx",
-      "basis": "Compensated labor hours / FTE",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1141,8 +1141,8 @@
       "pool": "Accounts Payable",
       "allocationPercent": 5.91,
       "amount": 83442,
-      "basisId": "bas-contracts-count",
-      "basis": "Services & supplies expense",
+      "basisId": "seb-services-supplies-expense",
+      "basis": "Services & Supplies Expense",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1154,8 +1154,8 @@
       "pool": "Accounts Receivable / Cash Receipts",
       "allocationPercent": 3.38,
       "amount": 47681,
-      "basisId": "bas-acct-tx",
-      "basis": "Revenues receipted",
+      "basisId": "seb-revenues-receipted",
+      "basis": "Revenues Receipted",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1167,8 +1167,8 @@
       "pool": "Information Technology Management",
       "allocationPercent": 11.51,
       "amount": 162408,
-      "basisId": "bas-fte-budget",
-      "basis": "Personnel count",
+      "basisId": "seb-personnel-count",
+      "basis": "Personnel Count",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1180,8 +1180,8 @@
       "pool": "Human Resources",
       "allocationPercent": 12.83,
       "amount": 181098,
-      "basisId": "bas-fte-budget",
-      "basis": "Compensated labor hours / FTE",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1193,8 +1193,8 @@
       "pool": "Technical Support - Public Projects",
       "allocationPercent": 100,
       "amount": 258296,
-      "basisId": "bas-op-expend-pw",
-      "basis": "Capital asset value (infrastructure)",
+      "basisId": "seb-capital-asset-value",
+      "basis": "Capital Asset Value (Infrastructure)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1206,8 +1206,8 @@
       "pool": "Department Administrative Management",
       "allocationPercent": 50,
       "amount": 235638,
-      "basisId": "bas-fte-budget",
-      "basis": "Public Works personnel count",
+      "basisId": "seb-pw-personnel-count",
+      "basis": "Public Works Personnel Count",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1219,8 +1219,8 @@
       "pool": "Department Fiscal Management",
       "allocationPercent": 50,
       "amount": 235637,
-      "basisId": "bas-op-expend-pw",
-      "basis": "Public Works modified operating expense",
+      "basisId": "seb-pw-modified-operating-expense",
+      "basis": "Public Works Modified Operating Expense",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1232,8 +1232,8 @@
       "pool": "Governmental Facility Maintenance",
       "allocationPercent": 100,
       "amount": 212539,
-      "basisId": "bas-fte-budget",
-      "basis": "Personnel count",
+      "basisId": "seb-personnel-count",
+      "basis": "Personnel Count",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1245,8 +1245,8 @@
       "pool": "Personnel Services",
       "allocationPercent": 50.71,
       "amount": 74520,
-      "basisId": "bas-fte-budget",
-      "basis": "Compensated labor hours / FTE",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -1258,8 +1258,8 @@
       "pool": "Information Technology Services",
       "allocationPercent": 49.29,
       "amount": 72420,
-      "basisId": "bas-fte-budget",
-      "basis": "Personnel count",
+      "basisId": "seb-personnel-count",
+      "basis": "Personnel Count",
       "receiving": "Multiple departments",
       "recoverability": "Partially recoverable",
       "review": "Reviewed"
@@ -2721,196 +2721,298 @@
   },
   "allocationBases": [
     {
-      "id": "bas-fte-th-occupy",
-      "name": "FY 24/25 Budgeted FTE Occupying Town Hall",
-      "source": "Allocations 3.2025 NBS.xlsx",
-      "driverKey": "FTE",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-direct-pr",
-      "name": "Direct to Parks and Recreation",
-      "source": "Manual assignment",
-      "driverKey": "DIRECT",
-      "directTo": "PARKS",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-vehicle-dep",
-      "name": "FY 23/24 Vehicle Depreciation Expense by Department",
-      "source": "Vehicle Listing - Dept usage_NBS.xlsx",
+      "id": "seb-modified-operating-expenses",
+      "name": "Modified Operating Expenses",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Modified operating expense values from Exhibit 5; first-step distribution includes central service organizations.",
       "driverKey": "EXPEND",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-agenda-count",
-      "name": "FY 23/24 Agenda Item Count per Fund, Department, and/or Division",
-      "source": "Agenda Items by Dept.Fund.Program FY 23-24_NBS.xlsx",
-      "driverKey": "AGENDA",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-op-expend",
-      "name": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers)",
-      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+      "id": "seb-gross-expense-net-distortions",
+      "name": "Gross Expense Net of Distortions",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Gross expense net of distortions values from Exhibit 5; first-step distribution includes central service organizations.",
       "driverKey": "EXPEND",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-op-expend-x",
-      "name": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers) - Excluding Planning, Building, & Engineering",
-      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
-      "driverKey": "EXPEND_X",
+      "id": "seb-net-operating-expense",
+      "name": "Net Operating Expenses",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Net operating expense values from Exhibit 5; first-step distribution includes central service organizations.",
+      "driverKey": "EXPEND",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-pra-count",
-      "name": "FY 23/24 Public Records Act (PRA) Requests per Fund, Department, and/or Division",
-      "source": "5.2 PRAs by Program.xlsx",
-      "driverKey": "PRA",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-contracts-count",
-      "name": "FY 23/24 Contracts Count per Fund, Department, and/or Division",
-      "source": "5.3 Contracts per Program.xlsx",
-      "driverKey": "CONTRACT",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-fte-budget",
-      "name": "FY 24/25 Budgeted FTE per Fund, Department, and/or Division",
-      "source": "Allocations 3.2025 NBS",
+      "id": "seb-comp-labor-hours",
+      "name": "Compensated Labor Hours (Approx. FTEE)",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Actual FY 2022-23 compensated labor hours by organization; first-step distribution includes central service organizations.",
       "driverKey": "FTE",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-payroll-tx",
-      "name": "FY 23/24 Number of Payroll Transactions excluding Payroll per Fund, Department, and/or Division",
-      "source": "Los Altos Hills _Count of Transactions.pdf",
-      "driverKey": "PAYROLL",
+      "id": "seb-personnel-count",
+      "name": "Personnel Count",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Personnel count values from Exhibit 5; first-step distribution includes central service organizations.",
+      "driverKey": "FTE",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-acct-tx",
-      "name": "FY 23/24 Number of Accounting Transactions per Fund, Department, and/or Division",
-      "source": "6.4 JE count by Dept request.xlsx & 6.4 Invoices by Program.xlsx",
+      "id": "seb-utility-accounts",
+      "name": "Utility Accounts",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Utility account counts from Exhibit 5.",
       "driverKey": "ACCT",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-committees-supp",
-      "name": "Number of Committees Supported per Department",
-      "source": "Committees 3.20.25.xlsx",
-      "driverKey": "COMMITS",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-salary-dist",
-      "name": "FY 24/25 Salary Cost Distribution per Fund, Department, and/or Division",
-      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
-      "driverKey": "PAYROLL",
-      "validationStatus": "verified",
-      "createdAt": "2026-05-17T00:00:00.000Z"
-    },
-    {
-      "id": "bas-op-expend-pw",
-      "name": "FY 24/25 Budgeted Expenditures (PW Departments Only)",
-      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+      "id": "seb-capital-asset-value",
+      "name": "Capital Asset Value (Infrastructure)",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Infrastructure capital asset values from Exhibit 5.",
       "driverKey": "EXPEND_PW",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     },
     {
-      "id": "bas-vehicles-maint",
-      "name": "FY 23/24 Vehicles Maintained per Department",
-      "source": "CapAssets_All_listing_CostAllocation_Nicole_04.01.2025_NBS",
-      "driverKey": "VEHICLE",
+      "id": "seb-pw-modified-operating-expense",
+      "name": "Public Works Modified Operating Expense",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Public Works modified operating expense values from Exhibit 5; first-step distribution includes Public Works central service organizations.",
+      "driverKey": "EXPEND_PW",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "seb-pw-personnel-count",
+      "name": "Public Works Personnel Count",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Public Works personnel count values from Exhibit 5; first-step distribution includes Public Works central service organizations.",
+      "driverKey": "FTE",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "seb-revenues-receipted",
+      "name": "Revenues Receipted",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Revenue receipted values from Exhibit 5.",
+      "driverKey": "ACCT",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "seb-services-supplies-expense",
+      "name": "Services & Supplies Expense",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "methodologyNote": "Services and supplies expense values from Exhibit 5; first-step distribution includes central service organizations.",
+      "driverKey": "EXPEND",
       "validationStatus": "verified",
       "createdAt": "2026-05-17T00:00:00.000Z"
     }
   ],
   "capBasisUnits": [
     {
-      "basisId": "bas-fte-budget",
+      "basisId": "seb-modified-operating-expenses",
+      "basis": "Modified Operating Expenses",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
       "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "100-10",
+          "deptCode": "OTHER",
+          "units": 195825
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "100-11",
+          "deptCode": "OTHER",
+          "units": 698385
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "100-12",
+          "deptCode": "OTHER",
+          "units": 647900
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "100-13",
+          "deptCode": "OTHER",
+          "units": 335603
+        },
+        {
+          "dept": "Finance / Administrative Services",
+          "glCode": "100-14",
+          "deptCode": "OTHER",
+          "units": 1411268
+        },
+        {
+          "dept": "Engineering Central Services",
+          "glCode": "100-23",
+          "deptCode": "OTHER",
+          "units": 258296
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 471275
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 212539
+        },
+        {
+          "dept": "Non Departmental",
+          "glCode": "100-00",
+          "deptCode": "OTHER",
+          "units": 146940
+        },
+        {
+          "dept": "Unclassified / CIP, ISF, Transfer",
+          "glCode": "000-0000",
+          "deptCode": "OTHER",
+          "units": 269622
+        },
         {
           "dept": "General Government",
           "glCode": "100-0000",
           "deptCode": "OTHER",
-          "units": 2
+          "units": 544386
         },
         {
           "dept": "Planning",
           "glCode": "100-3100",
           "deptCode": "PLAN",
-          "units": 3.75
+          "units": 935926
         },
         {
           "dept": "Building",
           "glCode": "100-3200",
           "deptCode": "BLDG",
-          "units": 3.25
+          "units": 322536
         },
         {
           "dept": "Engineering",
           "glCode": "100-2300",
           "deptCode": "ENG",
-          "units": 2
+          "units": 299383
         },
         {
           "dept": "Fire & Prevention",
           "glCode": "100-2200",
           "deptCode": "FIRE",
-          "units": 2
+          "units": 1733943
         },
         {
           "dept": "Police",
           "glCode": "100-2100",
           "deptCode": "PD",
-          "units": 4.5
+          "units": 5480162
         },
         {
           "dept": "Public Works",
           "glCode": "100-4100",
           "deptCode": "OTHER",
-          "units": 3.5
+          "units": 1410005
         },
         {
           "dept": "Public Works - Community Facilities",
           "glCode": "100-4106",
           "deptCode": "PARKS",
-          "units": 1.75
+          "units": 483178
         },
         {
           "dept": "Public Works - Water Utility",
           "glCode": "500-0000",
           "deptCode": "OTHER",
-          "units": 5.5
+          "units": 1419243
         },
         {
           "dept": "Public Works - Wastewater Utility",
           "glCode": "510-0000",
           "deptCode": "OTHER",
-          "units": 5.25
+          "units": 886865
         }
       ]
     },
     {
-      "basisId": "bas-op-expend",
+      "basisId": "seb-gross-expense-net-distortions",
+      "basis": "Gross Expense Net of Distortions",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
       "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "100-10",
+          "deptCode": "OTHER",
+          "units": 195825
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "100-11",
+          "deptCode": "OTHER",
+          "units": 698385
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "100-12",
+          "deptCode": "OTHER",
+          "units": 647900
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "100-13",
+          "deptCode": "OTHER",
+          "units": 335603
+        },
+        {
+          "dept": "Finance / Administrative Services",
+          "glCode": "100-14",
+          "deptCode": "OTHER",
+          "units": 1411268
+        },
+        {
+          "dept": "Engineering Central Services",
+          "glCode": "100-23",
+          "deptCode": "OTHER",
+          "units": 258296
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 471275
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 212539
+        },
+        {
+          "dept": "Non Departmental",
+          "glCode": "100-00",
+          "deptCode": "OTHER",
+          "units": 146940
+        },
+        {
+          "dept": "Unclassified / CIP, ISF, Transfer",
+          "glCode": "000-0000",
+          "deptCode": "OTHER",
+          "units": 1513372
+        },
         {
           "dept": "General Government",
           "glCode": "100-0000",
@@ -2939,90 +3041,99 @@
           "dept": "Fire & Prevention",
           "glCode": "100-2200",
           "deptCode": "FIRE",
-          "units": 1731987
+          "units": 1733943
         },
         {
           "dept": "Police",
           "glCode": "100-2100",
           "deptCode": "PD",
-          "units": 5465472
+          "units": 5480162
         },
         {
           "dept": "Public Works",
           "glCode": "100-4100",
           "deptCode": "OTHER",
-          "units": 1410000
+          "units": 1410005
         },
         {
           "dept": "Public Works - Community Facilities",
           "glCode": "100-4106",
           "deptCode": "PARKS",
-          "units": 484000
+          "units": 483178
         },
         {
           "dept": "Public Works - Water Utility",
           "glCode": "500-0000",
           "deptCode": "OTHER",
-          "units": 2272000
+          "units": 2272106
         },
         {
           "dept": "Public Works - Wastewater Utility",
           "glCode": "510-0000",
           "deptCode": "OTHER",
-          "units": 3913000
+          "units": 3914234
         }
       ]
     },
     {
-      "basisId": "bas-op-expend-x",
+      "basisId": "seb-net-operating-expense",
+      "basis": "Net Operating Expenses",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
       "receivers": [
         {
-          "dept": "General Government",
-          "glCode": "100-0000",
+          "dept": "City Council",
+          "glCode": "100-10",
           "deptCode": "OTHER",
-          "units": 545886
+          "units": 195825
         },
         {
-          "dept": "Fire & Prevention",
-          "glCode": "100-2200",
-          "deptCode": "FIRE",
-          "units": 1731987
-        },
-        {
-          "dept": "Police",
-          "glCode": "100-2100",
-          "deptCode": "PD",
-          "units": 5465472
-        },
-        {
-          "dept": "Public Works",
-          "glCode": "100-4100",
+          "dept": "City Manager",
+          "glCode": "100-11",
           "deptCode": "OTHER",
-          "units": 1410000
+          "units": 698385
         },
         {
-          "dept": "Public Works - Community Facilities",
-          "glCode": "100-4106",
-          "deptCode": "PARKS",
-          "units": 484000
-        },
-        {
-          "dept": "Public Works - Water Utility",
-          "glCode": "500-0000",
+          "dept": "City Attorney",
+          "glCode": "100-12",
           "deptCode": "OTHER",
-          "units": 2272000
+          "units": 647900
         },
         {
-          "dept": "Public Works - Wastewater Utility",
-          "glCode": "510-0000",
+          "dept": "City Clerk",
+          "glCode": "100-13",
           "deptCode": "OTHER",
-          "units": 3913000
-        }
-      ]
-    },
-    {
-      "basisId": "bas-op-expend-pw",
-      "receivers": [
+          "units": 335603
+        },
+        {
+          "dept": "Finance / Administrative Services",
+          "glCode": "100-14",
+          "deptCode": "OTHER",
+          "units": 1411268
+        },
+        {
+          "dept": "Engineering Central Services",
+          "glCode": "100-23",
+          "deptCode": "OTHER",
+          "units": 258296
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 471275
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 212539
+        },
+        {
+          "dept": "Non Departmental",
+          "glCode": "100-00",
+          "deptCode": "OTHER",
+          "units": 146940
+        },
         {
           "dept": "Unclassified / CIP, ISF, Transfer",
           "glCode": "000-0000",
@@ -3030,223 +3141,534 @@
           "units": 2385318
         },
         {
-          "dept": "Public Works",
-          "glCode": "100-4100",
+          "dept": "General Government",
+          "glCode": "100-0000",
           "deptCode": "OTHER",
-          "units": 1200000
+          "units": 545886
         },
         {
-          "dept": "Public Works - Community Facilities",
-          "glCode": "100-4106",
-          "deptCode": "PARKS",
-          "units": 620000
+          "dept": "Planning",
+          "glCode": "100-3100",
+          "deptCode": "PLAN",
+          "units": 935926
         },
         {
-          "dept": "Public Works - Water Utility",
-          "glCode": "500-0000",
-          "deptCode": "OTHER",
-          "units": 2480000
-        },
-        {
-          "dept": "Public Works - Wastewater Utility",
-          "glCode": "510-0000",
-          "deptCode": "OTHER",
-          "units": 3160000
+          "dept": "Building",
+          "glCode": "100-3200",
+          "deptCode": "BLDG",
+          "units": 322536
         },
         {
           "dept": "Engineering",
           "glCode": "100-2300",
           "deptCode": "ENG",
           "units": 299383
-        }
-      ]
-    },
-    {
-      "basisId": "bas-acct-tx",
-      "receivers": [
-        {
-          "dept": "General Government",
-          "glCode": "100-0000",
-          "deptCode": "OTHER",
-          "units": 120
-        },
-        {
-          "dept": "Planning",
-          "glCode": "100-3100",
-          "deptCode": "PLAN",
-          "units": 77
-        },
-        {
-          "dept": "Building",
-          "glCode": "100-3200",
-          "deptCode": "BLDG",
-          "units": 86
-        },
-        {
-          "dept": "Engineering",
-          "glCode": "100-2300",
-          "deptCode": "ENG",
-          "units": 52
         },
         {
           "dept": "Fire & Prevention",
           "glCode": "100-2200",
           "deptCode": "FIRE",
-          "units": 94
+          "units": 1745943
         },
         {
           "dept": "Police",
           "glCode": "100-2100",
           "deptCode": "PD",
-          "units": 104
-        },
-        {
-          "dept": "Public Works - Community Facilities",
-          "glCode": "100-4106",
-          "deptCode": "PARKS",
-          "units": 78
-        },
-        {
-          "dept": "Public Works - Water Utility",
-          "glCode": "500-0000",
-          "deptCode": "OTHER",
-          "units": 640
-        },
-        {
-          "dept": "Public Works - Wastewater Utility",
-          "glCode": "510-0000",
-          "deptCode": "OTHER",
-          "units": 710
-        }
-      ]
-    },
-    {
-      "basisId": "bas-payroll-tx",
-      "receivers": [
-        {
-          "dept": "General Government",
-          "glCode": "100-0000",
-          "deptCode": "OTHER",
-          "units": 80
-        },
-        {
-          "dept": "Planning",
-          "glCode": "100-3100",
-          "deptCode": "PLAN",
-          "units": 127
-        },
-        {
-          "dept": "Building",
-          "glCode": "100-3200",
-          "deptCode": "BLDG",
-          "units": 50
-        },
-        {
-          "dept": "Engineering",
-          "glCode": "100-2300",
-          "deptCode": "ENG",
-          "units": 150
-        },
-        {
-          "dept": "Fire & Prevention",
-          "glCode": "100-2200",
-          "deptCode": "FIRE",
-          "units": 175
-        },
-        {
-          "dept": "Police",
-          "glCode": "100-2100",
-          "deptCode": "PD",
-          "units": 520
+          "units": 5610162
         },
         {
           "dept": "Public Works",
           "glCode": "100-4100",
           "deptCode": "OTHER",
-          "units": 210
+          "units": 1410005
         },
         {
           "dept": "Public Works - Community Facilities",
           "glCode": "100-4106",
           "deptCode": "PARKS",
-          "units": 96
+          "units": 580978
         },
         {
           "dept": "Public Works - Water Utility",
           "glCode": "500-0000",
           "deptCode": "OTHER",
-          "units": 180
+          "units": 1885649
         },
         {
           "dept": "Public Works - Wastewater Utility",
           "glCode": "510-0000",
           "deptCode": "OTHER",
-          "units": 165
+          "units": 3215956
         }
       ]
     },
     {
-      "basisId": "bas-contracts-count",
+      "basisId": "seb-comp-labor-hours",
+      "basis": "Compensated Labor Hours (Approx. FTEE)",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
       "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "100-11",
+          "deptCode": "OTHER",
+          "units": 2040
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "100-13",
+          "deptCode": "OTHER",
+          "units": 2048
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 321
+        },
         {
           "dept": "General Government",
           "glCode": "100-0000",
           "deptCode": "OTHER",
-          "units": 9
+          "units": 102
         },
         {
           "dept": "Planning",
           "glCode": "100-3100",
           "deptCode": "PLAN",
-          "units": 4
+          "units": 4363
         },
         {
           "dept": "Building",
           "glCode": "100-3200",
           "deptCode": "BLDG",
-          "units": 8
-        },
-        {
-          "dept": "Engineering",
-          "glCode": "100-2300",
-          "deptCode": "ENG",
-          "units": 20
+          "units": 1020
         },
         {
           "dept": "Fire & Prevention",
           "glCode": "100-2200",
           "deptCode": "FIRE",
-          "units": 7
+          "units": 5405
         },
         {
           "dept": "Police",
           "glCode": "100-2100",
           "deptCode": "PD",
-          "units": 5
+          "units": 43532
         },
         {
           "dept": "Public Works",
           "glCode": "100-4100",
           "deptCode": "OTHER",
-          "units": 14
+          "units": 9412
         },
         {
           "dept": "Public Works - Community Facilities",
           "glCode": "100-4106",
           "deptCode": "PARKS",
+          "units": 1706
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 5872
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 5349
+        }
+      ]
+    },
+    {
+      "basisId": "seb-personnel-count",
+      "basis": "Personnel Count",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "100-10",
+          "deptCode": "OTHER",
           "units": 6
         },
         {
+          "dept": "City Manager",
+          "glCode": "100-11",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "100-13",
+          "deptCode": "OTHER",
+          "units": 0.75
+        },
+        {
+          "dept": "Finance / Administrative Services",
+          "glCode": "100-14",
+          "deptCode": "OTHER",
+          "units": 4
+        },
+        {
+          "dept": "Engineering Central Services",
+          "glCode": "100-23",
+          "deptCode": "OTHER",
+          "units": 1.26
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 1.32
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 0.3
+        },
+        {
+          "dept": "General Government",
+          "glCode": "100-0000",
+          "deptCode": "OTHER",
+          "units": 0.25
+        },
+        {
+          "dept": "Planning",
+          "glCode": "100-3100",
+          "deptCode": "PLAN",
+          "units": 3
+        },
+        {
+          "dept": "Building",
+          "glCode": "100-3200",
+          "deptCode": "BLDG",
+          "units": 1.5
+        },
+        {
+          "dept": "Engineering",
+          "glCode": "100-2300",
+          "deptCode": "ENG",
+          "units": 0.99
+        },
+        {
+          "dept": "Fire & Prevention",
+          "glCode": "100-2200",
+          "deptCode": "FIRE",
+          "units": 34.5
+        },
+        {
+          "dept": "Police",
+          "glCode": "100-2100",
+          "deptCode": "PD",
+          "units": 23
+        },
+        {
+          "dept": "Public Works",
+          "glCode": "100-4100",
+          "deptCode": "OTHER",
+          "units": 5.75
+        },
+        {
+          "dept": "Public Works - Community Facilities",
+          "glCode": "100-4106",
+          "deptCode": "PARKS",
+          "units": 0.85
+        },
+        {
           "dept": "Public Works - Water Utility",
           "glCode": "500-0000",
           "deptCode": "OTHER",
-          "units": 18
+          "units": 3
         },
         {
           "dept": "Public Works - Wastewater Utility",
           "glCode": "510-0000",
           "deptCode": "OTHER",
-          "units": 21
+          "units": 2.53
+        }
+      ]
+    },
+    {
+      "basisId": "seb-utility-accounts",
+      "basis": "Utility Accounts",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 2870
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 2870
+        }
+      ]
+    },
+    {
+      "basisId": "seb-capital-asset-value",
+      "basis": "Capital Asset Value (Infrastructure)",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "Unclassified / CIP, ISF, Transfer",
+          "glCode": "000-0000",
+          "deptCode": "OTHER",
+          "units": 8856790
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 8158473
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 8374315
+        }
+      ]
+    },
+    {
+      "basisId": "seb-pw-modified-operating-expense",
+      "basis": "Public Works Modified Operating Expense",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 471275
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 212539
+        },
+        {
+          "dept": "Public Works",
+          "glCode": "100-4100",
+          "deptCode": "OTHER",
+          "units": 1410005
+        },
+        {
+          "dept": "Public Works - Community Facilities",
+          "glCode": "100-4106",
+          "deptCode": "PARKS",
+          "units": 483178
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 1419243
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 886865
+        }
+      ]
+    },
+    {
+      "basisId": "seb-pw-personnel-count",
+      "basis": "Public Works Personnel Count",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 1.32
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 0.3
+        },
+        {
+          "dept": "Public Works",
+          "glCode": "100-4100",
+          "deptCode": "OTHER",
+          "units": 5.75
+        },
+        {
+          "dept": "Public Works - Community Facilities",
+          "glCode": "100-4106",
+          "deptCode": "PARKS",
+          "units": 0.85
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 3
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 2.53
+        }
+      ]
+    },
+    {
+      "basisId": "seb-revenues-receipted",
+      "basis": "Revenues Receipted",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "General Government",
+          "glCode": "100-0000",
+          "deptCode": "OTHER",
+          "units": 137500
+        },
+        {
+          "dept": "Planning",
+          "glCode": "100-3100",
+          "deptCode": "PLAN",
+          "units": 25700
+        },
+        {
+          "dept": "Building",
+          "glCode": "100-3200",
+          "deptCode": "BLDG",
+          "units": 300000
+        },
+        {
+          "dept": "Engineering",
+          "glCode": "100-2300",
+          "deptCode": "ENG",
+          "units": 30500
+        },
+        {
+          "dept": "Fire & Prevention",
+          "glCode": "100-2200",
+          "deptCode": "FIRE",
+          "units": 30000
+        },
+        {
+          "dept": "Police",
+          "glCode": "100-2100",
+          "deptCode": "PD",
+          "units": 68400
+        },
+        {
+          "dept": "Public Works",
+          "glCode": "100-4100",
+          "deptCode": "OTHER",
+          "units": 6300
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 2310650
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 3100000
+        }
+      ]
+    },
+    {
+      "basisId": "seb-services-supplies-expense",
+      "basis": "Services & Supplies Expense",
+      "source": "City of Sebastopol FY25-26 Cost Allocation Plan, Exhibit 5",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "100-10",
+          "deptCode": "OTHER",
+          "units": 103645
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "100-11",
+          "deptCode": "OTHER",
+          "units": 288225
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "100-13",
+          "deptCode": "OTHER",
+          "units": 21135
+        },
+        {
+          "dept": "Public Works - Corporation Yard",
+          "glCode": "100-41-02",
+          "deptCode": "OTHER",
+          "units": 93338
+        },
+        {
+          "dept": "Public Works - Governmental Building",
+          "glCode": "100-41-06",
+          "deptCode": "OTHER",
+          "units": 157729
+        },
+        {
+          "dept": "Unclassified / CIP, ISF, Transfer",
+          "glCode": "000-0000",
+          "deptCode": "OTHER",
+          "units": 172822
+        },
+        {
+          "dept": "Planning",
+          "glCode": "100-3100",
+          "deptCode": "PLAN",
+          "units": 388970
+        },
+        {
+          "dept": "Building",
+          "glCode": "100-3200",
+          "deptCode": "BLDG",
+          "units": 226700
+        },
+        {
+          "dept": "Fire & Prevention",
+          "glCode": "100-2200",
+          "deptCode": "FIRE",
+          "units": 1039599
+        },
+        {
+          "dept": "Police",
+          "glCode": "100-2100",
+          "deptCode": "PD",
+          "units": 383502
+        },
+        {
+          "dept": "Public Works",
+          "glCode": "100-4100",
+          "deptCode": "OTHER",
+          "units": 411024
+        },
+        {
+          "dept": "Public Works - Community Facilities",
+          "glCode": "100-4106",
+          "deptCode": "PARKS",
+          "units": 255806
+        },
+        {
+          "dept": "Public Works - Water Utility",
+          "glCode": "500-0000",
+          "deptCode": "OTHER",
+          "units": 695770
+        },
+        {
+          "dept": "Public Works - Wastewater Utility",
+          "glCode": "510-0000",
+          "deptCode": "OTHER",
+          "units": 267162
         }
       ]
     }

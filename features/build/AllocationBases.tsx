@@ -2,9 +2,8 @@
 import { useMemo, useState, type CSSProperties } from "react";
 import { SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { ALLOCATION_BASES } from "@/lib/data/allocationBases";
-import type { GlNode, GlDriverMatrix } from "@/lib/data/capStepDownEngine";
-import type { BasisKey } from "@/lib/types";
+import type { GlNode } from "@/lib/data/capStepDownEngine";
+import type { AllocationBasis, BasisKey, BasisUnitRow } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
@@ -12,12 +11,13 @@ import {
 } from "./TracePanel";
 
 interface OpenCell {
-  basisKey: BasisKey;
+  basisId: string;
   rowCode: string;
 }
 
 interface BasisColumn {
-  key: BasisKey;
+  id: string;
+  driverKey: BasisKey;
   label: string;
   longName: string;
   unit: string;
@@ -32,145 +32,94 @@ interface EffectiveRow {
   code: string;
   name: string;
   group: "indirect" | "direct";
-  values: Partial<Record<BasisKey, number>>;
+  values: Record<string, number>;
   /** glCode caption next to the dept name (omitted for synth seed nodes). */
   glCode?: string;
 }
 
-const SEED_COLUMNS = ALLOCATION_BASES.map((b) => ({ ...b, key: b.key as BasisKey }));
-
-const DRIVER_COLUMN_FALLBACKS: Partial<Record<BasisKey, Omit<BasisColumn, "key">>> = {
-  RECORDS: {
-    label: "RECORDS",
-    longName: "Records / Document Volume",
-    unit: "records",
-    unitLong: "Records or documents",
-    fmt: "int",
-    note: "Imported Cost Allocation Plan document records or Laserfiche volume schedule",
-  },
-  EQUAL: {
-    label: "EQUAL",
-    longName: "Equal Allocation",
-    unit: "units",
-    unitLong: "Equal-weight units",
-    fmt: "decimal",
-    note: "Imported Cost Allocation Plan equal-allocation schedule",
-  },
-  MEETING_HOURS: {
-    label: "MTG HRS",
-    longName: "Meeting Hours Supported",
-    unit: "hrs",
-    unitLong: "Meeting hours supported",
-    fmt: "decimal",
-    note: "Imported Cost Allocation Plan meeting-hour schedule",
-  },
-  MEETINGS: {
-    label: "MEETINGS",
-    longName: "Meetings Supported",
-    unit: "mtgs",
-    unitLong: "Meetings supported",
-    fmt: "int",
-    note: "Imported Cost Allocation Plan meeting-count schedule",
-  },
-  APPLICATIONS: {
-    label: "APPS",
-    longName: "Applications / Permits",
-    unit: "count",
-    unitLong: "Applications, permits, or cases",
-    fmt: "int",
-    note: "Imported Cost Allocation Plan application-volume schedule",
-  },
-  RECRUITMENTS: {
-    label: "RECRUIT",
-    longName: "Recruitments",
-    unit: "count",
-    unitLong: "Recruitment counts",
-    fmt: "int",
-    note: "Imported Cost Allocation Plan recruitment-count schedule",
-  },
-  CLAIMS: {
-    label: "CLAIMS",
-    longName: "Claim History",
-    unit: "claims",
-    unitLong: "Claims or claim-history units",
-    fmt: "int",
-    note: "Imported Cost Allocation Plan claims-history schedule",
-  },
-  RENTAL_HOURS: {
-    label: "RENT HRS",
-    longName: "Rental Hours",
-    unit: "hrs",
-    unitLong: "Rental or facility-use hours",
-    fmt: "decimal",
-    note: "Imported Cost Allocation Plan rental-hour schedule",
-  },
+const BASIS_LABELS: Record<string, string> = {
+  "Modified Operating Expenses": "MOD OPEX",
+  "Gross Expense Net of Distortions": "GROSS",
+  "Net Operating Expenses": "NET OPEX",
+  "Compensated Labor Hours (Approx. FTEE)": "LABOR HRS",
+  "Personnel Count": "PERSONNEL",
+  "Utility Accounts": "UTIL ACCT",
+  "Capital Asset Value (Infrastructure)": "ASSET",
+  "Public Works Modified Operating Expense": "PW OPEX",
+  "Public Works Personnel Count": "PW PERS",
+  "Revenues Receipted": "REVENUE",
+  "Services & Supplies Expense": "S&S",
 };
 
-function fallbackColumn(key: BasisKey, basisNames: string[]): BasisColumn {
-  const fallback = DRIVER_COLUMN_FALLBACKS[key];
-  const longName = basisNames.length > 0 ? basisNames.join(" / ") : key;
-  return {
-    key,
-    label: fallback?.label ?? key,
-    longName: fallback?.longName ?? longName,
-    unit: fallback?.unit ?? "units",
-    unitLong: fallback?.unitLong ?? "Allocation units",
-    fmt: fallback?.fmt ?? "decimal",
-    note: fallback?.note ?? (basisNames.length > 0 ? `Imported basis: ${basisNames.join(", ")}` : "Imported Cost Allocation Plan basis"),
-  };
+function basisLabel(name: string): string {
+  if (BASIS_LABELS[name]) return BASIS_LABELS[name];
+  return name
+    .replace(/\([^)]*\)/g, "")
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((word) => word.slice(0, 4).toUpperCase())
+    .join(" ");
+}
+
+function basisUnit(basis: AllocationBasis): Pick<BasisColumn, "unit" | "unitLong" | "fmt"> {
+  const name = basis.name.toLowerCase();
+  if (name.includes("expense") || name.includes("asset") || name.includes("revenue")) {
+    return { unit: "$", unitLong: "Dollars", fmt: "int" };
+  }
+  if (name.includes("labor hour")) {
+    return { unit: "hrs", unitLong: "Hours", fmt: "int" };
+  }
+  if (name.includes("personnel") || name.includes("ftee") || basis.driverKey === "FTE") {
+    return { unit: "FTE", unitLong: "Full-time equivalent employees", fmt: "decimal" };
+  }
+  if (name.includes("account")) {
+    return { unit: "acct", unitLong: "Accounts", fmt: "int" };
+  }
+  if (basis.driverKey === "DIRECT") {
+    return { unit: "%", unitLong: "Percent", fmt: "decimal" };
+  }
+  return { unit: "units", unitLong: "Allocation units", fmt: "decimal" };
 }
 
 function buildColumns(
-  allocationBases: { name: string; driverKey: BasisKey }[],
-  drivers: GlDriverMatrix,
+  allocationBases: AllocationBasis[],
 ): BasisColumn[] {
-  const seedByKey = new Map<BasisKey, BasisColumn>(
-    SEED_COLUMNS.map((b) => [b.key, b]),
-  );
-  const basisNamesByKey = new Map<BasisKey, string[]>();
-  const keys = new Set<BasisKey>();
-
-  for (const b of allocationBases) {
-    if (b.driverKey === "DIRECT") continue;
-    keys.add(b.driverKey);
-    const names = basisNamesByKey.get(b.driverKey) ?? [];
-    if (!names.includes(b.name)) names.push(b.name);
-    basisNamesByKey.set(b.driverKey, names);
-  }
-  for (const driverRow of Object.values(drivers)) {
-    for (const key of Object.keys(driverRow) as BasisKey[]) {
-      if (key !== "DIRECT") keys.add(key);
-    }
-  }
-
-  const ordered = [
-    ...SEED_COLUMNS.map((b) => b.key).filter((key) => keys.has(key)),
-    ...[...keys].filter((key) => !seedByKey.has(key)).sort(),
-  ];
-  return ordered.map((key) =>
-    seedByKey.get(key) ?? fallbackColumn(key, basisNamesByKey.get(key) ?? []),
-  );
+  return allocationBases
+    .filter((b) => b.driverKey !== "DIRECT")
+    .map((b) => ({
+      id: b.id,
+      driverKey: b.driverKey,
+      label: basisLabel(b.name),
+      longName: b.name,
+      note: b.methodologyNote ?? b.source,
+      ...basisUnit(b),
+    }));
 }
 
-/** Build display rows from the engine's nodes + driver matrix. One row per
- *  node; values pulled from drivers[node.key]. */
+/** Build display rows from the engine's nodes + basis-unit schedules. One row
+ *  per node; values are keyed by the actual allocation basis id. */
 function buildRowsFromNodes(
   nodes: GlNode[],
-  drivers: GlDriverMatrix,
+  basisUnits: BasisUnitRow[],
   columns: BasisColumn[],
 ): EffectiveRow[] {
-  const columnKeys = new Set(columns.map((b) => b.key));
-  return nodes.map((n) => {
-    const values: Partial<Record<BasisKey, number>> = {};
-    for (const [k, v] of Object.entries(drivers[n.key] ?? {})) {
-      if (!columnKeys.has(k as BasisKey)) continue;
-      if (typeof v === "number" && v !== 0) values[k as BasisKey] = v;
+  const columnIds = new Set(columns.map((b) => b.id));
+  const valuesByGlCode = new Map<string, Record<string, number>>();
+  for (const bu of basisUnits) {
+    if (!columnIds.has(bu.basisId)) continue;
+    for (const receiver of bu.receivers) {
+      const values = valuesByGlCode.get(receiver.glCode) ?? {};
+      values[bu.basisId] = (values[bu.basisId] ?? 0) + receiver.units;
+      valuesByGlCode.set(receiver.glCode, values);
     }
+  }
+  return nodes.map((n) => {
     return {
       code: n.key,
       name: n.name,
       group: n.role,
-      values,
+      values: valuesByGlCode.get(n.glCode) ?? valuesByGlCode.get(n.key) ?? {},
       glCode: n.glCode.startsWith("seed:") ? undefined : n.glCode,
     };
   });
@@ -179,14 +128,14 @@ function buildRowsFromNodes(
 /** Step 3 of the CAP flow. The node × basis denominator matrix — one row
  *  per engine node (cost center or direct fee-dept receiver). */
 export function AllocationBases() {
-  const { allocationBases, derived } = useBuildState();
+  const { allocationBases, capBasisUnits, derived } = useBuildState();
   const columns = useMemo(
-    () => buildColumns(allocationBases, derived.capDrivers),
-    [allocationBases, derived.capDrivers],
+    () => buildColumns(allocationBases),
+    [allocationBases],
   );
   const rows = useMemo(
-    () => buildRowsFromNodes(derived.capStepDown.nodes, derived.capDrivers, columns),
-    [derived.capStepDown.nodes, derived.capDrivers, columns],
+    () => buildRowsFromNodes(derived.capStepDown.nodes, capBasisUnits, columns),
+    [derived.capStepDown.nodes, capBasisUnits, columns],
   );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
   return (
@@ -196,7 +145,7 @@ export function AllocationBases() {
         <CellTrace
           columns={columns}
           rows={rows}
-          basisKey={openCell.basisKey}
+          basisId={openCell.basisId}
           rowCode={openCell.rowCode}
           onClose={() => setOpenCell(null)}
         />
@@ -218,7 +167,7 @@ function formatCell(value: number | undefined, fmtKind: string): string {
   return fmt.int(value);
 }
 
-function colTotal(key: BasisKey, rows: EffectiveRow[]): number {
+function colTotal(key: string, rows: EffectiveRow[]): number {
   return rows.reduce((a, r) => a + (r.values[key] ?? 0), 0);
 }
 
@@ -300,7 +249,7 @@ function Matrix({
 
   return (
     <div>
-      <SectionLabel right={`${rows.length} nodes · ${columns.length} drivers`}>
+      <SectionLabel right={`${rows.length} nodes · ${columns.length} bases`}>
         Allocation Bases
       </SectionLabel>
       <div style={{
@@ -318,7 +267,7 @@ function Matrix({
           <colgroup>
             <col style={{ width: GLCODE_W }}/>
             <col style={{ width: NAME_W }}/>
-            {columns.map((b) => <col key={b.key} style={{ width: COL_W }}/>)}
+            {columns.map((b) => <col key={b.id} style={{ width: COL_W }}/>)}
           </colgroup>
           <thead>
             <tr>
@@ -335,7 +284,7 @@ function Matrix({
                 letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
               }}>Cost Center</th>
               {columns.map((b) => (
-                <th key={b.key} title={b.note} style={{
+                <th key={b.id} title={b.note} style={{
                   padding: cellPad,
                   background: "var(--paper-2)",
                   borderBottom: "1px solid var(--rule-strong)",
@@ -374,9 +323,9 @@ function Matrix({
                 textTransform: "uppercase", color: "var(--ink-2)",
               }}>Total</td>
               {columns.map((b) => {
-                const t = colTotal(b.key, rows);
+                const t = colTotal(b.id, rows);
                 return (
-                  <td key={b.key} className="num" style={{
+                  <td key={b.id} className="num" style={{
                     padding: cellPad,
                     background: "var(--paper-2)",
                     borderTop: "2px solid var(--ink)",
@@ -399,7 +348,7 @@ function Matrix({
                 textTransform: "uppercase",
               }}>Unit</td>
               {columns.map((b) => (
-                <td key={b.key} style={{
+                <td key={b.id} style={{
                   padding: cellPad,
                   background: "var(--paper-2)",
                   borderTop: "1px solid var(--rule)",
@@ -440,11 +389,11 @@ function MatrixRow({
         fontWeight: 500,
       }}>{row.name}</td>
       {columns.map((b) => {
-        const v = row.values[b.key];
+        const v = row.values[b.id];
         const empty = v == null || v === 0;
-        const isOpen = openCell?.basisKey === b.key && openCell?.rowCode === row.code;
+        const isOpen = openCell?.basisId === b.id && openCell?.rowCode === row.code;
         return (
-          <td key={b.key} style={{
+          <td key={b.id} style={{
             padding: 0,
             borderBottom: "1px solid var(--rule)",
             background: isOpen ? "var(--accent-tint)" : "transparent",
@@ -452,7 +401,7 @@ function MatrixRow({
           }}>
             <button
               type="button"
-              onClick={() => !empty && setOpenCell(isOpen ? null : { basisKey: b.key, rowCode: row.code })}
+              onClick={() => !empty && setOpenCell(isOpen ? null : { basisId: b.id, rowCode: row.code })}
               title={empty ? "—" : `${formatCell(v, b.fmt)} ${b.unit} — click for trace`}
               style={{
                 display: "block", width: "100%",
@@ -497,20 +446,20 @@ function TraceHint() {
 }
 
 function CellTrace({
-  columns, rows, basisKey, rowCode, onClose,
+  columns, rows, basisId, rowCode, onClose,
 }: {
   columns: BasisColumn[];
   rows: EffectiveRow[];
-  basisKey: BasisKey;
+  basisId: string;
   rowCode: string;
   onClose: () => void;
 }) {
-  const basis = columns.find((b) => b.key === basisKey);
+  const basis = columns.find((b) => b.id === basisId);
   const row = rows.find((r) => r.code === rowCode);
   if (!basis || !row) return null;
 
-  const raw = row.values[basisKey] ?? 0;
-  const total = colTotal(basisKey, rows);
+  const raw = row.values[basisId] ?? 0;
+  const total = colTotal(basisId, rows);
   const share = total > 0 ? (raw / total) * 100 : 0;
 
   // Dollar-formatted values ($720K, $5.81M) already convey their unit;
