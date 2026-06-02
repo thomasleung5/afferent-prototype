@@ -79,8 +79,8 @@ test.describe("Studies popover", () => {
     const row = page.getByRole("button", { name: /FY26 Fee Study/ });
     await expect(row).toBeVisible();
     await row.click();
-    // Selecting a study flips the trigger label to the study name.
-    await expect(page.getByTestId("study-menu-trigger")).toContainText("FY26 Fee Study");
+    // Selecting a study flips the trigger label from "Studies" to "Study".
+    await expect(page.getByTestId("study-menu-trigger")).toContainText(/\bStudy\b/);
   });
 
   test("'New study…' is enabled when a creatable membership is available", async ({ page }) => {

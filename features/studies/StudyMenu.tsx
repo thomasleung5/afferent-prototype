@@ -351,7 +351,7 @@ function StudyMenuMounted() {
 
   // ── Rendering ────────────────────────────────────────────────────
 
-  const triggerLabel = activeStudy?.name ?? "Studies";
+  const triggerLabel = activeStudy ? "Study" : "Studies";
   const triggerDisabled = working === "load" || working === "load-version";
   const syncTone = syncStatusTone(autosave.status);
   const triggerStatusBadge = inlineStatusBadge(autosave.status);
