@@ -2,8 +2,8 @@ import { useMemo } from "react";
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import { useShallow } from "zustand/react/shallow";
-import { POSITIONS } from "@/lib/data/positions";
 import { OPERATING } from "@/lib/data/operating";
+import { PRODUCTIVE_HOURS } from "@/lib/data/productiveHours";
 import {
   CAP_BASIS_UNITS, CAP_CENTER_SOURCES_SEED,
   CAP_CENTER_TOTALS, CAP_DIRECT_ALLOCATIONS, CAP_POOLS,
@@ -345,189 +345,6 @@ export function defaultCenterOrder(pools: CapPool[]): string[] {
     .map(([key]) => key);
 }
 
-/** Per-dept payroll program code stamped on derived labor rows. Mirrors
- *  the non-labor operating seed's per-dept program code so labor and
- *  non-labor rows for the same dept read with the same code in the
- *  Operating / Labor Line Items tables. */
-const PROGRAM_CODE_BY_DEPT: Partial<Record<DeptCode, string>> = {
-  PLAN: "011-2410",
-  BLDG: "011-2420",
-  ENG:  "011-3100",
-};
-
-/** Per-dept source-program label stamped on derived labor rows. Matches
- *  the non-labor operating seed's sourceDept text for the same dept so
- *  the two surfaces read consistently. */
-const SOURCE_DEPT_BY_DEPT: Partial<Record<DeptCode, string>> = {
-  PLAN: "Planning Division",
-  BLDG: "Building & Safety",
-  ENG:  "Public Works — Engineering",
-};
-
-interface LaborAccount {
-  /** GL object code — the per-account distinguisher used in the
-   *  deterministic row id (`op-labor-<dept>-<glCode>`). Not displayed
-   *  in the `code` column on the Labor Line Items table; that column
-   *  carries the dept's program code (e.g. "011-2410") to stay
-   *  consistent with the non-labor Operating rows. */
-  glCode: string;
-  /** Display name shown in the Line item column. */
-  line: string;
-  /** Share of the dept's (laborType) bucket, 0–1. Sum within each list
-   *  is 1.0; the first entry absorbs any rounding residual so Σ row.amount
-   *  reconciles exactly to the bucket total. */
-  share: number;
-}
-
-/** Normalized Salary-type GL accounts a small-city budget would publish
- *  under direct compensation. The first entry (Regular Salaries) absorbs
- *  the rounding residual so the four rows reconcile to the dept's total
- *  salary bucket exactly. */
-const SALARY_ACCOUNTS: LaborAccount[] = [
-  { glCode: "51110", line: "Regular Salaries",          share: 0.93 },
-  { glCode: "51120", line: "Overtime",                  share: 0.03 },
-  { glCode: "51130", line: "Temporary / Part-Time Pay", share: 0.02 },
-  { glCode: "51140", line: "Premium Pay",               share: 0.02 },
-];
-
-/** Normalized Benefits-type GL accounts a small-city budget would publish
- *  under labor burden. The first entry (Retirement) absorbs the rounding
- *  residual so the four rows reconcile to the dept's total benefits
- *  bucket exactly. */
-const BENEFITS_ACCOUNTS: LaborAccount[] = [
-  { glCode: "51210", line: "Retirement",           share: 0.52 },
-  { glCode: "51220", line: "Health Insurance",     share: 0.30 },
-  { glCode: "51230", line: "Payroll Taxes",        share: 0.15 },
-  { glCode: "51240", line: "Workers Compensation", share: 0.03 },
-];
-
-/** Split a dept's labor bucket across the canonical GL accounts, rounding
- *  each share to whole dollars and absorbing the residual into the first
- *  entry so Σ amount === bucket exactly. */
-function splitBucket(bucket: number, accounts: LaborAccount[]): number[] {
-  if (bucket <= 0) return accounts.map(() => 0);
-  const rounded = accounts.map((a) => Math.round(bucket * a.share));
-  const residual = bucket - rounded.reduce((a, n) => a + n, 0);
-  rounded[0] += residual;
-  return rounded;
-}
-
-/** Per-dept labor bucket — total salary + total benefits, with provenance
- *  threaded through so derived rows can stamp source/sourceFile. */
-interface LaborBucket {
-  salary: number;
-  benefits: number;
-  source: OperatingLine["source"];
-  sourceFile?: string;
-}
-
-/** Build labor-classified OperatingLine[] from per-dept (salary, benefits)
- *  buckets. Each bucket fans out into 4 Salary rows + 4 Benefits rows via
- *  SALARY_ACCOUNTS / BENEFITS_ACCOUNTS; the first entry in each list
- *  absorbs the rounding residual so Σ row.amount === bucket exactly.
- *  Used only by the seed builder (buildLaborLinesFromPositions →
- *  initialState); the Operating Budget import is the authoritative
- *  source for labor rows post-seed. */
-function buildLaborLinesFromBuckets(
-  byDept: Map<DeptCode, LaborBucket>,
-): OperatingLine[] {
-  const out: OperatingLine[] = [];
-  for (const [dept, bucket] of byDept) {
-    const code = PROGRAM_CODE_BY_DEPT[dept] ?? "—";
-    const sourceDept = SOURCE_DEPT_BY_DEPT[dept] ?? dept;
-    const salarySplit   = splitBucket(bucket.salary,   SALARY_ACCOUNTS);
-    const benefitsSplit = splitBucket(bucket.benefits, BENEFITS_ACCOUNTS);
-    for (let i = 0; i < SALARY_ACCOUNTS.length; i++) {
-      const acct = SALARY_ACCOUNTS[i];
-      const amount = salarySplit[i];
-      if (amount <= 0) continue;
-      out.push({
-        id: `op-labor-${dept}-${acct.glCode}`,
-        code,
-        dept,
-        sourceDept,
-        category: "Other",
-        costType: "Labor",
-        laborType: "Salary",
-        line: acct.line,
-        amount,
-        source: bucket.source,
-        ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
-        include: true,
-      });
-    }
-    for (let i = 0; i < BENEFITS_ACCOUNTS.length; i++) {
-      const acct = BENEFITS_ACCOUNTS[i];
-      const amount = benefitsSplit[i];
-      if (amount <= 0) continue;
-      out.push({
-        id: `op-labor-${dept}-${acct.glCode}`,
-        code,
-        dept,
-        sourceDept,
-        category: "Other",
-        costType: "Labor",
-        laborType: "Benefits",
-        line: acct.line,
-        amount,
-        source: bucket.source,
-        ...(bucket.sourceFile ? { sourceFile: bucket.sourceFile } : {}),
-        include: true,
-      });
-    }
-  }
-  return out;
-}
-
-/** Derive labor-classified OperatingLine[] from a Position[],
- *  aggregated at the GL/account/dept level — one row per (dept, GL
- *  account) pair, summing FTE-weighted comp across every position in
- *  that dept and then splitting each bucket across the normalized
- *  Salary/Benefits sub-account schedule (Regular Salaries, Overtime,
- *  Retirement, Health Insurance, etc.). This matches what a real labor
- *  budget book looks like (per-account totals, not per-person line
- *  items) and decouples the labor cost from the position roster:
- *  editing a productive-role's FTE doesn't change labor cost unless
- *  the user explicitly edits the labor row.
- *
- *  Ids are deterministic at the (dept, GL-code) level
- *  (`op-labor-<dept>-<glCode>`) so re-running the conversion in
- *  migration/seed produces a stable, idempotent result. */
-function buildLaborLinesFromPositions(
-  positions: Position[],
-): OperatingLine[] {
-  const byDept = new Map<DeptCode, LaborBucket>();
-  for (const p of positions) {
-    const cur = byDept.get(p.dept) ?? { salary: 0, benefits: 0, source: p.source };
-    cur.salary   += p.salary   * p.fte;
-    cur.benefits += p.benefits * p.fte;
-    if (p.sourceFile && !cur.sourceFile) cur.sourceFile = p.sourceFile;
-    byDept.set(p.dept, cur);
-  }
-  return buildLaborLinesFromBuckets(byDept);
-}
-
-/** Derive a ProductiveHoursRow[] from a Position[] (seed init, legacy
- *  migration). One row per position, carrying the FTE × hrs-per-FTE
- *  inputs plus the optional breakdown. id mirrors position.id so audit
- *  trails align across the two slices until positions retires. */
-function buildProductiveHoursFromPositions(
-  positions: Position[],
-): ProductiveHoursRow[] {
-  return positions.map((p) => ({
-    id: p.id,
-    title: p.title,
-    dept: p.dept,
-    fte: p.fte,
-    hours: p.hours,
-    ...(p.productiveHoursBreakdown
-      ? { productiveHoursBreakdown: { ...p.productiveHoursBreakdown } }
-      : {}),
-    source: p.source,
-    ...(p.sourceFile ? { sourceFile: p.sourceFile } : {}),
-  }));
-}
-
 /** Stable synth identity key for a center with no imported glCode.
  *  Engine treats `seed:center:*` keys as nodes just like real glCodes.
  *  Exported so storeMigration + addCapCenter can share one canonical
@@ -538,18 +355,9 @@ function synthCenterKey(name: string): string {
 
 const initialState = (): BuildState => {
   const pools = CAP_POOLS.map((p) => ({ ...p }));
-  // POSITIONS is a seed-only convenience: each row fans out into one
-  // productiveHours row + two operating-labor rows (Salaries + Benefits).
-  // The Position[] slice itself is not stored on state — hours and cost
-  // live in their own slices and are joined for display.
-  const seedRoster = POSITIONS.map((p) => ({ ...p }));
-  const seedOperating: OperatingLine[] = [
-    ...OPERATING.map((o) => ({ ...o })),
-    ...buildLaborLinesFromPositions(seedRoster),
-  ];
   const state: BuildSnapshot = {
-    productiveHours: buildProductiveHoursFromPositions(seedRoster),
-    operating: seedOperating,
+    productiveHours: PRODUCTIVE_HOURS.map((p) => ({ ...p })),
+    operating: OPERATING.map((o) => ({ ...o })),
     capPools: pools,
     capCenterTotals: { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},

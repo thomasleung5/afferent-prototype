@@ -29,8 +29,7 @@ export interface DeptLabor {
  *
  *  Cost (totalComp) is `Σ operatingLine.amount where costType="Labor"
  *  && include && dept=D` — the labor row amounts already bake in
- *  salary × fte (via buildLaborLinesFromPositions) so no further
- *  weighting is needed.
+ *  salary × fte, so no further weighting is needed.
  *
  *  Hours come from the productiveHours slice: `Σ row.hours × row.fte`
  *  per dept. `fte` and `positions` (role count) are also rolled up from

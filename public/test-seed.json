@@ -1,217 +1,5 @@
 {
   "_note": "City of Maplewood — FY27-28 test scenario. Load via the Demo City picker on the Build Model overview. Exercises Planning, Building, Engineering, Parks & Recreation, Police Services, and Fire Prevention as fee-bearing departments.",
-  "positions": [
-    {
-      "id": "pos-pdir",
-      "title": "Planning Director",
-      "dept": "PLAN",
-      "fte": 0.5,
-      "salary": 340000,
-      "benefits": 122000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-srpln",
-      "title": "Senior Planner",
-      "dept": "PLAN",
-      "fte": 1,
-      "salary": 228000,
-      "benefits": 85000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-aspln",
-      "title": "Associate Planner",
-      "dept": "PLAN",
-      "fte": 1,
-      "salary": 192000,
-      "benefits": 70000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pltch",
-      "title": "Planning Technician",
-      "dept": "PLAN",
-      "fte": 0.75,
-      "salary": 115000,
-      "benefits": 42000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-bofcl",
-      "title": "Building Official",
-      "dept": "BLDG",
-      "fte": 1,
-      "salary": 310000,
-      "benefits": 112000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-plnex",
-      "title": "Plans Examiner",
-      "dept": "BLDG",
-      "fte": 1,
-      "salary": 255000,
-      "benefits": 92000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-binsp",
-      "title": "Building Inspector",
-      "dept": "BLDG",
-      "fte": 2,
-      "salary": 215000,
-      "benefits": 78000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pmttc",
-      "title": "Permit Technician",
-      "dept": "BLDG",
-      "fte": 1,
-      "salary": 148000,
-      "benefits": 54000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-ceng",
-      "title": "City Engineer",
-      "dept": "ENG",
-      "fte": 0.4,
-      "salary": 325000,
-      "benefits": 118000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-sreng",
-      "title": "Senior / Associate Engineer",
-      "dept": "ENG",
-      "fte": 1,
-      "salary": 222000,
-      "benefits": 81000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pwins",
-      "title": "Public Works Inspector",
-      "dept": "ENG",
-      "fte": 1,
-      "salary": 185000,
-      "benefits": 67000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-prdir",
-      "title": "Parks & Recreation Director",
-      "dept": "PARKS",
-      "fte": 0.4,
-      "salary": 268000,
-      "benefits": 98000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-prsup",
-      "title": "Recreation Supervisor",
-      "dept": "PARKS",
-      "fte": 1,
-      "salary": 152000,
-      "benefits": 56000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-prcrd",
-      "title": "Recreation Coordinator",
-      "dept": "PARKS",
-      "fte": 2,
-      "salary": 105000,
-      "benefits": 38000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-prspc",
-      "title": "Recreation Specialist",
-      "dept": "PARKS",
-      "fte": 1.5,
-      "salary": 72000,
-      "benefits": 26000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pdrec",
-      "title": "Police Records Supervisor",
-      "dept": "PD",
-      "fte": 0.5,
-      "salary": 158000,
-      "benefits": 58000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pdrsp",
-      "title": "Records Specialist",
-      "dept": "PD",
-      "fte": 1,
-      "salary": 98000,
-      "benefits": 36000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-pdadm",
-      "title": "Police Officer (Admin)",
-      "dept": "PD",
-      "fte": 0.4,
-      "salary": 235000,
-      "benefits": 86000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-fmrsh",
-      "title": "Fire Marshal",
-      "dept": "FIRE",
-      "fte": 0.5,
-      "salary": 235000,
-      "benefits": 86000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-finsp",
-      "title": "Fire Inspector",
-      "dept": "FIRE",
-      "fte": 1,
-      "salary": 175000,
-      "benefits": 64000,
-      "hours": 1680,
-      "source": "seed"
-    },
-    {
-      "id": "pos-fprev",
-      "title": "Fire Prevention Specialist",
-      "dept": "FIRE",
-      "fte": 0.5,
-      "salary": 132000,
-      "benefits": 48000,
-      "hours": 1680,
-      "source": "seed"
-    }
-  ],
   "operating": [
     {
       "id": "OP-PL-01",
@@ -221,7 +9,8 @@
       "line": "Planning permit system (share)",
       "amount": 22000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PL-02",
@@ -231,7 +20,8 @@
       "line": "On-call planning consultants",
       "amount": 55000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PL-03",
@@ -241,7 +31,8 @@
       "line": "APA conference, CEUs",
       "amount": 8200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PL-04",
@@ -251,7 +42,8 @@
       "line": "Office supplies, printing, postage",
       "amount": 5100,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PL-05",
@@ -261,7 +53,8 @@
       "line": "AICP, APA, ABAG dues",
       "amount": 3800,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PL-06",
@@ -272,7 +65,8 @@
       "amount": 11000,
       "source": "FY27 Budget",
       "include": false,
-      "excludeReason": "Reimbursed by applicant"
+      "excludeReason": "Reimbursed by applicant",
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-01",
@@ -282,7 +76,8 @@
       "line": "Permit system + ICC code books",
       "amount": 26500,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-02",
@@ -292,7 +87,8 @@
       "line": "3rd-party plan check overflow",
       "amount": 95000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-03",
@@ -302,7 +98,8 @@
       "line": "Inspector vehicle O&M",
       "amount": 18400,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-04",
@@ -312,7 +109,8 @@
       "line": "ICC certs, CALBO conference",
       "amount": 10200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-05",
@@ -322,7 +120,8 @@
       "line": "Inspection forms, field supplies",
       "amount": 6100,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-BD-06",
@@ -332,7 +131,8 @@
       "line": "ICC, CALBO memberships",
       "amount": 2900,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-EN-01",
@@ -342,7 +142,8 @@
       "line": "GIS, AutoCAD, Bluebeam",
       "amount": 19500,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-EN-02",
@@ -352,7 +153,8 @@
       "line": "On-call traffic + civil review",
       "amount": 68000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-EN-03",
@@ -362,7 +164,8 @@
       "line": "PW inspector vehicle, survey gear",
       "amount": 14800,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-EN-04",
@@ -372,7 +175,8 @@
       "line": "PE renewals, APWA",
       "amount": 5200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-EN-05",
@@ -382,7 +186,8 @@
       "line": "Plotter, drafting supplies",
       "amount": 3800,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-SH-01",
@@ -392,7 +197,8 @@
       "line": "Citywide permit platform",
       "amount": 38000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-SH-02",
@@ -402,7 +208,8 @@
       "line": "Shared legal review pool",
       "amount": 48000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PR-01",
@@ -412,7 +219,8 @@
       "line": "Recreation registration platform",
       "amount": 18500,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PR-02",
@@ -422,7 +230,8 @@
       "line": "Contract instructors",
       "amount": 84000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PR-03",
@@ -432,7 +241,8 @@
       "line": "Program supplies, equipment",
       "amount": 14200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PR-04",
@@ -442,7 +252,8 @@
       "line": "CPRS conference, CEUs",
       "amount": 5400,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PR-05",
@@ -452,7 +263,8 @@
       "line": "Field maintenance, transport",
       "amount": 11800,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PD-01",
@@ -462,7 +274,8 @@
       "line": "Records management system",
       "amount": 32500,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PD-02",
@@ -472,7 +285,8 @@
       "line": "Background check vendor",
       "amount": 9800,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PD-03",
@@ -482,7 +296,8 @@
       "line": "Forms, fingerprint supplies",
       "amount": 4200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-PD-04",
@@ -492,7 +307,8 @@
       "line": "POST certifications",
       "amount": 7600,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-FR-01",
@@ -502,7 +318,8 @@
       "line": "Inspection + plan review platform",
       "amount": 22400,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-FR-02",
@@ -512,7 +329,8 @@
       "line": "Third-party plan check overflow",
       "amount": 28000,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-FR-03",
@@ -522,7 +340,8 @@
       "line": "Inspection vehicles, equipment",
       "amount": 15600,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-FR-04",
@@ -532,7 +351,8 @@
       "line": "CFFP, IFC code training",
       "amount": 6200,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "OP-FR-05",
@@ -542,7 +362,8 @@
       "line": "IFC, CSFM dues",
       "amount": 2400,
       "source": "FY27 Budget",
-      "include": true
+      "include": true,
+      "costType": "Operating"
     },
     {
       "id": "op-labor-PLAN-51110",
@@ -1169,20 +990,6 @@
       "include": true
     }
   ],
-  "capAllocation": {
-    "PLAN": {
-      "dept": "PLAN",
-      "allocated": 485000
-    },
-    "BLDG": {
-      "dept": "BLDG",
-      "allocated": 620000
-    },
-    "ENG": {
-      "dept": "ENG",
-      "allocated": 230000
-    }
-  },
   "capPools": [
     {
       "id": "cap-bldguse-th",
@@ -2129,7 +1936,6 @@
       "id": "plan-sdh",
       "prior": 20,
       "current": 24,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2137,7 +1943,6 @@
       "id": "plan-fth",
       "prior": 18,
       "current": 21,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2145,7 +1950,6 @@
       "id": "plan-minor",
       "prior": 10,
       "current": 12,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2153,7 +1957,6 @@
       "id": "plan-major",
       "prior": 4,
       "current": 5,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2161,7 +1964,6 @@
       "id": "plan-cup",
       "prior": 2,
       "current": 3,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2169,7 +1971,6 @@
       "id": "plan-fence",
       "prior": 35,
       "current": 38,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2177,7 +1978,6 @@
       "id": "plan-oak",
       "prior": 36,
       "current": 40,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2185,7 +1985,6 @@
       "id": "plan-preap",
       "prior": 48,
       "current": 52,
-      "unit": "Meeting",
       "source": "imported",
       "status": "Imported"
     },
@@ -2193,7 +1992,6 @@
       "id": "plan-adu",
       "prior": 24,
       "current": 28,
-      "unit": "Meeting",
       "source": "imported",
       "status": "Imported"
     },
@@ -2201,7 +1999,6 @@
       "id": "plan-mod",
       "prior": 5,
       "current": 6,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2209,7 +2006,6 @@
       "id": "plan-mvar",
       "prior": 4,
       "current": 5,
-      "unit": "Application",
       "source": "imported",
       "status": "Imported"
     },
@@ -2217,7 +2013,6 @@
       "id": "bldg-apr",
       "prior": 160,
       "current": 175,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2225,7 +2020,6 @@
       "id": "bldg-ext",
       "prior": 65,
       "current": 72,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2233,7 +2027,6 @@
       "id": "bldg-tco",
       "prior": 12,
       "current": 14,
-      "unit": "Certificate",
       "source": "imported",
       "status": "Imported"
     },
@@ -2241,7 +2034,6 @@
       "id": "bldg-pc",
       "prior": 120,
       "current": 130,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2249,7 +2041,6 @@
       "id": "bldg-sfr",
       "prior": 30,
       "current": 35,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2257,7 +2048,6 @@
       "id": "bldg-rem",
       "prior": 75,
       "current": 80,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2265,7 +2055,6 @@
       "id": "bldg-pool",
       "prior": 19,
       "current": 22,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2273,7 +2062,6 @@
       "id": "bldg-solar",
       "prior": 72,
       "current": 80,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2281,7 +2069,6 @@
       "id": "bldg-mep",
       "prior": 92,
       "current": 100,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2289,7 +2076,6 @@
       "id": "eng-bldg",
       "prior": 138,
       "current": 150,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2297,7 +2083,6 @@
       "id": "eng-adu",
       "prior": 36,
       "current": 42,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2305,7 +2090,6 @@
       "id": "eng-erosion",
       "prior": 172,
       "current": 190,
-      "unit": "Inspection",
       "source": "imported",
       "status": "Imported"
     },
@@ -2313,7 +2097,6 @@
       "id": "eng-ency",
       "prior": 185,
       "current": 200,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2321,7 +2104,6 @@
       "id": "eng-minor",
       "prior": 55,
       "current": 62,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2329,7 +2111,6 @@
       "id": "eng-major",
       "prior": 12,
       "current": 14,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2337,7 +2118,6 @@
       "id": "eng-hourly",
       "prior": 22,
       "current": 26,
-      "unit": "Hour",
       "source": "imported",
       "status": "Imported"
     },
@@ -2345,7 +2125,6 @@
       "id": "pr-recclass",
       "prior": 1363,
       "current": 1450,
-      "unit": "Registration",
       "source": "imported",
       "status": "Imported"
     },
@@ -2353,7 +2132,6 @@
       "id": "pr-fieldp",
       "prior": 240,
       "current": 220,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2361,7 +2139,6 @@
       "id": "pr-shelter",
       "prior": 365,
       "current": 380,
-      "unit": "Rental",
       "source": "imported",
       "status": "Imported"
     },
@@ -2369,7 +2146,6 @@
       "id": "pr-pool",
       "prior": 582,
       "current": 640,
-      "unit": "Registration",
       "source": "imported",
       "status": "Imported"
     },
@@ -2377,7 +2153,6 @@
       "id": "pr-roomrnt",
       "prior": 194,
       "current": 185,
-      "unit": "Rental",
       "source": "imported",
       "status": "Imported"
     },
@@ -2385,7 +2160,6 @@
       "id": "pd-alarm",
       "prior": 763,
       "current": 820,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2393,7 +2167,6 @@
       "id": "pd-falsearm",
       "prior": 150,
       "current": 140,
-      "unit": "Incident",
       "source": "imported",
       "status": "Imported"
     },
@@ -2401,7 +2174,6 @@
       "id": "pd-fprint",
       "prior": 551,
       "current": 580,
-      "unit": "Scan",
       "source": "imported",
       "status": "Imported"
     },
@@ -2409,7 +2181,6 @@
       "id": "pd-evt",
       "prior": 94,
       "current": 85,
-      "unit": "Event",
       "source": "imported",
       "status": "Imported"
     },
@@ -2417,7 +2188,6 @@
       "id": "pd-records",
       "prior": 301,
       "current": 310,
-      "unit": "Request",
       "source": "imported",
       "status": "Imported"
     },
@@ -2425,7 +2195,6 @@
       "id": "fr-inspbiz",
       "prior": 626,
       "current": 680,
-      "unit": "Inspection",
       "source": "imported",
       "status": "Imported"
     },
@@ -2433,7 +2202,6 @@
       "id": "fr-planrev",
       "prior": 178,
       "current": 165,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     },
@@ -2441,7 +2209,6 @@
       "id": "fr-hazmat",
       "prior": 91,
       "current": 95,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2449,7 +2216,6 @@
       "id": "fr-occ",
       "prior": 81,
       "current": 78,
-      "unit": "Permit",
       "source": "imported",
       "status": "Imported"
     },
@@ -2457,7 +2223,6 @@
       "id": "fr-special",
       "prior": 39,
       "current": 42,
-      "unit": "Review",
       "source": "imported",
       "status": "Imported"
     }
@@ -2531,34 +2296,6 @@
     "volume": [],
     "cap": []
   },
-  "aiSuggestions": {
-    "positions": [],
-    "operating": [],
-    "services": [],
-    "fees": [],
-    "volume": [],
-    "cap": []
-  },
-  "aiStatus": {
-    "positions": {
-      "running": false
-    },
-    "operating": {
-      "running": false
-    },
-    "services": {
-      "running": false
-    },
-    "fees": {
-      "running": false
-    },
-    "volume": {
-      "running": false
-    },
-    "cap": {
-      "running": false
-    }
-  },
   "imports": [],
   "capCenterTotals": {
     "001-1700": 140000,
@@ -2588,5 +2325,1670 @@
       "name": "Building Use",
       "source": "seed"
     }
-  }
+  },
+  "productiveHours": [
+    {
+      "id": "pos-pdir",
+      "title": "Planning Director",
+      "dept": "PLAN",
+      "fte": 0.5,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-srpln",
+      "title": "Senior Planner",
+      "dept": "PLAN",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-aspln",
+      "title": "Associate Planner",
+      "dept": "PLAN",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pltch",
+      "title": "Planning Technician",
+      "dept": "PLAN",
+      "fte": 0.75,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-bofcl",
+      "title": "Building Official",
+      "dept": "BLDG",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-plnex",
+      "title": "Plans Examiner",
+      "dept": "BLDG",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-binsp",
+      "title": "Building Inspector",
+      "dept": "BLDG",
+      "fte": 2,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pmttc",
+      "title": "Permit Technician",
+      "dept": "BLDG",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-ceng",
+      "title": "City Engineer",
+      "dept": "ENG",
+      "fte": 0.4,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-sreng",
+      "title": "Senior / Associate Engineer",
+      "dept": "ENG",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pwins",
+      "title": "Public Works Inspector",
+      "dept": "ENG",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-prdir",
+      "title": "Parks & Recreation Director",
+      "dept": "PARKS",
+      "fte": 0.4,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-prsup",
+      "title": "Recreation Supervisor",
+      "dept": "PARKS",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-prcrd",
+      "title": "Recreation Coordinator",
+      "dept": "PARKS",
+      "fte": 2,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-prspc",
+      "title": "Recreation Specialist",
+      "dept": "PARKS",
+      "fte": 1.5,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pdrec",
+      "title": "Police Records Supervisor",
+      "dept": "PD",
+      "fte": 0.5,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pdrsp",
+      "title": "Records Specialist",
+      "dept": "PD",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-pdadm",
+      "title": "Police Officer (Admin)",
+      "dept": "PD",
+      "fte": 0.4,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-fmrsh",
+      "title": "Fire Marshal",
+      "dept": "FIRE",
+      "fte": 0.5,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-finsp",
+      "title": "Fire Inspector",
+      "dept": "FIRE",
+      "fte": 1,
+      "hours": 1680,
+      "source": "seed"
+    },
+    {
+      "id": "pos-fprev",
+      "title": "Fire Prevention Specialist",
+      "dept": "FIRE",
+      "fte": 0.5,
+      "hours": 1680,
+      "source": "seed"
+    }
+  ],
+  "directBills": {},
+  "serviceRoleAllocations": {},
+  "capCenterDisallowed": {},
+  "functionalAllocation": [],
+  "activeJurisdictionId": "city-of-maplewood",
+  "activeFiscalYear": "FY 2027-28",
+  "studyContext": {
+    "cityId": "city-of-maplewood",
+    "fiscalYear": "FY 2027-28"
+  },
+  "allocationBases": [
+    {
+      "id": "bas-fte-th-occupy",
+      "name": "FY 24/25 Budgeted FTE Occupying Town Hall",
+      "source": "Allocations 3.2025 NBS.xlsx",
+      "driverKey": "FTE",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-direct-pr",
+      "name": "Direct to Parks and Recreation",
+      "source": "Manual assignment",
+      "driverKey": "DIRECT",
+      "directTo": "PARKS",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-vehicle-dep",
+      "name": "FY 23/24 Vehicle Depreciation Expense by Department",
+      "source": "Vehicle Listing - Dept usage_NBS.xlsx",
+      "driverKey": "EXPEND",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-agenda-count",
+      "name": "FY 23/24 Agenda Item Count per Fund, Department, and/or Division",
+      "source": "Agenda Items by Dept.Fund.Program FY 23-24_NBS.xlsx",
+      "driverKey": "AGENDA",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-op-expend",
+      "name": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers)",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+      "driverKey": "EXPEND",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-op-expend-x",
+      "name": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers) - Excluding Planning, Building, & Engineering",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+      "driverKey": "EXPEND_X",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-pra-count",
+      "name": "FY 23/24 Public Records Act (PRA) Requests per Fund, Department, and/or Division",
+      "source": "5.2 PRAs by Program.xlsx",
+      "driverKey": "PRA",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-contracts-count",
+      "name": "FY 23/24 Contracts Count per Fund, Department, and/or Division",
+      "source": "5.3 Contracts per Program.xlsx",
+      "driverKey": "CONTRACT",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-fte-budget",
+      "name": "FY 24/25 Budgeted FTE per Fund, Department, and/or Division",
+      "source": "Allocations 3.2025 NBS",
+      "driverKey": "FTE",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-payroll-tx",
+      "name": "FY 23/24 Number of Payroll Transactions excluding Payroll per Fund, Department, and/or Division",
+      "source": "Los Altos Hills _Count of Transactions.pdf",
+      "driverKey": "PAYROLL",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-acct-tx",
+      "name": "FY 23/24 Number of Accounting Transactions per Fund, Department, and/or Division",
+      "source": "6.4 JE count by Dept request.xlsx & 6.4 Invoices by Program.xlsx",
+      "driverKey": "ACCT",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-committees-supp",
+      "name": "Number of Committees Supported per Department",
+      "source": "Committees 3.20.25.xlsx",
+      "driverKey": "COMMITS",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-salary-dist",
+      "name": "FY 24/25 Salary Cost Distribution per Fund, Department, and/or Division",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+      "driverKey": "PAYROLL",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-op-expend-pw",
+      "name": "FY 24/25 Budgeted Expenditures (PW Departments Only)",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+      "driverKey": "EXPEND_PW",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    },
+    {
+      "id": "bas-vehicles-maint",
+      "name": "FY 23/24 Vehicles Maintained per Department",
+      "source": "CapAssets_All_listing_CostAllocation_Nicole_04.01.2025_NBS",
+      "driverKey": "VEHICLE",
+      "validationStatus": "verified",
+      "createdAt": "2026-05-17T00:00:00.000Z"
+    }
+  ],
+  "capBasisUnits": [
+    {
+      "basisId": "bas-fte-th-occupy",
+      "basis": "FY 24/25 Budgeted FTE Occupying Town Hall",
+      "source": "Allocations 3.2025 NBS.xlsx",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 3
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 1
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 4
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 2.92
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 2.81
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 1.4
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 0.41
+        }
+      ]
+    },
+    {
+      "basisId": "bas-vehicle-dep",
+      "basis": "FY 23/24 Vehicle Depreciation Expense by Department",
+      "source": "Vehicle Listing - Dept usage_NBS.xlsx",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 8200
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 29115
+        }
+      ]
+    },
+    {
+      "basisId": "bas-agenda-count",
+      "basis": "FY 23/24 Agenda Item Count per Fund, Department, and/or Division",
+      "source": "Agenda Items by Dept.Fund.Program FY 23-24_NBS.xlsx",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 42
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 35
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 43
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 52
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "011-1500",
+          "deptCode": "ATTY",
+          "units": 21
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 21
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Administration",
+          "glCode": "011-0000",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Community Service Grants",
+          "glCode": "011-1600",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Public Safety",
+          "glCode": "011-2100",
+          "deptCode": "PD",
+          "units": 10
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 40
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 18
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 1
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 3
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 1
+        },
+        {
+          "dept": "Sewer Fund CIP",
+          "glCode": "048-6900",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 7
+        }
+      ]
+    },
+    {
+      "basisId": "bas-op-expend",
+      "basis": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers)",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 449077
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 976864
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 279406
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 1004544
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "011-1500",
+          "deptCode": "ATTY",
+          "units": 340000
+        },
+        {
+          "dept": "Insurance",
+          "glCode": "011-1510",
+          "deptCode": "INS",
+          "units": 400000
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 261994
+        },
+        {
+          "dept": "Fringe Benefits Allocation",
+          "glCode": "061-1470",
+          "deptCode": "OTHER",
+          "units": 105800
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 952161
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 181682
+        },
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 132086
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 909980
+        },
+        {
+          "dept": "Community Service Grants",
+          "glCode": "011-1600",
+          "deptCode": "OTHER",
+          "units": 41762
+        },
+        {
+          "dept": "Public Safety",
+          "glCode": "011-2100",
+          "deptCode": "PD",
+          "units": 2700326
+        },
+        {
+          "dept": "Animal Control",
+          "glCode": "011-2150",
+          "deptCode": "OTHER",
+          "units": 161335
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 2262601
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 78382
+        },
+        {
+          "dept": "Code Enforcement",
+          "glCode": "011-3120",
+          "deptCode": "OTHER",
+          "units": 212111
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 2690548
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 1394527
+        },
+        {
+          "dept": "P & R Fee Programs",
+          "glCode": "011-4110",
+          "deptCode": "OTHER",
+          "units": 45820
+        },
+        {
+          "dept": "Parks & Rec Special Events",
+          "glCode": "011-4120",
+          "deptCode": "OTHER",
+          "units": 262721
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 504509
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 837652
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 814148
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 251003
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 364205
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 1529103
+        }
+      ]
+    },
+    {
+      "basisId": "bas-op-expend-x",
+      "basis": "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers) - Excluding Planning, Building, & Engineering",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS.xlsx",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 449077
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 976864
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 279406
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 1004544
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "011-1500",
+          "deptCode": "ATTY",
+          "units": 340000
+        },
+        {
+          "dept": "Insurance",
+          "glCode": "011-1510",
+          "deptCode": "INS",
+          "units": 400000
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 261994
+        },
+        {
+          "dept": "Fringe Benefits Allocation",
+          "glCode": "061-1470",
+          "deptCode": "OTHER",
+          "units": 105800
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 952161
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 181682
+        },
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 132086
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 909980
+        },
+        {
+          "dept": "Community Service Grants",
+          "glCode": "011-1600",
+          "deptCode": "OTHER",
+          "units": 41762
+        },
+        {
+          "dept": "Public Safety",
+          "glCode": "011-2100",
+          "deptCode": "PD",
+          "units": 2700326
+        },
+        {
+          "dept": "Animal Control",
+          "glCode": "011-2150",
+          "deptCode": "OTHER",
+          "units": 161335
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 78382
+        },
+        {
+          "dept": "Code Enforcement",
+          "glCode": "011-3120",
+          "deptCode": "OTHER",
+          "units": 212111
+        },
+        {
+          "dept": "P & R Fee Programs",
+          "glCode": "011-4110",
+          "deptCode": "OTHER",
+          "units": 45820
+        },
+        {
+          "dept": "Parks & Rec Special Events",
+          "glCode": "011-4120",
+          "deptCode": "OTHER",
+          "units": 262721
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 504509
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 837652
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 814148
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 251003
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 364205
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 1529103
+        }
+      ]
+    },
+    {
+      "basisId": "bas-pra-count",
+      "basis": "FY 23/24 Public Records Act (PRA) Requests per Fund, Department, and/or Division",
+      "source": "5.2 PRAs by Program.xlsx",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 2
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 6
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 7
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 16
+        }
+      ]
+    },
+    {
+      "basisId": "bas-contracts-count",
+      "basis": "FY 23/24 Contracts Count per Fund, Department, and/or Division",
+      "source": "5.3 Contracts per Program.xlsx",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 20
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 5
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 11
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "011-1500",
+          "deptCode": "ATTY",
+          "units": 2
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 3
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 5
+        },
+        {
+          "dept": "Public Safety",
+          "glCode": "011-2100",
+          "deptCode": "PD",
+          "units": 5
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 4
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 20
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 4
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 3
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 5
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 1
+        },
+        {
+          "dept": "Westwind Barn CIP Admin",
+          "glCode": "043",
+          "deptCode": "OTHER",
+          "units": 2
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 13
+        }
+      ]
+    },
+    {
+      "basisId": "bas-fte-budget",
+      "basis": "FY 24/25 Budgeted FTE per Fund, Department, and/or Division",
+      "source": "Allocations 3.2025 NBS",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 3
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 1
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 4
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 0.95
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 0.85
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 0.35
+        },
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 0.49
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 0.15
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 2.92
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 0.37
+        },
+        {
+          "dept": "Code Enforcement",
+          "glCode": "011-3120",
+          "deptCode": "OTHER",
+          "units": 0.2
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 2.81
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 1.4
+        },
+        {
+          "dept": "Parks & Rec Special Events",
+          "glCode": "011-4120",
+          "deptCode": "OTHER",
+          "units": 0.5
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 1.2
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 1.85
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 2.8
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 0.45
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 0.41
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 1.3
+        }
+      ]
+    },
+    {
+      "basisId": "bas-payroll-tx",
+      "basis": "FY 23/24 Number of Payroll Transactions excluding Payroll per Fund, Department, and/or Division",
+      "source": "Los Altos Hills _Count of Transactions.pdf",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 130
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 72
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 59
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 58
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 144
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 50
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 127
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 130
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 50
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 150
+        }
+      ]
+    },
+    {
+      "basisId": "bas-acct-tx",
+      "basis": "FY 23/24 Number of Accounting Transactions per Fund, Department, and/or Division",
+      "source": "6.4 JE count by Dept request.xlsx & 6.4 Invoices by Program.xlsx",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 60
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 58
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 23
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 285
+        },
+        {
+          "dept": "City Attorney",
+          "glCode": "011-1500",
+          "deptCode": "ATTY",
+          "units": 32
+        },
+        {
+          "dept": "Insurance",
+          "glCode": "011-1510",
+          "deptCode": "INS",
+          "units": 1
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 16
+        },
+        {
+          "dept": "Fringe Benefits Allocation",
+          "glCode": "061-1470",
+          "deptCode": "OTHER",
+          "units": 47
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 639
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 220
+        },
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 64
+        },
+        {
+          "dept": "Administration",
+          "glCode": "011-0000",
+          "deptCode": "OTHER",
+          "units": 474
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 11
+        },
+        {
+          "dept": "Community Service Grants",
+          "glCode": "011-1600",
+          "deptCode": "OTHER",
+          "units": 6
+        },
+        {
+          "dept": "Public Safety",
+          "glCode": "011-2100",
+          "deptCode": "PD",
+          "units": 104
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 77
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 4
+        },
+        {
+          "dept": "Code Enforcement",
+          "glCode": "011-3120",
+          "deptCode": "OTHER",
+          "units": 3
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 86
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 52
+        },
+        {
+          "dept": "P & R Fee Programs",
+          "glCode": "011-4110",
+          "deptCode": "OTHER",
+          "units": 7
+        },
+        {
+          "dept": "Parks & Rec Special Events",
+          "glCode": "011-4120",
+          "deptCode": "OTHER",
+          "units": 55
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 6
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 50
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 43
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 90
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 79
+        },
+        {
+          "dept": "COPS Fund",
+          "glCode": "021",
+          "deptCode": "OTHER",
+          "units": 5
+        },
+        {
+          "dept": "General CIP Fund",
+          "glCode": "041",
+          "deptCode": "OTHER",
+          "units": 152
+        },
+        {
+          "dept": "Pathways CIP",
+          "glCode": "042",
+          "deptCode": "OTHER",
+          "units": 16
+        },
+        {
+          "dept": "Westwind Barn CIP Admin",
+          "glCode": "043",
+          "deptCode": "OTHER",
+          "units": 2
+        },
+        {
+          "dept": "Drainage CIP",
+          "glCode": "045",
+          "deptCode": "OTHER",
+          "units": 18
+        },
+        {
+          "dept": "Street CIP",
+          "glCode": "046",
+          "deptCode": "OTHER",
+          "units": 14
+        },
+        {
+          "dept": "Sewer Fund CIP",
+          "glCode": "048-6900",
+          "deptCode": "OTHER",
+          "units": 16
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 82
+        },
+        {
+          "dept": "All Other",
+          "glCode": "AO",
+          "deptCode": "OTHER",
+          "units": 110
+        }
+      ]
+    },
+    {
+      "basisId": "bas-committees-supp",
+      "basis": "Number of Committees Supported per Department",
+      "source": "Committees 3.20.25.xlsx",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 5
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 2
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 1
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 2
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 5
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 2
+        }
+      ]
+    },
+    {
+      "basisId": "bas-salary-dist",
+      "basis": "FY 24/25 Salary Cost Distribution per Fund, Department, and/or Division",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+      "receivers": [
+        {
+          "dept": "City Council",
+          "glCode": "011-1100",
+          "deptCode": "COUNCIL",
+          "units": 18826
+        },
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 378901
+        },
+        {
+          "dept": "City Clerk",
+          "glCode": "011-1300",
+          "deptCode": "CLERK",
+          "units": 135699
+        },
+        {
+          "dept": "Finance & Administrative Services",
+          "glCode": "011-1400",
+          "deptCode": "FAS",
+          "units": 587047
+        },
+        {
+          "dept": "Committees",
+          "glCode": "011-1700",
+          "deptCode": "CMTE",
+          "units": 170823
+        },
+        {
+          "dept": "Town Center Operations",
+          "glCode": "061-1480",
+          "deptCode": "OTHER",
+          "units": 95116
+        },
+        {
+          "dept": "Corp Yard Operations",
+          "glCode": "061-4300",
+          "deptCode": "OTHER",
+          "units": 36073
+        },
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 38893
+        },
+        {
+          "dept": "Recreation Administration",
+          "glCode": "011-1000",
+          "deptCode": "OTHER",
+          "units": 99452
+        },
+        {
+          "dept": "Planning Admin",
+          "glCode": "011-3100",
+          "deptCode": "PLAN",
+          "units": 448767
+        },
+        {
+          "dept": "Planning Commission",
+          "glCode": "011-3110",
+          "deptCode": "OTHER",
+          "units": 38525
+        },
+        {
+          "dept": "Code Enforcement",
+          "glCode": "011-3120",
+          "deptCode": "OTHER",
+          "units": 31407
+        },
+        {
+          "dept": "Building Admin",
+          "glCode": "011-3200",
+          "deptCode": "BLDG",
+          "units": 416920
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 242597
+        },
+        {
+          "dept": "Parks & Rec Special Events",
+          "glCode": "011-4120",
+          "deptCode": "OTHER",
+          "units": 79211
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 185107
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 221664
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 322996
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 46878
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 54784
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 222643
+        }
+      ]
+    },
+    {
+      "basisId": "bas-op-expend-pw",
+      "basis": "FY 24/25 Budgeted Expenditures (PW Departments Only)",
+      "source": "Detail vs Budget Report FY 24-25 7.1-12.31.24_NBS",
+      "receivers": [
+        {
+          "dept": "Vehicle / Equipment Operations",
+          "glCode": "061-4400",
+          "deptCode": "OTHER",
+          "units": 132086
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 1394527
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 504509
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 837652
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 814148
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 251003
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 364205
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 1529103
+        }
+      ]
+    },
+    {
+      "basisId": "bas-vehicles-maint",
+      "basis": "FY 23/24 Vehicles Maintained per Department",
+      "source": "CapAssets_All_listing_CostAllocation_Nicole_04.01.2025_NBS",
+      "receivers": [
+        {
+          "dept": "City Manager",
+          "glCode": "011-1200",
+          "deptCode": "CMGR",
+          "units": 1
+        },
+        {
+          "dept": "Engineering Administration",
+          "glCode": "011-3300",
+          "deptCode": "ENG",
+          "units": 2.08
+        },
+        {
+          "dept": "Storm Drain Operations",
+          "glCode": "011-4500",
+          "deptCode": "PW",
+          "units": 1.79
+        },
+        {
+          "dept": "Street Operations",
+          "glCode": "011-4600",
+          "deptCode": "PW",
+          "units": 2.75
+        },
+        {
+          "dept": "Pathway Operations",
+          "glCode": "011-4740",
+          "deptCode": "PW",
+          "units": 4.17
+        },
+        {
+          "dept": "Playing Fields",
+          "glCode": "011-5100",
+          "deptCode": "OTHER",
+          "units": 0.67
+        },
+        {
+          "dept": "WWB Facility",
+          "glCode": "011-5300",
+          "deptCode": "OTHER",
+          "units": 0.61
+        },
+        {
+          "dept": "Sewer Fund",
+          "glCode": "051-0000",
+          "deptCode": "OTHER",
+          "units": 1.93
+        }
+      ]
+    }
+  ],
+  "capDirectAllocations": [
+    {
+      "poolId": "cap-bldguse-pr",
+      "pool": "Parks and Recreation",
+      "receivers": [
+        {
+          "glCode": "011-1000",
+          "dept": "Recreation Administration",
+          "deptCode": "OTHER",
+          "percent": 100
+        }
+      ]
+    }
+  ]
 }
