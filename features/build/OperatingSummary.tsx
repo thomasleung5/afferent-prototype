@@ -3,11 +3,9 @@ import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, MetaGrid, type DeptSummaryRow } from "@/components/table";
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode } from "@/lib/types";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { deptName } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = FEE_DEPTS;
 const labelOf = deptName;
 
 /** Per-dept operating rollup with category ledger drilldown. Shared CDS lines
@@ -15,6 +13,7 @@ const labelOf = deptName;
  *  category-by-category contributions + the operating $/hr derivation. */
 export function OperatingSummary() {
   const { operating, derived } = useBuildState();
+  const order = derived.activeFeeDepts;
   const byDept = derived.operatingByDept;
   const { dept: searchDept } = useSearch({ from: "/build/operating" });
   const includedTotal = operating.filter((l) => l.include).reduce((a, l) => a + l.amount, 0);
@@ -23,7 +22,7 @@ export function OperatingSummary() {
 
   // Only emit a row when the department actually has operating data in
   // the active jurisdiction.
-  const activeDepts = ORDER.filter((d) => {
+  const activeDepts = order.filter((d) => {
     const r = byDept[d];
     return r && (r.total > 0 || operating.some((l) => l.dept === d));
   });

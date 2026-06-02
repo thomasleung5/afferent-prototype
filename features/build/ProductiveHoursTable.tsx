@@ -9,15 +9,12 @@ import {
   type MiniTableColumn,
 } from "@/components/ui";
 import type { DeptCode, ProductiveHoursBreakdown, ProductiveHoursRow } from "@/lib/types";
-import { FEE_DEPTS } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
 import {
   calculateProductiveHours,
   type ProductiveHoursDeductionKey,
 } from "@/lib/productiveHours";
-
-const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
 
 /** Productive-hours modeling table. Sits below the Labor Line Items
  *  section on Labor. Reads/writes the productiveHours slice — one row
@@ -26,8 +23,9 @@ const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
  *  row above; this table is hours-only. */
 export function ProductiveHoursTable() {
   const {
-    productiveHours, updateProductiveHours, addProductiveHours,
+    productiveHours, updateProductiveHours, addProductiveHours, derived,
   } = useBuildState();
+  const deptOptions: string[] = derived.activeFeeDepts;
   const [dept, setDept] = useState("ALL");
   const [openId, setOpenId] = useState<string | undefined>();
 
@@ -81,7 +79,7 @@ export function ProductiveHoursTable() {
       render: (r) => (
         <CellSelect
           value={r.dept}
-          options={DEPT_OPTIONS}
+          options={deptOptions}
           onChange={(v) => updateProductiveHours(r.id, { dept: v as DeptCode })}
         />
       ),

@@ -10,9 +10,6 @@ import {
 import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-import { FEE_DEPTS } from "@/lib/data/departments";
-
-const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
 const CATEGORIES: OpCategory[] = [
   "Software & subscriptions",
   "Professional services",
@@ -26,7 +23,8 @@ const CATEGORIES: OpCategory[] = [
 ];
 
 export function OperatingTable() {
-  const { operating, updateOperating, addOperatingLine } = useBuildState();
+  const { operating, updateOperating, addOperatingLine, derived } = useBuildState();
+  const deptOptionsForEdit = [...derived.activeFeeDepts, "SHARED:CDS"];
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [categoryFilter, setCategoryFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
@@ -115,7 +113,7 @@ export function OperatingTable() {
           {r.dept === "SHARED:CDS" ? <SharedChip/> : (
             <CellSelect
               value={r.dept}
-              options={DEPT_OPTIONS}
+          options={deptOptionsForEdit}
               onChange={(v) => updateOperating(r.id, { dept: v as OpDept })}
             />
           )}

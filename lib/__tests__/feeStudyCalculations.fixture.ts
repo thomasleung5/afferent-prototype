@@ -169,6 +169,7 @@ const emptyDeptRollup = () => Object.fromEntries(
       peers: [],
     },
     derived: {
+      activeFeeDepts: ["PLAN"],
       labor,
       fbhr,
       costs,

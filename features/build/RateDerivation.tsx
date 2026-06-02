@@ -8,14 +8,13 @@ import {
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { deptName } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 import {
   deptCapacityWarnings, type DeptCapacityWarning,
 } from "@/lib/capacity";
 import { FunctionalBucketSupport } from "./FunctionalBucketSupport";
 
-const ORDER: DeptCode[] = FEE_DEPTS;
 const labelOf = deptName;
 
 interface Row {
@@ -46,7 +45,7 @@ export function RateDerivation() {
 
   // Skip depts that aren't actually modeled in the active jurisdiction
   // (no productive hours → no rate to render).
-  const activeDepts = ORDER.filter((d) => derived.fbhr[d].productiveHours > 0);
+  const activeDepts = derived.activeFeeDepts.filter((d) => derived.fbhr[d].productiveHours > 0);
   const rows: Row[] = activeDepts.map((d) => {
     const f = derived.fbhr[d];
     const fa = derived.functionalAllocation.byDept[d];

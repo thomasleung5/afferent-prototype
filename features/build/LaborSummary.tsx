@@ -3,28 +3,27 @@ import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, type DeptSummaryRow } from "@/components/table";
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode } from "@/lib/types";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { deptName } from "@/lib/data/departments";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = FEE_DEPTS;
 const labelOf = deptName;
 
 /** Per-dept direct labor rollup. Each row expands inline to a position ledger
  *  + method/formula/source metadata grid — the audit trail. */
 export function LaborSummary() {
   const { operating, derived } = useBuildState();
+  const order = derived.activeFeeDepts;
   const labor = derived.labor;
   const { dept: searchDept } = useSearch({ from: "/build/labor" });
 
-  const totalComp = ORDER.reduce((a, d) => a + labor[d].totalComp, 0);
-  const totalHrs  = ORDER.reduce((a, d) => a + labor[d].productiveHours, 0);
-  const totalFte  = ORDER.reduce((a, d) => a + labor[d].fte, 0);
-  const totalPositions = ORDER.reduce((a, d) => a + labor[d].positions, 0);
+  const totalComp = order.reduce((a, d) => a + labor[d].totalComp, 0);
+  const totalHrs  = order.reduce((a, d) => a + labor[d].productiveHours, 0);
+  const totalFte  = order.reduce((a, d) => a + labor[d].fte, 0);
+  const totalPositions = order.reduce((a, d) => a + labor[d].positions, 0);
 
   // Only show depts with at least one role in the active jurisdiction.
   // Avoids zero-data rows for depts the current jurisdiction doesn't model.
-  const activeDepts = ORDER.filter((d) => labor[d].positions > 0);
+  const activeDepts = order.filter((d) => labor[d].positions > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = labor[d];
     // Labor lives at GL/account granularity, not per-role. The drilldown

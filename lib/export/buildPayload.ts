@@ -12,7 +12,7 @@ import type {
 } from "@/lib/calc";
 import type { Domain } from "@/lib/store";
 import type { SourceLineage, UnmappedRow } from "@/lib/parse";
-import { DEPTS, FEE_DEPTS } from "@/lib/data/departments";
+import { DEPTS } from "@/lib/data/departments";
 import { fmt } from "@/lib/format";
 
 interface ExportCover {
@@ -333,10 +333,9 @@ interface ExportInput {
     costs: ServiceCost[];
     comparisons: FeeComparison[];
     impact: PolicyImpact;
+    activeFeeDepts: DeptCode[];
   };
 }
-
-const ORDER: DeptCode[] = FEE_DEPTS;
 
 function priorityFor(impact: number): "high" | "med" | "low" | "none" {
   if (impact > 25000) return "high";
@@ -421,7 +420,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
   // models — LAH ships only Planning / Building / Engineering, so the
   // Parks / PD / Fire entries that exist in the dept registry would
   // print as empty sections.
-  const activeDepts = ORDER.filter((d) => {
+  const activeDepts = derived.activeFeeDepts.filter((d) => {
     const labor = derived.labor[d];
     return labor.positions > 0 || derived.costs.some((c) => c.dept === d);
   });

@@ -11,14 +11,11 @@ import {
 import { FunctionalBucketSupport } from "@/features/build/FunctionalBucketSupport";
 import { useBuildActions, useBuildState } from "@/lib/store";
 import { fmt } from "@/lib/format";
-import { FEE_DEPTS } from "@/lib/data/departments";
 import type { DeptCode, FunctionalAllocationBucket } from "@/lib/types";
 import type {
   FunctionalAllocationBucketDerived,
   FunctionalAllocationDeptDerived,
 } from "@/lib/functionalAllocation";
-
-const ORDER: DeptCode[] = FEE_DEPTS;
 
 interface BucketRow {
   id: string;
@@ -31,7 +28,7 @@ export default function FunctionalAllocationPage() {
   const fa = derived.functionalAllocation;
   const { dept: searchDept } = useSearch({ from: "/build/functional-allocation" });
 
-  const activeDepts = ORDER.filter((d) => fa.byDept[d] != null);
+  const activeDepts = derived.activeFeeDepts.filter((d) => fa.byDept[d] != null);
   const totalFully = activeDepts.reduce(
     (a, d) => a + (fa.byDept[d]?.fullyBurdenedCost ?? 0), 0,
   );
@@ -117,7 +114,7 @@ function BucketTable() {
   // the per-dept sections.
   const [openId, setOpenId] = useState<string | undefined>();
 
-  const activeDepts = ORDER.filter((d) => fa.byDept[d] != null);
+  const activeDepts = derived.activeFeeDepts.filter((d) => fa.byDept[d] != null);
 
   // Per-dept rate-basis validation. A dept with no rate-basis buckets
   // can't compute FBHR — surface the offending dept(s) so the analyst

@@ -7,8 +7,9 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
+  DeptCode, FeeFormula, OperatingLine, ProductiveHoursRow, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
+import { FEE_DEPTS } from "./data/departments";
 import { defaultCenterOrder } from "./store";
 import { mapLegacyActivity } from "./data/activities";
 import { mapLegacyUnit } from "./data/feeUnits";
@@ -58,6 +59,21 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (!state.activeFiscalYear) {
     state.activeFiscalYear =
       getJurisdiction(state.activeJurisdictionId)?.defaultFiscalYear ?? "FY 2025-26";
+  }
+  if (!Array.isArray(state.activeFeeDepts) || state.activeFeeDepts.length === 0) {
+    const active = new Set<DeptCode>();
+    const valid = new Set<DeptCode>(FEE_DEPTS);
+    for (const s of state.services ?? []) {
+      if (valid.has((s as Service).dept)) active.add((s as Service).dept);
+    }
+    for (const p of state.productiveHours ?? []) {
+      if (valid.has((p as ProductiveHoursRow).dept)) active.add((p as ProductiveHoursRow).dept);
+    }
+    for (const o of state.operating ?? []) {
+      const dept = (o as OperatingLine).dept;
+      if (valid.has(dept as DeptCode)) active.add(dept as DeptCode);
+    }
+    state.activeFeeDepts = [...active];
   }
   if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
   if (state.capBasisUnits == null) {

@@ -7,7 +7,7 @@ import { useBuildState } from "@/lib/store";
 import { downloadBlob } from "@/lib/export/xlsx";
 import { exportOpportunityXlsx } from "@/lib/export/opportunityExcel";
 import { slugCity } from "@/lib/printing";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { deptName } from "@/lib/data/departments";
 import { AnswerHeader } from "@/features/revenue-opportunity/AnswerHeader";
 import { DriverBreakdown } from "@/features/revenue-opportunity/DriverBreakdown";
 import { DeptRecoveryChart } from "@/features/revenue-opportunity/DeptRecoveryChart";
@@ -17,6 +17,7 @@ export default function RevenueOpportunityPage() {
   const { derived, policyTargets } = useBuildState();
   const jurisdiction = useActiveJurisdiction();
   const { impact, fbhr, costs, comparisons, deptRollup } = derived;
+  const activeDeptCodes = derived.activeFeeDepts;
 
   // Primary opportunity: target (policy-intended) − current revenue. Clamped
   // for the headline tone — a negative gap means current revenue already
@@ -30,14 +31,14 @@ export default function RevenueOpportunityPage() {
   const recoverableComparisons = comparisons.filter((c) => c.recoverable);
   const feesBelowTarget = recoverableComparisons.filter((c) => c.recoveryPct < c.target).length;
   const totalFees = recoverableComparisons.length;
-  const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
+  const deptsBelowPolicy = activeDeptCodes.reduce((count, d) => {
     const r = deptRollup[d];
     if (!r || r.totalCost <= 0) return count;
     const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;
     return r.recoveryPct < target ? count + 1 : count;
   }, 0);
-  const activeFeeDepts = FEE_DEPTS.filter((d) => (deptRollup[d]?.totalCost ?? 0) > 0).length;
-  const topOpportunity = FEE_DEPTS
+  const activeFeeDepts = activeDeptCodes.filter((d) => (deptRollup[d]?.totalCost ?? 0) > 0).length;
+  const topOpportunity = activeDeptCodes
     .map((d) => ({ dept: d, subsidy: deptRollup[d]?.subsidy ?? 0 }))
     .filter((x) => x.subsidy > 0)
     .sort((a, b) => b.subsidy - a.subsidy)[0];

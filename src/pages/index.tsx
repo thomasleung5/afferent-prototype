@@ -5,7 +5,6 @@ import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
 import { EntryCard } from "@/features/home/EntryCard";
 import { AuditTrail } from "@/features/home/AuditTrail";
-import { FEE_DEPTS } from "@/lib/data/departments";
 
 
 export default function HomePage() {
@@ -26,7 +25,7 @@ export default function HomePage() {
 
   // Departments under their policy target — used for the monitoring card's
   // "X departments below policy" support line.
-  const deptsBelowPolicy = FEE_DEPTS.reduce((count, d) => {
+  const deptsBelowPolicy = derived.activeFeeDepts.reduce((count, d) => {
     const r = derived.deptRollup[d];
     if (r.totalCost <= 0) return count;
     const target = policyTargets.find((t) => t.dept === d)?.target ?? 100;

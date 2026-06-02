@@ -8,16 +8,14 @@ import {
 } from "@/components/ui";
 import type { LaborType, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
-import { FEE_DEPTS } from "@/lib/data/departments";
-
-const DEPT_OPTIONS = [...FEE_DEPTS, "SHARED:CDS"];
 
 /** Labor-classified slice of the master operating dataset. Reads and
  *  writes the same OperatingLine rows the Operating page edits, filtered
  *  to costType === "Labor". This is the Labor page's view onto
  *  the budget-classification table — not a separate dataset. */
 export function LaborLineItemsTable() {
-  const { operating, updateOperating, addOperatingLine } = useBuildState();
+  const { operating, updateOperating, addOperatingLine, derived } = useBuildState();
+  const deptOptionsForEdit = [...derived.activeFeeDepts, "SHARED:CDS"];
   const [deptFilter, setDeptFilter] = useState("ALL");
   const [laborTypeFilter, setLaborTypeFilter] = useState("ALL");
   const [includeFilter, setIncludeFilter] = useState("ALL");
@@ -104,7 +102,7 @@ export function LaborLineItemsTable() {
           {r.dept === "SHARED:CDS" ? <SharedChip/> : (
             <CellSelect
               value={r.dept}
-              options={DEPT_OPTIONS}
+          options={deptOptionsForEdit}
               onChange={(v) => updateOperating(r.id, { dept: v as OpDept })}
             />
           )}

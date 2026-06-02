@@ -1,10 +1,8 @@
 import type { DeptCode } from "@/lib/types";
-import { DEPTS, FEE_DEPTS } from "@/lib/data/departments";
+import { DEPTS } from "@/lib/data/departments";
 import { RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import { useBuildState } from "@/lib/store";
-
-const ORDER: DeptCode[] = FEE_DEPTS;
 
 export function DeptRecoveryChart() {
   const { derived } = useBuildState();
@@ -12,7 +10,7 @@ export function DeptRecoveryChart() {
 
   // Only render depts modeled in the active jurisdiction — same convention
   // used by every other dept-rollup view.
-  const activeDepts = ORDER.filter((code) => rollup[code].totalCost > 0);
+  const activeDepts = derived.activeFeeDepts.filter((code) => rollup[code].totalCost > 0);
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>

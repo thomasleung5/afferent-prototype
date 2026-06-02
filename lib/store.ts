@@ -118,6 +118,11 @@ export interface BuildSnapshot {
    *  (see deriveBuildDerived → applyFunctionalAllocationFbhr). */
   functionalAllocation: FunctionalAllocationBucket[];
   activeJurisdictionId: string;
+  /** Study-specific subset of the canonical department registry that is
+   *  currently modeled as fee-bearing. The canonical registry can include
+   *  Clerk, Finance, HR, etc.; this list controls which departments appear
+   *  in fee-model tabs for the active seed/study. */
+  activeFeeDepts: DeptCode[];
   activeFiscalYear: string;
 }
 
@@ -204,6 +209,7 @@ export interface BuildState {
    *  shard the data slices by activeJurisdictionId × activeFiscalYear,
    *  which the active-context layer is set up to enable. */
   activeJurisdictionId: string;
+  activeFeeDepts: DeptCode[];
   activeFiscalYear: string;
 }
 
@@ -396,6 +402,10 @@ const initialState = (): BuildState => {
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
     functionalAllocation: FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
+    activeFeeDepts: Array.from(new Set<DeptCode>([
+      ...SERVICES.map((s) => s.dept),
+      ...PRODUCTIVE_HOURS.map((p) => p.dept),
+    ])),
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
   };
@@ -1291,6 +1301,7 @@ export interface BuildDeptRollup {
 }
 
 interface BuildDerived {
+  activeFeeDepts: DeptCode[];
   labor: Record<DeptCode, DeptLabor>;
   operatingByDept: Record<DeptCode, DeptOperating>;
   fbhr: Record<DeptCode, FBHR>;
@@ -1332,6 +1343,14 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     const v = volumeById.get(s.id);
     return v?.current != null ? { ...s, volume: v.current } : s;
   });
+  const activeFeeDepts = (Array.isArray(state.activeFeeDepts) && state.activeFeeDepts.length > 0
+    ? state.activeFeeDepts
+    : FEE_DEPTS.filter((dept) =>
+      state.services.some((s) => s.dept === dept)
+      || state.productiveHours.some((p) => p.dept === dept)
+      || state.operating.some((o) => o.dept === dept)
+      || state.functionalAllocation.some((b) => b.dept === dept)
+    ));
 
   const labor = deptLabor(state.operating, state.productiveHours);
   const hoursByDept = {} as Record<DeptCode, number>;
@@ -1350,10 +1369,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   // every entry in FEE_DEPTS and the seed DRIVERS matrix routes real $ to
   // phantom receivers (e.g. PARKS / PD / FIRE on a Planning/Building/Eng-
   // only jurisdiction).
-  const modeledFeeDepts: DeptCode[] = Array.from(new Set<DeptCode>([
-    ...state.productiveHours.map((r) => r.dept),
-    ...services.map((s) => s.dept),
-  ]));
+  const modeledFeeDepts: DeptCode[] = activeFeeDepts;
 
   const graph = buildEngineGraph({
     allocationBases: state.allocationBases,
@@ -1418,6 +1434,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   const utilization = utilizationByDept(allocated, hoursByDept);
 
   return {
+    activeFeeDepts,
     labor, operatingByDept, fbhr, costs, comparisons, impact,
     deptRollup,
     capAllocated, capDrivers: graph.drivers,

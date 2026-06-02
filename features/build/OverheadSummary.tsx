@@ -4,11 +4,10 @@ import { DeptSummaryTable, Ledger, type DeptSummaryRow } from "@/components/tabl
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type { DeptCode } from "@/lib/types";
-import { deptName, FEE_DEPTS } from "@/lib/data/departments";
+import { deptName } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 
-const ORDER: DeptCode[] = FEE_DEPTS;
 const labelOf = deptName;
 
 /** Per-dept CAP rollup. Each row expands to a pool ledger + method/formula/source.
@@ -17,7 +16,7 @@ const labelOf = deptName;
 export function OverheadSummary() {
   const { capPools, derived } = useBuildState();
   const { dept: searchDept } = useSearch({ from: "/build/overhead" });
-  const totalAllocated = ORDER.reduce((a, d) => a + derived.capAllocated[d], 0);
+  const totalAllocated = derived.activeFeeDepts.reduce((a, d) => a + derived.capAllocated[d], 0);
   const poolTotal = capPools.reduce((a, p) => a + p.amount, 0);
 
   // Pre-computed in useBuildState. Used here for the per-pool drilldown
@@ -27,7 +26,7 @@ export function OverheadSummary() {
   // Only render depts that actually receive CAP allocation in the
   // active jurisdiction. Other depts get hidden rather than emit a
   // zero-data row.
-  const activeDepts = ORDER.filter((d) => derived.capAllocated[d] > 0);
+  const activeDepts = derived.activeFeeDepts.filter((d) => derived.capAllocated[d] > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const allocated = derived.capAllocated[d];
     const rate = derived.fbhr[d].capRate;

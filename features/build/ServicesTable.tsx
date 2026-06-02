@@ -21,10 +21,6 @@ import {
   type ServiceCapacityWarning,
 } from "@/lib/capacity";
 
-import { FEE_DEPTS } from "@/lib/data/departments";
-
-const DEPT_OPTIONS: string[] = [...FEE_DEPTS];
-
 interface Row extends Service {
   flag?: boolean;
 }
@@ -32,8 +28,9 @@ interface Row extends Service {
 export function ServicesTable() {
   const {
     services, productiveHours, serviceRoleAllocations,
-    updateService, addService, setServiceRoleAllocations,
+    updateService, addService, setServiceRoleAllocations, derived,
   } = useBuildState();
+  const deptOptions: string[] = derived.activeFeeDepts;
   const [dept, setDept] = useState("ALL");
   const [reviewOnly, setReviewOnly] = useState(false);
   const [openId, setOpenId] = useState<string | undefined>();
@@ -72,7 +69,10 @@ export function ServicesTable() {
   // Position picker options — all productiveHours rows, ordered by dept
   // (service's own dept first) then by title. Cross-dept allocations are
   // possible since role.dept is what the capacity model rolls up.
-  const positionOptions = useMemo(() => buildPositionOptions(productiveHours), [productiveHours]);
+  const positionOptions = useMemo(
+    () => buildPositionOptions(productiveHours, derived.activeFeeDepts),
+    [productiveHours, derived.activeFeeDepts],
+  );
   const positionById = useMemo(() => {
     const m = new Map<string, ProductiveHoursRow>();
     for (const p of productiveHours) m.set(p.id, p);
@@ -194,7 +194,7 @@ export function ServicesTable() {
       render: (r) => (
         <CellSelect
           value={r.dept}
-          options={DEPT_OPTIONS}
+          options={deptOptions}
           onChange={(v) => updateService(r.id, { dept: v as DeptCode })}
         />
       ),
@@ -412,9 +412,10 @@ function formatServiceWarning(w: ServiceCapacityWarning): string {
  *  before the role's Dept column refreshes. */
 function buildPositionOptions(
   rows: ProductiveHoursRow[],
+  activeFeeDepts: DeptCode[],
 ): { value: string; label: string }[] {
   const deptOrder = new Map<DeptCode, number>(
-    FEE_DEPTS.map((d, i) => [d, i]),
+    activeFeeDepts.map((d, i) => [d, i]),
   );
   return [...rows]
     .sort((a, b) => {
@@ -425,4 +426,3 @@ function buildPositionOptions(
     })
     .map((p) => ({ value: p.id, label: `${p.title} (${p.dept})` }));
 }
-

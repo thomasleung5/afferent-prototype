@@ -50,6 +50,7 @@ async function main(): Promise<void> {
     imports: [],
     functionalAllocation: [],
     activeJurisdictionId: "test-jurisdiction",
+    activeFeeDepts: [],
     activeFiscalYear: "FY 2025-26",
   };
 
