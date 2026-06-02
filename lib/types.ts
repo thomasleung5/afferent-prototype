@@ -1,7 +1,12 @@
 /* Core domain types for the Afferent cost-of-service model.
  * Mirrors the shape of data.jsx in the original prototype. */
 
-export type DeptCode = "PLAN" | "BLDG" | "ENG" | "PARKS" | "PD" | "FIRE";
+export type DeptCode =
+  | "ADMIN" | "CLK" | "FIN" | "HR" | "IT" | "LEGAL"
+  | "BLDG" | "PLAN" | "ENG" | "CODE" | "FIRE" | "PW"
+  | "TRANS" | "ENV" | "UTIL" | "PD" | "PARKS" | "LIB"
+  | "ANIMAL" | "HOUSING" | "ECON" | "HEALTH" | "COMMUNITY"
+  | "AIR_HARBOR" | "GEN_GOV";
 
 interface Department {
   code: DeptCode;

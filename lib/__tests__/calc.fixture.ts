@@ -21,6 +21,7 @@ import {
   feeComparisons, isRecoverableFeeRow, policyImpact, serviceCosts,
 } from "../calc";
 import type { FBHR } from "../calc";
+import { FEE_DEPTS } from "../data/departments";
 import type { DeptCode, FeeFormula, FeeRowKind, FeeScheduleStatus, Service } from "../types";
 
 /** Minimal formula payload for each non-flat FeeRowKind — lets the
@@ -49,14 +50,19 @@ const svc = (overrides: Partial<Service> = {}): Service => ({
   ...overrides,
 });
 
-const fbhr: Record<DeptCode, FBHR> = {
-  PLAN:  { dept: "PLAN",  directRate: 0, operatingRate: 0, capRate: 0, fbhr: 50, productiveHours: 1000, directDollars: 0, operatingDollars: 0, capDollars: 0 },
-  BLDG:  { dept: "BLDG",  directRate: 0, operatingRate: 0, capRate: 0, fbhr: 50, productiveHours: 1000, directDollars: 0, operatingDollars: 0, capDollars: 0 },
-  ENG:   { dept: "ENG",   directRate: 0, operatingRate: 0, capRate: 0, fbhr: 50, productiveHours: 1000, directDollars: 0, operatingDollars: 0, capDollars: 0 },
-  PARKS: { dept: "PARKS", directRate: 0, operatingRate: 0, capRate: 0, fbhr: 0,  productiveHours: 0,    directDollars: 0, operatingDollars: 0, capDollars: 0 },
-  PD:    { dept: "PD",    directRate: 0, operatingRate: 0, capRate: 0, fbhr: 0,  productiveHours: 0,    directDollars: 0, operatingDollars: 0, capDollars: 0 },
-  FIRE:  { dept: "FIRE",  directRate: 0, operatingRate: 0, capRate: 0, fbhr: 0,  productiveHours: 0,    directDollars: 0, operatingDollars: 0, capDollars: 0 },
-};
+const fbhr = Object.fromEntries(
+  FEE_DEPTS.map((dept) => [dept, {
+    dept,
+    directRate: 0,
+    operatingRate: 0,
+    capRate: 0,
+    fbhr: ["PLAN", "BLDG", "ENG"].includes(dept) ? 50 : 0,
+    productiveHours: ["PLAN", "BLDG", "ENG"].includes(dept) ? 1000 : 0,
+    directDollars: 0,
+    operatingDollars: 0,
+    capDollars: 0,
+  }]),
+) as Record<DeptCode, FBHR>;
 
 // ── 1. Legacy / undefined fields stay recoverable ────────────────────────
 //      THE load-bearing back-compat assertion: every existing seed row

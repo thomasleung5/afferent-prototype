@@ -6,12 +6,13 @@ const BASE_SYSTEM = `You are parsing a municipal cost-of-service study or fee st
   "services": [
     { "name": "Site Development Hearing Review", "dept": "PLAN", "hours": 3.5, "volume": 45, "fee": 4160, "target": 100, "confidence": "high" },
     { "name": "Building Permit — New SFR", "dept": "BLDG", "hours": 8.0, "volume": 120, "fee": 13500, "confidence": "high" },
-    { "name": "Erosion Control Inspections", "dept": "ENG", "hours": 1.5, "volume": 80, "fee": 210, "confidence": "low" }
+    { "name": "Erosion Control Inspections", "dept": "ENG", "hours": 1.5, "volume": 80, "fee": 210, "confidence": "low" },
+    { "name": "Business License Application Processing Fee", "dept": "FIN", "hours": 0.5, "volume": 250, "fee": 50, "confidence": "high" }
   ]
 }
 
 Rules:
-- dept must be exactly "PLAN" (Planning), "BLDG" (Building/Inspection), or "ENG" (Engineering/Public Works)
+- dept must be exactly one of: "ADMIN" (Administration), "CLK" (Clerk), "FIN" (Finance), "HR" (Human Resources), "IT" (Information Technology), "LEGAL" (Legal), "BLDG" (Building), "PLAN" (Planning), "ENG" (Engineering), "CODE" (Code Enforcement), "FIRE" (Fire), "PW" (Public Works), "TRANS" (Transportation), "ENV" (Environmental Services), "UTIL" (Utilities), "PD" (Police), "PARKS" (Parks & Recreation), "LIB" (Library), "ANIMAL" (Animal Services), "HOUSING" (Housing), "ECON" (Economic Development), "HEALTH" (Public Health), "COMMUNITY" (Community Services), "AIR_HARBOR" (Airport / Harbor), or "GEN_GOV" (General Government)
 - hours is staff hours per service occurrence (fully-burdened hours, not clock hours)
 - volume is annual service count or permit count — plain number, no commas
 - fee is the current adopted fee as a plain number — no $ or commas

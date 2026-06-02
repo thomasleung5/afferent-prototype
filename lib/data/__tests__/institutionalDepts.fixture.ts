@@ -16,6 +16,7 @@ import {
   INDIRECT_CODE_BY_NAME,
   type InstDeptCode,
 } from "../institutionalDepts";
+import { FEE_DEPTS } from "../departments";
 
 // ── 0. Type-level: InstDeptCode is derived from INST_DEPTS ───────────────
 // If this line stops compiling, the derivation broke — there is no second
@@ -24,17 +25,20 @@ import {
 const _derivedCode: InstDeptCode = INST_DEPTS[0].code;
 void _derivedCode;
 
-// ── 1. Catalog covers all 16 institutional depts ──────────────────────────
-assert.equal(INST_DEPTS.length, 16, "catalog size");
+const directCount = FEE_DEPTS.length;
+const catalogCount = 9 + directCount;
+
+// ── 1. Catalog covers all institutional depts ────────────────────────────
+assert.equal(INST_DEPTS.length, catalogCount, "catalog size");
 assert.equal(
   INST_DEPTS.filter((d) => d.kind === "indirect").length, 9,
   "9 indirect entries",
 );
 assert.equal(
-  INST_DEPTS.filter((d) => d.kind === "direct").length, 7,
-  "7 direct entries",
+  INST_DEPTS.filter((d) => d.kind === "direct").length, directCount,
+  `${directCount} direct entries`,
 );
-console.log("  ✓ catalog has 9 indirect + 7 direct = 16 depts");
+console.log(`  ✓ catalog has 9 indirect + ${directCount} direct = ${catalogCount} depts`);
 
 // ── 2. Codes are unique ───────────────────────────────────────────────────
 const codes = INST_DEPTS.map((d) => d.code);
@@ -53,7 +57,7 @@ assert.deepEqual(INST_DEPT_CODE_LIST, codes);
 console.log("  ✓ INST_DEPT_CODE_LIST preserves catalog order");
 
 // ── 5. Name map covers every code ─────────────────────────────────────────
-assert.equal(NAME_BY_DEPT_CODE.size, 16);
+assert.equal(NAME_BY_DEPT_CODE.size, catalogCount);
 for (const d of INST_DEPTS) {
   assert.equal(NAME_BY_DEPT_CODE.get(d.code), d.name);
 }
@@ -68,12 +72,7 @@ console.log("  ✓ INDIRECT_CODE_BY_NAME round-trips indirect entries");
 
 // ── 7. isFeeDept aligns with the DeptCode subset ──────────────────────────
 const feeFromCatalog = INST_DEPTS.filter((d) => d.isFeeDept).map((d) => d.code);
-assert.deepEqual(feeFromCatalog.sort(),
-  ["BLDG", "ENG", "FIRE", "PARKS", "PD", "PLAN"]);
-// PW is direct but not fee — easy to break, easy to detect.
-const pw = INST_DEPTS.find((d) => d.code === "PW")!;
-assert.equal(pw.kind, "direct");
-assert.equal(pw.isFeeDept, false);
-console.log("  ✓ isFeeDept matches DeptCode subset (PW direct-but-not-fee)");
+assert.deepEqual(feeFromCatalog.sort(), [...FEE_DEPTS].sort());
+console.log("  ✓ isFeeDept matches DeptCode subset");
 
 console.log("\nAll institutionalDepts assertions passed.");

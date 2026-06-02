@@ -33,13 +33,31 @@ const SEED_DEPT_GLCODES: Record<InstDeptCode, string> = {
   INS:      "011-1510",
   CMTE:     "011-1700",
   // Direct operating divisions
-  PLAN:  "011-3100",
-  BLDG:  "011-3200",
-  ENG:   "011-3300",
-  PW:    "011-3400",
-  PARKS: "011-3500",
-  PD:    "011-3600",
-  FIRE:  "011-3700",
+  ADMIN:     "011-3000",
+  CLK:       "011-3050",
+  FIN:       "011-3900",
+  HR:        "011-1420",
+  IT:        "011-1430",
+  LEGAL:     "011-1500-D",
+  PLAN:      "011-3100",
+  BLDG:      "011-3200",
+  ENG:       "011-3300",
+  CODE:      "011-3350",
+  FIRE:      "011-3700",
+  PW:        "011-3400",
+  TRANS:     "011-3450",
+  ENV:       "011-3460",
+  UTIL:      "011-3470",
+  PD:        "011-3600",
+  PARKS:     "011-3500",
+  LIB:       "011-4000",
+  ANIMAL:    "011-4100",
+  HOUSING:   "011-4200",
+  ECON:      "011-4300",
+  HEALTH:    "011-4400",
+  COMMUNITY: "011-4500",
+  AIR_HARBOR:"011-4600",
+  GEN_GOV:   "011-9990",
 };
 
 /** Additional indirect centers the LAH CAP publishes that aren't part of
@@ -487,4 +505,3 @@ export const CAP_DIRECT_ALLOCATIONS: DirectAllocationRow[] = [
     ],
   },
 ];
-

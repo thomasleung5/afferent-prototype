@@ -12,13 +12,14 @@ Extract every row that reports a count of services performed and return ONLY thi
   "items": [
     { "name": "Building Permit — Single-Family Residential", "dept": "BLDG", "prior": 142, "current": 165, "unit": "permits", "confidence": "high" },
     { "name": "Conditional Use Permit", "dept": "PLAN", "prior": null, "current": 12, "unit": "applications", "confidence": "high" },
-    { "name": "Encroachment Permit", "dept": "ENG", "prior": 158, "current": 169, "unit": "permits", "confidence": "low" }
+    { "name": "Encroachment Permit", "dept": "ENG", "prior": 158, "current": 169, "unit": "permits", "confidence": "low" },
+    { "name": "Returned Check Fee", "dept": "FIN", "prior": 45, "current": 52, "unit": "transactions", "confidence": "high" }
   ]
 }
 
 Rules:
-- dept must be exactly "PLAN" (Planning), "BLDG" (Building/Inspection), or "ENG" (Engineering)
-- ONLY include rows whose department is PLAN, BLDG, or ENG. SKIP every row for Public Works, Parks & Recreation, Police, Fire, Finance, City Manager, City Clerk, Admin, Library, Recreation, Streets, Water, Sewer, etc.
+- dept must be exactly one of: "ADMIN" (Administration), "CLK" (Clerk), "FIN" (Finance), "HR" (Human Resources), "IT" (Information Technology), "LEGAL" (Legal), "BLDG" (Building), "PLAN" (Planning), "ENG" (Engineering), "CODE" (Code Enforcement), "FIRE" (Fire), "PW" (Public Works), "TRANS" (Transportation), "ENV" (Environmental Services), "UTIL" (Utilities), "PD" (Police), "PARKS" (Parks & Recreation), "LIB" (Library), "ANIMAL" (Animal Services), "HOUSING" (Housing), "ECON" (Economic Development), "HEALTH" (Public Health), "COMMUNITY" (Community Services), "AIR_HARBOR" (Airport / Harbor), or "GEN_GOV" (General Government)
+- ONLY include rows whose department is one of those fee-supported departments. SKIP every row for unrelated departments such as City Manager, Library, Streets, Water, Sewer, HR, IT, or general Public Works operations not tied to fee-supported engineering services.
 - name must be the EXACT service description as written in the document. Do NOT abbreviate, expand, paraphrase, or reword — downstream client-side matching depends on the name matching the catalog character-for-character.
 - prior is the prior-year (or baseline) volume as a plain integer with commas stripped ("1,245" → 1245). If only one year is reported, set prior to null.
 - current is the current-year (or most-recent) volume as a plain integer with commas stripped. If only one year is reported, populate current and leave prior null.

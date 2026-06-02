@@ -13,13 +13,14 @@ Extract every position line item you find in those sections and return ONLY this
   "positions": [
     { "title": "Senior Planner", "dept": "PLAN", "fte": 0.80, "hours": 1720, "confidence": "high" },
     { "title": "Building Inspector II", "dept": "BLDG", "fte": 1.00, "hours": 1720, "confidence": "high" },
-    { "title": "Civil Engineer", "dept": "ENG", "fte": 0.50, "hours": 1720, "confidence": "low" }
+    { "title": "Civil Engineer", "dept": "ENG", "fte": 0.50, "hours": 1720, "confidence": "low" },
+    { "title": "Utility Billing Specialist", "dept": "FIN", "fte": 1.00, "hours": 1720, "confidence": "high" }
   ]
 }
 
 Rules:
-- dept must be exactly "PLAN" (Planning), "BLDG" (Building/Inspection), or "ENG" (Engineering/Public Works)
-- Only include positions assigned to PLAN, BLDG, or ENG — skip positions in unrelated departments (admin, finance, parks, etc.)
+- dept must be exactly one of: "ADMIN" (Administration), "CLK" (Clerk), "FIN" (Finance), "HR" (Human Resources), "IT" (Information Technology), "LEGAL" (Legal), "BLDG" (Building), "PLAN" (Planning), "ENG" (Engineering), "CODE" (Code Enforcement), "FIRE" (Fire), "PW" (Public Works), "TRANS" (Transportation), "ENV" (Environmental Services), "UTIL" (Utilities), "PD" (Police), "PARKS" (Parks & Recreation), "LIB" (Library), "ANIMAL" (Animal Services), "HOUSING" (Housing), "ECON" (Economic Development), "HEALTH" (Public Health), "COMMUNITY" (Community Services), "AIR_HARBOR" (Airport / Harbor), or "GEN_GOV" (General Government)
+- Only include positions assigned to those fee-supported departments — skip positions in unrelated departments.
 - fte is the full-time equivalent allocation to fee services (0.0–1.0) — if not stated assume 1.0
 - hours is productive hours per year per FTE — default to 1720 if not stated in the document
 - Do NOT extract salary, benefits, or any dollar amount — leave those fields off the JSON entirely. The Operating Budget import is the authoritative source for labor cost.

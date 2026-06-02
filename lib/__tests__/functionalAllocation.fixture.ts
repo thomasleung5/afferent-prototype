@@ -17,6 +17,7 @@ import {
   deriveFunctionalAllocation, applyFunctionalAllocationFbhr,
 } from "../functionalAllocation";
 import type { FBHR } from "../calc";
+import { FEE_DEPTS } from "../data/departments";
 import type { DeptCode, FunctionalAllocationBucket } from "../types";
 
 const fbhr = (overrides: Partial<FBHR> = {}): FBHR => ({
@@ -130,14 +131,13 @@ const bucket = (overrides: Partial<FunctionalAllocationBucket> = {}): Functional
 
 // ── 6. applyFunctionalAllocationFbhr override path still works ──────────
 {
-  const engine: Record<DeptCode, FBHR> = {
-    PLAN: fbhr({ dept: "PLAN", fbhr: 200 }),
-    BLDG: fbhr({ dept: "BLDG", fbhr: 250 }),
-    ENG: fbhr({ dept: "ENG", fbhr: 300 }),
-    PARKS: fbhr({ dept: "PARKS", fbhr: 0, productiveHours: 0 }),
-    PD: fbhr({ dept: "PD", fbhr: 0, productiveHours: 0 }),
-    FIRE: fbhr({ dept: "FIRE", fbhr: 0, productiveHours: 0 }),
-  };
+  const engine = Object.fromEntries(
+    FEE_DEPTS.map((dept) => [dept, fbhr({
+      dept,
+      fbhr: dept === "PLAN" ? 200 : dept === "BLDG" ? 250 : dept === "ENG" ? 300 : 0,
+      productiveHours: ["PLAN", "BLDG", "ENG"].includes(dept) ? 1000 : 0,
+    })]),
+  ) as Record<DeptCode, FBHR>;
   const buckets = [
     bucket({ id: "fa-6a", dept: "PLAN", hoursSharePct: 100, recoverabilityPct: 50, rateBasisHours: true }),
     bucket({ id: "fa-6b", dept: "BLDG", hoursSharePct: 100, recoverabilityPct: 100, rateBasisHours: false }),

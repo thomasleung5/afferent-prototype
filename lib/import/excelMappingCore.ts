@@ -13,6 +13,7 @@
  * but the search logic is identical, so it lives here. */
 
 import type { PreviewCell } from "@/lib/import/excelPreview";
+import { normalizeDeptName } from "@/lib/data/departments";
 
 export const HEADER_SCAN_ROWS = 10;
 /** Rows scoring this many or more recognized headers are eligible. Set
@@ -170,49 +171,11 @@ function mergeSynonyms<Role extends string>(roles: RoleSpec<Role>[]): Set<string
 
 // ─── Shared dept normalization ─────────────────────────────────────────
 //
-// Excel fee schedules use a mix of internal codes (PLAN/BLDG/ENG) and
-// human-facing names (Planning, Building & Safety, …). The alias map
-// below mirrors the one in excelToFees.ts so other domain converters
-// can reuse the same heuristic without re-importing it from the fees
-// path.
-
-const DEPT_ALIASES: Record<string, string> = {
-  PLANNING: "PLAN",
-  "PLANNING ADMINISTRATION": "PLAN",
-  "PLANNING AND ZONING": "PLAN",
-  BUILDING: "BLDG",
-  "BUILDING ADMINISTRATION": "BLDG",
-  "BUILDING SAFETY": "BLDG",
-  "BUILDING AND SAFETY": "BLDG",
-  ENGINEERING: "ENG",
-  "ENGINEERING ADMINISTRATION": "ENG",
-  "PUBLIC WORKS ENGINEERING": "ENG",
-  PARKS: "PARKS",
-  "PARKS RECREATION": "PARKS",
-  "PARKS AND RECREATION": "PARKS",
-  "PARKS RECREATION ADMINISTRATION": "PARKS",
-  "PARKS AND RECREATION ADMINISTRATION": "PARKS",
-  POLICE: "PD",
-  "POLICE SERVICES": "PD",
-  "POLICE SERVICES ADMINISTRATION": "PD",
-  FIRE: "FIRE",
-  "FIRE PREVENTION": "FIRE",
-  "FIRE PREVENTION ADMINISTRATION": "FIRE",
-};
-
 /** Translate a raw dept cell value to a fee-dept code (PLAN/BLDG/...)
  *  or null. Accepts both the canonical codes and the aliases users
  *  type in Excel. Caller is responsible for narrowing the resulting
  *  string to its domain's dept type. */
 export function normalizeDept(v: string, validCodes: readonly string[]): string | null {
-  const upper = v.trim().toUpperCase();
-  if (validCodes.includes(upper)) return upper;
-  const compact = upper
-    .replace(/&/g, "AND")
-    .replace(/[^A-Z0-9]+/g, " ")
-    .trim()
-    .replace(/\s+/g, " ");
-  const alias = DEPT_ALIASES[compact];
-  if (alias && validCodes.includes(alias)) return alias;
-  return null;
+  const dept = normalizeDeptName(v);
+  return dept && validCodes.includes(dept) ? dept : null;
 }

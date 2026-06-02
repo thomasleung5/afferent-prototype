@@ -1,7 +1,7 @@
 /* Canonical institutional-dept registry for the CAP step-down.
  *
- * One source of truth for the 16-member institutional dept list (9 indirect
- * cost centers + 7 direct receivers), along with the derived projections
+ * One source of truth for the institutional dept list (9 indirect cost
+ * centers + canonical direct receivers), along with the derived projections
  * (set of indirect codes, code list, code→name map) that callers currently
  * spell out by hand in several places.
  *
@@ -10,14 +10,14 @@
  *     is classification metadata only.
  *   - DeptCode (lib/types.ts) is the fee-study rollup subset — every
  *     DeptCode is an InstDeptCode of kind "direct" with isFeeDept: true.
- *     The only direct InstDept that is NOT a DeptCode is "PW" (Public
- *     Works isn't fee-modeled today).
+ *     Fee-dept codes stay unique even where an indirect center has the
+ *     same natural name (for example CLERK indirect vs CLK fee dept).
  *
  * Adding a new dept: append a single entry below — every projection
  * derives from this list, so nothing else needs updating.
  */
 
-/** The canonical 16-entry institutional dept catalog. Indirect entries
+/** The canonical institutional dept catalog. Indirect entries
  *  are listed in the same order as the legacy INDIRECT_DEPTS array so
  *  any downstream sort-stable consumers keep their existing ordering.
  *
@@ -38,13 +38,31 @@ export const INST_DEPTS = [
   { code: "INS",      name: "Insurance",                          kind: "indirect", isFeeDept: false },
   { code: "CMTE",     name: "Committees",                         kind: "indirect", isFeeDept: false },
   // Direct receivers — DeptCodes are fee-modeled; "PW" is direct but not.
-  { code: "PLAN",     name: "Planning",                           kind: "direct",   isFeeDept: true },
+  { code: "ADMIN",    name: "Administration",                     kind: "direct",   isFeeDept: true },
+  { code: "CLK",      name: "Clerk",                              kind: "direct",   isFeeDept: true },
+  { code: "FIN",      name: "Finance",                            kind: "direct",   isFeeDept: true },
+  { code: "HR",       name: "Human Resources",                    kind: "direct",   isFeeDept: true },
+  { code: "IT",       name: "Information Technology",             kind: "direct",   isFeeDept: true },
+  { code: "LEGAL",    name: "Legal",                              kind: "direct",   isFeeDept: true },
   { code: "BLDG",     name: "Building",                           kind: "direct",   isFeeDept: true },
+  { code: "PLAN",     name: "Planning",                           kind: "direct",   isFeeDept: true },
   { code: "ENG",      name: "Engineering",                        kind: "direct",   isFeeDept: true },
-  { code: "PW",       name: "Public Works",                       kind: "direct",   isFeeDept: false },
+  { code: "CODE",     name: "Code Enforcement",                   kind: "direct",   isFeeDept: true },
+  { code: "FIRE",     name: "Fire",                               kind: "direct",   isFeeDept: true },
+  { code: "PW",       name: "Public Works",                       kind: "direct",   isFeeDept: true },
+  { code: "TRANS",    name: "Transportation",                     kind: "direct",   isFeeDept: true },
+  { code: "ENV",      name: "Environmental Services",             kind: "direct",   isFeeDept: true },
+  { code: "UTIL",     name: "Utilities",                          kind: "direct",   isFeeDept: true },
+  { code: "PD",       name: "Police",                             kind: "direct",   isFeeDept: true },
   { code: "PARKS",    name: "Parks & Recreation",                 kind: "direct",   isFeeDept: true },
-  { code: "PD",       name: "Police Services",                    kind: "direct",   isFeeDept: true },
-  { code: "FIRE",     name: "Fire Prevention",                    kind: "direct",   isFeeDept: true },
+  { code: "LIB",      name: "Library",                            kind: "direct",   isFeeDept: true },
+  { code: "ANIMAL",   name: "Animal Services",                    kind: "direct",   isFeeDept: true },
+  { code: "HOUSING",  name: "Housing",                            kind: "direct",   isFeeDept: true },
+  { code: "ECON",     name: "Economic Development",               kind: "direct",   isFeeDept: true },
+  { code: "HEALTH",   name: "Public Health",                      kind: "direct",   isFeeDept: true },
+  { code: "COMMUNITY",name: "Community Services",                 kind: "direct",   isFeeDept: true },
+  { code: "AIR_HARBOR",name:"Airport / Harbor",                   kind: "direct",   isFeeDept: true },
+  { code: "GEN_GOV",  name: "General Government",                 kind: "direct",   isFeeDept: true },
 ] as const;
 
 /** One row of the catalog. Derived so the field types reflect the
