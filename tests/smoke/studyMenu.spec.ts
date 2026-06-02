@@ -65,12 +65,13 @@ test.describe("Studies popover", () => {
 
   test("Studies button is visible when a session is present", async ({ page }) => {
     await page.goto("/");
-    // The trigger reads "Studies" when nothing is active, then flips
-    // to the active study's name once one is selected. Using a
-    // test-id keeps the assertion stable across both states (and
-    // immune to the chevron suffix in the accessible name).
+    // The trigger is a compact sync-status control: "Local" when no
+    // study is active, then flips to "Saved" / "Saving" / "Save
+    // failed" once one is selected. Using the test-id keeps the
+    // assertion stable across status transitions (and immune to the
+    // chevron suffix in the accessible name).
     await expect(page.getByTestId("study-menu-trigger")).toBeVisible();
-    await expect(page.getByTestId("study-menu-trigger")).toContainText("Studies");
+    await expect(page.getByTestId("study-menu-trigger")).toContainText("Local");
   });
 
   test("popover lists mocked studies and lets the user select one", async ({ page }) => {
@@ -79,8 +80,9 @@ test.describe("Studies popover", () => {
     const row = page.getByRole("button", { name: /FY26 Fee Study/ });
     await expect(row).toBeVisible();
     await row.click();
-    // Selecting a study flips the trigger label from "Studies" to "Study".
-    await expect(page.getByTestId("study-menu-trigger")).toContainText(/\bStudy\b/);
+    // Selecting a study flips the trigger from "Local" to "Saved"
+    // (idle status — DB ok, no pending edits).
+    await expect(page.getByTestId("study-menu-trigger")).toContainText("Saved");
   });
 
   test("'New study…' is enabled when a creatable membership is available", async ({ page }) => {

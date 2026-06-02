@@ -351,10 +351,16 @@ function StudyMenuMounted() {
 
   // ── Rendering ────────────────────────────────────────────────────
 
-  const triggerLabel = activeStudy ? "Study" : "Studies";
+  // The trigger is now a quiet save/status control: "Saved" / "Saving"
+  // / "Save failed" / "Local". Active-study context lives in the
+  // tooltip so the top bar doesn't visually duplicate the jurisdiction
+  // + FY context selector to its left.
+  const triggerLabel = working
+    ? `${labelForWorking(working)}…`
+    : triggerSyncLabel(autosave.status);
   const triggerDisabled = working === "load" || working === "load-version";
   const syncTone = syncStatusTone(autosave.status);
-  const triggerStatusBadge = inlineStatusBadge(autosave.status);
+  const triggerTitle = `${activeStudy ? `Active study: ${activeStudy.name}` : "Studies"} · ${syncStatusLabel(autosave.status)}`;
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -365,39 +371,25 @@ function StudyMenuMounted() {
         disabled={triggerDisabled}
         aria-expanded={open}
         aria-haspopup="menu"
-        title={`${activeStudy ? `Active study: ${activeStudy.name}` : "Studies"} · ${syncStatusLabel(autosave.status)}`}
+        aria-label={`Studies — ${triggerLabel}`}
+        title={triggerTitle}
         style={{
           all: "unset",
           cursor: triggerDisabled ? "not-allowed" : "pointer",
           fontSize: "var(--t-l7)", fontWeight: 500,
-          color: "var(--ink)",
+          color: "var(--ink-2)",
           padding: "4px 8px",
           border: "1px solid var(--rule)",
           background: open ? "var(--paper)" : "var(--paper-2)",
           display: "inline-flex", alignItems: "center", gap: 6,
-          maxWidth: 260,
+          maxWidth: 180,
           opacity: triggerDisabled ? 0.6 : 1,
         }}
       >
         <SyncDot tone={syncTone} pulse={autosave.status.kind === "saving"}/>
         <span style={{
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-        }}>{working ? `${labelForWorking(working)}…` : triggerLabel}</span>
-        {triggerStatusBadge && (
-          <span
-            data-testid="study-menu-status-badge"
-            className="mono"
-            style={{
-              fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
-              textTransform: "uppercase",
-              color: triggerStatusBadge.color,
-              border: `1px solid ${triggerStatusBadge.color}`,
-              padding: "1px 4px",
-              borderRadius: 2,
-              whiteSpace: "nowrap",
-            }}
-          >{triggerStatusBadge.text}</span>
-        )}
+        }}>{triggerLabel}</span>
         <span className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
           ▾
         </span>
@@ -537,16 +529,20 @@ function StudyMenuMounted() {
   );
 }
 
-// ── Inline status badge for the trigger button ───────────────────────
+// ── Trigger sync-status label ────────────────────────────────────────
 
-/** Compact pill-style badge that appears next to the trigger label
- *  for `error` / `saving` only. Saved + idle + local-only + not-
- *  configured stay quiet — the colored dot already conveys those. */
-function inlineStatusBadge(s: SyncStatus): { text: string; color: string } | null {
+/** Compact label shown in the top-bar trigger. The full verbose label
+ *  (e.g. "Saved · 3m ago") stays in the tooltip + popover status row;
+ *  the trigger sticks to one-word states so it reads as a quiet save
+ *  indicator next to the jurisdiction + fiscal-year context selector. */
+function triggerSyncLabel(s: SyncStatus): string {
   switch (s.kind) {
-    case "error":   return { text: "Save failed", color: "var(--neg)" };
-    case "saving":  return { text: "Saving",      color: "var(--ink-3)" };
-    default:        return null;
+    case "saving":         return "Saving";
+    case "error":          return "Save failed";
+    case "saved":          return "Saved";
+    case "idle":           return "Saved";
+    case "local-only":     return "Local";
+    case "not-configured": return "Local";
   }
 }
 
