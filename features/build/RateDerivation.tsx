@@ -44,14 +44,20 @@ export function RateDerivation() {
   }, [derived.utilization]);
 
   // Skip depts that aren't actually modeled in the active jurisdiction
-  // (no productive hours → no rate to render).
-  const activeDepts = derived.activeFeeDepts.filter((d) => derived.fbhr[d].productiveHours > 0);
-  const rows: Row[] = activeDepts.map((d) => {
+  // (no productive hours → no rate to render). The optional-chain
+  // guards against a brief window after a jurisdiction switch or study
+  // load where `fbhr` might not yet cover every entry in
+  // `activeFeeDepts` — render a hidden row rather than crash.
+  const activeDepts = derived.activeFeeDepts.filter(
+    (d) => (derived.fbhr[d]?.productiveHours ?? 0) > 0,
+  );
+  const rows: Row[] = activeDepts.flatMap((d) => {
     const f = derived.fbhr[d];
+    if (!f) return [];
     const fa = derived.functionalAllocation.byDept[d];
     const directHours = fa?.rateBasisDirectHours ?? 0;
     const pct = f.productiveHours > 0 ? (directHours / f.productiveHours) * 100 : 0;
-    return {
+    return [{
       id: d,
       dept: d,
       deptName: labelOf(d),
@@ -59,7 +65,7 @@ export function RateDerivation() {
       productiveHours: f.productiveHours,
       directHours,
       utilizationPct: pct,
-    };
+    }];
   });
 
   const cols: Column<Row>[] = [

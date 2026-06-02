@@ -56,7 +56,7 @@ export function FunctionalBucketSupport({ dept, service, bucketId, crossNav = fa
   const engine = derived.fbhr[dept];
   const dd = fa.byDept[dept];
 
-  if (!dd) {
+  if (!engine || !dd) {
     return (
       <div style={{
         padding: "12px 14px",

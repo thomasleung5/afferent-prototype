@@ -28,8 +28,8 @@ export function OverheadSummary() {
   // zero-data row.
   const activeDepts = derived.activeFeeDepts.filter((d) => derived.capAllocated[d] > 0);
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
-    const allocated = derived.capAllocated[d];
-    const rate = derived.fbhr[d].capRate;
+    const allocated = derived.capAllocated[d] ?? 0;
+    const rate = derived.fbhr[d]?.capRate ?? 0;
     const sorted = capPools
       .map((p) => ({ poolId: p.id, allocated: poolToFeeDept(model, p.id, d) }))
       .filter((p) => p.allocated > 0.5)
@@ -84,7 +84,7 @@ export function OverheadSummary() {
           <RateFormula
             formula="$/hr = allocated $ ÷ productive hrs"
             numerator={allocated}
-            hours={derived.fbhr[d].productiveHours}
+            hours={derived.fbhr[d]?.productiveHours ?? 0}
             rate={rate}
           />
         </div>

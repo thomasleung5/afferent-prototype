@@ -99,7 +99,7 @@ export function OperatingSummary() {
           <RateFormula
             formula="operating $/hr = operating $ ÷ productive hrs"
             numerator={r.total}
-            hours={derived.fbhr[d].productiveHours}
+            hours={derived.fbhr[d]?.productiveHours ?? 0}
             rate={r.rate}
           />
           {(() => {

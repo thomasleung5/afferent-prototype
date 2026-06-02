@@ -13,7 +13,8 @@
 import {
   getJurisdiction, getJurisdictionOrDefault, type Jurisdiction,
 } from "@/lib/data/jurisdictions";
-import { useBuildState, useBuildStore } from "@/lib/store";
+import { useBuildState, useBuildStore, type BuildState } from "@/lib/store";
+import { migratePersistedState } from "@/lib/storeMigration";
 
 /** React hook: returns the active jurisdiction's full config record. */
 export function useActiveJurisdiction(): Jurisdiction {
@@ -43,6 +44,15 @@ export async function switchJurisdiction(id: string): Promise<void> {
     const res = await fetch(target.seedFile);
     if (res.ok) {
       const seedData = await res.json() as Record<string, unknown>;
+      // Run the persisted-state migration on the raw seed before
+      // handing it to Zustand. Without this, a seed authored against
+      // a prior snapshot shape (e.g. missing activeFeeDepts, untyped
+      // unit/activity fields, or legacy capPools rows) drives the next
+      // `deriveBuildDerived` straight into an undefined-field access
+      // and the error boundary blanks the build pages until reload —
+      // reload then runs migration via onRehydrateStorage so things
+      // appear "fine" the second time. Migrating here closes the loop.
+      migratePersistedState(seedData as Partial<BuildState>);
       useBuildStore.setState(seedData);
       return;
     }
