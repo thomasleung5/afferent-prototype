@@ -1291,8 +1291,10 @@
       "feeNo": "PLN-1",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each",
-      "activity": "Application"
+      "activityLabel": "Application",
+      "activityType": "INTAKE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-fth",
@@ -1308,8 +1310,10 @@
       "feeNo": "PLN-2",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each",
-      "activity": "Application"
+      "activityLabel": "Application",
+      "activityType": "INTAKE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-minor",
@@ -1325,8 +1329,10 @@
       "feeNo": "PLN-3",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each",
-      "activity": "Application"
+      "activityLabel": "Application",
+      "activityType": "INTAKE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-major",
@@ -1342,8 +1348,10 @@
       "feeNo": "PLN-4",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each",
-      "activity": "Application"
+      "activityLabel": "Application",
+      "activityType": "INTAKE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-cup",
@@ -1359,8 +1367,10 @@
       "feeNo": "PLN-6",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each",
-      "activity": "Application"
+      "activityLabel": "Application",
+      "activityType": "INTAKE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-fence",
@@ -1376,8 +1386,10 @@
       "feeNo": "PLN-9",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-oak",
@@ -1393,8 +1405,10 @@
       "feeNo": "PLN-10",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "per tree",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "per tree",
+      "unitType": "CUSTOM"
     },
     {
       "id": "plan-preap",
@@ -1410,8 +1424,10 @@
       "feeNo": "PLN-11",
       "category": "Planning & Zoning",
       "subcategory": "Pre-Application Services",
-      "unit": "per meeting",
-      "activity": "Meeting"
+      "activityLabel": "Meeting",
+      "activityType": "MEETING",
+      "unitLabel": "Meeting",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-adu",
@@ -1427,8 +1443,10 @@
       "feeNo": "PLN-12",
       "category": "Planning & Zoning",
       "subcategory": "Pre-Application Services",
-      "unit": "per meeting",
-      "activity": "Meeting"
+      "activityLabel": "Meeting",
+      "activityType": "MEETING",
+      "unitLabel": "Meeting",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-mod",
@@ -1444,8 +1462,10 @@
       "feeNo": "PLN-13",
       "category": "Planning & Zoning",
       "subcategory": "Administrative Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "plan-mvar",
@@ -1461,8 +1481,10 @@
       "feeNo": "PLN-15",
       "category": "Planning & Zoning",
       "subcategory": "Discretionary Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-apr",
@@ -1478,8 +1500,10 @@
       "feeNo": "BLD-1",
       "category": "Building & Safety",
       "subcategory": "Plan Check",
-      "unit": "per hour",
-      "activity": "Plan check"
+      "activityLabel": "Plan Check",
+      "activityType": "REVIEW",
+      "unitLabel": "Hour",
+      "unitType": "TIME"
     },
     {
       "id": "bldg-ext",
@@ -1495,8 +1519,10 @@
       "feeNo": "BLD-2",
       "category": "Building & Safety",
       "subcategory": "Administrative",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-tco",
@@ -1512,8 +1538,10 @@
       "feeNo": "BLD-3",
       "category": "Building & Safety",
       "subcategory": "Administrative",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-pc",
@@ -1529,8 +1557,10 @@
       "feeNo": "BLD-4",
       "category": "Building & Safety",
       "subcategory": "Plan Check",
-      "unit": "each",
-      "activity": "Plan check"
+      "activityLabel": "Plan Check",
+      "activityType": "REVIEW",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-sfr",
@@ -1546,7 +1576,6 @@
       "feeNo": "BLD-5",
       "category": "Building & Safety",
       "subcategory": "New Construction",
-      "unit": "per $1,000 valuation",
       "rowKind": "formula",
       "currentFeeText": "Tiered (typ. $13,500 @ $1.5M valuation)",
       "formula": {
@@ -1590,7 +1619,10 @@
           }
         ]
       },
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Per $1,000 Valuation",
+      "unitType": "VALUATION"
     },
     {
       "id": "bldg-rem",
@@ -1606,8 +1638,10 @@
       "feeNo": "BLD-6",
       "category": "Building & Safety",
       "subcategory": "Remodel & Additions",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-pool",
@@ -1623,8 +1657,10 @@
       "feeNo": "BLD-7",
       "category": "Building & Safety",
       "subcategory": "Specialty Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-solar",
@@ -1640,13 +1676,15 @@
       "feeNo": "BLD-8",
       "category": "Building & Safety",
       "subcategory": "Specialty Permits",
-      "unit": "each",
       "rowKind": "statutory",
       "legalAuthority": "CA Gov Code §66015",
       "notes": [
         "Capped at $450 by state law; full-cost recovery not achievable for this row."
       ],
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "bldg-mep",
@@ -1662,8 +1700,10 @@
       "feeNo": "BLD-9",
       "category": "Building & Safety",
       "subcategory": "Specialty Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-bldg",
@@ -1679,8 +1719,10 @@
       "feeNo": "ENG-1",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each",
-      "activity": "Inspection"
+      "activityLabel": "Inspection",
+      "activityType": "INSPECTION",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-adu",
@@ -1696,8 +1738,10 @@
       "feeNo": "ENG-2",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each",
-      "activity": "Meeting"
+      "activityLabel": "Meeting",
+      "activityType": "MEETING",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-erosion",
@@ -1713,8 +1757,10 @@
       "feeNo": "ENG-3",
       "category": "Engineering",
       "subcategory": "Inspections",
-      "unit": "each",
-      "activity": "Inspection"
+      "activityLabel": "Inspection",
+      "activityType": "INSPECTION",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-ency",
@@ -1730,8 +1776,10 @@
       "feeNo": "ENG-4",
       "category": "Engineering",
       "subcategory": "Permits",
-      "unit": "each",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-minor",
@@ -1747,8 +1795,10 @@
       "feeNo": "ENG-5",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each",
-      "activity": "Review"
+      "activityLabel": "Review",
+      "activityType": "REVIEW",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-major",
@@ -1764,8 +1814,10 @@
       "feeNo": "ENG-6",
       "category": "Engineering",
       "subcategory": "Plan Review",
-      "unit": "each",
-      "activity": "Review"
+      "activityLabel": "Review",
+      "activityType": "REVIEW",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "eng-hourly",
@@ -1781,8 +1833,10 @@
       "feeNo": "ENG-7",
       "category": "Engineering",
       "subcategory": "Other Services",
-      "unit": "per hour",
-      "activity": "Review"
+      "activityLabel": "Review",
+      "activityType": "REVIEW",
+      "unitLabel": "Hour",
+      "unitType": "TIME"
     },
     {
       "id": "pr-recclass",
@@ -1798,8 +1852,10 @@
       "feeNo": "PRK-1",
       "category": "Parks & Recreation",
       "subcategory": "Program Registration",
-      "unit": "per registration",
-      "activity": "Registration"
+      "activityLabel": "Registration",
+      "activityType": "CUSTOM",
+      "unitLabel": "per registration",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pr-fieldp",
@@ -1815,8 +1871,10 @@
       "feeNo": "PRK-2",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per permit",
-      "activity": "Rental"
+      "activityLabel": "Rental",
+      "activityType": "CUSTOM",
+      "unitLabel": "Permit",
+      "unitType": "COUNT"
     },
     {
       "id": "pr-shelter",
@@ -1832,8 +1890,10 @@
       "feeNo": "PRK-3",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per rental",
-      "activity": "Rental"
+      "activityLabel": "Rental",
+      "activityType": "CUSTOM",
+      "unitLabel": "per rental",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pr-pool",
@@ -1849,8 +1909,10 @@
       "feeNo": "PRK-4",
       "category": "Parks & Recreation",
       "subcategory": "Program Registration",
-      "unit": "per registration",
-      "activity": "Registration"
+      "activityLabel": "Registration",
+      "activityType": "CUSTOM",
+      "unitLabel": "per registration",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pr-roomrnt",
@@ -1866,8 +1928,10 @@
       "feeNo": "PRK-5",
       "category": "Parks & Recreation",
       "subcategory": "Facility Rentals",
-      "unit": "per hour",
-      "activity": "Rental"
+      "activityLabel": "Rental",
+      "activityType": "CUSTOM",
+      "unitLabel": "Hour",
+      "unitType": "TIME"
     },
     {
       "id": "pd-alarm",
@@ -1883,8 +1947,10 @@
       "feeNo": "POL-1",
       "category": "Police Services",
       "subcategory": "Permits & Registrations",
-      "unit": "annual",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "annual",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pd-falsearm",
@@ -1900,8 +1966,10 @@
       "feeNo": "POL-2",
       "category": "Police Services",
       "subcategory": "Service Charges",
-      "unit": "per occurrence",
-      "activity": "Service charge"
+      "activityLabel": "Service charge",
+      "activityType": "CUSTOM",
+      "unitLabel": "per occurrence",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pd-fprint",
@@ -1917,8 +1985,10 @@
       "feeNo": "POL-3",
       "category": "Police Services",
       "subcategory": "Records & Background",
-      "unit": "each",
-      "activity": "Request"
+      "activityLabel": "Request",
+      "activityType": "CUSTOM",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "pd-evt",
@@ -1934,8 +2004,10 @@
       "feeNo": "POL-4",
       "category": "Police Services",
       "subcategory": "Special Events",
-      "unit": "per event",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "per event",
+      "unitType": "CUSTOM"
     },
     {
       "id": "pd-records",
@@ -1951,8 +2023,10 @@
       "feeNo": "POL-5",
       "category": "Police Services",
       "subcategory": "Records & Background",
-      "unit": "per request",
-      "activity": "Request"
+      "activityLabel": "Request",
+      "activityType": "CUSTOM",
+      "unitLabel": "per request",
+      "unitType": "CUSTOM"
     },
     {
       "id": "fr-inspbiz",
@@ -1968,8 +2042,10 @@
       "feeNo": "FRE-1",
       "category": "Fire Prevention",
       "subcategory": "Inspections",
-      "unit": "annual",
-      "activity": "Inspection"
+      "activityLabel": "Inspection",
+      "activityType": "INSPECTION",
+      "unitLabel": "annual",
+      "unitType": "CUSTOM"
     },
     {
       "id": "fr-planrev",
@@ -1985,8 +2061,10 @@
       "feeNo": "FRE-2",
       "category": "Fire Prevention",
       "subcategory": "Plan Review",
-      "unit": "each",
-      "activity": "Review"
+      "activityLabel": "Review",
+      "activityType": "REVIEW",
+      "unitLabel": "Each",
+      "unitType": "COUNT"
     },
     {
       "id": "fr-hazmat",
@@ -2002,8 +2080,10 @@
       "feeNo": "FRE-3",
       "category": "Fire Prevention",
       "subcategory": "Permits",
-      "unit": "annual",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "annual",
+      "unitType": "CUSTOM"
     },
     {
       "id": "fr-occ",
@@ -2019,8 +2099,10 @@
       "feeNo": "FRE-4",
       "category": "Fire Prevention",
       "subcategory": "Permits",
-      "unit": "annual",
-      "activity": "Permit"
+      "activityLabel": "Permit",
+      "activityType": "ISSUANCE",
+      "unitLabel": "annual",
+      "unitType": "CUSTOM"
     },
     {
       "id": "fr-special",
@@ -2036,8 +2118,10 @@
       "feeNo": "FRE-5",
       "category": "Fire Prevention",
       "subcategory": "Plan Review",
-      "unit": "per event",
-      "activity": "Review"
+      "activityLabel": "Review",
+      "activityType": "REVIEW",
+      "unitLabel": "per event",
+      "unitType": "CUSTOM"
     }
   ],
   "volume": [
