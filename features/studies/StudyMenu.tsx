@@ -364,6 +364,11 @@ function StudyMenuMounted() {
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
+      {/* Visual rhythm intentionally mirrors the FY chip in
+          ModelSettingsMenu (same `mono` class, padding, font-size,
+          border, and ink-3 color). The colored sync dot is the only
+          deliberate divergence — it carries the status signal that
+          the FY chip doesn't need. */}
       <button
         type="button"
         data-testid="study-menu-trigger"
@@ -373,16 +378,16 @@ function StudyMenuMounted() {
         aria-haspopup="menu"
         aria-label={`Studies — ${triggerLabel}`}
         title={triggerTitle}
+        className="mono"
         style={{
-          all: "unset",
-          cursor: triggerDisabled ? "not-allowed" : "pointer",
-          fontSize: "var(--t-l7)", fontWeight: 500,
-          color: "var(--ink-2)",
-          padding: "4px 8px",
+          padding: "3px 7px",
           border: "1px solid var(--rule)",
           background: open ? "var(--paper)" : "var(--paper-2)",
+          fontSize: "var(--t-l4)",
+          color: "var(--ink-3)",
+          cursor: triggerDisabled ? "not-allowed" : "pointer",
           display: "inline-flex", alignItems: "center", gap: 6,
-          maxWidth: 180,
+          maxWidth: 160,
           opacity: triggerDisabled ? 0.6 : 1,
         }}
       >
@@ -390,9 +395,6 @@ function StudyMenuMounted() {
         <span style={{
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>{triggerLabel}</span>
-        <span className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
-          ▾
-        </span>
       </button>
 
       {open && view === "studies" && (
