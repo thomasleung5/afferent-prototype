@@ -363,6 +363,85 @@ async function main(): Promise<void> {
     passed++;
   }
 
+  // ── GET /:id/versions/:versionId — non-UUID 400 ──────────────
+  {
+    setDbClientProviderForTests(() => createMockDb().client);
+    const res = await app.request(
+      `/api/studies/${STUDY_A_ID}/versions/not-uuid`,
+      { method: "GET" },
+    );
+    assert.equal(res.status, 400);
+    const body = await res.json() as { ok: boolean; message: string };
+    assert.match(body.message, /Version id must be a UUID/i);
+    passed++;
+  }
+
+  // ── GET /:id/versions/:versionId — version not found ──────────
+  {
+    const VERSION_ID = "33333333-3333-3333-3333-333333333333";
+    const mock = createMockDb();
+    // lookupRoleForStudy: studies + role ok.
+    mock.queueResponse("studies", {
+      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "owner" }, error: null,
+    });
+    // Version row not found.
+    mock.queueResponse("study_versions", { data: null, error: null });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(
+      `/api/studies/${STUDY_A_ID}/versions/${VERSION_ID}`,
+      { method: "GET" },
+    );
+    assert.equal(res.status, 404);
+    const body = await res.json() as { ok: boolean; message: string };
+    assert.match(body.message, /Version not found/i);
+    passed++;
+  }
+
+  // ── GET /:id/versions/:versionId — happy path returns snapshot ─
+  {
+    const VERSION_ID = "44444444-4444-4444-4444-444444444444";
+    const mock = createMockDb();
+    mock.queueResponse("studies", {
+      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "viewer" }, error: null,
+    });
+    mock.queueResponse("study_versions", {
+      data: {
+        id: VERSION_ID,
+        study_id: STUDY_A_ID,
+        version_number: 7,
+        label: "Q3 cut",
+        status: "draft",
+        notes: null,
+        snapshot: VALID_SNAPSHOT,
+        created_by: TEST_USER.id,
+        created_at: "2026-06-01T00:00:00Z",
+      },
+      error: null,
+    });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(
+      `/api/studies/${STUDY_A_ID}/versions/${VERSION_ID}`,
+      { method: "GET" },
+    );
+    assert.equal(res.status, 200);
+    const body = await res.json() as {
+      ok: boolean;
+      version: { id: string; version_number: number; snapshot: unknown };
+    };
+    assert.equal(body.ok, true);
+    assert.equal(body.version.id, VERSION_ID);
+    assert.equal(body.version.version_number, 7);
+    assert.ok(body.version.snapshot);
+    // Viewers can read versions (parity with the list endpoint).
+    passed++;
+  }
+
   resetDbClientProviderForTests();
   console.log(`PASS: studiesRoutes.fixture — ${passed} cases`);
 }

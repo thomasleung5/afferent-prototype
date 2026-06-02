@@ -2,8 +2,10 @@
  *
  * Minimal Save/Load bridge on top of the existing Zustand store —
  * the localStorage editing model is unchanged; this menu lets an
- * authenticated user push the current snapshot to the server and
- * pull it back later, and cut named immutable versions.
+ * authenticated user push the current snapshot to the server,
+ * pull it back later, cut and load named immutable versions, and
+ * pick which organization a new study lives in when membership
+ * spans multiple orgs.
  *
  * Visibility:
  *   - Auth not configured (no VITE_SUPABASE_*)  → menu hidden.
@@ -11,27 +13,28 @@
  *   - Signed in + DB unconfigured               → menu opens with a
  *     quiet "not configured" notice; local editing keeps working.
  *
- * State that survives reloads is the active study id, persisted to
- * localStorage under `afferent.activeStudyId` so the menu remembers
- * which study a user was working with across page refreshes. This
- * is purely a UX preference — clearing it is harmless.
- *
- * Modelled visually on components/layout/ModelSettingsMenu so the
- * two TopBar popovers share their layout / interaction patterns. */
+ * Active-study id is persisted to localStorage via
+ * lib/studies/activeStudy.ts (a tiny module + useSyncExternalStore
+ * hook) so ModelSettingsMenu and the autosave subscription can
+ * read/clear it without prop-drilling through TopBar. */
 
-import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
+import {
+  useCallback, useEffect, useMemo, useRef, useState,
+  type CSSProperties, type ReactNode,
+} from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
 import { createBuildSnapshot, useBuildActions, useBuildStore } from "@/lib/store";
 import {
-  createStudy, createStudyVersion, getStudy, listOrganizations, listStudies,
-  saveStudySnapshot,
-  type Organization, type Study,
+  createStudy, createStudyVersion, getStudy, getStudyVersion,
+  listOrganizations, listStudies, listStudyVersions, saveStudySnapshot,
+  type Organization, type Study, type StudyVersionRow,
 } from "@/lib/studies/studiesApi";
 import { coerceServerSnapshot } from "@/lib/studies/snapshotCoercion";
 import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
 import {
   clearActiveStudy, setActiveStudy, useActiveStudy,
 } from "@/lib/studies/activeStudy";
+import { emitStaleStudyNotice } from "@/lib/studies/staleStudyNotice";
 import {
   syncStatusLabel, syncStatusIsRetryable, syncStatusTone,
   type SyncStatus, type SyncTone,
@@ -39,15 +42,16 @@ import {
 import { useAutoSaveStudy } from "./useAutoSaveStudy";
 
 type ServerState = "idle" | "loading" | "ok" | "not-configured" | "error";
-type WorkingKind = "load" | "create" | "version" | null;
+type WorkingKind = "load" | "create" | "version" | "load-version" | null;
 type Status = { kind: "ok" | "warn" | "error"; message: string } | null;
+type PopoverView = "studies" | "versions";
+
+const STALE_NOTICE_MESSAGE =
+  "Active study is no longer accessible — reverted to local-only mode. "
+  + "Your local edits are intact; pick another study to resume syncing.";
 
 export function StudyMenu() {
   const { configured, session } = useAuth();
-  // Hidden until the user is signed in to a configured Supabase project.
-  // Local-only editing via the Zustand store / localStorage continues
-  // to work without this UI; the menu is purely the bridge to the
-  // server-side persistence layer.
   if (!configured || !session) return null;
   return <StudyMenuMounted/>;
 }
@@ -55,20 +59,27 @@ export function StudyMenu() {
 function StudyMenuMounted() {
   const { loadSnapshot } = useBuildActions((s) => ({ loadSnapshot: s.loadSnapshot }));
   const [open, setOpen] = useState(false);
+  const [view, setView] = useState<PopoverView>("studies");
   const [studies, setStudies] = useState<Study[] | null>(null);
   const [organizations, setOrganizations] = useState<Organization[] | null>(null);
   const [serverState, setServerState] = useState<ServerState>("idle");
   const [serverError, setServerError] = useState<string>("");
-  // Active server study lives in lib/studies/activeStudy.ts so that
-  // ModelSettingsMenu can read + clear it during demo-switch flows
-  // without prop-drilling through TopBar.
   const active = useActiveStudy();
   const activeId = active?.id ?? null;
   const [working, setWorking] = useState<WorkingKind>(null);
   const [status, setStatus] = useState<Status>(null);
+  // Multi-org picker — user-chosen org id for the next "New study…".
+  // Auto-selected when there's only one creatable org; otherwise the
+  // user picks from a <select> rendered in the Actions section.
+  const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  // Versions view state — fetched lazily when the user enters the
+  // versions sub-view.
+  const [versions, setVersions] = useState<StudyVersionRow[] | null>(null);
+  const [versionsState, setVersionsState] = useState<"idle" | "loading" | "ok" | "error">("idle");
+  const [versionsError, setVersionsError] = useState<string>("");
   const wrapRef = useRef<HTMLDivElement>(null);
 
-  // Outside-click + ESC close — same pattern as ModelSettingsMenu.
+  // Outside-click + ESC close.
   useEffect(() => {
     if (!open) return;
     const onClick = (e: MouseEvent) => {
@@ -86,44 +97,32 @@ function StudyMenuMounted() {
   const refresh = useCallback(async () => {
     setServerState("loading");
     setServerError("");
-    // Fetch in parallel — the menu needs both lists to render
-    // correctly (studies for the picker, organizations for the
-    // "New study…" target inference).
     const [studiesRes, orgsRes] = await Promise.all([
       listStudies(),
       listOrganizations(),
     ]);
-    // 503 from either endpoint maps to the friendly "not configured"
-    // branch (same env contract — both surfaces share the DB).
     if (!studiesRes.ok) {
-      if (/not configured/i.test(studiesRes.message)) {
-        setServerState("not-configured");
-      } else {
-        setServerState("error");
-        setServerError(studiesRes.message);
-      }
+      if (/not configured/i.test(studiesRes.message)) setServerState("not-configured");
+      else { setServerState("error"); setServerError(studiesRes.message); }
       return;
     }
     if (!orgsRes.ok) {
-      if (/not configured/i.test(orgsRes.message)) {
-        setServerState("not-configured");
-      } else {
-        setServerState("error");
-        setServerError(orgsRes.message);
-      }
+      if (/not configured/i.test(orgsRes.message)) setServerState("not-configured");
+      else { setServerState("error"); setServerError(orgsRes.message); }
       return;
     }
     setStudies(studiesRes.studies);
     setOrganizations(orgsRes.organizations);
     setServerState("ok");
-    // If the stored active id no longer matches any visible study,
-    // clear it so the trigger label doesn't show a stale name.
+    // Stale active id (not in the visible list) → clear + surface a
+    // top-bar notice so the user notices without opening the menu.
     if (activeId && !studiesRes.studies.some((s) => s.id === activeId)) {
       clearActiveStudy();
+      emitStaleStudyNotice(STALE_NOTICE_MESSAGE);
       return;
     }
-    // Backfill the stored name if it was missing (e.g., legacy id-only
-    // localStorage entry, or the name changed on the server).
+    // Backfill the stored name (legacy id-only entry, or server-side
+    // rename).
     const match = activeId
       ? studiesRes.studies.find((s) => s.id === activeId) ?? null
       : null;
@@ -139,15 +138,20 @@ function StudyMenuMounted() {
     void refresh();
   }, [open, studies, serverState, refresh]);
 
+  // Reset the versions sub-view whenever the active study changes
+  // so we don't render a previous study's version list.
+  useEffect(() => {
+    setView("studies");
+    setVersions(null);
+    setVersionsState("idle");
+    setVersionsError("");
+  }, [activeId]);
+
   const activeStudy = useMemo(
     () => (activeId && studies ? studies.find((s) => s.id === activeId) ?? null : null),
     [activeId, studies],
   );
 
-  // Orgs the caller can create studies in (owner / admin / analyst —
-  // matches server/studies/authorization.ts:canCreateStudy and the RLS
-  // policy on `studies` INSERT). Viewers see organizations they belong
-  // to in `organizations` but cannot create through this menu.
   const creatableOrgs = useMemo(() => {
     if (!organizations) return null;
     return organizations.filter((o) =>
@@ -155,29 +159,30 @@ function StudyMenuMounted() {
     );
   }, [organizations]);
 
-  // Org id for the next "New study…" action. Prefers the active
-  // study's org (so create-more lands in the same place); otherwise
-  // the first creatable membership. Multi-org users see all options
-  // in this same first slot today — a proper picker is future polish.
+  // Org id for the next "New study…":
+  //   - exactly one creatable org → use it (single-org users see the
+  //     same simple UX as before this pass);
+  //   - active study is in a creatable org → default to that org;
+  //   - multiple creatable orgs → user-picked via the <select> below.
   const inferredOrgId = useMemo(() => {
-    if (activeStudy && creatableOrgs?.some((o) => o.id === activeStudy.organization_id)) {
+    if (!creatableOrgs || creatableOrgs.length === 0) return null;
+    if (creatableOrgs.length === 1) return creatableOrgs[0].id;
+    if (selectedOrgId && creatableOrgs.some((o) => o.id === selectedOrgId)) {
+      return selectedOrgId;
+    }
+    if (activeStudy && creatableOrgs.some((o) => o.id === activeStudy.organization_id)) {
       return activeStudy.organization_id;
     }
-    return creatableOrgs?.[0]?.id ?? null;
-  }, [activeStudy, creatableOrgs]);
+    return creatableOrgs[0].id;
+  }, [creatableOrgs, selectedOrgId, activeStudy]);
 
-  // Auto-save the active study's snapshot in the background. Returns
-  // the live sync status + a saveNow flush (used by the retry button)
-  // and a markSynced hook (called after a successful Load so the
-  // status line reads "Saved · now" rather than "Idle").
   const autosave = useAutoSaveStudy({
     activeStudyId: activeId,
     enabled: serverState === "ok" && activeId != null,
     isNotConfigured: serverState === "not-configured",
     onStudyMissing: () => {
-      // Server says this study no longer exists or membership was
-      // revoked — clear the local active id and surface a notice.
       clearActiveStudy();
+      emitStaleStudyNotice(STALE_NOTICE_MESSAGE);
       setStatus({
         kind: "warn",
         message: "Active study is no longer accessible. Reverted to local-only.",
@@ -190,28 +195,20 @@ function StudyMenuMounted() {
     if (!activeId) return;
     setStatus(null);
     await autosave.saveNow();
-    // Don't refresh here — autosave handles its own status; refreshing
-    // the list mainly matters when updated_at changes, which the
-    // server bumps on every snapshot upsert and the next user-driven
-    // refresh will pick up.
   }
 
   async function handleLoad() {
     if (!activeId) return;
     const target = activeStudy?.name ?? "study";
-    const proceed = window.confirm(
+    if (!window.confirm(
       `Load draft from "${target}"?\n\n`
       + "Local edits in this browser will be replaced with the saved draft.",
-    );
-    if (!proceed) return;
+    )) return;
     setWorking("load");
     setStatus(null);
     try {
       const res = await getStudy(activeId);
-      if (!res.ok) {
-        setStatus({ kind: "error", message: res.message });
-        return;
-      }
+      if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       if (!res.draft) {
         setStatus({
           kind: "warn",
@@ -220,15 +217,8 @@ function StudyMenuMounted() {
         return;
       }
       const coerced = coerceServerSnapshot(res.draft.snapshot);
-      if (!coerced.ok) {
-        setStatus({ kind: "error", message: coerced.message });
-        return;
-      }
-      // Suppress autosave around the store mutation so the loaded
-      // snapshot doesn't immediately ricochet back to the server.
-      withSuppressedAutosave(() => {
-        loadSnapshot(coerced.snapshot);
-      });
+      if (!coerced.ok) { setStatus({ kind: "error", message: coerced.message }); return; }
+      withSuppressedAutosave(() => { loadSnapshot(coerced.snapshot); });
       autosave.markSynced(Date.now());
       setStatus({ kind: "ok", message: `Loaded ${target}.` });
     } finally {
@@ -240,7 +230,7 @@ function StudyMenuMounted() {
     if (!inferredOrgId) {
       setStatus({
         kind: "warn",
-        message: "No organization to create a study in. Contact your admin to provision one.",
+        message: "Pick an organization to create a study in.",
       });
       return;
     }
@@ -255,17 +245,9 @@ function StudyMenuMounted() {
         name: name.trim(),
         fiscalYear: fyInput?.trim() || undefined,
       });
-      if (!res.ok) {
-        setStatus({ kind: "error", message: res.message });
-        return;
-      }
+      if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       setActiveStudy({ id: res.study.id, name: res.study.name });
-      // Initial baseline save — capture the current local state as
-      // the new study's draft so a later "Load draft" doesn't return
-      // null. Done synchronously here (rather than waiting for the
-      // autosave hook's debounce) so the new study has a draft from
-      // the moment of creation. Errors here are non-fatal — the
-      // autosave subscription will retry on the next edit.
+      // Initial baseline save — same as before.
       const snap = createBuildSnapshot(useBuildStore.getState());
       const seedRes = await saveStudySnapshot(res.study.id, snap);
       if (seedRes.ok) {
@@ -295,22 +277,84 @@ function StudyMenuMounted() {
         label: label.trim(),
         snapshot: snap,
       });
-      if (!res.ok) {
-        setStatus({ kind: "error", message: res.message });
-        return;
-      }
+      if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       setStatus({
         kind: "ok",
         message: `Cut version ${res.version.version_number}: ${res.version.label}.`,
       });
+      // If we're sitting in the versions view, refresh the list so
+      // the new cut appears without an extra round trip.
+      if (view === "versions") void loadVersions();
     } finally {
       setWorking(null);
     }
   }
 
+  const loadVersions = useCallback(async () => {
+    if (!activeId) return;
+    setVersionsState("loading");
+    setVersionsError("");
+    const res = await listStudyVersions(activeId);
+    if (!res.ok) {
+      setVersionsState("error");
+      setVersionsError(res.message);
+      return;
+    }
+    setVersions(res.versions);
+    setVersionsState("ok");
+  }, [activeId]);
+
+  function handleEnterVersions() {
+    setStatus(null);
+    setView("versions");
+    if (versionsState === "idle" || versionsState === "error") {
+      void loadVersions();
+    }
+  }
+
+  function handleExitVersions() {
+    setView("studies");
+  }
+
+  async function handleLoadVersion(v: StudyVersionRow) {
+    if (!activeId) return;
+    const label = `v${v.version_number} (${v.label})`;
+    if (!window.confirm(
+      `Load ${label}?\n\n`
+      + "Local edits will be replaced with this version's snapshot. "
+      + "The study draft on the server is NOT modified by this action — "
+      + "you'll see \"Edit or Save now to push it to the draft\" "
+      + "afterwards.",
+    )) return;
+    setWorking("load-version");
+    setStatus(null);
+    try {
+      const res = await getStudyVersion(activeId, v.id);
+      if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
+      const coerced = coerceServerSnapshot(res.version.snapshot);
+      if (!coerced.ok) { setStatus({ kind: "error", message: coerced.message }); return; }
+      withSuppressedAutosave(() => { loadSnapshot(coerced.snapshot); });
+      // Deliberately DO NOT call markSynced — the local state now
+      // differs from the server draft. The autosave subscription is
+      // suppressed during loadSnapshot, so no save fires here. The
+      // next user edit will trigger autosave; the explicit "Save now"
+      // button on the status row also works.
+      setStatus({
+        kind: "ok",
+        message: `Loaded ${label} locally. Edit or Save now to push it to the draft.`,
+      });
+      setView("studies");
+    } finally {
+      setWorking(null);
+    }
+  }
+
+  // ── Rendering ────────────────────────────────────────────────────
+
   const triggerLabel = activeStudy?.name ?? "Studies";
-  const triggerDisabled = working === "load";
+  const triggerDisabled = working === "load" || working === "load-version";
   const syncTone = syncStatusTone(autosave.status);
+  const triggerStatusBadge = inlineStatusBadge(autosave.status);
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -331,7 +375,7 @@ function StudyMenuMounted() {
           border: "1px solid var(--rule)",
           background: open ? "var(--paper)" : "var(--paper-2)",
           display: "inline-flex", alignItems: "center", gap: 6,
-          maxWidth: 220,
+          maxWidth: 260,
           opacity: triggerDisabled ? 0.6 : 1,
         }}
       >
@@ -339,12 +383,27 @@ function StudyMenuMounted() {
         <span style={{
           overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
         }}>{working ? `${labelForWorking(working)}…` : triggerLabel}</span>
+        {triggerStatusBadge && (
+          <span
+            data-testid="study-menu-status-badge"
+            className="mono"
+            style={{
+              fontSize: 9, fontWeight: 600, letterSpacing: "0.1em",
+              textTransform: "uppercase",
+              color: triggerStatusBadge.color,
+              border: `1px solid ${triggerStatusBadge.color}`,
+              padding: "1px 4px",
+              borderRadius: 2,
+              whiteSpace: "nowrap",
+            }}
+          >{triggerStatusBadge.text}</span>
+        )}
         <span className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
           ▾
         </span>
       </button>
 
-      {open && (
+      {open && view === "studies" && (
         <div role="menu" style={popoverStyle}>
           <SectionHeader
             label="Studies"
@@ -412,9 +471,22 @@ function StudyMenuMounted() {
                 onClick={() => { void handleCutVersion(); }}
               />
               <MenuAction
+                label="Versions…"
+                sub="Browse + load named versions previously cut for this study."
+                disabled={!activeId}
+                onClick={handleEnterVersions}
+              />
+              {creatableOrgs && creatableOrgs.length > 1 && (
+                <CreateOrgPickerRow
+                  orgs={creatableOrgs}
+                  value={inferredOrgId}
+                  onChange={setSelectedOrgId}
+                />
+              )}
+              <MenuAction
                 label="New study…"
                 sub={inferredOrgId
-                  ? `Create a study in ${nameOfOrg(organizations, inferredOrgId) ?? "your organization"}.`
+                  ? `Create a study in ${nameOfOrg(organizations, inferredOrgId) ?? "the selected organization"}.`
                   : "You don't have permission to create studies in any organization."}
                 disabled={!inferredOrgId || working === "create"}
                 onClick={() => { void handleCreate(); }}
@@ -422,28 +494,70 @@ function StudyMenuMounted() {
             </>
           )}
 
-          {status && (
-            <div style={{
-              padding: "8px 14px",
-              borderTop: "1px solid var(--rule)",
-              fontSize: "var(--t-l7)",
-              lineHeight: 1.5,
-              color: status.kind === "error" ? "var(--neg)"
-                : status.kind === "warn" ? "var(--warn)"
-                : "var(--pos)",
-            }}>{status.message}</div>
+          {status && <StatusFooter status={status}/>}
+        </div>
+      )}
+
+      {open && view === "versions" && (
+        <div role="menu" style={popoverStyle}>
+          <SectionHeader
+            label={`Versions of ${activeStudy?.name ?? "study"}`}
+            hint="Named immutable cuts. Loading a version updates only local state."
+            backButton={{ label: "← Studies", onClick: handleExitVersions }}
+          />
+
+          {versionsState === "loading" && <Body>Loading versions…</Body>}
+          {versionsState === "error" && (
+            <Body tone="error">Couldn't load versions: {versionsError || "unknown error"}.</Body>
           )}
+          {versionsState === "ok" && versions && versions.length === 0 && (
+            <Body>
+              No versions cut yet. Use “Cut version…” on the Studies view to
+              create the first one.
+            </Body>
+          )}
+          {versionsState === "ok" && versions && versions.length > 0 && (
+            <div style={{ maxHeight: 280, overflowY: "auto" }}>
+              {versions.map((v, i) => (
+                <VersionRow
+                  key={v.id}
+                  v={v}
+                  isFirst={i === 0}
+                  disabled={working === "load-version"}
+                  onLoad={() => { void handleLoadVersion(v); }}
+                />
+              ))}
+            </div>
+          )}
+
+          {status && <StatusFooter status={status}/>}
         </div>
       )}
     </div>
   );
 }
 
+// ── Inline status badge for the trigger button ───────────────────────
+
+/** Compact pill-style badge that appears next to the trigger label
+ *  for `error` / `saving` only. Saved + idle + local-only + not-
+ *  configured stay quiet — the colored dot already conveys those. */
+function inlineStatusBadge(s: SyncStatus): { text: string; color: string } | null {
+  switch (s.kind) {
+    case "error":   return { text: "Save failed", color: "var(--neg)" };
+    case "saving":  return { text: "Saving",      color: "var(--ink-3)" };
+    default:        return null;
+  }
+}
+
+// ── Small UI pieces ─────────────────────────────────────────────────
+
 function labelForWorking(w: NonNullable<WorkingKind>): string {
   switch (w) {
-    case "load":    return "Loading";
-    case "create":  return "Creating";
-    case "version": return "Cutting version";
+    case "load":         return "Loading";
+    case "create":       return "Creating";
+    case "version":      return "Cutting version";
+    case "load-version": return "Loading version";
   }
 }
 
@@ -518,23 +632,43 @@ function SyncStatusRow({
 
 const popoverStyle: CSSProperties = {
   position: "absolute", top: "calc(100% + 6px)", left: 0, zIndex: 30,
-  width: 320,
+  width: 360,
   background: "var(--paper)",
   border: "1px solid var(--rule-strong)",
   boxShadow: "0 10px 24px rgba(29,34,54,0.10)",
 };
 
-function SectionHeader({ label, hint }: { label: string; hint: string }) {
+function SectionHeader({
+  label, hint, backButton,
+}: {
+  label: string;
+  hint: string;
+  backButton?: { label: string; onClick: () => void };
+}) {
   return (
     <div style={{
       padding: "8px 14px 6px",
       borderBottom: "1px solid var(--rule)",
       background: "var(--paper-2)",
     }}>
-      <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-      }}>{label}</div>
+      <div style={{ display: "flex", alignItems: "baseline", justifyContent: "space-between", gap: 8 }}>
+        <div className="mono" style={{
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+          color: "var(--ink-3)", textTransform: "uppercase",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>{label}</div>
+        {backButton && (
+          <button
+            type="button"
+            onClick={backButton.onClick}
+            style={{
+              all: "unset", cursor: "pointer",
+              fontSize: "var(--t-l8)",
+              color: "var(--ink-3)",
+            }}
+          >{backButton.label}</button>
+        )}
+      </div>
       <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2 }}>{hint}</div>
     </div>
   );
@@ -596,6 +730,58 @@ function StudyRow({
   );
 }
 
+function VersionRow({
+  v, isFirst, disabled, onLoad,
+}: {
+  v: StudyVersionRow;
+  isFirst: boolean;
+  disabled: boolean;
+  onLoad: () => void;
+}) {
+  return (
+    <div style={{
+      display: "grid",
+      gridTemplateColumns: "1fr auto",
+      gap: 8,
+      padding: "10px 14px",
+      borderTop: isFirst ? "none" : "1px solid var(--rule)",
+      alignItems: "center",
+    }}>
+      <div style={{ minWidth: 0 }}>
+        <div style={{
+          display: "flex", alignItems: "baseline", gap: 8,
+        }}>
+          <span className="mono" style={{
+            fontSize: "var(--t-l8)", color: "var(--ink-3)",
+          }}>v{v.version_number}</span>
+          <span style={{
+            fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500,
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }} title={v.label}>{v.label}</span>
+        </div>
+        <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2 }}>
+          {v.status} · {formatTimestamp(v.created_at)} · {v.created_by.slice(0, 8)}…
+        </div>
+      </div>
+      <button
+        type="button"
+        onClick={onLoad}
+        disabled={disabled}
+        style={{
+          all: "unset",
+          cursor: disabled ? "not-allowed" : "pointer",
+          fontSize: "var(--t-l8)", fontWeight: 500,
+          color: "var(--ink)",
+          padding: "4px 10px",
+          border: "1px solid var(--rule-strong)",
+          background: "var(--paper)",
+          opacity: disabled ? 0.5 : 1,
+        }}
+      >Load</button>
+    </div>
+  );
+}
+
 function MenuAction({
   label, sub, disabled, onClick,
 }: { label: string; sub: string; disabled?: boolean; onClick: () => void }) {
@@ -621,6 +807,63 @@ function MenuAction({
       <span style={{ fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500 }}>{label}</span>
       <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{sub}</span>
     </button>
+  );
+}
+
+function CreateOrgPickerRow({
+  orgs, value, onChange,
+}: {
+  orgs: Organization[];
+  value: string | null;
+  onChange: (id: string) => void;
+}) {
+  return (
+    <div style={{
+      padding: "10px 14px",
+      borderTop: "1px solid var(--rule)",
+      display: "flex", alignItems: "center", gap: 8,
+    }}>
+      <label
+        htmlFor="study-menu-create-org"
+        style={{
+          fontSize: "var(--t-l8)", color: "var(--ink-3)",
+          whiteSpace: "nowrap",
+        }}
+      >Create in</label>
+      <select
+        id="study-menu-create-org"
+        data-testid="study-menu-create-org"
+        value={value ?? ""}
+        onChange={(e) => onChange(e.target.value)}
+        style={{
+          flex: 1,
+          fontSize: "var(--t-l7)",
+          fontFamily: "inherit",
+          color: "var(--ink)",
+          padding: "4px 6px",
+          border: "1px solid var(--rule-strong)",
+          background: "var(--paper)",
+        }}
+      >
+        {orgs.map((o) => (
+          <option key={o.id} value={o.id}>{o.name} ({o.role})</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function StatusFooter({ status }: { status: NonNullable<Status> }) {
+  return (
+    <div style={{
+      padding: "8px 14px",
+      borderTop: "1px solid var(--rule)",
+      fontSize: "var(--t-l7)",
+      lineHeight: 1.5,
+      color: status.kind === "error" ? "var(--neg)"
+        : status.kind === "warn" ? "var(--warn)"
+        : "var(--pos)",
+    }}>{status.message}</div>
   );
 }
 

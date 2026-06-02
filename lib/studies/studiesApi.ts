@@ -168,6 +168,19 @@ export function listStudyVersions(
   return studiesFetch(`/api/studies/${id}/versions`);
 }
 
+/** Version row INCLUDING the snapshot payload. Used by StudyMenu's
+ *  "Load this version" flow — separate from the list endpoint so the
+ *  list view stays cheap. */
+export interface StudyVersionWithSnapshot extends StudyVersionRow {
+  snapshot: unknown;
+}
+
+export function getStudyVersion(
+  studyId: string, versionId: string,
+): Promise<ApiResult<{ version: StudyVersionWithSnapshot }>> {
+  return studiesFetch(`/api/studies/${studyId}/versions/${versionId}`);
+}
+
 export interface CreateStudyVersionRequest {
   label: string;
   status?: VersionStatus;

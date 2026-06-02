@@ -1,5 +1,6 @@
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ModelSettingsMenu } from "./ModelSettingsMenu";
+import { StaleStudyBanner } from "./StaleStudyBanner";
 import { StudyMenu } from "@/features/studies/StudyMenu";
 import { useAuth } from "@/lib/auth/AuthContext";
 
@@ -53,6 +54,7 @@ export function TopBar() {
         <AuthChip/>
       </div>
 
+      <StaleStudyBanner/>
       <SubNav pathname={pathname}/>
     </div>
   );

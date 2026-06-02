@@ -137,4 +137,86 @@ test.describe("Studies popover", () => {
     await page.getByTestId("study-menu-trigger").click();
     await expect(page.getByText(/Server study storage isn't configured/i)).toBeVisible();
   });
+
+  test("multi-org picker appears when the user is owner/admin/analyst in >1 org", async ({ page }) => {
+    const ORG_B_ID = "bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb";
+    await page.route("**/api/organizations", async (route) => {
+      await fulfillJson(route, 200, {
+        ok: true,
+        organizations: [
+          {
+            id: TEST_ORG_ID,
+            name: "Los Altos Hills",
+            role: "owner",
+            created_at: "2026-01-01T00:00:00Z",
+          },
+          {
+            id: ORG_B_ID,
+            name: "Goleta",
+            role: "analyst",
+            created_at: "2026-02-01T00:00:00Z",
+          },
+        ],
+      });
+    });
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    // The picker is the <select> with the test-id below; absent in
+    // the single-org default case.
+    const picker = page.getByTestId("study-menu-create-org");
+    await expect(picker).toBeVisible();
+    const options = await picker.locator("option").allTextContents();
+    expect(options).toEqual(
+      expect.arrayContaining([
+        expect.stringContaining("Los Altos Hills"),
+        expect.stringContaining("Goleta"),
+      ]),
+    );
+  });
+
+  test("single-org case stays hidden (no picker)", async ({ page }) => {
+    // The default beforeEach mocks the single-org happy path.
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    await expect(page.getByTestId("study-menu-create-org")).toHaveCount(0);
+  });
+
+  test("Versions… enters the versions view + Load triggers confirm", async ({ page }) => {
+    const VERSION_ID = "44444444-4444-4444-4444-444444444444";
+    // Mock the versions list endpoint that the Versions view fetches.
+    await page.route(`**/api/studies/${TEST_STUDY_ID}/versions`, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      await fulfillJson(route, 200, {
+        ok: true,
+        versions: [{
+          id: VERSION_ID,
+          study_id: TEST_STUDY_ID,
+          version_number: 3,
+          label: "Q3 cut",
+          status: "draft",
+          notes: null,
+          created_by: "00000000-0000-0000-0000-0000000000aa",
+          created_at: "2026-06-01T00:00:00Z",
+        }],
+      });
+    });
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    // Select the mocked study so the Actions section enables. The
+    // popover stays open through this click (selection happens via
+    // setActiveStudy in the row's onClick; no setOpen toggle).
+    await page.getByRole("button", { name: /FY26 Fee Study/ }).click();
+    await page.getByRole("button", { name: /Versions…/ }).click();
+    // Versions sub-view header + the version row.
+    await expect(page.getByText(/Versions of FY26 Fee Study/i)).toBeVisible();
+    await expect(page.getByText(/v3/)).toBeVisible();
+    await expect(page.getByText(/Q3 cut/)).toBeVisible();
+    // Clicking Load fires a window.confirm dialog; reject so we stay
+    // local and don't actually drive loadSnapshot in the smoke.
+    page.once("dialog", (d) => { void d.dismiss(); });
+    await page.getByRole("button", { name: "Load", exact: true }).click();
+    // After dismiss we're still in the versions view; the version
+    // row remains visible.
+    await expect(page.getByText(/v3/)).toBeVisible();
+  });
 });

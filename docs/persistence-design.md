@@ -274,14 +274,114 @@ development), the JSON snapshot export/import helper in
 `lib/snapshotIO.ts` provides a manual escape hatch — the same JSON
 shape the migration endpoint accepts.
 
+## Concurrency: optimistic locking (design, not yet implemented)
+
+Current behavior is last-writer-wins on `study_drafts.upsert`. Two
+analysts saving simultaneously will see whichever request lands at
+Postgres second "win"; the first analyst's edits between their last
+load and the conflicting save are silently lost. That's fine for
+the typical handoff workflow but inadequate as soon as more than
+one analyst is in the same study.
+
+The plan below is what the next pass should implement. Search the
+codebase for `TODO(conflict-detection)` to find the change sites
+in `server/studies/index.ts` and `features/studies/useAutoSaveStudy.ts`.
+
+### Migration (sketch)
+
+```sql
+alter table public.study_drafts
+  add column revision_id uuid not null default gen_random_uuid();
+-- Optional: regenerate the default on UPDATE via a trigger, so the
+-- handler doesn't have to compute it. The handler-side option below
+-- is simpler and works without a trigger.
+```
+
+### Handler change
+
+`PUT /api/studies/:id/snapshot` accepts an optional
+`expected_revision_id` in the request body. The server:
+
+1. Reads the current row's `revision_id`.
+2. If the caller supplied an `expected_revision_id` AND it doesn't
+   match the current row, returns `409 { ok: false, message: "stale
+   revision", current_revision_id }`.
+3. Otherwise upserts a new `revision_id = gen_random_uuid()` along
+   with the snapshot.
+4. Returns the new `revision_id` in the success payload.
+
+`GET /api/studies/:id` returns `draft.revision_id` so clients can
+quote it on subsequent saves.
+
+### Client change
+
+`useAutoSaveStudy` tracks `lastKnownRevisionId` per active study:
+
+- Updated on every successful load / save / version-load (when the
+  server reports it).
+- Sent as `expected_revision_id` on the next save.
+- On `409`, the hook surfaces a new `SyncStatus.kind = "conflict"`
+  with a "Refresh" action that re-fetches and re-applies the
+  server's snapshot (with confirm).
+
+Local edits are NEVER discarded on a conflict — the user always
+sees the option to overwrite or reload before any destructive
+action.
+
+### Out of scope
+
+Operational-transform / Yjs-style real-time merging. The 409 +
+reload-or-overwrite flow is the cheapest correct primitive; a
+shared-real-time model can be layered on later.
+
+## Audit retention (recommendation)
+
+`study_audit_events` is append-only and will grow forever without
+maintenance. The events are useful for short-term incident response
+("who saved at 14:32?") but lose value rapidly: the `study_versions`
+table is the durable record for snapshot-level history. A 90-day
+retention window strikes a reasonable balance.
+
+### Recommended policy
+
+- Retain all `study_audit_events` rows for **90 days** by default.
+- Tag any event that should outlive the window with a different
+  `event_type` (e.g. `study.archived`, `study.published`); the
+  cleanup script preserves those.
+- Versions remain forever — they're the authoritative history;
+  `study_audit_events` is a thin operational breadcrumb log.
+
+### Implementation options (pick one)
+
+**A. Manual cron-driven DELETE (lowest setup cost).** Run a
+nightly job from anywhere that can reach the DB:
+
+```sql
+delete from public.study_audit_events
+where occurred_at < now() - interval '90 days'
+  and event_type not in (
+    'study.archived',
+    'study.published'
+  );
+```
+
+Wrap with a service-role connection string. GitHub Actions
+`schedule` works, as does any external scheduler.
+
+**B. Supabase Edge Function on a cron trigger.** Same SQL, scheduled
+inside the project. Lower latency to the DB; no external secrets
+needed.
+
+**C. PostgreSQL `pg_partman`-style partitioning.** Bigger lift —
+only worth it once event volume crosses ~10M rows. Out of scope
+for the current scale.
+
+We're going with (A) — easiest to set up, no infra dependency,
+trivially auditable. A future implementation will add a
+`.github/workflows/audit-cleanup.yml` running the SQL above.
+
 ## Open questions
 
-- **Concurrent editing.** Two analysts on the same draft: do we
-  last-writer-wins on debounced flushes, or move to an
-  operational-transform / Yjs model? Last-writer-wins is acceptable
-  near-term given the typical analyst pair flow (handoff, not
-  simultaneous edit), but should be revisited if the product
-  pushes into shared real-time editing.
 - **Snapshot size growth.** A jsonb snapshot is convenient but
   diffs poorly. If snapshots routinely cross ~5 MB, factor out
   the largest sub-models (services, lineage, imports) into

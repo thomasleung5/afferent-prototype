@@ -249,6 +249,10 @@ studiesRoutes.get("/:id", async (c) => {
 // ====================================================================
 
 studiesRoutes.put("/:id/snapshot", async (c) => {
+  // TODO(conflict-detection): accept body.expected_revision_id +
+  // check against study_drafts.revision_id; return 409 on mismatch.
+  // See docs/persistence-design.md "Concurrency: optimistic locking"
+  // for the full migration + handler + client plan.
   const db = getDbClient();
   if (!db) return notConfigured(c);
   const user = getAuthUser(c);
@@ -318,6 +322,36 @@ studiesRoutes.get("/:id/versions", async (c) => {
   if (error) return serverError(c, "GET /api/studies/:id/versions", error.message);
 
   return c.json({ ok: true, versions: versions ?? [] });
+});
+
+// ====================================================================
+// GET /api/studies/:id/versions/:versionId — load one version + snapshot
+// ====================================================================
+
+studiesRoutes.get("/:id/versions/:versionId", async (c) => {
+  const db = getDbClient();
+  if (!db) return notConfigured(c);
+  const user = getAuthUser(c);
+
+  const id = c.req.param("id");
+  const versionId = c.req.param("versionId");
+  if (!isUuid(id)) return badRequest(c, "Study id must be a UUID.", 400);
+  if (!isUuid(versionId)) return badRequest(c, "Version id must be a UUID.", 400);
+
+  const lookup = await lookupRoleForStudy(id, user.id);
+  if (!lookup) return notFound(c, "Study not found.");
+  if (!canRead(lookup.role)) return forbidden(c);
+
+  const { data: version, error } = await db
+    .from("study_versions")
+    .select("id, study_id, version_number, label, status, notes, snapshot, created_by, created_at")
+    .eq("id", versionId)
+    .eq("study_id", id)
+    .maybeSingle();
+  if (error) return serverError(c, "GET /api/studies/:id/versions/:versionId", error.message);
+  if (!version) return notFound(c, "Version not found.");
+
+  return c.json({ ok: true, version });
 });
 
 // ====================================================================

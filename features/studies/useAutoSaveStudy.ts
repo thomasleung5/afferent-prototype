@@ -112,6 +112,11 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     setStatus({ kind: "saving" });
     try {
       const snap = createBuildSnapshot(useBuildStore.getState());
+      // TODO(conflict-detection): pass expected_revision_id from a
+      // ref updated on load / save / version-load; on 409 surface a
+      // new SyncStatus.kind = "conflict" with refresh/overwrite UI.
+      // See docs/persistence-design.md → "Concurrency: optimistic
+      // locking".
       const res = await saveStudySnapshot(id, snap);
       if (!res.ok) {
         // 404 → study was deleted or membership revoked. Tell the
