@@ -6,7 +6,6 @@ import type { GlNode, GlStepDownModel, NodeKey } from "@/lib/data/capStepDownEng
 import { useBuildState } from "@/lib/store";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
-  BigFormula,
 } from "./TracePanel";
 
 interface OpenCell {
@@ -424,14 +423,6 @@ function CenterCellTrace({
       </TraceSection>
 
       <TraceSection title="How this allocation is calculated">
-        <BigFormula>
-          {fmt.dollars(firstTotal)}
-          {"  +  "}
-          {fmt.dollars(secondTotal)}
-          {"  =  "}
-          <span style={{ color: "var(--accent)" }}>{fmt.dollars(totalToNode)}</span>
-        </BigFormula>
-
         {perPool.length === 0 ? (
           <div style={{
             marginTop: 12,
