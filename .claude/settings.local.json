@@ -153,7 +153,24 @@
       "Bash(npx playwright *)",
       "Bash(gh run *)",
       "Bash(ANALYZE=1 npm run build)",
-      "Bash(sort -t: -k2 -nr)"
+      "Bash(sort -t: -k2 -nr)",
+      "Bash(echo \"RC=$?\")",
+      "Bash(echo \"exit=$?\")",
+      "Bash(supabase *)",
+      "Bash(tee /tmp/afferent-dev-api.log)",
+      "Bash(pkill -f \"tsx.*server/index\")",
+      "Bash(curl -sf http://localhost:8787/healthz)",
+      "Bash(tee /tmp/afferent-dev.log)",
+      "Bash(curl -sf http://localhost:3000/)",
+      "Bash(curl -s -w \"\\\\nHTTP %{http_code}\\\\n\" http://localhost:8787/api/organizations)",
+      "Bash(pkill -f \"npm run dev$\\\\|concurrently\\\\|tsx watch.*server/index\\\\|vite$\")",
+      "Bash(pkill -9 -f \"tsx\\\\|vite\\\\|concurrently\")",
+      "Bash(chmod +x /Users/thomasleung/Developer/afferent-prototype/scripts/prod-smoke.sh)",
+      "Bash(SUPABASE_URL=https://dummy.supabase.co SUPABASE_SERVICE_ROLE_KEY=dummy-key ALLOWED_ORIGINS=http://localhost:8789 PORT=8789 ./scripts/prod-smoke.sh)",
+      "Bash(docker info *)",
+      "Bash(curl -sf http://localhost:8789/healthz)",
+      "Bash(kill 66938)",
+      "Bash(git check-ignore *)"
     ]
   }
 }
