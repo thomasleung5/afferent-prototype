@@ -18,6 +18,7 @@ import {
 } from "react";
 import type { Session } from "@supabase/supabase-js";
 import { getSupabaseClient, isSupabaseConfigured } from "./supabaseClient";
+import { disableSandboxMode } from "@/lib/studies/sandboxMode";
 
 interface AuthContextValue {
   session: Session | null;
@@ -77,6 +78,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signOut = useCallback(async () => {
     const supabase = getSupabaseClient();
     if (!supabase) return;
+    // Sandbox is session-scoped — clear on sign-out so the next
+    // sign-in always starts behind the study-selection gate rather
+    // than silently reusing the previous user's "browse without a
+    // study" choice.
+    disableSandboxMode();
     await supabase.auth.signOut();
   }, []);
 

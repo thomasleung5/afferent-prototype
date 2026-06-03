@@ -7,6 +7,7 @@ import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
 import {
   clearConfirmCopy, resetConfirmCopy, switchConfirmCopy,
 } from "@/lib/studies/destructiveCopy";
+import { enableSandboxMode } from "@/lib/studies/sandboxMode";
 
 /** TopBar settings popover anchored to the fiscal-year badge. Houses the
  *  three model-wide, infrequent, destructive actions that previously
@@ -63,7 +64,13 @@ export function ModelSettingsMenu() {
       //    (which reads getActiveStudyId() defensively) skips the
       //    upcoming store mutations.
       if (activeStudy) clearActiveStudy();
-      // 2) Belt-and-braces: suppress autosave across the entire async
+      // 2) Enter sandbox mode — the demo workspace is explicitly
+      //    ephemeral exploration, so the StudySelectionGate at the
+      //    route layer should NOT fire after the switch. The user
+      //    leaves sandbox by picking a real study from the
+      //    StudyMenu (which clears the flag).
+      enableSandboxMode();
+      // 3) Belt-and-braces: suppress autosave across the entire async
       //    switch (resetAll + seed fetch + setState).
       //    withSuppressedAutosave is async-aware — the suppression
       //    extends until switchJurisdiction's Promise settles.

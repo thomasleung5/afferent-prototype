@@ -20,6 +20,8 @@ let passed = 0;
 {
   assert.equal(syncStatusTone({ kind: "local-only" }),     "neutral");
   assert.equal(syncStatusTone({ kind: "not-configured" }), "neutral");
+  assert.equal(syncStatusTone({ kind: "awaiting-study" }), "warn",
+    "awaiting-study reads as a gate — user has work to do");
   assert.equal(syncStatusTone({ kind: "idle" }),           "pos");
   assert.equal(syncStatusTone({ kind: "saving" }),         "neutral");
   assert.equal(syncStatusTone({ kind: "saved", at: 0 }),   "pos");
@@ -54,6 +56,9 @@ let passed = 0;
     syncStatusIsRetryable({ kind: "conflict", currentRevisionId: "abc" }),
     false,
   );
+  // awaiting-study is a gate, not a save failure — the user picks
+  // a study to resolve; a retry button would be meaningless.
+  assert.equal(syncStatusIsRetryable({ kind: "awaiting-study" }), false);
   passed++;
 }
 
@@ -75,6 +80,11 @@ let passed = 0;
   assert.equal(
     syncStatusLabel({ kind: "conflict", currentRevisionId: null }, now),
     "Conflict — reload to resolve",
+  );
+  assert.equal(
+    syncStatusLabel({ kind: "awaiting-study" }, now),
+    "No study selected — pick one to enable autosave",
+    "label must NOT read like a valid production save destination",
   );
   passed++;
 }

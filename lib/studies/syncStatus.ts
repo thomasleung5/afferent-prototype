@@ -6,10 +6,18 @@
  * a React renderer. */
 
 export type SyncStatus =
-  /** No active study; everything stays in localStorage on this device. */
+  /** No active study and we don't expect one — auth isn't configured,
+   *  server returned 503 for /api/studies, or the deployment is local
+   *  dev. Editing in localStorage is the intended persistence path. */
   | { kind: "local-only" }
   /** DB persistence isn't wired on this deployment. */
   | { kind: "not-configured" }
+  /** Authenticated, server reachable, but no active study has been
+   *  selected. Editing should be GATED behind a study-selection step
+   *  — the StudySelectionGate handles this at the route layer; this
+   *  status just drives the trigger label + tooltip when the user has
+   *  a non-gated view (export pages, sandbox mode, etc.). */
+  | { kind: "awaiting-study" }
   /** Active study selected, no pending edits, no in-flight save. */
   | { kind: "idle" }
   /** A save is queued (debounce timer) or actually in flight. */
@@ -33,6 +41,7 @@ export function syncStatusTone(s: SyncStatus): SyncTone {
   switch (s.kind) {
     case "local-only":     return "neutral";
     case "not-configured": return "neutral";
+    case "awaiting-study": return "warn";
     case "idle":           return "pos";
     case "saving":         return "neutral";
     case "saved":          return "pos";
@@ -46,6 +55,7 @@ export function syncStatusLabel(s: SyncStatus, now: number = Date.now()): string
   switch (s.kind) {
     case "local-only":     return "Local only";
     case "not-configured": return "Storage not configured";
+    case "awaiting-study": return "No study selected — pick one to enable autosave";
     case "idle":           return "Synced";
     case "saving":         return "Saving…";
     case "saved":          return `Saved · ${formatRelativeTime(s.at, now)}`;

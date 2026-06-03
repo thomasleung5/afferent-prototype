@@ -34,6 +34,7 @@ import { withSuppressedAutosave } from "@/lib/studies/autosaveGuard";
 import {
   clearActiveStudy, setActiveStudy, useActiveStudy,
 } from "@/lib/studies/activeStudy";
+import { disableSandboxMode, useSandboxMode } from "@/lib/studies/sandboxMode";
 import { emitStaleStudyNotice } from "@/lib/studies/staleStudyNotice";
 import {
   syncStatusLabel, syncStatusIsRetryable, syncStatusTone,
@@ -138,6 +139,18 @@ function StudyMenuMounted() {
     void refresh();
   }, [open, studies, serverState, refresh]);
 
+  // Eager mount-time refresh so the autosave subscription (enabled
+  // requires `serverState === "ok"`) fires immediately for users who
+  // picked a study via the StudySelectionGate without ever opening
+  // this popover. Cheap: one list-studies call per session.
+  useEffect(() => {
+    if (studies != null || serverState !== "idle") return;
+    void refresh();
+    // Intentionally only on mount — refresh() is stable enough; this
+    // useEffect should not re-run on dep changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Reset the versions sub-view whenever the active study changes
   // so we don't render a previous study's version list.
   useEffect(() => {
@@ -176,10 +189,15 @@ function StudyMenuMounted() {
     return creatableOrgs[0].id;
   }, [creatableOrgs, selectedOrgId, activeStudy]);
 
+  const isSandbox = useSandboxMode();
   const autosave = useAutoSaveStudy({
     activeStudyId: activeId,
     enabled: serverState === "ok" && activeId != null,
     isNotConfigured: serverState === "not-configured",
+    // StudyMenu only mounts when configured && session (see the top
+    // of this file), so callers can treat this as a stable `true`.
+    // Passed explicitly so the hook's contract is self-documenting.
+    isAuthenticated: true,
     onStudyMissing: () => {
       clearActiveStudy();
       emitStaleStudyNotice(STALE_NOTICE_MESSAGE);
@@ -249,6 +267,9 @@ function StudyMenuMounted() {
       });
       if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       setActiveStudy({ id: res.study.id, name: res.study.name });
+      // Picking a real study explicitly exits sandbox mode — the
+      // user has moved out of the ephemeral exploration state.
+      disableSandboxMode();
       // Initial baseline save — same as before.
       const snap = createBuildSnapshot(useBuildStore.getState());
       const seedRes = await saveStudySnapshot(res.study.id, snap);
@@ -356,15 +377,26 @@ function StudyMenuMounted() {
   // ── Rendering ────────────────────────────────────────────────────
 
   // The trigger is now a quiet save/status control: "Saved" / "Saving"
-  // / "Save failed" / "Local". Active-study context lives in the
-  // tooltip so the top bar doesn't visually duplicate the jurisdiction
-  // + FY context selector to its left.
+  // / "Save failed" / "Local" / "Select study" / "Sandbox". Active-
+  // study context lives in the tooltip so the top bar doesn't
+  // visually duplicate the jurisdiction + FY context selector to its
+  // left. Sandbox mode overrides the autosave status because while
+  // sandbox is on, the user has deliberately opted out of server
+  // persistence and shouldn't see a "Select study" prompt in the chip.
   const triggerLabel = working
     ? `${labelForWorking(working)}…`
-    : triggerSyncLabel(autosave.status);
+    : isSandbox && !activeStudy
+      ? "Sandbox"
+      : triggerSyncLabel(autosave.status);
   const triggerDisabled = working === "load" || working === "load-version";
-  const syncTone = syncStatusTone(autosave.status);
-  const triggerTitle = `${activeStudy ? `Active study: ${activeStudy.name}` : "Studies"} · ${syncStatusLabel(autosave.status)}`;
+  const syncTone = isSandbox && !activeStudy
+    ? "warn"
+    : syncStatusTone(autosave.status);
+  const triggerTitle = activeStudy
+    ? `Active study: ${activeStudy.name} · ${syncStatusLabel(autosave.status)}`
+    : isSandbox
+      ? "Sandbox mode — editing local-only; select a study from this menu to enable autosave."
+      : `Studies · ${syncStatusLabel(autosave.status)}`;
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -435,7 +467,11 @@ function StudyMenuMounted() {
                   s={s}
                   isFirst={i === 0}
                   isActive={s.id === activeId}
-                  onSelect={() => setActiveStudy({ id: s.id, name: s.name })}
+                  onSelect={() => {
+                    setActiveStudy({ id: s.id, name: s.name });
+                    // Picking a real study exits sandbox mode.
+                    disableSandboxMode();
+                  }}
                 />
               ))}
             </div>
@@ -549,6 +585,7 @@ function triggerSyncLabel(s: SyncStatus): string {
     case "idle":           return "Saved";
     case "local-only":     return "Local";
     case "not-configured": return "Local";
+    case "awaiting-study": return "Select study";
     case "conflict":       return "Conflict";
   }
 }

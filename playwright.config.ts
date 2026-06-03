@@ -60,8 +60,8 @@ export default defineConfig({
         baseURL: `http://localhost:${PORT_DEFAULT}`,
       },
       // Existing auth-disabled suite runs everything except the
-      // session-required StudyMenu spec.
-      testIgnore: ["**/studyMenu.spec.ts"],
+      // session-required StudyMenu + study-gate specs.
+      testIgnore: ["**/studyMenu.spec.ts", "**/studyGate.spec.ts"],
     },
     {
       name: "chromium-studies",
@@ -69,7 +69,7 @@ export default defineConfig({
         ...devices["Desktop Chrome"],
         baseURL: `http://localhost:${PORT_STUDIES}`,
       },
-      testMatch: ["**/studyMenu.spec.ts"],
+      testMatch: ["**/studyMenu.spec.ts", "**/studyGate.spec.ts"],
     },
   ],
 });

@@ -24,6 +24,16 @@ function fulfillJson(route: Route, status: number, body: unknown): Promise<void>
 
 test.describe("Studies popover", () => {
   test.beforeEach(async ({ page }) => {
+    // These tests target the StudyMenu popover specifically. The
+    // route-level StudySelectionGate would otherwise intercept the
+    // home page (no active study + authenticated = gate), so we
+    // pre-flip the sandbox-mode flag in sessionStorage before any
+    // page script runs. The dedicated tests/smoke/studyGate.spec.ts
+    // covers the gate's own behavior.
+    await page.addInitScript(() => {
+      try { window.sessionStorage.setItem("afferent.sandboxMode", "1"); }
+      catch { /* ignore */ }
+    });
     // Catch-all for any /api/* request not mocked by a specific route
     // below. Registered FIRST so the more-specific routes below win
     // (Playwright matches routes in REVERSE registration order, so
@@ -65,13 +75,13 @@ test.describe("Studies popover", () => {
 
   test("Studies button is visible when a session is present", async ({ page }) => {
     await page.goto("/");
-    // The trigger is a compact sync-status control: "Local" when no
-    // study is active, then flips to "Saved" / "Saving" / "Save
-    // failed" once one is selected. Using the test-id keeps the
-    // assertion stable across status transitions (and immune to the
-    // chevron suffix in the accessible name).
+    // The trigger is a compact sync-status control. With sandbox
+    // mode pre-set by beforeEach (so the gate doesn't intercept),
+    // the chip reads "Sandbox" until a study is picked, after
+    // which it flips to "Saved" / "Saving" / "Save failed". Using
+    // the test-id keeps the assertion stable across transitions.
     await expect(page.getByTestId("study-menu-trigger")).toBeVisible();
-    await expect(page.getByTestId("study-menu-trigger")).toContainText("Local");
+    await expect(page.getByTestId("study-menu-trigger")).toContainText("Sandbox");
   });
 
   test("popover lists mocked studies and lets the user select one", async ({ page }) => {

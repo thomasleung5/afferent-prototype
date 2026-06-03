@@ -34,15 +34,20 @@ import type { SyncStatus } from "@/lib/studies/syncStatus";
 const DEFAULT_DELAY_MS = 1500;
 
 export interface UseAutoSaveStudyArgs {
-  /** Study id to save snapshots to. `null` → local-only mode. */
+  /** Study id to save snapshots to. `null` → local-only / awaiting-study. */
   activeStudyId: string | null;
   /** Master enable switch (signed in, DB configured, etc.). When false,
-   *  the hook stays in `local-only` / `not-configured` and never
-   *  subscribes to store changes. */
+   *  the hook stays in `local-only` / `not-configured` / `awaiting-study`
+   *  and never subscribes to store changes. */
   enabled: boolean;
   /** True when the server returned 503 / "not configured" for the
    *  current session — surfaces the dedicated status label. */
   isNotConfigured: boolean;
+  /** True when the SPA is in an authenticated production session
+   *  (Supabase configured + signed in). Drives the choice between the
+   *  legitimate `local-only` fallback and the gating `awaiting-study`
+   *  status when no study is selected. */
+  isAuthenticated: boolean;
   /** Override for the debounce window (ms). Default 1500. */
   delayMs?: number;
   /** Called when the server reports the active study no longer exists
@@ -66,12 +71,12 @@ export interface UseAutoSaveStudyApi {
 
 export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyApi {
   const {
-    activeStudyId, enabled, isNotConfigured,
+    activeStudyId, enabled, isNotConfigured, isAuthenticated,
     delayMs = DEFAULT_DELAY_MS, onStudyMissing,
   } = args;
 
   const [status, setStatus] = useState<SyncStatus>(() =>
-    initialStatus({ enabled, isNotConfigured, activeStudyId }),
+    initialStatus({ enabled, isNotConfigured, activeStudyId, isAuthenticated }),
   );
 
   // Mutable refs so the subscribe callback always reads current values
@@ -196,7 +201,10 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
       cancelTimer();
       lastSavedAtRef.current = null;
       lastKnownRevisionIdRef.current = null;
-      setStatus({ kind: "local-only" });
+      // Authenticated + no study → "awaiting-study" so the trigger +
+      // tooltip read as a gate rather than a valid save destination.
+      // Unauthenticated (local dev / smoke) → genuine "local-only".
+      setStatus({ kind: isAuthenticated ? "awaiting-study" : "local-only" });
       return;
     }
     // Active study + enabled + DB configured — start in idle. The
@@ -206,7 +214,7 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     lastSavedAtRef.current = null;
     lastKnownRevisionIdRef.current = null;
     setStatus({ kind: "idle" });
-  }, [activeStudyId, enabled, isNotConfigured, cancelTimer]);
+  }, [activeStudyId, enabled, isNotConfigured, isAuthenticated, cancelTimer]);
 
   // Subscribe to store changes while we have an active study. The
   // callback is a stable closure that reads current ids/flags from
@@ -255,9 +263,14 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
 }
 
 function initialStatus(args: {
-  enabled: boolean; isNotConfigured: boolean; activeStudyId: string | null;
+  enabled: boolean;
+  isNotConfigured: boolean;
+  activeStudyId: string | null;
+  isAuthenticated: boolean;
 }): SyncStatus {
   if (args.isNotConfigured) return { kind: "not-configured" };
-  if (!args.enabled || !args.activeStudyId) return { kind: "local-only" };
+  if (!args.enabled || !args.activeStudyId) {
+    return { kind: args.isAuthenticated ? "awaiting-study" : "local-only" };
+  }
   return { kind: "idle" };
 }
