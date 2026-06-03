@@ -39,10 +39,24 @@ function RootComponent() {
     return <LoadingScreen/>;
   }
 
-  // Auth isn't configured at all → fall through to the app. The server
-  // middleware's dev-bypass / 401 behavior is the real gate; this lets
-  // unconfigured local dev environments still mount the SPA.
+  // Auth isn't configured at all. Two paths:
+  //
+  //   - In a development build (Vite dev server, Playwright smoke
+  //     project, etc.) we fall through to the app. The server's
+  //     dev-bypass / 401 behavior is still the real gate; this lets
+  //     contributors run `npm run dev` without provisioning a
+  //     Supabase project.
+  //
+  //   - In a production build this is a misconfiguration (the
+  //     STRICT_BUILD=1 check in scripts/checkBuildEnv.mjs should
+  //     have caught it earlier). Refuse to mount the app so users
+  //     can't be silently dropped into localStorage-only editing.
+  //     Defense-in-depth against any future path that bypasses the
+  //     build-time guard.
   if (!configured) {
+    if (import.meta.env.PROD) {
+      return <ConfigurationErrorScreen/>;
+    }
     return (
       <>
         <TopBar/>
@@ -97,6 +111,50 @@ function LoadingScreen() {
       fontSize: 12, color: "var(--ink-3)",
     }}>
       Loading…
+    </div>
+  );
+}
+
+/** Production-build fail-loud screen when the SPA was shipped without
+ *  client-side Supabase env vars. The STRICT_BUILD=1 guard in
+ *  scripts/checkBuildEnv.mjs should have stopped the build before it
+ *  got here; this is the runtime backstop. */
+function ConfigurationErrorScreen() {
+  return (
+    <div
+      data-testid="configuration-error-screen"
+      style={{
+        minHeight: "100vh",
+        display: "flex", alignItems: "center", justifyContent: "center",
+        padding: 24,
+        background: "var(--canvas)",
+      }}
+    >
+      <div style={{
+        maxWidth: 520,
+        background: "var(--paper)",
+        border: "1px solid var(--rule-strong)",
+        padding: "22px 24px",
+      }}>
+        <div className="mono" style={{
+          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.14em",
+          color: "var(--neg)", textTransform: "uppercase", marginBottom: 8,
+        }}>Configuration error</div>
+        <div className="display" style={{
+          fontSize: 18, fontWeight: 600, color: "var(--ink)",
+          letterSpacing: "-0.01em", marginBottom: 8,
+        }}>This build is missing client auth configuration</div>
+        <div style={{
+          fontSize: "var(--t-l7)", color: "var(--ink-2)", lineHeight: 1.5,
+        }}>
+          The SPA bundle was shipped without <code>VITE_SUPABASE_URL</code>
+          {" "}or <code>VITE_SUPABASE_ANON_KEY</code>, so the app cannot
+          talk to Supabase auth. Rebuild with both variables set
+          (Dockerfile <code>--build-arg</code>, CI build step, or your
+          deploy platform's env settings) and redeploy. See
+          {" "}<code>scripts/checkBuildEnv.mjs</code>.
+        </div>
+      </div>
     </div>
   );
 }
