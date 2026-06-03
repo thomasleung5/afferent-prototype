@@ -1,6 +1,7 @@
 
 import { Page, PageHeader } from "@/components/layout";
 import { Btn, Icon, NodeEyebrow } from "@/components/ui";
+import { IncludedDepartments } from "@/features/build/IncludedDepartments";
 import { ServicesTable } from "@/features/build/ServicesTable";
 
 export default function ServicesPage() {
@@ -16,6 +17,8 @@ export default function ServicesPage() {
           </Btn>
         }
       />
+
+      <IncludedDepartments/>
 
       <ServicesTable/>
     </Page>

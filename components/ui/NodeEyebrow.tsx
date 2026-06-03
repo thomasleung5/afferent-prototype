@@ -1,11 +1,10 @@
 import { SectionEyebrow } from "./SectionEyebrow";
 
 type NodeId =
-  | "departments" | "services" | "labor" | "operating" | "overhead" | "functional" | "volume"
+  | "services" | "labor" | "operating" | "overhead" | "functional" | "volume"
   | "costs" | "policy" | "feeSchedule" | "benchmarks";
 
 const NODE_LABEL: Record<NodeId, string> = {
-  departments: "Departments",
   services:   "Services",
   labor:      "Labor",
   operating:  "Operating Costs",

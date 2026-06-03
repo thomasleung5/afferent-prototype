@@ -2,7 +2,6 @@ import { createFileRoute, Outlet } from "@tanstack/react-router";
 import { SubNav, type SubNavItem } from "@/components/layout";
 
 const ITEMS: SubNavItem[] = [
-  { href: "/build/departments",            label: "Departments" },
   { href: "/build/services",               label: "Services" },
   { href: "/build/labor",                  label: "Labor" },
   { href: "/build/operating",              label: "Operating Costs" },
