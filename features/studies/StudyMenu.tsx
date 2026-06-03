@@ -632,39 +632,59 @@ function SyncStatusRow({
   const tone = syncStatusTone(status);
   const label = syncStatusLabel(status);
   const showRetry = syncStatusIsRetryable(status);
+  // Inline error / conflict messages instead of hiding them behind a
+  // title attribute — analysts couldn't see why a save failed without
+  // hovering, and the verbose status fits in the popover row.
+  const detail = status.kind === "error"
+    ? status.message
+    : null;
   return (
     <div style={{
       padding: "8px 14px",
       borderBottom: "1px solid var(--rule)",
       background: "var(--paper-2)",
-      display: "flex", alignItems: "center", gap: 8,
     }}>
-      <SyncDot tone={tone} pulse={status.kind === "saving"}/>
-      <span style={{
-        flex: 1,
-        fontSize: "var(--t-l7)",
-        color: tone === "neg" ? "var(--neg)" : "var(--ink-2)",
-        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-      }} title={status.kind === "error" ? status.message : undefined}>
-        {label}
-      </span>
-      {showRetry && (
-        <button
-          type="button"
-          onClick={onSaveNow}
+      <div style={{
+        display: "flex", alignItems: "center", gap: 8,
+      }}>
+        <SyncDot tone={tone} pulse={status.kind === "saving"}/>
+        <span style={{
+          flex: 1,
+          fontSize: "var(--t-l7)",
+          color: tone === "neg" ? "var(--neg)" : "var(--ink-2)",
+          overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+        }}>
+          {label}
+        </span>
+        {showRetry && (
+          <button
+            type="button"
+            onClick={onSaveNow}
+            style={{
+              all: "unset",
+              cursor: "pointer",
+              fontSize: "var(--t-l8)",
+              fontWeight: 500,
+              color: "var(--ink)",
+              padding: "2px 8px",
+              border: "1px solid var(--rule-strong)",
+              background: "var(--paper)",
+            }}
+          >
+            Save now
+          </button>
+        )}
+      </div>
+      {detail && (
+        <div
+          data-testid="sync-status-detail"
           style={{
-            all: "unset",
-            cursor: "pointer",
+            marginTop: 4,
             fontSize: "var(--t-l8)",
-            fontWeight: 500,
-            color: "var(--ink)",
-            padding: "2px 8px",
-            border: "1px solid var(--rule-strong)",
-            background: "var(--paper)",
+            color: "var(--neg)",
+            wordBreak: "break-word",
           }}
-        >
-          Save now
-        </button>
+        >{detail}</div>
       )}
     </div>
   );
