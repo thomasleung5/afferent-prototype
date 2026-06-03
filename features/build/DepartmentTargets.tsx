@@ -27,6 +27,10 @@ function Bar({ pct }: { pct: number }) {
 export function DepartmentTargets() {
   const { policyTargets, updatePolicyTarget, derived } = useBuildState();
   const { dept: searchDept } = useSearch({ from: "/build/policy" });
+  const activeTargets = useMemo(
+    () => policyTargets.filter((t) => derived.activeFeeDepts.includes(t.dept)),
+    [policyTargets, derived.activeFeeDepts],
+  );
 
   // Annual subsidy per dept: Σ annualCost × (1 − effectiveTarget/100) across
   // recoverable fees in the dept, using each fee's effective target (so any
@@ -47,7 +51,7 @@ export function DepartmentTargets() {
   // BenchmarksTable / CostOfServiceTable / FeeScheduleTable.
   useEffect(() => {
     if (!searchDept) return;
-    const row = policyTargets.find((t) => t.dept === searchDept);
+    const row = activeTargets.find((t) => t.dept === searchDept);
     if (!row) return;
     const handle = window.setTimeout(() => {
       const el = document.querySelector<HTMLElement>(`[data-row-id="${CSS.escape(row.id)}"]`);
@@ -57,7 +61,7 @@ export function DepartmentTargets() {
       window.setTimeout(() => el.classList.remove("row-flash"), 1700);
     }, 30);
     return () => window.clearTimeout(handle);
-  }, [searchDept, policyTargets]);
+  }, [searchDept, activeTargets]);
 
   const cols: Column<PolicyTarget>[] = [
     {
@@ -135,12 +139,12 @@ export function DepartmentTargets() {
 
   return (
     <div>
-      <SectionLabel right={`${policyTargets.length} departments`}>
+      <SectionLabel right={`${activeTargets.length} departments`}>
         Department targets
       </SectionLabel>
       <DataTable
         cols={cols}
-        rows={policyTargets}
+        rows={activeTargets}
         defaultSort={{ key: "dept", dir: "asc" }}
       />
     </div>

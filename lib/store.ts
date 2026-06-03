@@ -312,6 +312,10 @@ interface BuildActions {
   /** Set the active fiscal year. Caller is responsible for passing a
    *  value that belongs to the current jurisdiction's fiscalYears. */
   setActiveFiscalYear: (fy: string) => void;
+  /** Replace the active study's fee-department subset. This scopes
+   *  department dropdowns and rollups without changing the canonical
+   *  registry. */
+  setActiveFeeDepts: (depts: DeptCode[]) => void;
   createVersion: (input?: { label?: string; status?: StudyVersionStatus; notes?: string }) => StudyVersion;
   setComparisonVersion: (id: string | null) => void;
   /** Edit one Functional Allocation bucket (name, description,
@@ -335,6 +339,25 @@ interface BuildActions {
 const emptyPending: Record<Domain, UnmappedRow[]> = {
   positions: [], operating: [], services: [], fees: [], volume: [], cap: [],
 };
+
+function feeDeptsFromServices(services: Service[]): DeptCode[] {
+  return FEE_DEPTS.filter((dept) => services.some((s) => s.dept === dept));
+}
+
+function mergeActiveFeeDeptsFromServices(current: DeptCode[], services: Service[]): DeptCode[] {
+  const detected = feeDeptsFromServices(services);
+  if (detected.length === 0) return current;
+  const active = new Set(current);
+  for (const dept of detected) active.add(dept);
+  return FEE_DEPTS.filter((dept) => active.has(dept));
+}
+
+function activeFeeDeptsForSnapshot(snapshot: BuildSnapshot): DeptCode[] {
+  return Array.isArray(snapshot.activeFeeDepts) && snapshot.activeFeeDepts.length > 0
+    ? snapshot.activeFeeDepts
+    : feeDeptsFromServices(snapshot.services);
+}
+
 /** Default step-down order — a list of center identity keys (glCodes
  *  or `seed:center:NAME` synth) sorted by total $ descending, then by
  *  key ascending for determinism. The display name is resolved at the
@@ -402,10 +425,7 @@ const initialState = (): BuildState => {
     imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
     functionalAllocation: FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
-    activeFeeDepts: Array.from(new Set<DeptCode>([
-      ...SERVICES.map((s) => s.dept),
-      ...PRODUCTIVE_HOURS.map((p) => p.dept),
-    ])),
+    activeFeeDepts: feeDeptsFromServices(SERVICES),
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
   };
@@ -792,6 +812,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return {
             services,
             volume,
+            activeFeeDepts: mergeActiveFeeDeptsFromServices(s.activeFeeDepts, services),
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, services: [...s.pendingReview.services, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "services", result, at: new Date().toISOString() }],
@@ -808,6 +829,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           return {
             services,
             volume,
+            activeFeeDepts: mergeActiveFeeDeptsFromServices(s.activeFeeDepts, services),
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, fees: [...s.pendingReview.fees, ...r.unmapped] },
             imports: [...s.imports, { id: Date.now(), domain: "fees", result, at: new Date().toISOString() }],
@@ -1186,6 +1208,28 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       setActiveFiscalYear: (fy) =>
         set(() => ({ activeFiscalYear: fy })),
 
+      setActiveFeeDepts: (depts) =>
+        set((s) => {
+          const valid = new Set(FEE_DEPTS);
+          const deduped = depts.filter((d, i) => valid.has(d) && depts.indexOf(d) === i);
+          const activeFeeDepts = deduped.length > 0 ? deduped : s.activeFeeDepts;
+          const existingTargets = new Set(s.policyTargets.map((t) => t.dept));
+          const missingTargets = activeFeeDepts
+            .filter((dept) => !existingTargets.has(dept))
+            .map((dept) => ({
+              id: `target-${dept.toLowerCase()}`,
+              dept,
+              target: 100,
+              note: "Default full cost recovery target",
+            }));
+          return {
+            activeFeeDepts,
+            policyTargets: missingTargets.length
+              ? [...s.policyTargets, ...missingTargets]
+              : s.policyTargets,
+          };
+        }),
+
       createVersion: (input) => {
         let created!: StudyVersion;
         set((s) => {
@@ -1257,6 +1301,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capCenterOrder: [],
           imports: [],
           functionalAllocation: [],
+          activeFeeDepts: [],
           versions: [],
           comparisonVersionId: null,
         });
@@ -1266,7 +1311,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       // shallow merge, so spreading a snapshot leaves versions /
       // comparisonVersionId / actions untouched while overwriting
       // every persisted field at once. Used by lib/snapshotIO.ts.
-      loadSnapshot: (snapshot) => set({ ...snapshot }),
+      loadSnapshot: (snapshot) => set({
+        ...snapshot,
+        activeFeeDepts: activeFeeDeptsForSnapshot(snapshot),
+      }),
     }),
     {
       name: STORAGE_KEY,

@@ -8,17 +8,19 @@
  *   2. SourceTag coercion — unknown/missing source values become "seed";
  *      valid values pass through. operating rows get costType + laborType
  *      defaults when missing.
- *   3. allocationPercent backfill — preserves existing % values and
+ *   3. activeFeeDepts backfill — derives the fee department list from the
+ *      service/fee catalog when older state is missing the explicit list.
+ *   4. allocationPercent backfill — preserves existing % values and
  *      derives missing ones from amount / center total.
- *   4. capCenterTotals backfill — synthesized from Σ amount per center
+ *   5. capCenterTotals backfill — synthesized from Σ amount per center
  *      when missing.
- *   5. versions backfill — creates one "Recovered baseline" entry when
+ *   6. versions backfill — creates one "Recovered baseline" entry when
  *      none exist; preserves existing versions otherwise.
- *   6. comparisonVersionId — repointed to the first version when the
+ *   7. comparisonVersionId — repointed to the first version when the
  *      saved id no longer exists.
- *   7. functionalAllocation — seeds when missing; new-shape buckets
+ *   8. functionalAllocation — seeds when missing; new-shape buckets
  *      pass through untouched.
- *   8. Idempotency — running migration twice produces identical state.
+ *   9. Idempotency — running migration twice produces identical state.
  */
 
 import assert from "node:assert/strict";
@@ -97,7 +99,23 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ SourceTag coercion normalizes legacy values + costType / laborType backfill");
 }
 
-// ── 3. allocationPercent backfill ─────────────────────────────────────────
+// ── 3. activeFeeDepts backfill ────────────────────────────────────────────
+{
+  const state: Record<string, unknown> = {
+    activeFeeDepts: [],
+    services: [
+      { id: "svc-plan", name: "Planning Review", dept: "PLAN", volume: 10, hours: 1, cost: 0, fee: 0, peer: 0, target: 100, source: "seed" },
+      { id: "svc-police", name: "Police Report", dept: "PD", volume: 5, hours: 1, cost: 0, fee: 0, peer: 0, target: 100, source: "seed" },
+      { id: "svc-admin", name: "Records Request", dept: "CLK", volume: 3, hours: 1, cost: 0, fee: 0, peer: 0, target: 100, source: "seed" },
+    ],
+  };
+  migratePersistedState(state as never);
+
+  assert.deepEqual(state.activeFeeDepts, ["CLK", "PLAN", "PD"]);
+  console.log("  ✓ activeFeeDepts derives from the fee/service catalog");
+}
+
+// ── 4. allocationPercent backfill ─────────────────────────────────────────
 {
   const state = {
     capPools: [
@@ -120,7 +138,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ allocationPercent derived from amount/center total when missing");
 }
 
-// ── 4. capCenterTotals backfill ───────────────────────────────────────────
+// ── 5. capCenterTotals backfill ───────────────────────────────────────────
 {
   const state: Record<string, unknown> = {
     capPools: [
@@ -138,7 +156,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ capCenterTotals synthesized from Σ amount per center");
 }
 
-// ── 5. versions backfill (seed when missing) ──────────────────────────────
+// ── 6. versions backfill (seed when missing) ──────────────────────────────
 {
   const state: Record<string, unknown> = { imports: [] };
   migratePersistedState(state as never);
@@ -151,7 +169,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ versions backfilled with a single 'Recovered baseline'");
 }
 
-// ── 6. comparisonVersionId stays in sync with versions ────────────────────
+// ── 7. comparisonVersionId stays in sync with versions ────────────────────
 {
   const existingVersions = [
     {
@@ -178,7 +196,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ comparisonVersionId repointed when stale, preserved when valid");
 }
 
-// ── 7. functionalAllocation — new-shape buckets pass through ─────────────
+// ── 8. functionalAllocation — new-shape buckets pass through ─────────────
 {
   const state: Record<string, unknown> = {
     functionalAllocation: [
@@ -197,7 +215,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ functionalAllocation new-shape buckets pass through unchanged");
 }
 
-// ── 8. Idempotency ────────────────────────────────────────────────────────
+// ── 9. Idempotency ────────────────────────────────────────────────────────
 // Each scenario runs migratePersistedState twice and asserts the state is
 // byte-identical across the two passes. Versions are stripped because
 // makeStudyVersion stamps a fresh timestamp + id when it has to mint a

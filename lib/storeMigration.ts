@@ -7,7 +7,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  DeptCode, FeeFormula, OperatingLine, ProductiveHoursRow, Service, SourceTag, VolumeRow,
+  DeptCode, FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { FEE_DEPTS } from "./data/departments";
 import { defaultCenterOrder } from "./store";
@@ -66,14 +66,7 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     for (const s of state.services ?? []) {
       if (valid.has((s as Service).dept)) active.add((s as Service).dept);
     }
-    for (const p of state.productiveHours ?? []) {
-      if (valid.has((p as ProductiveHoursRow).dept)) active.add((p as ProductiveHoursRow).dept);
-    }
-    for (const o of state.operating ?? []) {
-      const dept = (o as OperatingLine).dept;
-      if (valid.has(dept as DeptCode)) active.add(dept as DeptCode);
-    }
-    state.activeFeeDepts = [...active];
+    state.activeFeeDepts = FEE_DEPTS.filter((dept) => active.has(dept));
   }
   if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
   if (state.capBasisUnits == null) {
