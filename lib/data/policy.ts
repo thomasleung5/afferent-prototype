@@ -21,8 +21,10 @@ export const POLICY_TARGETS: PolicyTarget[] = [
  * service's name for export readability. The legacy "Nonprofit Event
  * Permit" exception was dropped because LAH's small seed only models
  * Planning / Building / Engineering — there's no event-permit service to
- * link to. */
+ * link to. No water-heater entry either: that line item doesn't exist
+ * in the LAH services catalog. */
 export const POLICY_EXCEPTIONS: PolicyException[] = [
-  { id: "exc-adu",   serviceId: "plan-adu",   fee: "Pre-Application — ADU Formal Meeting", target: 50, note: "Housing incentive" },
-  { id: "exc-solar", serviceId: "bldg-solar", fee: "Residential Solar / PV Permit",        target: 60, note: "Sustainability policy" },
+  { id: "exc-adu",     serviceId: "plan-adu",   fee: "Pre-Application — ADU Formal Meeting", target: 50, note: "Housing incentive" },
+  { id: "exc-adu-eng", serviceId: "eng-adu",    fee: "Engineering Review — ADU / SB9",       target: 50, note: "Housing incentive" },
+  { id: "exc-solar",   serviceId: "bldg-solar", fee: "Residential Solar / PV Permit",        target: 60, note: "Sustainability policy" },
 ];

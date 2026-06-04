@@ -6080,6 +6080,14 @@
       "target": 65,
       "note": "Sustainability policy — reduced from 80%",
       "source": "seed"
+    },
+    {
+      "id": "exc-water-heater",
+      "serviceId": "bldg-bld-007-water-heater-change-out",
+      "fee": "Water Heater Change-Out",
+      "target": 70,
+      "note": "Energy efficiency incentive",
+      "source": "seed"
     }
   ],
   "lineage": {},
