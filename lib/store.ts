@@ -975,11 +975,19 @@ export const useBuildStore = create<BuildState & BuildActions>()(
 
           // ── 1. Centers ─────────────────────────────────────────────────
           // Upsert totals by center identity key (glCode when imported,
-          // synth `seed:center:NAME` when not). Append unseen keys to
-          // the step-down order. Build a name → key map so the pool
-          // merge below can stamp centerGlCode on each imported pool.
+          // synth `seed:center:NAME` when not). Build a name → key map
+          // so the pool merge below can stamp centerGlCode on each
+          // imported pool.
+          //
+          // Step-down order: start fresh from the import so the
+          // sequence mirrors the order centers appear in the parsed
+          // source document. Pre-existing centers from prior imports
+          // / the seed are preserved as a safety net at the end (see
+          // `nextOrder.push(...stale)` below), so a re-import that
+          // doesn't re-declare every center doesn't silently drop
+          // orphaned pool centers from the engine.
           const nextTotals = { ...s.capCenterTotals };
-          const nextOrder = [...s.capCenterOrder];
+          const nextOrder: string[] = [];
           const nextCenterSources = { ...s.capCenterSources };
           const importedCenterKeyByName = new Map<string, string>();
           for (const { entity } of centersIn) {
@@ -1124,6 +1132,14 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             directByPoolId.set(entity.poolId, entity);
           }
           const mergedDirect = [...directByPoolId.values()];
+
+          // Safety-net append: keep any prior-state centers the new
+          // import didn't re-declare so their pools don't lose their
+          // place in the step-down sequence. Mirrors setCapCenterOrder
+          // / moveCenter's "missing-tail" pattern (lines ~1169-1192).
+          const inNextOrder = new Set(nextOrder);
+          const staleCenters = s.capCenterOrder.filter((k) => !inNextOrder.has(k));
+          if (staleCenters.length > 0) nextOrder.push(...staleCenters);
 
           return {
             capPools: mergedPools,
