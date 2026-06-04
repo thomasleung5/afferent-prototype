@@ -182,17 +182,26 @@ export function serviceCosts(
   });
 }
 
-/** Recovery target for a service: dept-level policy unless overridden by a
- *  named exception. Match is case-insensitive on the fee name. */
+/** Recovery target for a service: dept-level policy unless overridden by
+ *  an exception. Exceptions match by stable `serviceId` first (the way
+ *  every new exception is authored after the dropdown lands) and fall
+ *  back to a case-insensitive fee-name match for legacy data — saved
+ *  studies authored before the field existed only carry `fee`. */
 function targetFor(
   service: Service,
   deptTargets: PolicyTarget[],
   exceptions: PolicyException[],
 ): number {
-  const exc = exceptions.find(
-    (e) => e.fee.toLowerCase() === service.name.toLowerCase(),
+  // serviceId match wins outright when present and matches this row.
+  const byId = exceptions.find((e) => e.serviceId === service.id);
+  if (byId) return byId.target;
+  // Name match for legacy exceptions only — skip any row that carries
+  // a serviceId so an id-backed exception for a *different* service
+  // can't accidentally hijack a row that happens to share a name.
+  const byName = exceptions.find(
+    (e) => !e.serviceId && e.fee.toLowerCase() === service.name.toLowerCase(),
   );
-  if (exc) return exc.target;
+  if (byName) return byName.target;
   const t = deptTargets.find((p) => p.dept === service.dept);
   return t?.target ?? service.target ?? 100;
 }

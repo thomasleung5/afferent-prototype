@@ -595,7 +595,14 @@ export interface PolicyTarget {
 
 export interface PolicyException {
   id: string;
-  /** Service id from `lib/data/services.ts`, or a free-form fee name. */
+  /** Stable reference to the underlying Service row. When set, calc /
+   *  comparison / export paths match by this id and ignore `fee` for
+   *  matching purposes. Optional for backward compatibility with
+   *  saved studies that only stored the free-form fee name. */
+  serviceId?: string;
+  /** Display label and legacy match key. For new id-backed exceptions
+   *  this is also kept in sync with the linked service's name so the
+   *  export reads naturally. */
   fee: string;
   target: number;
   note: string;

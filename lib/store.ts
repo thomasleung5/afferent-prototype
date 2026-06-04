@@ -533,12 +533,18 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set((s) => ({ policyExceptions: s.policyExceptions.map((e) => e.id === id ? { ...e, ...patch } : e) })),
 
       addPolicyException: () =>
-        set((s) => ({
-          policyExceptions: [
-            ...s.policyExceptions,
-            { id: `exc-${Date.now()}`, fee: "New fee exception", target: 50, note: "" },
-          ],
-        })),
+        set((s) => {
+          // Default to the first available service so the exception is
+          // already id-bound. If there are zero services (a brand-new
+          // empty study, or seed-only-empty), fall back to the legacy
+          // free-form placeholder — the dropdown row will surface it as
+          // "(unlinked)" and the user can pick a real service later.
+          const seed = s.services[0];
+          const entry: PolicyException = seed
+            ? { id: `exc-${Date.now()}`, serviceId: seed.id, fee: seed.name, target: 50, note: "" }
+            : { id: `exc-${Date.now()}`, fee: "New fee exception", target: 50, note: "" };
+          return { policyExceptions: [...s.policyExceptions, entry] };
+        }),
 
       removePolicyException: (id) =>
         set((s) => ({ policyExceptions: s.policyExceptions.filter((e) => e.id !== id) })),

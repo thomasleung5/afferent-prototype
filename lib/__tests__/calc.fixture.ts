@@ -153,4 +153,49 @@ const fbhr = Object.fromEntries(
   console.log("  ✓ per-row math still runs for non-recoverable rows");
 }
 
+// ── 7. PolicyException matching: serviceId wins; legacy name still works ─
+//      Pins targetFor's contract through feeComparisons (the only public
+//      surface that reaches it). Three branches:
+//
+//        a. id-backed exception overrides the dept target,
+//        b. legacy name-backed exception (no serviceId) overrides the
+//           dept target via case-insensitive name match,
+//        c. an exception whose serviceId points at a row that doesn't
+//           exist falls through to the dept target without crashing,
+//           AND an id-backed exception for service A does NOT hijack
+//           service B even when B's name matches the exception's `fee`. */
+{
+  // Two services, one shares its name with the other to prove that
+  // id-backing wins over name collision.
+  const planA = svc({ id: "svc-A", name: "ADU Permit", dept: "PLAN", volume: 10, hours: 5, fee: 100 });
+  const planB = svc({ id: "svc-B", name: "ADU Permit", dept: "PLAN", volume: 10, hours: 5, fee: 100 });
+  const planTarget = { id: "t-plan", dept: "PLAN" as const, target: 100, note: "" };
+
+  // (a) id-backed → only the matching service id gets the override.
+  {
+    const costs = serviceCosts([planA, planB], fbhr);
+    const exc = [{ id: "exc-id", serviceId: "svc-A", fee: "Something Else", target: 50, note: "" }];
+    const [cmpA, cmpB] = feeComparisons(costs, [planA, planB], [planTarget], exc);
+    assert.equal(cmpA.target, 50, "serviceId match overrides dept target on svc-A");
+    assert.equal(cmpB.target, 100, "svc-B keeps dept target — id-backed exception did NOT hijack it via name");
+  }
+
+  // (b) legacy name-backed → applies via case-insensitive fee-name match.
+  {
+    const costs = serviceCosts([planA], fbhr);
+    const exc = [{ id: "exc-legacy", fee: "adu permit", target: 25, note: "" }];
+    const [cmpA] = feeComparisons(costs, [planA], [planTarget], exc);
+    assert.equal(cmpA.target, 25, "legacy name match (case-insensitive) still overrides");
+  }
+
+  // (c) orphan serviceId → no crash, falls through to dept target.
+  {
+    const costs = serviceCosts([planA], fbhr);
+    const exc = [{ id: "exc-orphan", serviceId: "svc-DOES-NOT-EXIST", fee: "ADU Permit", target: 25, note: "" }];
+    const [cmpA] = feeComparisons(costs, [planA], [planTarget], exc);
+    assert.equal(cmpA.target, 100, "orphan exception falls through; name match is suppressed because serviceId is set");
+  }
+  console.log("  ✓ exception matching: id wins, legacy name fallback, orphan falls through safely");
+}
+
 console.log("\nAll calc assertions passed.");
