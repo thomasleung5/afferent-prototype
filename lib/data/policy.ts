@@ -15,8 +15,14 @@ export const POLICY_TARGETS: PolicyTarget[] = [
   { id: "policy-eng",  dept: "ENG",  target:  85, note: "Partial subsidy" },
 ];
 
+/* `serviceId` links each exception to a stable row in lib/data/services.ts
+ * so calc / comparison / export paths match by id rather than relying on
+ * fee-name string equality. `fee` is kept in sync with the linked
+ * service's name for export readability. The legacy "Nonprofit Event
+ * Permit" exception was dropped because LAH's small seed only models
+ * Planning / Building / Engineering — there's no event-permit service to
+ * link to. */
 export const POLICY_EXCEPTIONS: PolicyException[] = [
-  { id: "exc-adu",       fee: "ADU Permit",              target: 50, note: "Housing incentive" },
-  { id: "exc-nonprofit", fee: "Nonprofit Event Permit",  target: 25, note: "Community subsidy" },
-  { id: "exc-solar",     fee: "Small Solar Permit",      target: 60, note: "Sustainability policy" },
+  { id: "exc-adu",   serviceId: "plan-adu",   fee: "Pre-Application — ADU Formal Meeting", target: 50, note: "Housing incentive" },
+  { id: "exc-solar", serviceId: "bldg-solar", fee: "Residential Solar / PV Permit",        target: 60, note: "Sustainability policy" },
 ];

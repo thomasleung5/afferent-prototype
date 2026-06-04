@@ -6067,14 +6067,16 @@
   "policyExceptions": [
     {
       "id": "exc-adu",
-      "fee": "ADU Permit",
+      "serviceId": "plan-pln-009-building-permit-review-new-single-family-residential-adu",
+      "fee": "Building Permit Review - New Single Family Residential / ADU",
       "target": 40,
       "note": "Housing affordability incentive",
       "source": "seed"
     },
     {
       "id": "exc-solar",
-      "fee": "Residential Solar / PV Permit",
+      "serviceId": "bldg-bld-003-residential-solar-photovoltaic-system-15kw-or-less",
+      "fee": "Residential Solar Photovoltaic System - 15kW or Less",
       "target": 65,
       "note": "Sustainability policy — reduced from 80%",
       "source": "seed"
