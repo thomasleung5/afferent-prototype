@@ -79,7 +79,7 @@ export function PolicyExceptions() {
   const cols: Column<PolicyException>[] = [
     {
       key: "fee",
-      label: "Fee",
+      label: "Fee Item",
       width: "minmax(240px, 1.6fr)",
       sortable: true,
       sortKey: (r) => {
@@ -113,8 +113,8 @@ export function PolicyExceptions() {
     },
     {
       key: "target",
-      label: "Target",
-      width: "120px",
+      label: "Target Recovery",
+      width: "150px",
       align: "right",
       sortable: true,
       sortKey: (r) => r.target,
@@ -152,14 +152,14 @@ export function PolicyExceptions() {
     },
     {
       key: "note",
-      label: "Policy note",
+      label: "Notes",
       width: "minmax(220px, 2fr)",
       sortable: true,
       render: (r) => (
         <CellInput
           value={r.note}
           onChange={(v) => updatePolicyException(r.id, { note: String(v) })}
-          placeholder="Optional policy note"
+          placeholder="Optional notes"
         />
       ),
     },
