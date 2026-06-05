@@ -29,7 +29,7 @@ export interface ExcelPreviewOk {
   sheets: PreviewSheet[];
 }
 
-export interface ExcelPreviewFail {
+interface ExcelPreviewFail {
   ok: false;
   message: string;
 }

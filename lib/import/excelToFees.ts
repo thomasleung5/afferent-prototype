@@ -100,7 +100,7 @@ export function autoMapFees(sheet: PreviewSheet): FeeAutoMapping {
   };
 }
 
-export interface ExcelFeeWarning {
+interface ExcelFeeWarning {
   /** 1-based source row number (matches what the analyst sees in Excel). */
   row: number;
   reason: string;

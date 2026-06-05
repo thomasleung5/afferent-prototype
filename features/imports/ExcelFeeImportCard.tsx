@@ -12,7 +12,7 @@ import type {
   DomainMapping, ExcelImportDomainSpec,
 } from "@/lib/import/excelDomainSpec";
 import {
-  useExcelImport, ExcelUploadButton, ExcelMappingPanel,
+  useExcelImport, ExcelMappingPanel,
   type ExcelImportState,
 } from "@/features/imports/ExcelImportCard";
 import { useBuildState } from "@/lib/store";

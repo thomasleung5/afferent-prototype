@@ -67,14 +67,13 @@ export const INST_DEPTS = [
 
 /** One row of the catalog. Derived so the field types reflect the
  *  literal values (e.g. `kind: "indirect" | "direct"`). */
-export type InstDept = (typeof INST_DEPTS)[number];
+type InstDept = (typeof INST_DEPTS)[number];
 
 /** Union of every code in INST_DEPTS. Removing an entry above turns
  *  every reference to that code into a compile error at the use site —
  *  no separately-maintained union to drift. */
 export type InstDeptCode = InstDept["code"];
 
-export type IndirectDeptCode = Extract<InstDept, { kind: "indirect" }>["code"];
 
 // ---------------------------------------------------------------------------
 // Derived projections — every map / set below is computed from INST_DEPTS so

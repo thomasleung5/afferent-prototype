@@ -46,9 +46,12 @@ export function displayRecommendedFee(
 /** Display label for the full-cost-of-service (unit cost before
  *  policy target is applied). Renders the comparison's `unitCost` —
  *  always meaningful (cost to deliver) regardless of recoverable
- *  status, so this helper doesn't gate on isRecoverableFeeRow. */
+ *  status, so this helper doesn't gate on isRecoverableFeeRow. The
+ *  `service` argument is retained for API parity with the sibling
+ *  display* helpers (callers pass `(service, comparison)` uniformly). */
 export function displayCostOfService(
-  service: Service,
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  _service: Service,
   comparison?: Pick<FeeComparison, "unitCost">,
 ): string {
   if (!comparison) return "—";

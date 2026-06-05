@@ -22,7 +22,7 @@ export { CellInput } from "./CellInput";
 export { CellSelect } from "./CellSelect";
 export { FormulaLine, SourcePill } from "./Formula";
 export { DrilldownShell, DrilldownColumn } from "./Drilldown";
-export { InlineLinkRow, type InlineLink } from "./InlineLinkRow";
+export { InlineLinkRow } from "./InlineLinkRow";
 export { NodeEyebrow } from "./NodeEyebrow";
 export { StatusPill } from "./StatusPill";
 export type { PillKind } from "./StatusPill";

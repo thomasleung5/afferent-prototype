@@ -1,4 +1,3 @@
-import type { DeptCode } from "@/lib/types";
 import { DEPTS } from "@/lib/data/departments";
 import { RecoveryMeter } from "@/components/ui";
 import { fmt } from "@/lib/format";

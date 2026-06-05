@@ -23,13 +23,13 @@ import type { PreviewSheet } from "@/lib/import/excelPreview";
 /** A column role the user picks from a sheet (e.g. "name", "dept",
  *  "fee"). Required roles MUST resolve before the Import button
  *  enables; optional roles can stay unset. */
-export interface RoleDef {
+interface RoleDef {
   key: string;
   label: string;
   optional?: boolean;
 }
 
-export type RoleColumns = Record<string, number>;
+type RoleColumns = Record<string, number>;
 
 export interface DomainMapping {
   headerRowIndex: number;
@@ -52,7 +52,7 @@ export interface DomainConvertResult<Entity> {
   skippedRowCount: number;
 }
 
-export interface PreviewColumn {
+interface PreviewColumn {
   label: string;
   /** Defaults to "left". Use "right" for numeric columns. */
   align?: "left" | "right";

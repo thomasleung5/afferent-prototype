@@ -13,7 +13,7 @@
  * the right HTTP status. */
 
 import {
-  jsonError, readUpload, resolveMaxBytes,
+  jsonError, readUpload,
   type UploadOk, type UploadOptions,
 } from "./uploadValidator";
 

@@ -52,13 +52,13 @@ export interface PreviewSheet {
   rows: PreviewCell[][];
 }
 
-export interface PreviewOk {
+interface PreviewOk {
   ok: true;
   fileName: string;
   sheets: PreviewSheet[];
 }
 
-export interface PreviewFail {
+interface PreviewFail {
   ok: false;
   status: number;
   message: string;

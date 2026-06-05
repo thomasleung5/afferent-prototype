@@ -7,7 +7,7 @@
  * for Services / Volume / Labor / Operating. */
 
 import assert from "node:assert/strict";
-import type { Service, VolumeRow } from "../types";
+import type { Service } from "../types";
 import type { PreviewSheet } from "../import/excelPreview";
 import {
   autoMapServices, excelToServicesExtraction, validateServicesMapping,
@@ -16,7 +16,7 @@ import {
   autoMapVolume, excelToVolumeExtraction, validateVolumeMapping,
 } from "../import/excelToVolume";
 import {
-  autoMapLabor, excelToLaborExtraction, validateLaborMapping,
+  autoMapLabor, excelToLaborExtraction,
 } from "../import/excelToLabor";
 import {
   autoMapOperating, excelToOperatingExtraction, validateOperatingMapping,

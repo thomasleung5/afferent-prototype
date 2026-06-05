@@ -109,13 +109,6 @@ export function FunctionalBucketSupport({ dept, service, bucketId, crossNav = fa
     rateBasisHours: dd.rateBasisDirectHours,
   };
 
-  // Equation block is a dept-level summary — show it on dept-wide
-  // drilldowns (Cost of Service per-service / per-dept; FA dept
-  // summary) and hide it when scoped to a single bucket (FA bucket-row
-  // drilldown). The bucket row already conveys recoverable / hours /
-  // FBHR through the table itself.
-  const showEquation = bucketId == null;
-
   // Compact mode: scoped to a single activity. Drop columns that
   // duplicate the parent row (Activity, Fee Recoverability %, Direct
   // Productive Hours, Include in DPH — the last three already appear

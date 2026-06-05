@@ -3,7 +3,6 @@ import { useSearch } from "@tanstack/react-router";
 import { DeptSummaryTable, Ledger, type DeptSummaryRow } from "@/components/table";
 import { DeptCellHeader, RateFormula, SectionLabel, TotalEyebrow } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import type { DeptCode } from "@/lib/types";
 import { deptName } from "@/lib/data/departments";
 import { poolToFeeDept } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
