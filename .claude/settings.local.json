@@ -172,7 +172,10 @@
       "Bash(kill 66938)",
       "Bash(git check-ignore *)",
       "Bash(git checkout *)",
-      "Bash(curl -s \"http://localhost:3002/build/operating\" -o /tmp/op.html -w \"HTTP %{http_code}\\\\n\")"
+      "Bash(curl -s \"http://localhost:3002/build/operating\" -o /tmp/op.html -w \"HTTP %{http_code}\\\\n\")",
+      "Bash(xargs -r kill)",
+      "Bash(npm update *)",
+      "Bash(STRICT_BUILD=1 VITE_SUPABASE_URL=https://dummy.supabase.co VITE_SUPABASE_ANON_KEY=dummy npm run build)"
     ]
   }
 }
