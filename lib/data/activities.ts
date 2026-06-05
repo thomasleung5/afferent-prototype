@@ -30,11 +30,6 @@ export const ACTIVITIES: readonly ActivityOption[] = [
   { label: "Appeal",        type: "ADJUDICATION" },
 ];
 
-/** Find the canonical entry whose label matches `label` exactly. */
-export function findActivity(label: string): ActivityOption | undefined {
-  return ACTIVITIES.find((a) => a.label === label);
-}
-
 /** Map a legacy free-text activity value to the closest canonical
  *  option (case-insensitive match against the catalog + a small
  *  synonym table), falling back to a CUSTOM entry that preserves the

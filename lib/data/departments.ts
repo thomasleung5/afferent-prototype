@@ -42,7 +42,7 @@ export function deptName(code: DeptCode): string {
   return DEPTS[code].name.replace(" Administration", "");
 }
 
-export const DEPT_ALIASES: Readonly<Record<string, DeptCode>> = {
+const DEPT_ALIASES: Readonly<Record<string, DeptCode>> = {
   ADMINISTRATION: "ADMIN",
   "CITY MANAGER": "ADMIN",
   "TOWN MANAGER": "ADMIN",

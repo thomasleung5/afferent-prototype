@@ -29,7 +29,7 @@ export interface PreviewLimits {
   maxTotalCells: number;
 }
 
-export const DEFAULT_PREVIEW_LIMITS: PreviewLimits = {
+const DEFAULT_PREVIEW_LIMITS: PreviewLimits = {
   maxSheets: 25,
   maxRowsPerSheet: 5000,
   maxColumnsPerRow: 100,

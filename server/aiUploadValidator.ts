@@ -141,7 +141,7 @@ export function hasZipMagicBytes(buf: ArrayBuffer): boolean {
 /** True when the file declares itself as .xlsx by MIME, OR (for clients
  *  that don't set content-type) when the filename ends in `.xlsx`.
  *  Same fallthrough rules as `isPdf` for unknown MIME values. */
-export function isXlsx(file: { type?: string; name?: string }): boolean {
+function isXlsx(file: { type?: string; name?: string }): boolean {
   if (file.type === XLSX_MIME) return true;
   const typeUnknown = !file.type || file.type === "application/octet-stream";
   if (typeUnknown && file.name && /\.xlsx$/i.test(file.name)) return true;
@@ -150,7 +150,7 @@ export function isXlsx(file: { type?: string; name?: string }): boolean {
 
 /** Detect legacy .xls so we can reject it with a clearer message than
  *  "wrong MIME". Checks the MIME and the filename. */
-export function isLegacyXls(file: { type?: string; name?: string }): boolean {
+function isLegacyXls(file: { type?: string; name?: string }): boolean {
   if (file.type === XLS_LEGACY_MIME) return true;
   if (file.name && /\.xls$/i.test(file.name)) return true;
   return false;

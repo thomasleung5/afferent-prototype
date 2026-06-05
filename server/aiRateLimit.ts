@@ -8,12 +8,13 @@
  *      box. This layer is sync and stays in memory.
  *
  *   2. `RateLimitAdapter` — the surface the Hono middleware actually
- *      calls. The default `createInMemoryAdapter` wraps `recordRequest`
- *      with a `Map`-backed store. To move to a shared backend later
- *      (Redis / Cloudflare KV / etc.) implement this interface with
- *      an async `record()` — the middleware already awaits — and pass
- *      it via `rateLimit({ adapter })`. The pure decision function
- *      stays untouched; only the storage hop changes.
+ *      calls. The default Hono middleware wraps `recordRequest` with
+ *      an in-process `Map`-backed store via a small inline adapter.
+ *      To move to a shared backend later (Redis / Cloudflare KV /
+ *      etc.) implement this interface with an async `record()` — the
+ *      middleware already awaits — and pass it via
+ *      `rateLimit({ adapter })`. The pure decision function stays
+ *      untouched; only the storage hop changes.
  *
  * Multi-replica deployments REQUIRE swapping the adapter. With the
  * in-memory default each replica counts its own bucket, so the
@@ -88,8 +89,10 @@ export function recordRequest(args: {
 }
 
 /** Default adapter — wraps a Map-backed store with `recordRequest`.
- *  Optionally accepts a pre-built store so tests can inspect contents. */
-export function createInMemoryAdapter(store: RateLimitStore = new Map()): RateLimitAdapter {
+ *  Private because every external caller passes an `adapter` / `store`
+ *  via `rateLimit(opts)` (the public entry point) or imports
+ *  `recordRequest` directly for tests. */
+function createInMemoryAdapter(store: RateLimitStore = new Map()): RateLimitAdapter {
   return {
     record: (args) => recordRequest({ ...args, store }),
   };

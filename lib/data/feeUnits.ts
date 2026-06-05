@@ -35,11 +35,6 @@ export const FEE_UNITS: readonly FeeUnitOption[] = [
   { label: "Deposit",              type: "DEPOSIT" },
 ];
 
-/** Find the canonical entry whose label matches `label` exactly. */
-export function findFeeUnit(label: string): FeeUnitOption | undefined {
-  return FEE_UNITS.find((u) => u.label === label);
-}
-
 /** Map a legacy free-text unit value (e.g. "each", "per meeting",
  *  "per $1,000 valuation") to the closest canonical option, falling
  *  back to a CUSTOM entry that preserves the original text verbatim.

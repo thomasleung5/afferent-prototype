@@ -123,10 +123,3 @@ export function useAuth(): AuthContextValue {
   if (!ctx) throw new Error("useAuth must be used inside <AuthProvider/>.");
   return ctx;
 }
-
-/** Convenience: the current user's access_token (or null). API clients
- *  read this to build `Authorization: Bearer …` headers. */
-export function useAccessToken(): string | null {
-  const { session } = useAuth();
-  return session?.access_token ?? null;
-}

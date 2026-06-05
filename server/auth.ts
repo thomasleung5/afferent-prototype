@@ -50,7 +50,7 @@ export interface VerifyArgs {
 /** Extract the bearer token from an `Authorization: Bearer X` header.
  *  Returns null when the header is absent or doesn't use the Bearer
  *  scheme; case-insensitive on the scheme per RFC 6750. */
-export function readBearer(header: string | null | undefined): string | null {
+function readBearer(header: string | null | undefined): string | null {
   if (!header) return null;
   const match = /^Bearer\s+(.+)$/i.exec(header.trim());
   return match ? match[1].trim() : null;

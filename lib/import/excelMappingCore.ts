@@ -15,16 +15,16 @@
 import type { PreviewCell } from "@/lib/import/excelPreview";
 import { normalizeDeptName } from "@/lib/data/departments";
 
-export const HEADER_SCAN_ROWS = 10;
+const HEADER_SCAN_ROWS = 10;
 /** Rows scoring this many or more recognized headers are eligible. Set
  *  conservatively to 2 so a sparse first row with one stray match
  *  doesn't get crowned. Domains that want a different threshold can
  *  pass it explicitly. */
-export const HEADER_MIN_MATCHES_DEFAULT = 2;
+const HEADER_MIN_MATCHES_DEFAULT = 2;
 
 /** Lowercase + non-alphanumeric→space + trim. So "Fee / Service Name"
  *  → "fee service name", "FEE_ITEM" → "fee item". */
-export function normalizeHeader(v: PreviewCell): string {
+function normalizeHeader(v: PreviewCell): string {
   if (v == null) return "";
   return String(v)
     .toLowerCase()
@@ -75,7 +75,7 @@ export interface AutoMappingResult<Role extends string> {
 /** Scan the first `HEADER_SCAN_ROWS` rows and pick the one with the
  *  most cells matching any role synonym. Ties favor the earlier row.
  *  Falls back to row 0 when no row reaches `minMatches`. */
-export function detectHeaderRow<Role extends string>(
+function detectHeaderRow<Role extends string>(
   rows: PreviewCell[][],
   roles: RoleSpec<Role>[],
   minMatches: number = HEADER_MIN_MATCHES_DEFAULT,
@@ -98,7 +98,7 @@ export function detectHeaderRow<Role extends string>(
 /** Assign columns to roles by walking the header row left-to-right,
  *  first-match-wins. Synonym sets are expected to be disjoint per
  *  domain — overlapping synonyms produce undefined priority. */
-export function matchColumnRoles<Role extends string>(
+function matchColumnRoles<Role extends string>(
   headerRow: PreviewCell[] | undefined,
   roles: RoleSpec<Role>[],
 ): Record<Role, number> {

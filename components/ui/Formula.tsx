@@ -1,12 +1,14 @@
-import type { CSSProperties, ReactNode } from "react";
+import type { ReactNode } from "react";
 import type { SourceTag } from "@/lib/types";
 
 interface Props {
   children: ReactNode;
 }
 
-/** Inline mono chip for showing a computation snippet. */
-export function Formula({ children }: Props) {
+/** Inline mono chip for showing a computation snippet. Internal helper
+ *  for FormulaLine — not exported from the barrel (no external callers
+ *  today; un-exported by the dead-code sweep). */
+function Formula({ children }: Props) {
   return (
     <span className="mono" style={{
       fontSize: 12, color: "var(--ink-2)",
@@ -64,32 +66,6 @@ export function FormulaLine({
           fontFamily: "var(--ff-mono)", fontVariantNumeric: "tabular-nums",
         }}>= {result}</span>
       )}
-    </div>
-  );
-}
-
-interface FormulaPanelProps {
-  children: ReactNode;
-  /** Optional style overrides merged on top of the defaults
-   *  (paper background, rule border, 10×14 padding, gap 6, 12px /
-   *  lineHeight 1.55). */
-  style?: CSSProperties;
-}
-
-/** Stacked container for one or more `<FormulaLine/>` workpaper lines.
- *  Used by the Functional Allocation activity drilldown and the Cost of
- *  Service per-service drilldown. */
-export function FormulaPanel({ children, style }: FormulaPanelProps) {
-  return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      padding: "10px 14px",
-      display: "flex", flexDirection: "column",
-      gap: 6,
-      fontSize: 12, lineHeight: 1.55,
-      ...style,
-    }}>
-      {children}
     </div>
   );
 }

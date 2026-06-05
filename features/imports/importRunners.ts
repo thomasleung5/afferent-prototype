@@ -21,11 +21,10 @@ export interface ImportResult {
 
 /** Extract the first JSON object out of arbitrary clipboard text and
  *  parse it. Mirrors the regex every page was using to be resilient
- *  to surrounding prose ("Here's the JSON: { ... }"). Throws with the
- *  canonical "No JSON object found in clipboard." message when no
- *  object is found, or with JSON.parse's own SyntaxError when the
- *  matched text isn't valid JSON. */
-export function extractJsonObject(text: string): Record<string, unknown> {
+ *  to surrounding prose ("Here's the JSON: { ... }"). Used by
+ *  createJsonImportHandler below; not exported because no external
+ *  caller needs it. */
+function extractJsonObject(text: string): Record<string, unknown> {
   const match = text.match(/\{[\s\S]*\}/);
   if (!match) throw new Error("No JSON object found in clipboard.");
   return JSON.parse(match[0]) as Record<string, unknown>;
