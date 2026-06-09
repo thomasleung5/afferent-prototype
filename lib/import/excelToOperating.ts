@@ -10,7 +10,9 @@ import type {
   ExtractedRow, ExtractionResult, SourceLineage, UnmappedRow,
 } from "@/lib/parse/types";
 import { FEE_DEPTS } from "@/lib/data/departments";
-import { classifyLaborType } from "@/lib/ai/parseOperating";
+import {
+  classifyLaborType, classifyOperatingExclusion, isOperatingTotalRow,
+} from "@/lib/ai/parseOperating";
 import type { PreviewSheet } from "@/lib/import/excelPreview";
 import {
   autoMapSheet, cellToNumber, cellToString, isBlankCell, normalizeDept,
@@ -122,6 +124,7 @@ export function excelToOperatingExtraction(
 ): DomainConvertResult<OperatingLine> {
   const now = new Date().toISOString();
   const mapped: ExtractedRow<OperatingLine>[] = [];
+  const lowConfidence: ExtractedRow<OperatingLine>[] = [];
   const unmapped: UnmappedRow[] = [];
   const warnings: ExcelImportWarning[] = [];
   let skipped = 0;
@@ -174,6 +177,12 @@ export function excelToOperatingExtraction(
       unmapped.push({ reason: "missing-required-field", raw: rawArr, lineage: lineage("review") });
       skipped += 1; return;
     }
+    // Totals / subtotals / grand totals aren't line items — skip them
+    // the same way blank rows are skipped, so they don't double-count
+    // against the per-line entries underneath.
+    if (isOperatingTotalRow(line)) {
+      skipped += 1; return;
+    }
     const deptRaw = cellToString(deptCell);
     let dept: OpDept | null = normalizeDept(deptRaw, FEE_DEPTS as readonly string[]) as OpDept | null;
     if (!dept) {
@@ -191,6 +200,9 @@ export function excelToOperatingExtraction(
     }
     const amount = cellToNumber(amountCell);
     if (amount == null) {
+      // Truly unreadable amount (e.g. "TBD", a stray string). Distinct
+      // from `amount: 0` which is a valid value the analyst may have
+      // intentionally entered and the new policy retains.
       warnings.push({ row: sourceRow, reason: `Could not read amount "${cellToString(amountCell)}".` });
       unmapped.push({ reason: "schema-mismatch", raw: rawArr, lineage: lineage("review") });
       skipped += 1; return;
@@ -201,6 +213,12 @@ export function excelToOperatingExtraction(
     const labor: LaborType | undefined = costType === "Labor"
       ? classifyLaborType({ line, category })
       : undefined;
+    // Apply the shared retention policy so capital outlay / debt
+    // service / transfers / pass-throughs / applicant-reimbursed /
+    // one-time rows land with include=false + a clear excludeReason
+    // instead of silently going into the recovery math. PDF/AI uses
+    // the same helper.
+    const policy = classifyOperatingExclusion({ line, category });
     const entity: OperatingLine = {
       id: `op-xl-${Date.now()}-${i}`,
       code: codeC >= 0 ? cellToString(codeCell).trim() || "—" : "—",
@@ -212,18 +230,30 @@ export function excelToOperatingExtraction(
       amount,
       source: "imported",
       sourceFile: fileName,
-      include: true,
+      include: policy.include,
+      ...(policy.excludeReason ? { excludeReason: policy.excludeReason } : {}),
     };
-    mapped.push({ entity, lineage: lineage("high") });
+    // Negative amounts always go to lowConfidence — analyst must
+    // confirm the row is an intentional expenditure adjustment.
+    if (amount < 0) {
+      lowConfidence.push({ entity, lineage: lineage("review") });
+    } else {
+      mapped.push({ entity, lineage: lineage("high") });
+    }
   });
 
   const extraction: ExtractionResult<OperatingLine> = {
-    mapped, lowConfidence: [], unmapped, duplicates: [],
+    mapped, lowConfidence, unmapped, duplicates: [],
     stats: {
-      total: data.length, mapped: mapped.length, lowConfidence: 0,
+      total: data.length, mapped: mapped.length, lowConfidence: lowConfidence.length,
       unmapped: unmapped.length, duplicates: 0,
       detected: `Operating budget (Excel · ${sheet.name})`,
     },
   };
-  return { extraction, warnings, importedRowCount: mapped.length, skippedRowCount: skipped };
+  return {
+    extraction,
+    warnings,
+    importedRowCount: mapped.length + lowConfidence.length,
+    skippedRowCount: skipped,
+  };
 }

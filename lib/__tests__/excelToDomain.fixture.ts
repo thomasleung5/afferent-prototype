@@ -21,6 +21,7 @@ import {
 import {
   autoMapOperating, excelToOperatingExtraction, validateOperatingMapping,
 } from "../import/excelToOperating";
+import { operatingToExtractionResult } from "../ai/parseOperating";
 
 function sheet(name: string, rows: (string | number | null)[][]): PreviewSheet {
   const columnCount = rows.reduce((m, r) => Math.max(m, r.length), 0);
@@ -231,6 +232,171 @@ function sheet(name: string, rows: (string | number | null)[][]): PreviewSheet {
   });
   assert.ok(errors.some((e) => /line description/i.test(e)));
   console.log("  ✓ validateOperatingMapping: missing required line flagged");
+}
+
+// ─── Operating retention policy ────────────────────────────────────────
+//
+// The PDF/AI and Excel paths share lib/ai/parseOperating.ts ::
+// classifyOperatingExclusion + isOperatingTotalRow. These cases pin
+// the Excel side end-to-end (autoMap → validate → extract → entity
+// shape); the AI side reuses the exact same helpers, so behavior is
+// consistent by construction.
+
+// Capital outlay → include:false + reason "capital outlay" (by category)
+// AND by line keyword. Zero and negative amounts pass through.
+// Total / subtotal rows are skipped silently like blank rows.
+// Unknown departments go to unmapped with source lineage.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    ["6101", "PLAN", "Software & subscriptions", "GIS license",                12000],
+    ["7001", "PLAN", "Capital outlay",           "Vehicle replacement",        45000],
+    ["7002", "PLAN", "Other",                    "Capital improvement project", 25000],
+    ["8001", "PLAN", "Other",                    "Debt service - bond principal", 38000],
+    ["8002", "PLAN", "Other",                    "Interfund transfer to General Fund", 17000],
+    ["8003", "PLAN", "Other",                    "Grant pass-through",          9000],
+    ["8004", "PLAN", "Other",                    "Applicant-reimbursed costs",  12500],
+    ["8005", "PLAN", "Other",                    "One-time consulting study",   30000],
+    ["6201", "PLAN", "Other",                    "Postage placeholder",             0],
+    ["6202", "PLAN", "Other",                    "Refund credit",              -3500],
+    ["9999", "PLAN", "Other",                    "Total Operating Expenses",  500000],
+    ["9998", "PLAN", "Other",                    "Subtotal: Salaries & Benefits", 350000],
+    ["6301", "GHOST_DEPT", "Other",              "Mystery dept line",            5000],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  });
+
+  // 1) Standard included row.
+  const gis = r.extraction.mapped.find((m) => m.entity.line === "GIS license");
+  assert.ok(gis, "GIS license imports as include=true");
+  assert.equal(gis.entity.include, true);
+  assert.equal(gis.entity.excludeReason, undefined);
+
+  // 2) Capital outlay → include:false / "capital outlay" (category match).
+  const cap = r.extraction.mapped.find((m) => m.entity.line === "Vehicle replacement");
+  assert.ok(cap);
+  assert.equal(cap.entity.include, false);
+  assert.equal(cap.entity.excludeReason, "capital outlay");
+
+  // 3) Capital outlay via keyword (line text), not category.
+  const capLine = r.extraction.mapped.find((m) => m.entity.line === "Capital improvement project");
+  assert.ok(capLine);
+  assert.equal(capLine.entity.include, false);
+  assert.equal(capLine.entity.excludeReason, "capital outlay");
+
+  // 4) Debt service.
+  const debt = r.extraction.mapped.find((m) => m.entity.line === "Debt service - bond principal");
+  assert.ok(debt);
+  assert.equal(debt.entity.include, false);
+  assert.equal(debt.entity.excludeReason, "debt service");
+
+  // 5) Interfund transfer.
+  const xfer = r.extraction.mapped.find((m) => m.entity.line === "Interfund transfer to General Fund");
+  assert.ok(xfer);
+  assert.equal(xfer.entity.include, false);
+  assert.equal(xfer.entity.excludeReason, "transfer");
+
+  // 6) Pass-through.
+  const pt = r.extraction.mapped.find((m) => m.entity.line === "Grant pass-through");
+  assert.ok(pt);
+  assert.equal(pt.entity.include, false);
+  assert.equal(pt.entity.excludeReason, "pass-through");
+
+  // 7) Applicant-reimbursed.
+  const appr = r.extraction.mapped.find((m) => m.entity.line === "Applicant-reimbursed costs");
+  assert.ok(appr);
+  assert.equal(appr.entity.include, false);
+  assert.equal(appr.entity.excludeReason, "applicant reimbursed");
+
+  // 8) One-time / non-recurring.
+  const oneTime = r.extraction.mapped.find((m) => m.entity.line === "One-time consulting study");
+  assert.ok(oneTime);
+  assert.equal(oneTime.entity.include, false);
+  assert.equal(oneTime.entity.excludeReason, "one-time");
+
+  // 9) Zero amount stays as include:true (not excluded by amount).
+  const zero = r.extraction.mapped.find((m) => m.entity.line === "Postage placeholder");
+  assert.ok(zero, "zero-amount row NOT discarded");
+  assert.equal(zero.entity.amount, 0);
+  assert.equal(zero.entity.include, true);
+
+  // 10) Negative amount goes to lowConfidence with include:true (analyst review).
+  const neg = r.extraction.lowConfidence.find((m) => m.entity.line === "Refund credit");
+  assert.ok(neg, "negative-amount row routed to lowConfidence (not dropped)");
+  assert.equal(neg.entity.amount, -3500);
+  assert.equal(neg.entity.include, true);
+
+  // 11) Total + subtotal rows skipped silently — not in mapped, not in
+  //     lowConfidence, not in unmapped.
+  const allEntities = [...r.extraction.mapped, ...r.extraction.lowConfidence].map((m) => m.entity.line);
+  assert.ok(!allEntities.includes("Total Operating Expenses"), "Total row skipped");
+  assert.ok(!allEntities.includes("Subtotal: Salaries & Benefits"), "Subtotal row skipped");
+  assert.ok(r.extraction.unmapped.every((u) => u.raw[3] !== "Total Operating Expenses"));
+  assert.ok(r.extraction.unmapped.every((u) => u.raw[3] !== "Subtotal: Salaries & Benefits"));
+
+  // 12) Unknown department routes to unmapped with source lineage.
+  const ghost = r.extraction.unmapped.find((u) => u.raw[3] === "Mystery dept line");
+  assert.ok(ghost, "Unknown dept routed to unmapped (not silently dropped)");
+  assert.equal(ghost.reason, "ambiguous-dept");
+  assert.ok(ghost.lineage.row, "lineage row preserved for the analyst");
+  assert.equal(ghost.lineage.file, "op.xlsx");
+
+  console.log("  ✓ operating retention: include-false buckets + zero/negative retained + totals skipped + unknown dept unmapped");
+}
+
+// AI side: operatingToExtractionResult routes unknown dept to unmapped,
+// keeps zero/negative amounts, applies the shared exclusion classifier
+// when the model didn't tag the line itself.
+{
+  const rows = [
+    { dept: "PLAN", category: "Software & subscriptions", line: "GIS license",
+      amount: 12000, confidence: "high" as const },
+    { dept: "PLAN", category: "Other", line: "Vehicle replacement (capital outlay)",
+      amount: 45000, confidence: "high" as const },
+    { dept: "PLAN", category: "Other", line: "Debt service principal",
+      amount: 30000, confidence: "high" as const },
+    { dept: "PLAN", category: "Other", line: "Postage placeholder",
+      amount: 0, confidence: "high" as const },
+    { dept: "PLAN", category: "Other", line: "Refund credit",
+      amount: -3500, confidence: "high" as const },
+    { dept: "PLAN", category: "Other", line: "Total Operating Expenses",
+      amount: 500000, confidence: "high" as const },
+    { dept: "GHOST_DEPT", category: "Other", line: "Mystery dept line",
+      amount: 5000, confidence: "high" as const },
+    // Model already set include=false + a custom reason: preserved verbatim.
+    { dept: "PLAN", category: "Other", line: "Special analyst-flagged line",
+      amount: 8000, include: false, excludeReason: "analyst marked one-time per memo",
+      confidence: "high" as const },
+  ];
+  const r = operatingToExtractionResult(rows, "op.pdf");
+  const find = (line: string) => [...r.mapped, ...r.lowConfidence].find((m) => m.entity.line === line);
+
+  assert.equal(find("GIS license")?.entity.include, true);
+  assert.equal(find("Vehicle replacement (capital outlay)")?.entity.include, false);
+  assert.equal(find("Vehicle replacement (capital outlay)")?.entity.excludeReason, "capital outlay");
+  assert.equal(find("Debt service principal")?.entity.include, false);
+  assert.equal(find("Debt service principal")?.entity.excludeReason, "debt service");
+  assert.equal(find("Postage placeholder")?.entity.amount, 0);
+  assert.equal(find("Postage placeholder")?.entity.include, true,
+    "AI-side zero-amount row retained");
+  // Negative amount → lowConfidence even with high model confidence.
+  const neg = r.lowConfidence.find((m) => m.entity.line === "Refund credit");
+  assert.ok(neg, "AI-side negative routed to lowConfidence");
+  assert.equal(neg.entity.amount, -3500);
+  assert.equal(neg.entity.include, true);
+  // Total row skipped at the row level.
+  assert.ok(!find("Total Operating Expenses"), "AI-side Total row skipped");
+  // Unknown dept routes to unmapped with lineage instead of silent drop.
+  const ghost = r.unmapped.find((u) => Array.isArray(u.raw) && u.raw.includes("Mystery dept line"));
+  assert.ok(ghost, "AI-side unknown dept routed to unmapped");
+  assert.equal(ghost.reason, "ambiguous-dept");
+  assert.equal(ghost.lineage.file, "op.pdf");
+  // Model-supplied include=false + reason preserved verbatim.
+  const analyst = find("Special analyst-flagged line");
+  assert.equal(analyst?.entity.include, false);
+  assert.equal(analyst?.entity.excludeReason, "analyst marked one-time per memo");
+  console.log("  ✓ operatingToExtractionResult: parity with Excel + honors model-set include/excludeReason");
 }
 
 console.log("\nAll excelToDomain assertions passed.");
