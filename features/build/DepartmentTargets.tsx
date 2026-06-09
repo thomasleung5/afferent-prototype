@@ -8,22 +8,6 @@ import { fmt } from "@/lib/format";
 import type { DeptCode, PolicyTarget } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
-function Bar({ pct }: { pct: number }) {
-  return (
-    <div style={{
-      width: 110, height: 4,
-      background: "var(--paper-3)",
-      position: "relative",
-    }}>
-      <div style={{
-        position: "absolute", left: 0, top: 0, bottom: 0,
-        width: `${Math.max(0, Math.min(100, pct))}%`,
-        background: "var(--ink-2)",
-      }}/>
-    </div>
-  );
-}
-
 export function DepartmentTargets() {
   const { policyTargets, updatePolicyTarget, derived } = useBuildState();
   const { dept: searchDept } = useSearch({ from: "/build/policy" });
@@ -82,24 +66,20 @@ export function DepartmentTargets() {
     {
       key: "target",
       label: "Target Recovery",
-      width: "240px",
+      width: "150px",
+      align: "right",
       sortable: true,
       sortKey: (r) => r.target,
       render: (r) => (
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <Bar pct={r.target}/>
-          <div style={{ width: 70 }}>
-            <CellInput
-              type="number"
-              value={r.target}
-              onChange={(v) => updatePolicyTarget(r.id, { target: Number(v) || 0 })}
-              suffix="%"
-              min={0}
-              max={100}
-              align="right"
-            />
-          </div>
-        </div>
+        <CellInput
+          type="number"
+          value={r.target}
+          onChange={(v) => updatePolicyTarget(r.id, { target: Number(v) || 0 })}
+          suffix="%"
+          min={0}
+          max={100}
+          align="right"
+        />
       ),
     },
     {

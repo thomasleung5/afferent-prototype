@@ -6,7 +6,7 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  CellInput, CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type {
@@ -246,8 +246,6 @@ export function FeeScheduleTable() {
         renderDrilldown={(r) => {
           const svc = services.find((s) => s.id === r.id);
           if (!svc) return null;
-          const delta = r.recommended - r.fee;
-          const deltaPct = r.fee > 0 ? (delta / r.fee) * 100 : 100;
           const fbhr = derived.fbhr[r.dept as DeptCode]?.fbhr ?? 0;
           const peerVariance = svc.peer > 0 ? ((r.fee - svc.peer) / svc.peer) * 100 : 0;
           const peerLabel =
@@ -259,13 +257,6 @@ export function FeeScheduleTable() {
           : peerVariance < -5 ? "var(--warn)"
           :                     "var(--pos)";
 
-          const reasons: string[] = [];
-          if (r.target < 100) reasons.push(`policy target set to ${r.target}% (vs 100% full cost)`);
-          if (r.recoveryPct < 50 && r.fee > 0) reasons.push(`current fee was recovering only ${r.recoveryPct.toFixed(0)}% of cost`);
-          if (r.fee === 0) reasons.push("no fee currently charged for this service");
-          if (r.dept === "BLDG" && Math.abs(deltaPct) > 30) reasons.push(`BLDG FBHR is now ${fmt.dollars(fbhr)}/hr after overhead allocation`);
-          if (reasons.length === 0) reasons.push(`hours per unit (${svc.hours}) × FBHR (${fmt.dollars(fbhr)}) yields a different cost basis`);
-
           return (
             <DrilldownShell>
             <DrilldownColumn marker="①" title="Policy">
@@ -275,17 +266,16 @@ export function FeeScheduleTable() {
                     fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
                     color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
                   }}>Recovery target</div>
-                  <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-                    <input
-                      type="range"
-                      min={0} max={100} step={5}
+                  <div style={{ width: 150 }}>
+                    <CellInput
+                      type="number"
                       value={r.target}
-                      onChange={(e) => updateService(r.id, { target: Number(e.target.value) })}
-                      style={{ flex: 1, accentColor: "var(--accent)" }}
+                      onChange={(v) => updateService(r.id, { target: Number(v) || 0 })}
+                      suffix="%"
+                      min={0}
+                      max={100}
+                      align="right"
                     />
-                    <span className="num" style={{
-                      fontSize: "var(--fs-ui)", fontWeight: 600, minWidth: 42, textAlign: "right",
-                    }}>{r.target}%</span>
                   </div>
                 </div>
                 <div>
@@ -317,26 +307,6 @@ export function FeeScheduleTable() {
                   recommended: <b>{displayRecommendedFee(svc, r)}</b>
                 </div>
               </div>
-              {Math.abs(delta) >= 1 && (
-                <div style={{
-                  marginTop: 12, paddingTop: 12, borderTop: "1px dashed var(--rule)",
-                  fontSize: 12, color: "var(--ink-2)", lineHeight: 1.55,
-                }}>
-                  <div style={{ display: "flex", alignItems: "baseline", gap: 8, marginBottom: 6 }}>
-                    <span className="mono" style={{
-                      fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.1em",
-                      color: delta > 0 ? "var(--warn)" : "var(--pos)",
-                      textTransform: "uppercase",
-                    }}>Why this {delta > 0 ? "increase" : "decrease"}</span>
-                    <span className="num" style={{ fontSize: 12, fontWeight: 600 }}>
-                      {delta > 0 ? "+" : ""}{fmt.dollars(delta)} {deltaPct >= 0 ? "+" : ""}{deltaPct.toFixed(0)}%
-                    </span>
-                  </div>
-                  <ul style={{ margin: 0, padding: "0 0 0 16px", listStyle: "disc" }}>
-                    {reasons.map((rr, i) => <li key={i} style={{ marginBottom: 2 }}>{rr}</li>)}
-                  </ul>
-                </div>
-              )}
               <Link
                 to="/build/costs"
                 search={{ serviceId: r.id }}
