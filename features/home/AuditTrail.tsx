@@ -1,5 +1,18 @@
+import type { ReactNode } from "react";
 import { SectionLabel } from "@/components/ui";
 import { useBuildState, type Domain } from "@/lib/store";
+
+function ColHeader({
+  children, align = "left",
+}: { children: ReactNode; align?: "left" | "right" }) {
+  return (
+    <div className="mono" style={{
+      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+      color: "var(--ink-3)", textTransform: "uppercase",
+      textAlign: align,
+    }}>{children}</div>
+  );
+}
 
 const DOMAIN_LABEL: Record<Domain, string> = {
   positions: "Labor",
@@ -46,6 +59,26 @@ export function AuditTrail() {
         </div>
       ) : (
         <>
+          {/* Column header. Same grid template as the data rows below so
+             *  the count-legend lines up directly over the per-row count
+             *  badges — analysts read what the numbers mean before they
+             *  read the numbers. */}
+          <div style={{
+            display: "grid",
+            gridTemplateColumns: "150px 130px minmax(220px, 1fr) auto",
+            gap: 12,
+            padding: "0 0 8px 0",
+            borderBottom: "1px solid var(--rule)",
+            alignItems: "baseline",
+          }}>
+            <ColHeader>Imported</ColHeader>
+            <ColHeader>Domain</ColHeader>
+            <ColHeader>File</ColHeader>
+            <ColHeader align="right">
+              Mapped / Review / Unmapped / Dups
+            </ColHeader>
+          </div>
+
           {rows.map((entry, i) => {
             const r = entry.result;
             return (
@@ -85,12 +118,6 @@ export function AuditTrail() {
               </div>
             );
           })}
-          <div className="mono" style={{
-            marginTop: 12, fontSize: "var(--t-l9)", fontWeight: 600,
-            color: "var(--ink-3)", letterSpacing: "0.1em", textTransform: "uppercase",
-          }}>
-            mapped / for review / unmapped / duplicates
-          </div>
         </>
       )}
     </div>
