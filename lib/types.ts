@@ -40,10 +40,9 @@ export interface RoleAllocation {
  * pricing. The types below extend `Service` with: nested categories,
  * line-item
  * numbering, free-form units, formula / deposit / T&M / pass-through
- * pricing, lifecycle status (new / moved / deleted), legal-authority
- * citations, free-form notes, per-agency peer survey values, and
- * display-text variants for fees that can't be reduced to a single
- * dollar amount.
+ * pricing, legal-authority citations, free-form notes, per-agency peer
+ * survey values, and display-text variants for fees that can't be
+ * reduced to a single dollar amount.
  *
  * Every extension is an OPTIONAL field on Service so persisted rows
  * without the metadata continue to load and render correctly —
@@ -79,9 +78,7 @@ export type ActivityType =
   | "CUSTOM";
 
 /** Pricing structure label for an active fee — derived from
- *  `Service.formula` via `feeRowKind()` in lib/calc.ts. Lifecycle
- *  (moved / deleted / not-evaluated) lives on FeeScheduleStatus
- *  instead so the two axes stay orthogonal. */
+ *  `Service.formula` via `feeRowKind()` in lib/calc.ts. */
 export type FeeRowKind =
   | "flat"               // no formula attached
   | "formula"            // FeeFormula kind in {tiered-valuation,percentage,per-unit,expression}
@@ -89,17 +86,6 @@ export type FeeRowKind =
   | "time-and-materials" // FeeFormula kind: "time-and-materials"
   | "pass-through"       // FeeFormula kind: "pass-through"
   | "statutory";         // FeeFormula kind: "statutory"
-
-/** Lifecycle state of a fee row within this study cycle. Drives the
- *  "filter to new / changed / deleted" affordance and the published
- *  study's migration narrative. */
-export type FeeScheduleStatus =
-  | "existing"        // carried forward unchanged
-  | "new"             // introduced this cycle
-  | "renamed"         // same fee, new label
-  | "moved"           // shifted to another dept (use Service.movedToDept)
-  | "deleted"         // removed this cycle
-  | "not-evaluated";  // listed but not analyzed
 
 /** One tier in a tiered-valuation formula. `upTo` is the upper bound
  *  for this tier; the top tier carries upTo: undefined to signal "no
@@ -266,9 +252,6 @@ export interface Service {
    *  by future analytics + reporting. CUSTOM means the analyst entered
    *  free text. See FEE_UNITS in lib/data/feeUnits.ts. */
   unitType?: UnitType;
-  /** Lifecycle state of this row in the current study cycle. Defaults
-   *  to "existing" semantics when undefined. */
-  status?: FeeScheduleStatus;
   /** Structured pricing description for non-flat rows. Display layer
    *  routes through `summarizeFee` (lib/feeDisplay.ts) to render a
    *  deterministic narrative ("Tiered (typ. $13,500 @ $1.5M
@@ -285,10 +268,6 @@ export interface Service {
    *  "CA Gov Code §66014", "Health & Safety Code §17951", local
    *  ordinance number). Surfaced in the audit trail. */
   legalAuthority?: string;
-  /** Destination department when status === "moved". The `dept` field
-   *  still reflects ownership at the start of this cycle (for diff
-   *  rendering); `movedToDept` is where the fee lands at the end. */
-  movedToDept?: DeptCode;
   /** Per-agency peer-survey values supporting the Fee Benchmarks view.
    *  The numeric `peer` field above is the median of the comparable
    *  subset; this array preserves the individual rows + sourcing for

@@ -208,13 +208,7 @@ function targetFor(
 
 /** Gate: does this fee row participate in recovery aggregates?
  *
- *  Lifecycle gates (apply to every rowKind):
- *    - status "deleted" / "not-evaluated" / "moved" → NOT recoverable.
- *      Deleted and not-evaluated are obvious; "moved" rows are leaving
- *      the source dept this cycle so their forward-looking recovery
- *      math belongs to the destination, not the origin.
- *
- *  RowKind rules (when the lifecycle gate hasn't already excluded):
+ *  RowKind rules:
  *    - "flat"     → recoverable. The legacy default.
  *    - any other  → recoverable only when fee > 0 (a representative
  *      numeric value is "explicitly present"). This is the escape
@@ -235,10 +229,6 @@ function targetFor(
  *  rendering for display + audit. Only the policyImpact /
  *  buildDeptRollup aggregates filter on this flag. */
 export function isRecoverableFeeRow(service: Service): boolean {
-  const status = service.status ?? "existing";
-  if (status === "deleted" || status === "not-evaluated" || status === "moved") {
-    return false;
-  }
   const kind = feeRowKind(service);
   if (kind === "flat") return true;
   return service.fee > 0;

@@ -3,10 +3,9 @@
  * state so the export always reflects the current edits + imports. */
 
 import type {
-  DeptCode, FeeRowKind, OperatingLine, OpCategory, PolicyException, PolicyTarget,
-  ProductiveHoursRow, Service, VolumeRow, CapPool, FeeScheduleStatus,
+  DeptCode, OperatingLine, OpCategory, PolicyException, PolicyTarget,
+  ProductiveHoursRow, Service, VolumeRow, CapPool,
 } from "@/lib/types";
-import { feeRowKind } from "@/lib/calc";
 import type {
   FeeComparison, PolicyImpact, ServiceCost,
 } from "@/lib/calc";
@@ -87,25 +86,6 @@ interface ExportDeptBuckets {
   buckets: ExportFunctionalBucket[];
 }
 
-/** Row identity for the fee-establishment narrative (new / deleted / moved
- *  / restructured fees this cycle). */
-interface ExportFeeEstablishmentRow {
-  id: string;
-  feeNo?: string;
-  name: string;
-  dept: DeptCode;
-  category?: string;
-  rationale: string;
-  movedToDept?: DeptCode;
-}
-
-interface ExportFeeEstablishment {
-  added: ExportFeeEstablishmentRow[];
-  deleted: ExportFeeEstablishmentRow[];
-  moved: ExportFeeEstablishmentRow[];
-  restructured: ExportFeeEstablishmentRow[];
-}
-
 interface ExportCostRecoveryOutcome {
   dept: DeptCode;
   deptName: string;
@@ -127,7 +107,6 @@ interface ExportFeeDetailRow {
   category: string;
   subcategory?: string;
   unit?: string;
-  status?: FeeScheduleStatus;
   hours: number;
   volume: number;
   fee: number;
@@ -280,7 +259,6 @@ export interface ExportPayload {
   summary: ExportSummary;
   deptSummaries: ExportDeptSummary[];
   deptBuckets: ExportDeptBuckets[];
-  feeEstablishment: ExportFeeEstablishment;
   costRecoveryOutcomes: ExportCostRecoveryOutcome[];
   feeSchedule: ExportFeeRow[];
   costOfService: ExportCostRow[];
@@ -582,45 +560,6 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     };
   });
 
-  // ── Fee establishment narrative ────────────────────────────────────────
-  // Buckets services by lifecycle status. "Restructured" picks up rows
-  // that aren't flat-pricing (formula / deposit / T&M / pass-through /
-  // statutory) without being lifecycle-flagged — those rows reshape
-  // how the fee is billed even when they carry the existing status.
-  const feeEstablishment: ExportFeeEstablishment = (() => {
-    const added: ExportFeeEstablishmentRow[] = [];
-    const deleted: ExportFeeEstablishmentRow[] = [];
-    const moved: ExportFeeEstablishmentRow[] = [];
-    const restructured: ExportFeeEstablishmentRow[] = [];
-    for (const s of services) {
-      const base: ExportFeeEstablishmentRow = {
-        id: s.id,
-        ...(s.feeNo ? { feeNo: s.feeNo } : {}),
-        name: s.name,
-        dept: s.dept,
-        ...(s.category ? { category: s.category } : {}),
-        rationale: "",
-        ...(s.movedToDept ? { movedToDept: s.movedToDept } : {}),
-      };
-      const status = s.status ?? "existing";
-      if (status === "new") {
-        added.push({ ...base, rationale: lifecycleRationale("new", s) });
-      } else if (status === "deleted") {
-        deleted.push({ ...base, rationale: lifecycleRationale("deleted", s) });
-      } else if (status === "moved") {
-        moved.push({ ...base, rationale: lifecycleRationale("moved", s) });
-      } else if (status === "renamed") {
-        restructured.push({ ...base, rationale: lifecycleRationale("renamed", s) });
-      } else {
-        const kind = feeRowKind(s);
-        if (kind !== "flat") {
-          restructured.push({ ...base, rationale: rowKindRationale(s) });
-        }
-      }
-    }
-    return { added, deleted, moved, restructured };
-  })();
-
   // ── Cost recovery outcomes by department ───────────────────────────────
   const costRecoveryOutcomes: ExportCostRecoveryOutcome[] = deptSummaries.map((d) => ({
     dept: d.dept,
@@ -654,7 +593,6 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
         category: cat,
         ...(svc?.subcategory ? { subcategory: svc.subcategory } : {}),
         ...(svc?.unitLabel ? { unit: svc.unitLabel } : {}),
-        ...(svc?.status ? { status: svc.status } : {}),
         hours: c.hours,
         volume: c.volume,
         fee: c.fee,
@@ -937,7 +875,7 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
 
   return {
     cover, summary, deptSummaries, deptBuckets,
-    feeEstablishment, costRecoveryOutcomes,
+    costRecoveryOutcomes,
     feeSchedule, costOfService,
     recommendations, benchmarks, reviewFlags, lineage,
     feeDetailByDept, fbhrDetail, peerSurveyByDept, disclaimers,
@@ -948,45 +886,4 @@ export function buildExportPayload(input: ExportInput): ExportPayload {
     },
     methodology, assumptions,
   };
-}
-
-function lifecycleRationale(
-  status: "new" | "deleted" | "moved" | "renamed",
-  s: Service,
-): string {
-  const cat = s.category ? ` (${s.category})` : "";
-  switch (status) {
-    case "new": {
-      const kind = feeRowKind(s);
-      return kind !== "flat"
-        ? `New fee${cat}, billed as ${rowKindLabel(kind)}.`
-        : `New fee${cat} introduced this cycle to recover an existing service cost.`;
-    }
-    case "deleted":
-      return s.notes?.[0]
-        ? `Removed this cycle: ${s.notes[0]}`
-        : `Removed this cycle — fee no longer charged.`;
-    case "moved":
-      return s.movedToDept
-        ? `Moved to ${s.movedToDept} this cycle; forward-looking recovery accrues to the destination department.`
-        : `Moved to another department this cycle.`;
-    case "renamed":
-      return `Renamed this cycle; legal authority and underlying cost basis carried forward.`;
-  }
-}
-
-function rowKindRationale(s: Service): string {
-  const cat = s.category ? ` in ${s.category}` : "";
-  return `Pricing restructured${cat}: billed as ${rowKindLabel(feeRowKind(s))}.`;
-}
-
-function rowKindLabel(kind: FeeRowKind): string {
-  switch (kind) {
-    case "flat":              return "a flat fee";
-    case "formula":           return "a formula (tiered / percentage / per-unit)";
-    case "deposit":           return "a deposit, with balance billed at actual cost";
-    case "time-and-materials":return "time-and-materials at the published hourly rate";
-    case "pass-through":      return "a pass-through of third-party cost";
-    case "statutory":         return "a statutorily-capped fee";
-  }
 }

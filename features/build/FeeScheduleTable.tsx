@@ -6,11 +6,11 @@ import {
   type Column, type FilterGroup,
 } from "@/components/table";
 import {
-  CellInput, CellSelect, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
+  CellInput, DeptChip, DrilldownShell, DrilldownColumn, SectionLabel,
 } from "@/components/ui";
 import { fmt } from "@/lib/format";
 import type {
-  DeptCode, FeeScheduleStatus, Service,
+  DeptCode, Service,
 } from "@/lib/types";
 import { feeRowKind, type FeeComparison } from "@/lib/calc";
 import { useBuildState } from "@/lib/store";
@@ -278,20 +278,6 @@ export function FeeScheduleTable() {
                     />
                   </div>
                 </div>
-                <div>
-                  <div
-                    className="mono"
-                    title="Cycle lifecycle of this fee row — distinct from the review state above (Pending / Ready / Adopted)."
-                    style={{
-                      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                      color: "var(--ink-3)", textTransform: "uppercase", marginBottom: 6,
-                    }}>Lifecycle</div>
-                  <CellSelect
-                    value={svc.status ?? "existing"}
-                    options={LIFECYCLE_OPTIONS}
-                    onChange={(v) => updateService(r.id, { status: v as FeeScheduleStatus })}
-                  />
-                </div>
               </div>
             </DrilldownColumn>
 
@@ -372,24 +358,12 @@ export function FeeScheduleTable() {
   );
 }
 
-const LIFECYCLE_OPTIONS = [
-  { value: "existing",      label: "Existing (carried forward)" },
-  { value: "new",           label: "New (this cycle)" },
-  { value: "renamed",       label: "Renamed" },
-  { value: "moved",         label: "Moved to other dept" },
-  { value: "deleted",       label: "Deleted (removed this cycle)" },
-  { value: "not-evaluated", label: "Not evaluated" },
-];
-
 /** Compact chip label for the non-countable badge next to fee item names.
- *  Returns null when the row is countable (flat/formula + existing/new/
- *  renamed/moved) — the caller hides the chip in that case. Lifecycle
- *  status takes precedence over rowKind in the display because deleted
- *  / not-evaluated is more consequential to flag than the pricing model. */
+ *  Returns null when the row is countable (flat / formula) — the caller
+ *  hides the chip in that case. Non-flat formula kinds (deposit / T&M /
+ *  pass-through / statutory) reshape how the fee is billed, so they get
+ *  a chip even when an analyst-supplied `fee` value exists. */
 function nonCountableChipLabel(service: Service): string | null {
-  const status = service.status;
-  if (status === "deleted")       return "deleted";
-  if (status === "not-evaluated") return "not evaluated";
   const kind = feeRowKind(service);
   if (kind === "deposit")            return "deposit";
   if (kind === "time-and-materials") return "T&M";

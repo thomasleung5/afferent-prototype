@@ -5,11 +5,8 @@
  * Pins the isRecoverableFeeRow contract + the aggregate gating in
  * policyImpact / feeComparisons. Load-bearing assertions:
  *
- *   - Existing seed shape (no formula + no status) stays recoverable,
- *     so the gate changes ZERO numbers for the legacy LAH / Maplewood
- *     baselines.
- *   - Lifecycle gates: deleted / not-evaluated / moved excluded
- *     regardless of formula kind.
+ *   - Existing seed shape (no formula) stays recoverable, so the gate
+ *     changes ZERO numbers for the legacy LAH / Maplewood baselines.
  *   - Non-flat formula kinds (deposit / T&M / pass-through / statutory /
  *     the four structured-formula sub-kinds) honor the numeric-fee
  *     escape hatch: fee > 0 → in; fee = 0 → out.
@@ -22,7 +19,7 @@ import {
 } from "../calc";
 import type { FBHR } from "../calc";
 import { FEE_DEPTS } from "../data/departments";
-import type { DeptCode, FeeFormula, FeeRowKind, FeeScheduleStatus, Service } from "../types";
+import type { DeptCode, FeeFormula, FeeRowKind, Service } from "../types";
 
 /** Minimal formula payload for each non-flat FeeRowKind — lets the
  *  isRecoverableFeeRow loop test every kind without per-iteration
@@ -70,25 +67,11 @@ const fbhr = Object.fromEntries(
 //      changes zero numbers for the LAH / Maplewood baselines.
 {
   assert.equal(isRecoverableFeeRow(svc()), true,
-    "legacy: no formula + no status → defaults to flat/existing → recoverable");
+    "legacy: no formula → defaults to flat → recoverable");
   console.log("  ✓ legacy flat shape stays recoverable");
 }
 
-// ── 2. Lifecycle gates exclude regardless of formula kind ───────────────
-{
-  const excluded: FeeScheduleStatus[] = ["deleted", "not-evaluated", "moved"];
-  for (const status of excluded) {
-    assert.equal(isRecoverableFeeRow(svc({ status })), false,
-      `status "${status}" → not recoverable (even on a flat row with fee>0)`);
-    assert.equal(isRecoverableFeeRow(svc({
-      status, formula: FORMULA_FOR.formula, fee: 1000,
-    })), false,
-      `status "${status}" → not recoverable (even on a formula row with anchor fee)`);
-  }
-  console.log("  ✓ lifecycle gates (deleted / not-evaluated / moved) exclude all rowKinds");
-}
-
-// ── 3. Non-flat formula kinds: numeric-fee escape hatch ─────────────────
+// ── 2. Non-flat formula kinds: numeric-fee escape hatch ─────────────────
 //      Without a numeric fee, non-flat rows don't contribute to recovery
 //      math. With fee > 0, the analyst has acknowledged a representative
 //      value and the row IS included.

@@ -1259,8 +1259,6 @@ function RecommendedFeeSchedule({ payload }: { payload: ExportPayload }) {
       <div className="eyebrow">Section 9</div>
       <h2 className="h2">Recommended fee schedule</h2>
 
-      <FeeEstablishmentNarrative payload={payload}/>
-
       <h3 className="h3" style={{ marginTop: 18 }}>Recommended fee schedule</h3>
       <div className="body" style={{ marginBottom: 12 }}>
         <p>
@@ -1313,101 +1311,6 @@ function RecommendedFeeSchedule({ payload }: { payload: ExportPayload }) {
         </tbody>
       </table>
     </section>
-  );
-}
-
-function FeeEstablishmentNarrative({ payload }: { payload: ExportPayload }) {
-  const fe = payload.feeEstablishment;
-  const empty = fe.added.length + fe.deleted.length + fe.moved.length + fe.restructured.length;
-  if (empty === 0) {
-    return (
-      <>
-        <h3 className="h3" style={{ marginTop: 4 }}>Fee schedule establishment</h3>
-        <div className="body">
-          <p>
-            The recommended schedule retains the existing fee structure
-            without adding, removing, moving, or restructuring fee items
-            relative to the schedule in effect for the study period. The
-            following fee schedule reflects updated calculated cost of
-            service applied to the unchanged fee inventory.
-          </p>
-        </div>
-      </>
-    );
-  }
-  const buckets: { key: string; label: string; rows: typeof fe.added }[] = [
-    { key: "added",        label: "New fee items",                rows: fe.added },
-    { key: "deleted",      label: "Deleted fee items",            rows: fe.deleted },
-    { key: "moved",        label: "Moved between departments",    rows: fe.moved },
-    { key: "restructured", label: "Restructured pricing",         rows: fe.restructured },
-  ];
-
-  return (
-    <>
-      <h3 className="h3" style={{ marginTop: 4 }}>Fee schedule establishment</h3>
-      <div className="body">
-        <p>
-          The recommended schedule reflects the following changes to the fee
-          inventory relative to the schedule in effect for the study period:
-          new fee items established to recover existing service costs,
-          existing items removed where the underlying service is no longer
-          provided or no longer separately billed, items moved between
-          departments to reflect current organizational responsibility, and
-          items restructured to a pricing form (formula, deposit,
-          time-and-materials, pass-through, or statutory cap) that better
-          fits the underlying service.
-        </p>
-      </div>
-      {buckets.filter((b) => b.rows.length > 0).map((b) => (
-        <div className="row" key={b.key} style={{ marginTop: 12 }}>
-          <h3 className="h3" style={{ fontSize: 12.5 }}>
-            {b.label}{" "}
-            <span className="mono" style={{
-              fontSize: 10, color: "var(--ink-3)", marginLeft: 6, fontWeight: 400,
-            }}>
-              {b.rows.length} item{b.rows.length === 1 ? "" : "s"}
-            </span>
-          </h3>
-          <table>
-            <thead>
-              <tr>
-                <th style={{ width: "12%" }}>Fee #</th>
-                <th>Fee item</th>
-                <th>Dept</th>
-                <th style={{ width: "44%" }}>Rationale</th>
-              </tr>
-            </thead>
-            <tbody>
-              {b.rows.map((r) => (
-                <tr key={r.id}>
-                  <td>
-                    <span className="mono" style={{
-                      fontSize: 10, color: "var(--ink-2)",
-                    }}>{r.feeNo ?? "—"}</span>
-                  </td>
-                  <td>
-                    <div>{r.name}</div>
-                    {r.category && (
-                      <div className="mono" style={{
-                        fontSize: 9.5, color: "var(--ink-3)", marginTop: 2,
-                      }}>{r.category}</div>
-                    )}
-                  </td>
-                  <td>
-                    <span className="mono" style={{
-                      fontSize: 10, color: "var(--ink-2)",
-                    }}>
-                      {r.dept}{r.movedToDept ? ` → ${r.movedToDept}` : ""}
-                    </span>
-                  </td>
-                  <td style={{ color: "var(--ink-2)" }}>{r.rationale}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ))}
-    </>
   );
 }
 
@@ -1747,7 +1650,6 @@ function AppendixA({ payload }: { payload: ExportPayload }) {
                         }}>
                           {f.subcategory ?? f.id}
                           {f.unit ? ` · ${f.unit}` : ""}
-                          {f.status && f.status !== "existing" ? ` · ${f.status}` : ""}
                         </div>
                       </td>
                       <td className="num">{f.hours}</td>
