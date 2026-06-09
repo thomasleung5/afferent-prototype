@@ -1,3 +1,4 @@
+import { useEffect, useRef, useState } from "react";
 import { Link, useRouterState } from "@tanstack/react-router";
 import { ModelSettingsMenu } from "./ModelSettingsMenu";
 import { StaleStudyBanner } from "./StaleStudyBanner";
@@ -92,11 +93,32 @@ function SubNav({ pathname }: { pathname: string }) {
   );
 }
 
-/** Right-side chip — shows initials when signed in, plus a Sign out
- *  action. Falls back to the legacy "MR" stub when Supabase isn't
- *  configured (local dev). */
+/** Right-side chip — shows initials when signed in. Clicking opens a
+ *  small dropdown anchored under the chip with the account email and
+ *  a Sign out action. Falls back to the legacy "MR" stub (static, no
+ *  dropdown) when Supabase isn't configured (local dev). */
 function AuthChip() {
   const { session, signOut, configured } = useAuth();
+  const [open, setOpen] = useState(false);
+  const wrapRef = useRef<HTMLDivElement>(null);
+
+  // Outside-click + ESC close — mirrors StudyMenu / ModelSettingsMenu
+  // so the dismissal semantics across every TopBar popover stay
+  // identical.
+  useEffect(() => {
+    if (!open) return;
+    const onClick = (e: MouseEvent) => {
+      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
+    document.addEventListener("mousedown", onClick);
+    document.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onClick);
+      document.removeEventListener("keydown", onKey);
+    };
+  }, [open]);
+
   if (!configured) {
     return (
       <div className="mono" style={chipBaseStyle}>MR</div>
@@ -105,27 +127,72 @@ function AuthChip() {
   const email = session?.user.email ?? "";
   const initials = initialsFromEmail(email);
   return (
-    <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
-      <div
-        className="mono"
-        style={chipBaseStyle}
-        title={email || undefined}
-      >
-        {initials || "?"}
-      </div>
+    <div ref={wrapRef} style={{ position: "relative" }}>
       <button
         type="button"
-        onClick={() => { void signOut(); }}
+        className="mono"
+        data-testid="auth-chip-trigger"
+        onClick={() => setOpen((o) => !o)}
+        aria-expanded={open}
+        aria-haspopup="menu"
+        aria-label={email ? `Account menu for ${email}` : "Account menu"}
+        title={email || undefined}
         style={{
-          all: "unset",
+          ...chipBaseStyle,
           cursor: "pointer",
-          fontSize: "var(--t-l8)",
-          color: "var(--ink-3)",
-          padding: "4px 6px",
+          color: "var(--ink)",
+          padding: 0,
         }}
       >
-        Sign out
+        {initials || "?"}
       </button>
+      {open && (
+        <div
+          role="menu"
+          style={{
+            position: "absolute", top: "calc(100% + 6px)", right: 0, zIndex: 30,
+            width: 240,
+            background: "var(--paper)",
+            border: "1px solid var(--rule-strong)",
+            boxShadow: "0 10px 24px rgba(29,34,54,0.10)",
+          }}
+        >
+          {email && (
+            <div style={{
+              padding: "8px 14px 6px",
+              borderBottom: "1px solid var(--rule)",
+              background: "var(--paper-2)",
+            }}>
+              <div className="mono" style={{
+                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+                color: "var(--ink-3)", textTransform: "uppercase",
+              }}>Signed in</div>
+              <div style={{
+                fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 2,
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }} title={email}>{email}</div>
+            </div>
+          )}
+          <button
+            type="button"
+            data-testid="auth-chip-signout"
+            onClick={() => { setOpen(false); void signOut(); }}
+            style={{
+              display: "block", width: "100%", textAlign: "left",
+              padding: "10px 14px",
+              background: "transparent",
+              border: "none",
+              cursor: "pointer",
+              fontFamily: "inherit",
+              fontSize: "var(--fs-ui)", color: "var(--ink)", fontWeight: 500,
+            }}
+            onMouseEnter={(e) => { e.currentTarget.style.background = "var(--paper-2)"; }}
+            onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; }}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
     </div>
   );
 }
