@@ -175,6 +175,35 @@ const { entries: capReceivers } = buildReceiverRegistry(
   capBasisUnits, capDirectAllocations, bases, DEFAULT_STUDY_CONTEXT,
 );
 
+// Registry ordering contract — indirect bucket first (alphabetical by
+// display name, preserves the pre-existing convention), then direct
+// bucket sorted by glCode ascending. The Allocation Bases matrix
+// renders rows in this order, so the assertion below pins the visual
+// grouping as well as the data shape.
+{
+  // Indirect: "City Manager" (CMGR) precedes "Fringe Benefits Allocation"
+  // (FAS) — the old dept-name sort is preserved for this bucket.
+  // Direct: glCodes ascending → 011-3100 (PLAN), 011-3200 (BLDG),
+  // 011-3300 (ENG), 401-0000 (OTHER). Note: sorted by glCode this
+  // differs from dept-name order ("Building" would otherwise come first).
+  assert.deepEqual(
+    capReceivers.map((r) => r.glCode),
+    ["011-1200", "061-1470", "011-3100", "011-3200", "011-3300", "401-0000"],
+    "registry orders indirect-then-direct, direct bucket sorted by glCode ascending",
+  );
+  // Indirect bucket head ordering still uses the dept name — proves the
+  // glCode rule only applies to the direct bucket.
+  const indirect = capReceivers.filter((r) =>
+    r.glCode === "011-1200" || r.glCode === "061-1470",
+  );
+  assert.deepEqual(
+    indirect.map((r) => r.dept),
+    ["City Manager", "Fringe Benefits Allocation"],
+    "indirect bucket preserves dept-name ordering",
+  );
+  console.log("  ✓ receiver registry: direct receivers sorted by glCode; indirect unchanged");
+}
+
 // ── Build the engine + run ───────────────────────────────────────────────
 
 const graph = buildEngineGraph({

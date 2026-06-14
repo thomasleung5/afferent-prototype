@@ -108,13 +108,26 @@ export function buildReceiverRegistry(
     }
   }
 
-  // Stable ordering: indirect-classification receivers first, then direct,
-  // alphabetical within each. Mirrors the AllocationBases visual grouping.
+  // Stable ordering: indirect-classification receivers first (within
+  // those, alphabetical by display name — the pre-existing convention),
+  // then direct receivers sorted by glCode ascending. The Allocation
+  // Bases matrix groups receivers by classification; analysts read
+  // direct rows account-code first because glCode is the routing
+  // identity that anchors the trail back to the source budget.
+  // localeCompare with numeric: true handles mixed-width segments
+  // ("011-1200" vs "11-1200") in natural order. Entries within the
+  // registry have unique glCodes, but a defensive dept-name tiebreaker
+  // keeps the sort fully deterministic even if that invariant ever
+  // loosens.
   const entries = [...byKey.values()].sort((a, b) => {
     const aIndirect = isIndirectCode(a.deptCode);
     const bIndirect = isIndirectCode(b.deptCode);
     if (aIndirect !== bIndirect) return aIndirect ? -1 : 1;
-    return a.dept.localeCompare(b.dept);
+    if (aIndirect) return a.dept.localeCompare(b.dept);
+    const cmp = a.glCode.localeCompare(
+      b.glCode, undefined, { numeric: true, sensitivity: "base" },
+    );
+    return cmp !== 0 ? cmp : a.dept.localeCompare(b.dept);
   });
 
   return { entries };
