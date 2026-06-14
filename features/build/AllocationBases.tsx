@@ -5,6 +5,7 @@ import { fmt } from "@/lib/format";
 import type { GlNode } from "@/lib/data/capStepDownEngine";
 import type { AllocationBasis, BasisKey, BasisUnitRow } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
+import { allocationBasesUsedByPools } from "@/lib/data/capBasisRouting";
 import {
   TracePanel, TraceSection, SummaryStrip, TraceStat,
   BigFormula,
@@ -86,7 +87,6 @@ function buildColumns(
   allocationBases: AllocationBasis[],
 ): BasisColumn[] {
   return allocationBases
-    .filter((b) => b.driverKey !== "DIRECT")
     .map((b) => ({
       id: b.id,
       driverKey: b.driverKey,
@@ -128,10 +128,14 @@ function buildRowsFromNodes(
 /** Step 3 of the CAP flow. The node × basis denominator matrix — one row
  *  per engine node (cost center or direct fee-dept receiver). */
 export function AllocationBases() {
-  const { allocationBases, capBasisUnits, derived } = useBuildState();
+  const { allocationBases, capBasisUnits, capPools, derived } = useBuildState();
+  const usedAllocationBases = useMemo(
+    () => allocationBasesUsedByPools(capPools, allocationBases),
+    [capPools, allocationBases],
+  );
   const columns = useMemo(
-    () => buildColumns(allocationBases),
-    [allocationBases],
+    () => buildColumns(usedAllocationBases),
+    [usedAllocationBases],
   );
   const rows = useMemo(
     () => buildRowsFromNodes(derived.capStepDown.nodes, capBasisUnits, columns),

@@ -26,6 +26,7 @@ import type {
 import {
   buildEngineGraph, computeStepDownGl, capAllocatedFromGl,
 } from "../capStepDownEngine";
+import { allocationBasesUsedByPools } from "../capBasisRouting";
 import { buildReceiverRegistry } from "../capReceiverRegistry";
 import { DEFAULT_STUDY_CONTEXT } from "../studyContext";
 
@@ -142,6 +143,30 @@ const capPools: CapPool[] = [
 ];
 
 const capDirectAllocations: DirectAllocationRow[] = [];
+
+const matrixBases = allocationBasesUsedByPools(capPools, [
+  {
+    id: "bas-old",
+    name: "Prior-year headcount",
+    source: "Prior plan",
+    driverKey: "FTE",
+    createdAt: NOW,
+  },
+  ...bases,
+  {
+    id: "bas-direct",
+    name: "Direct to Planning",
+    source: "Manual",
+    driverKey: "DIRECT",
+    directTo: "PLAN",
+    createdAt: NOW,
+  },
+]);
+assert.deepEqual(
+  matrixBases.map((basis) => basis.id),
+  ["bas-fte-cm", "bas-fte-fb"],
+  "Allocation Bases matrix excludes unreferenced catalog entries and DIRECT routes",
+);
 
 // Receivers come from the registry, which now scans basisUnits +
 // directAllocations directly. Built fresh here so the test exercises

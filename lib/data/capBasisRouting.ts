@@ -27,6 +27,22 @@ import { BASIS_DRIVERS } from "./allocationBases";
 // pool has a valid basisId, inferBasis stops firing.
 // ---------------------------------------------------------------------------
 
+/** Return the non-direct allocation bases referenced by the current pool
+ * inventory. The study catalog is intentionally additive so prior/manual
+ * bases remain available in the picker, but the Allocation Bases matrix
+ * should only show denominators that participate in the active plan. */
+export function allocationBasesUsedByPools(
+  pools: CapPool[],
+  bases: AllocationBasis[],
+): AllocationBasis[] {
+  const usedIds = new Set(pools.map((pool) => pool.basisId).filter(Boolean));
+  const usedNames = new Set(pools.map((pool) => pool.basis.trim().toLowerCase()));
+  return bases.filter((basis) =>
+    basis.driverKey !== "DIRECT"
+    && (usedIds.has(basis.id) || usedNames.has(basis.name.trim().toLowerCase())),
+  );
+}
+
 function inferBasis(p: CapPool): BasisKey {
   const t = p.basis.toLowerCase();
   if (t.includes("fte"))             return "FTE";
@@ -78,4 +94,3 @@ export const DRIVERS: DriverMatrix = (() => {
   }
   return out;
 })();
-
