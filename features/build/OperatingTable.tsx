@@ -11,15 +11,19 @@ import type { OpCategory, OpDept, OperatingLine } from "@/lib/types";
 import { useBuildState } from "@/lib/store";
 
 const CATEGORIES: OpCategory[] = [
-  "Software & subscriptions",
-  "Professional services",
-  "Training & travel",
-  "Office & supplies",
-  "Memberships & dues",
-  "Vehicles & equipment",
-  "Legal noticing",
-  "Capital outlay",
-  "Other",
+  "Professional & Contractual Services",
+  "Software & Subscriptions",
+  "Utilities",
+  "Communications",
+  "Insurance",
+  "Repairs & Maintenance",
+  "Rent & Facilities",
+  "Travel",
+  "Training & Professional Development",
+  "Memberships & Dues",
+  "Vehicles & Fleet",
+  "Office Supplies",
+  "Other Operational Expenses",
 ];
 
 export function OperatingTable() {

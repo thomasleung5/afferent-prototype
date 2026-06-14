@@ -216,7 +216,11 @@ function sheet(name: string, rows: (string | number | null)[][]): PreviewSheet {
   assert.equal(op0.line, "GIS license");
   assert.equal(op0.dept, "PLAN");
   assert.equal(op0.amount, 12000);
-  assert.equal(op0.category, "Software & subscriptions");
+  assert.equal(op0.category, "Software & Subscriptions");
+  assert.equal(op0.sourceCategory, "Software & subscriptions",
+    "raw source-category preserved verbatim for audit");
+  assert.equal(op0.needsCategoryMapping, undefined,
+    "case-insensitive exact match resolves without review");
   assert.equal(op0.costType, "Operating");
   const op1 = r.extraction.mapped[1].entity;
   assert.equal(op1.costType, "Labor",
@@ -242,9 +246,10 @@ function sheet(name: string, rows: (string | number | null)[][]): PreviewSheet {
 // shape); the AI side reuses the exact same helpers, so behavior is
 // consistent by construction.
 
-// Capital outlay → include:false + reason "capital outlay" (by category)
-// AND by line keyword. Zero and negative amounts pass through.
-// Total / subtotal rows are skipped silently like blank rows.
+// Capital outlay → include:false + reason "capital outlay" (by raw
+// source-category, since OpCategory no longer enumerates capital outlay
+// as a bucket) AND by line keyword. Zero and negative amounts pass
+// through. Total / subtotal rows are skipped silently like blank rows.
 // Unknown departments go to unmapped with source lineage.
 {
   const s = sheet("Budget", [
@@ -397,6 +402,163 @@ function sheet(name: string, rows: (string | number | null)[][]): PreviewSheet {
   assert.equal(analyst?.entity.include, false);
   assert.equal(analyst?.entity.excludeReason, "analyst marked one-time per memo");
   console.log("  ✓ operatingToExtractionResult: parity with Excel + honors model-set include/excludeReason");
+}
+
+// ─── Operating category normalization (new canonical list + review) ───
+//
+// Pins the source-category review behavior added on top of the existing
+// excelToOperatingExtraction path:
+//
+//   * Raw source-category string is preserved verbatim in sourceCategory
+//     for audit, separate from the normalized canonical `category`.
+//   * Case-insensitive exact matches against the 13-value OpCategory
+//     resolve without analyst review.
+//   * Saved per-study mappings (operatingCategoryMappings) reuse
+//     analyst choices on subsequent imports.
+//   * Unmapped source categories surface once each on
+//     `unmappedSourceCategories` for the review panel.
+//   * Analysts can resolve a source category to "Other Operational
+//     Expenses" when no other bucket fits.
+//   * Capital-outlay exclusion still fires after a row is mapped to a
+//     non-capital canonical category — the line-text + sourceCategory
+//     keyword classifier runs after the canonical mapping is assigned.
+
+// 1) Raw source category preserved verbatim; canonical match handles
+//    casing differences without needing analyst review.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    ["6101", "PLAN", "SOFTWARE & subscriptions", "GIS license", 12000],
+    ["6102", "PLAN", "memberships & dues",       "APA dues",       3200],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  });
+  const row0 = r.extraction.mapped[0]?.entity;
+  const row1 = r.extraction.mapped[1]?.entity;
+  assert.ok(row0 && row1);
+  assert.equal(row0.category, "Software & Subscriptions");
+  assert.equal(row0.sourceCategory, "SOFTWARE & subscriptions",
+    "verbatim raw category preserved on entity");
+  assert.equal(row0.needsCategoryMapping, undefined);
+  assert.equal(row1.category, "Memberships & Dues");
+  assert.equal(row1.sourceCategory, "memberships & dues");
+  assert.equal(row1.needsCategoryMapping, undefined);
+  assert.deepEqual(r.unmappedSourceCategories, [],
+    "all rows auto-resolved; no review queue");
+  console.log("  ✓ operating category: raw preserved + case-insensitive canonical match");
+}
+
+// 2) Unmapped source categories surface once each; review queue holds
+//    the verbatim source string for the panel UI to show.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    ["6101", "PLAN", "Outside Services",     "Plan review consultant", 12000],
+    ["6102", "PLAN", "Outside Services",     "Traffic consultant",      8000],
+    ["6103", "PLAN", "Vendor Subscriptions", "Permit system",          18000],
+    ["6104", "PLAN", "Utilities",            "Electricity",            22000],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  });
+  // "Utilities" is canonical → auto-resolves; the other two are unknown
+  // and surface once each on the review queue regardless of how many
+  // rows used them.
+  assert.deepEqual(r.unmappedSourceCategories,
+    ["Outside Services", "Vendor Subscriptions"],
+    "unique unmapped categories, first-seen order");
+  const planReview = r.extraction.mapped.find((m) => m.entity.line === "Plan review consultant");
+  assert.ok(planReview);
+  assert.equal(planReview.entity.needsCategoryMapping, true,
+    "unresolved row flagged for review");
+  assert.equal(planReview.entity.category, "Other Operational Expenses",
+    "temporary placeholder until analyst resolves");
+  assert.equal(planReview.entity.sourceCategory, "Outside Services",
+    "raw value retained verbatim on flagged row");
+  const electricity = r.extraction.mapped.find((m) => m.entity.line === "Electricity");
+  assert.equal(electricity?.entity.needsCategoryMapping, undefined,
+    "canonical match doesn't get flagged");
+  console.log("  ✓ operating category: unmapped review queue surfaces unique source values");
+}
+
+// 3) Saved mapping from a prior import auto-resolves later imports
+//    without surfacing a review entry.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    ["6101", "PLAN", "Outside Services", "Plan review", 12000],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  }, { "outside services": "Professional & Contractual Services" });
+  const row = r.extraction.mapped[0]?.entity;
+  assert.ok(row);
+  assert.equal(row.category, "Professional & Contractual Services");
+  assert.equal(row.sourceCategory, "Outside Services");
+  assert.equal(row.needsCategoryMapping, undefined,
+    "saved mapping resolves the row without review");
+  assert.deepEqual(r.unmappedSourceCategories, [],
+    "saved mapping clears the review queue");
+  console.log("  ✓ operating category: saved per-study mapping auto-resolves later imports");
+}
+
+// 4) Explicit analyst resolution to "Other Operational Expenses" — a
+//    valid choice when no canonical bucket genuinely fits. Once mapped,
+//    needsCategoryMapping is cleared.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    ["6101", "PLAN", "Misc Pass-Through Charges", "Bank fees", 1200],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  }, { "misc pass-through charges": "Other Operational Expenses" });
+  const row = r.extraction.mapped[0]?.entity;
+  assert.ok(row);
+  assert.equal(row.category, "Other Operational Expenses");
+  assert.equal(row.needsCategoryMapping, undefined,
+    "explicit Other selection clears review flag");
+  assert.equal(row.sourceCategory, "Misc Pass-Through Charges",
+    "city's original terminology preserved");
+  console.log("  ✓ operating category: explicit 'Other Operational Expenses' is a valid resolution");
+}
+
+// 5) Capital-outlay exclusion fires after canonical mapping is applied.
+//    Even though "Capital outlay" is no longer a canonical category,
+//    a row whose raw source-category was Capital outlay still gets
+//    include=false / excludeReason="capital outlay" via the keyword
+//    classifier that runs against the source-category and line text.
+{
+  const s = sheet("Budget", [
+    ["Code", "Dept", "Category", "Line", "Amount"],
+    // Source tagged Capital outlay — should exclude even before review,
+    // and continue excluding after the analyst maps the bucket.
+    ["7001", "PLAN", "Capital outlay", "Vehicle replacement", 45000],
+    // Line text contains "capital outlay" but source category is a
+    // canonical fit → still excludes after canonical mapping applied.
+    ["7002", "PLAN", "Vehicles & Fleet", "Capital outlay reserve", 12000],
+  ]);
+  const r = excelToOperatingExtraction("op.xlsx", s, {
+    headerRowIndex: 0, cols: { code: 0, dept: 1, category: 2, line: 3, amount: 4 },
+  }, { "capital outlay": "Other Operational Expenses" });
+  // (a) Resolved via saved mapping to "Other Operational Expenses".
+  //     Exclusion still fires because sourceCategory was Capital outlay.
+  const cap = r.extraction.mapped.find((m) => m.entity.line === "Vehicle replacement");
+  assert.ok(cap);
+  assert.equal(cap.entity.category, "Other Operational Expenses",
+    "canonical mapping applied first");
+  assert.equal(cap.entity.needsCategoryMapping, undefined);
+  assert.equal(cap.entity.include, false,
+    "capital outlay still excluded after canonical mapping");
+  assert.equal(cap.entity.excludeReason, "capital outlay");
+  // (b) Source-category canonical, but line text triggers exclusion.
+  const reserve = r.extraction.mapped.find((m) => m.entity.line === "Capital outlay reserve");
+  assert.ok(reserve);
+  assert.equal(reserve.entity.category, "Vehicles & Fleet");
+  assert.equal(reserve.entity.include, false);
+  assert.equal(reserve.entity.excludeReason, "capital outlay");
+  console.log("  ✓ operating category: capital-outlay exclusion runs after canonical mapping");
 }
 
 console.log("\nAll excelToDomain assertions passed.");

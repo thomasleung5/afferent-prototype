@@ -21,6 +21,16 @@ import {
 import type {
   DomainAutoMapping, DomainConvertResult, DomainMapping, ExcelImportWarning,
 } from "@/lib/import/excelDomainSpec";
+import { OP_CATEGORIES } from "@/lib/ai/parseOperating";
+
+/** Normalize a source-document category string into a stable lookup key
+ *  for `operatingCategoryMappings`. Casing and whitespace differences
+ *  in vendor exports (e.g. "  software & subs  " vs "Software & Subs")
+ *  must collapse to the same entry so the analyst maps each bucket
+ *  exactly once. */
+export function normalizeSourceCategoryKey(v: string): string {
+  return v.trim().toLowerCase().replace(/\s+/g, " ");
+}
 
 type OperatingRole = "code" | "dept" | "category" | "line" | "amount";
 
@@ -43,16 +53,26 @@ const OPERATING_ROLES: RoleSpec<OperatingRole>[] = [
   ]) },
 ];
 
-const OP_CATEGORIES: OpCategory[] = [
-  "Software & subscriptions", "Professional services",
-  "Training & travel", "Office & supplies", "Memberships & dues",
-  "Vehicles & equipment", "Legal noticing", "Capital outlay", "Other",
-];
-
-function normCategory(v: string): OpCategory {
-  const s = v.trim();
-  const match = OP_CATEGORIES.find((c) => c.toLowerCase() === s.toLowerCase());
-  return match ?? "Other";
+/** Resolve a raw source-category cell against (a) a saved per-study
+ *  mapping table, and (b) the canonical OpCategory list via a
+ *  case-insensitive exact match. Returns the mapped category when
+ *  resolved; null when the analyst still needs to choose. Blank cells
+ *  resolve to the placeholder "Other Operational Expenses" with
+ *  needsCategoryMapping=false because there is nothing to review. */
+export function resolveSourceCategory(
+  rawCategory: string,
+  savedMappings: Record<string, OpCategory>,
+): { category: OpCategory; needsCategoryMapping: boolean } {
+  const trimmed = rawCategory.trim();
+  if (!trimmed) {
+    return { category: "Other Operational Expenses", needsCategoryMapping: false };
+  }
+  const key = normalizeSourceCategoryKey(trimmed);
+  const saved = savedMappings[key];
+  if (saved) return { category: saved, needsCategoryMapping: false };
+  const canonical = OP_CATEGORIES.find((c) => c.toLowerCase() === trimmed.toLowerCase());
+  if (canonical) return { category: canonical, needsCategoryMapping: false };
+  return { category: "Other Operational Expenses", needsCategoryMapping: true };
 }
 
 const LABOR_TEXT_PATTERNS: RegExp[] = [
@@ -121,7 +141,12 @@ export function excelToOperatingExtraction(
   fileName: string,
   sheet: PreviewSheet,
   mapping: DomainMapping,
-): DomainConvertResult<OperatingLine> {
+  /** Saved source-category → canonical mappings from previous imports
+   *  in this study (BuildSnapshot.operatingCategoryMappings). Defaults
+   *  to {} so callers that haven't wired the panel through can keep
+   *  using the converter directly. */
+  savedCategoryMappings: Record<string, OpCategory> = {},
+): DomainConvertResult<OperatingLine> & { unmappedSourceCategories: string[] } {
   const now = new Date().toISOString();
   const mapped: ExtractedRow<OperatingLine>[] = [];
   const lowConfidence: ExtractedRow<OperatingLine>[] = [];
@@ -208,7 +233,15 @@ export function excelToOperatingExtraction(
       skipped += 1; return;
     }
 
-    const category = normCategory(categoryC >= 0 ? cellToString(categoryCell) : "");
+    const rawCategory = categoryC >= 0 ? cellToString(categoryCell).trim() : "";
+    const resolved = resolveSourceCategory(rawCategory, savedCategoryMappings);
+    const category = resolved.category;
+    // Cost-type + exclusion classification run after the canonical
+    // category is assigned. Unresolved rows still get a placeholder
+    // run so the preview shows something plausible; once the analyst
+    // resolves the source category in the review step the converter
+    // re-runs and the final cost-type + include/excludeReason reflect
+    // the real canonical mapping.
     const costType = classifyCostType(line, category);
     const labor: LaborType | undefined = costType === "Labor"
       ? classifyLaborType({ line, category })
@@ -216,14 +249,21 @@ export function excelToOperatingExtraction(
     // Apply the shared retention policy so capital outlay / debt
     // service / transfers / pass-throughs / applicant-reimbursed /
     // one-time rows land with include=false + a clear excludeReason
-    // instead of silently going into the recovery math. PDF/AI uses
-    // the same helper.
-    const policy = classifyOperatingExclusion({ line, category });
+    // instead of silently going into the recovery math. `sourceCategory`
+    // is passed because OpCategory no longer enumerates capital outlay
+    // as a canonical bucket; the classifier reads the raw cell to
+    // preserve the existing exclusion behavior on rows the source
+    // document tagged as Capital outlay. PDF/AI uses the same helper.
+    const policy = classifyOperatingExclusion({
+      line, category, sourceCategory: rawCategory,
+    });
     const entity: OperatingLine = {
       id: `op-xl-${Date.now()}-${i}`,
       code: codeC >= 0 ? cellToString(codeCell).trim() || "—" : "—",
       dept,
       category,
+      ...(rawCategory ? { sourceCategory: rawCategory } : {}),
+      ...(resolved.needsCategoryMapping ? { needsCategoryMapping: true } : {}),
       costType,
       ...(labor ? { laborType: labor } : {}),
       line,
@@ -250,10 +290,25 @@ export function excelToOperatingExtraction(
       detected: `Operating budget (Excel · ${sheet.name})`,
     },
   };
+  // Unique source categories that still need analyst review, preserving
+  // the verbatim casing the source document used. Order is
+  // first-seen-first so the review UI surfaces them in the order they
+  // appeared in the workbook.
+  const seen = new Set<string>();
+  const unmappedSourceCategories: string[] = [];
+  for (const { entity } of [...mapped, ...lowConfidence]) {
+    if (!entity.needsCategoryMapping) continue;
+    const raw = entity.sourceCategory ?? "";
+    const key = normalizeSourceCategoryKey(raw);
+    if (!key || seen.has(key)) continue;
+    seen.add(key);
+    unmappedSourceCategories.push(raw);
+  }
   return {
     extraction,
     warnings,
     importedRowCount: mapped.length + lowConfidence.length,
     skippedRowCount: skipped,
+    unmappedSourceCategories,
   };
 }

@@ -329,15 +329,19 @@ export interface ProductiveHoursRow {
 export type OpDept = DeptCode | "SHARED:CDS";
 
 export type OpCategory =
-  | "Software & subscriptions"
-  | "Professional services"
-  | "Training & travel"
-  | "Office & supplies"
-  | "Memberships & dues"
-  | "Vehicles & equipment"
-  | "Legal noticing"
-  | "Capital outlay"
-  | "Other";
+  | "Professional & Contractual Services"
+  | "Software & Subscriptions"
+  | "Utilities"
+  | "Communications"
+  | "Insurance"
+  | "Repairs & Maintenance"
+  | "Rent & Facilities"
+  | "Travel"
+  | "Training & Professional Development"
+  | "Memberships & Dues"
+  | "Vehicles & Fleet"
+  | "Office Supplies"
+  | "Other Operational Expenses";
 
 /** Classification of a budget line. "Labor" rows (salaries, benefits,
  *  overtime, payroll taxes, workers comp, wellness, temp labor, burden
@@ -376,6 +380,17 @@ export interface OperatingLine {
    *  model's mapping. */
   sourceDept?: string;
   category: OpCategory;
+  /** Original category string from the source document (Excel cell value
+   *  or AI-extracted text), preserved verbatim for audit. The normalized
+   *  `category` is what the engine uses; `sourceCategory` is what the
+   *  reviewer sees when the importer's mapping isn't obvious. */
+  sourceCategory?: string;
+  /** Transient flag set by the Excel importer when `sourceCategory`
+   *  didn't auto-map to a canonical OpCategory. The row gets a
+   *  placeholder `category` ("Other Operational Expenses") so type
+   *  invariants hold; the review step in the operating import panel
+   *  must resolve the flag before the row is merged into the store. */
+  needsCategoryMapping?: boolean;
   /** Budget-line classification. See CostType. */
   costType: CostType;
   /** Sub-classification when costType === "Labor". See LaborType. Absent

@@ -18,7 +18,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { mapLegacyActivity } from "@/lib/data/activities";
 import type {
   AllocationBasis, BasisUnitRow, CapAllocation, CapPool, DeptCode,
-  DirectAllocationRow, FunctionalAllocationBucket, OperatingLine,
+  DirectAllocationRow, FunctionalAllocationBucket, OpCategory, OperatingLine,
   PolicyException, PolicyTarget, Position, ProductiveHoursRow,
   RoleAllocation, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
@@ -124,6 +124,12 @@ export interface BuildSnapshot {
    *  in fee-model tabs for the active seed/study. */
   activeFeeDepts: DeptCode[];
   activeFiscalYear: string;
+  /** Persisted resolutions from the Excel operating import review step:
+   *  normalized source-category string → canonical OpCategory. Re-applied
+   *  on every subsequent import in the same study, so analysts never have
+   *  to map the same vendor-supplied category twice. Sparse — only entries
+   *  the reviewer explicitly resolved are stored. */
+  operatingCategoryMappings: Record<string, OpCategory>;
 }
 
 export interface StudyVersion {
@@ -211,6 +217,8 @@ export interface BuildState {
   activeJurisdictionId: string;
   activeFeeDepts: DeptCode[];
   activeFiscalYear: string;
+  /** See BuildSnapshot.operatingCategoryMappings. */
+  operatingCategoryMappings: Record<string, OpCategory>;
 }
 
 interface BuildActions {
@@ -259,6 +267,10 @@ interface BuildActions {
   addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
   mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
+  /** Persist resolved Excel category mappings so subsequent imports in
+   *  the same study apply them automatically. Merges into the existing
+   *  record by normalized source-category key. */
+  saveOperatingCategoryMappings: (mappings: Record<string, OpCategory>) => void;
   mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
   mergeVolume: (r: ExtractionResult<VolumeRow>, fileName: string) => ImportApplyResult;
@@ -428,6 +440,7 @@ const initialState = (): BuildState => {
     activeFeeDepts: feeDeptsFromServices(SERVICES),
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
+    operatingCategoryMappings: {},
   };
   const seedVersion: StudyVersion = {
     id: "version-seed-baseline",
@@ -572,7 +585,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         set((s) => ({
           operating: [
             ...s.operating,
-            { id: `op-${Date.now()}`, code: "—", dept: "PLAN", category: "Other",
+            { id: `op-${Date.now()}`, code: "—", dept: "PLAN",
+              category: "Other Operational Expenses",
               costType,
               line: costType === "Labor" ? "New labor line" : "New line item",
               amount: 0, source: "manual", include: true },
@@ -808,6 +822,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           };
         });
         return result;
+      },
+
+      saveOperatingCategoryMappings: (mappings) => {
+        set((s) => ({
+          operatingCategoryMappings: { ...s.operatingCategoryMappings, ...mappings },
+        }));
       },
 
       mergeServices: (r, fileName) => {

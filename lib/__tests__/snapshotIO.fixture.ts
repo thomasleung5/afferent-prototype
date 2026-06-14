@@ -52,6 +52,7 @@ async function main(): Promise<void> {
     activeJurisdictionId: "test-jurisdiction",
     activeFeeDepts: [],
     activeFiscalYear: "FY 2025-26",
+    operatingCategoryMappings: {},
   };
 
   // 1. serializeSnapshot — canonical envelope shape.

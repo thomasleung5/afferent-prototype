@@ -7,7 +7,7 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "@/lib/data/functionalAllocation";
 import { DEFAULT_STUDY_CONTEXT } from "@/lib/data/studyContext";
 import { DEFAULT_JURISDICTION_ID, getJurisdiction } from "@/lib/data/jurisdictions";
 import type {
-  DeptCode, FeeFormula, OperatingLine, Service, SourceTag, VolumeRow,
+  DeptCode, FeeFormula, OpCategory, OperatingLine, Service, SourceTag, VolumeRow,
 } from "@/lib/types";
 import { FEE_DEPTS } from "./data/departments";
 import { defaultCenterOrder } from "./store";
@@ -18,6 +18,22 @@ import type { BuildState, StudyVersion } from "./store";
 import { makeStudyVersion } from "./storeSnapshot";
 
 const VALID_SOURCES: SourceTag[] = ["seed", "imported", "manual"];
+
+/** Legacy → current OpCategory remap. Used by the persisted-state
+ *  migration so existing studies with the prior 9-value taxonomy land
+ *  on the new 13-value canonical list without requiring re-import.
+ *  Entries strictly match historical OpCategory union members. */
+const LEGACY_OP_CATEGORY_MAP: Record<string, OpCategory> = {
+  "Software & subscriptions": "Software & Subscriptions",
+  "Professional services":    "Professional & Contractual Services",
+  "Training & travel":        "Training & Professional Development",
+  "Office & supplies":        "Office Supplies",
+  "Memberships & dues":       "Memberships & Dues",
+  "Vehicles & equipment":     "Vehicles & Fleet",
+  "Legal noticing":           "Other Operational Expenses",
+  "Capital outlay":           "Other Operational Expenses",
+  "Other":                    "Other Operational Expenses",
+};
 
 const coerceSource = (v: unknown): SourceTag =>
   typeof v === "string" && (VALID_SOURCES as string[]).includes(v) ? (v as SourceTag) : "seed";
@@ -199,14 +215,26 @@ export function migratePersistedState(state: Partial<BuildState>): void {
       (o: OperatingLine) =>
         !(VALID_SOURCES as string[]).includes(o.source as string)
         || o.costType == null
-        || (o.costType === "Labor" && !o.laborType),
+        || (o.costType === "Labor" && !o.laborType)
+        || LEGACY_OP_CATEGORY_MAP[o.category as string] !== undefined,
     );
     if (needsOpBackfill) {
       state.operating = state.operating.map((o: OperatingLine) => {
+        const remappedCategory = LEGACY_OP_CATEGORY_MAP[o.category as string];
         const next: OperatingLine = {
           ...o,
           source: coerceSource(o.source),
           costType: o.costType ?? "Operating",
+          // Legacy categories from the prior 9-value OpCategory taxonomy
+          // get mapped to the new 13-value canonical list. The original
+          // string is preserved in `sourceCategory` so the audit trail
+          // shows what the persisted row used to be tagged as.
+          ...(remappedCategory
+            ? {
+              category: remappedCategory,
+              ...(o.sourceCategory ? {} : { sourceCategory: o.category as string }),
+            }
+            : {}),
         };
         if (next.costType === "Labor" && !next.laborType) {
           next.laborType = classifyLaborType({
@@ -216,6 +244,9 @@ export function migratePersistedState(state: Partial<BuildState>): void {
         return next;
       });
     }
+  }
+  if (!state.operatingCategoryMappings || typeof state.operatingCategoryMappings !== "object") {
+    state.operatingCategoryMappings = {};
   }
   if (Array.isArray(state.volume)) {
     const needsCoerce = state.volume.some(

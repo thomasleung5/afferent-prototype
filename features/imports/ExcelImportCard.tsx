@@ -16,7 +16,7 @@
  * `spec` should be memoized in the consumer (useMemo over the source
  * data it closes over) so the inner auto-detect effect doesn't churn. */
 
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
 import { Btn } from "@/components/ui";
 import {
   previewExcelFile,
@@ -168,8 +168,19 @@ export function ExcelUploadButton<Entity>({
   );
 }
 
+/** Optional per-domain review slot rendered between the mapped-row
+ *  preview and the Import button. `node` is any JSX (e.g. the operating
+ *  import's source-category review block); when `blockImport` is true
+ *  the Import button stays disabled and shows `blockReason` instead of
+ *  the usual count summary. Used by `ExcelOperatingMappingPanel`. */
+export interface ExcelMappingExtraReview {
+  node: ReactNode;
+  blockImport: boolean;
+  blockReason?: string;
+}
+
 export function ExcelMappingPanel<Entity>({
-  state, applyMerge,
+  state, applyMerge, extraReview,
 }: {
   state: ExcelImportState<Entity>;
   applyMerge: (
@@ -177,14 +188,15 @@ export function ExcelMappingPanel<Entity>({
     setImportStatus: (s: Status) => void,
     setWarnings: (w: ExcelImportWarning[]) => void,
   ) => void;
+  extraReview?: ExcelMappingExtraReview;
 }) {
   // The hook owns importStatus/warnings; mapping panel just renders.
   // We expose them via a wrapper component to keep the API clean.
-  return <Panel state={state} applyMerge={applyMerge}/>;
+  return <Panel state={state} applyMerge={applyMerge} extraReview={extraReview}/>;
 }
 
 function Panel<Entity>({
-  state, applyMerge,
+  state, applyMerge, extraReview,
 }: {
   state: ExcelImportState<Entity>;
   applyMerge: (
@@ -192,6 +204,7 @@ function Panel<Entity>({
     setImportStatus: (s: Status) => void,
     setWarnings: (w: ExcelImportWarning[]) => void,
   ) => void;
+  extraReview?: ExcelMappingExtraReview;
 }) {
   const {
     spec, uploading, uploadStatus, preview, autoMap,
@@ -222,6 +235,7 @@ function Panel<Entity>({
           headerRow={headerRow} setHeaderRow={setHeaderRow}
           cols={cols} setCol={setCol}
           onImport={() => applyMerge(state, setLocalStatus, setLocalWarnings)}
+          extraReview={extraReview}
         />
       )}
       {localStatus && (
@@ -236,7 +250,7 @@ function Panel<Entity>({
 
 function InnerMappingPanel<Entity>({
   spec, preview, autoMap, sheetIndex, setSheetIndex,
-  headerRow, setHeaderRow, cols, setCol, onImport,
+  headerRow, setHeaderRow, cols, setCol, onImport, extraReview,
 }: {
   spec: ExcelImportDomainSpec<Entity>;
   preview: ExcelPreviewOk;
@@ -248,6 +262,7 @@ function InnerMappingPanel<Entity>({
   cols: Record<string, number>;
   setCol: (key: string, n: number) => void;
   onImport: () => void;
+  extraReview?: ExcelMappingExtraReview;
 }) {
   const sheets: PreviewSheet[] = Array.isArray(preview?.sheets) ? preview.sheets : [];
   const sheet: PreviewSheet | undefined = sheets[sheetIndex];
@@ -371,17 +386,21 @@ function InnerMappingPanel<Entity>({
         />
       )}
 
+      {extraReview?.node}
+
       <div style={{ display: "flex", gap: 8 }}>
         <Btn
           kind="primary"
-          disabled={!result || result.importedRowCount === 0}
+          disabled={!result || result.importedRowCount === 0 || !!extraReview?.blockImport}
           onClick={onImport}
         >
-          {result
-            ? (result.importedRowCount === 0
-                ? `No importable ${spec.noun.plural}`
-                : `Import ${result.importedRowCount.toLocaleString()} ${result.importedRowCount === 1 ? spec.noun.singular : spec.noun.plural}`)
-            : "Pick required columns"}
+          {extraReview?.blockImport && extraReview.blockReason
+            ? extraReview.blockReason
+            : result
+              ? (result.importedRowCount === 0
+                  ? `No importable ${spec.noun.plural}`
+                  : `Import ${result.importedRowCount.toLocaleString()} ${result.importedRowCount === 1 ? spec.noun.singular : spec.noun.plural}`)
+              : "Pick required columns"}
         </Btn>
       </div>
     </div>

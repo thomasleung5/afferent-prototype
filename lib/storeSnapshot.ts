@@ -37,6 +37,7 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     activeJurisdictionId: state.activeJurisdictionId,
     activeFeeDepts: state.activeFeeDepts,
     activeFiscalYear: state.activeFiscalYear,
+    operatingCategoryMappings: state.operatingCategoryMappings,
   });
 }
 

@@ -92,7 +92,8 @@ export function operatingToExtractionResult(
       return;
     }
 
-    const category = normCategory(row.category);
+    const rawCategory = (row.category ?? "").trim();
+    const category = normCategory(rawCategory);
     const costType = classifyCostType(row);
 
     // Two-stage exclusion decision:
@@ -102,7 +103,10 @@ export function operatingToExtractionResult(
     //      exclusions (capital outlay, debt service, transfers, pass-
     //      throughs, applicant-reimbursed, one-time) come back with
     //      include=false even when the model missed them — keeps the
-    //      Excel + AI paths in lockstep on identical text.
+    //      Excel + AI paths in lockstep on identical text. The raw
+    //      source-side category is passed through so the capital-outlay
+    //      branch still fires when the model echoed the legacy bucket
+    //      name even though OpCategory no longer enumerates it.
     let include: boolean;
     let excludeReason: string | undefined;
     if (row.include === false) {
@@ -110,9 +114,12 @@ export function operatingToExtractionResult(
       excludeReason = row.excludeReason?.trim() || classifyOperatingExclusion({
         line: row.line ?? "",
         category,
+        sourceCategory: rawCategory,
       }).excludeReason;
     } else {
-      const policy = classifyOperatingExclusion({ line: row.line ?? "", category });
+      const policy = classifyOperatingExclusion({
+        line: row.line ?? "", category, sourceCategory: rawCategory,
+      });
       include = policy.include;
       excludeReason = policy.excludeReason;
     }
@@ -123,6 +130,7 @@ export function operatingToExtractionResult(
       dept,
       ...(row.sourceDept?.trim() ? { sourceDept: row.sourceDept.trim() } : {}),
       category,
+      ...(rawCategory ? { sourceCategory: rawCategory } : {}),
       costType,
       ...(costType === "Labor" ? { laborType: classifyLaborType(row) } : {}),
       line: row.line,
@@ -168,22 +176,26 @@ function normDept(v: string): OpDept | null {
   return null;
 }
 
-const OP_CATEGORIES: OpCategory[] = [
-  "Software & subscriptions",
-  "Professional services",
-  "Training & travel",
-  "Office & supplies",
-  "Memberships & dues",
-  "Vehicles & equipment",
-  "Legal noticing",
-  "Capital outlay",
-  "Other",
+export const OP_CATEGORIES: OpCategory[] = [
+  "Professional & Contractual Services",
+  "Software & Subscriptions",
+  "Utilities",
+  "Communications",
+  "Insurance",
+  "Repairs & Maintenance",
+  "Rent & Facilities",
+  "Travel",
+  "Training & Professional Development",
+  "Memberships & Dues",
+  "Vehicles & Fleet",
+  "Office Supplies",
+  "Other Operational Expenses",
 ];
 
-function normCategory(v: string): OpCategory {
+export function normCategory(v: string): OpCategory {
   const s = v.trim();
   const match = OP_CATEGORIES.find((c) => c.toLowerCase() === s.toLowerCase());
-  return match ?? "Other";
+  return match ?? "Other Operational Expenses";
 }
 
 /** Keyword pattern matching the labor-burden vocabulary cities use in
@@ -303,18 +315,27 @@ const ONE_TIME_PATTERNS: RegExp[] = [
 
 /** Determine whether an imported operating row should land in the model
  *  as `include: true` or `include: false` + `excludeReason`. Detection
- *  is keyword-based against the line description (with capital-outlay
- *  also matching the normalized category). Returns `{ include: true }`
- *  with no `excludeReason` when no policy bucket matches.
+ *  is keyword-based against the line description (and against the raw
+ *  source-document category, so an Excel row tagged "Capital outlay"
+ *  excludes even when the line text doesn't mention it). Returns
+ *  `{ include: true }` with no `excludeReason` when no policy bucket
+ *  matches.
+ *
+ *  `category` is the normalized OpCategory; `sourceCategory` (when set)
+ *  is the verbatim string from the source document. The capital-outlay
+ *  branch checks `sourceCategory` rather than `category` because the
+ *  current OpCategory taxonomy no longer enumerates capital outlay as
+ *  a bucket — sources still routinely emit it, though, so the keyword
+ *  signal lives on the source side.
  *
  *  Shared by the AI/PDF parser and the Excel mapper so both paths
  *  arrive at the same retention decision on identical text. */
 export function classifyOperatingExclusion(
-  row: { line: string; category: string },
+  row: { line: string; category: string; sourceCategory?: string },
 ): { include: boolean; excludeReason?: string } {
   const text = (row.line ?? "").trim();
-  const cat = (row.category ?? "").trim();
-  if (cat === "Capital outlay") {
+  const srcCat = (row.sourceCategory ?? "").trim().toLowerCase();
+  if (srcCat === "capital outlay") {
     return { include: false, excludeReason: "capital outlay" };
   }
   if (!text) return { include: true };

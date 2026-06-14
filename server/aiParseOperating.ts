@@ -12,12 +12,12 @@ Extract every expenditure line item you find — operating AND personnel — and
 
 {
   "operating": [
-    { "code": "51110", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other", "line": "Regular Salaries", "amount": 850000, "include": true, "confidence": "high" },
-    { "code": "51210", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other", "line": "Retirement (PERS)", "amount": 220000, "include": true, "confidence": "high" },
-    { "code": "53120", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Professional services", "line": "Consulting Services", "amount": 620000, "include": true, "confidence": "high" },
-    { "code": "54330", "dept": "BLDG", "sourceDept": "Building & Safety", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Software & subscriptions", "line": "Software Subscriptions", "amount": 84000, "include": true, "confidence": "high" },
-    { "code": "55210", "dept": "ENG", "sourceDept": "Public Works — Development Engineering", "fiscalYear": "FY 2025-26", "amountType": "proposed", "category": "Vehicles & equipment", "line": "Field Equipment", "amount": 42000, "include": true, "confidence": "low" },
-    { "code": "53120", "dept": "FIN", "sourceDept": "Finance / Administrative Services", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Software & subscriptions", "line": "Utility Billing Software", "amount": 18000, "include": true, "confidence": "high" }
+    { "code": "51110", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other Operational Expenses", "line": "Regular Salaries", "amount": 850000, "include": true, "confidence": "high" },
+    { "code": "51210", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Other Operational Expenses", "line": "Retirement (PERS)", "amount": 220000, "include": true, "confidence": "high" },
+    { "code": "53120", "dept": "PLAN", "sourceDept": "Planning Division", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Professional & Contractual Services", "line": "Consulting Services", "amount": 620000, "include": true, "confidence": "high" },
+    { "code": "54330", "dept": "BLDG", "sourceDept": "Building & Safety", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Software & Subscriptions", "line": "Software Subscriptions", "amount": 84000, "include": true, "confidence": "high" },
+    { "code": "55210", "dept": "ENG", "sourceDept": "Public Works — Development Engineering", "fiscalYear": "FY 2025-26", "amountType": "proposed", "category": "Vehicles & Fleet", "line": "Field Equipment", "amount": 42000, "include": true, "confidence": "low" },
+    { "code": "53120", "dept": "FIN", "sourceDept": "Finance / Administrative Services", "fiscalYear": "FY 2025-26", "amountType": "adopted", "category": "Software & Subscriptions", "line": "Utility Billing Software", "amount": 18000, "include": true, "confidence": "high" }
   ]
 }
 
@@ -29,17 +29,21 @@ Rules:
   * Public Works rows: when the section or line clearly relates to development engineering, permit review, encroachment permits, grading, inspections, plan check, land development, or fee-supported development services — map dept="ENG" and set confidence as warranted.
   * Out-of-scope departments (streets, parks operations, utilities operations, sewer/water/storm drain, fleet, facilities, refuse, Library, City Manager, HR, IT unless billed to a fee-supported division, etc.): RETURN the row anyway. Map dept to the closest fee-supported code you can justify (or to the listed dept the source document used if it's already in the enum) and set confidence="low". The downstream importer routes uncertain depts to an analyst review queue with source lineage — do not silently drop the row.
 - Personnel lines ARE in scope — extract regular salaries, overtime, part-time wages, retirement contributions, PERS, OPEB, health insurance, dental, vision, payroll taxes, Medicare, FICA, workers' comp, life insurance, and similar pay/benefit accounts. Do NOT skip a row just because account_category is "Salaries & Benefits"; extract it and set category="Other". Preserve the source line text exactly (e.g. "Regular Salaries", "Health Insurance", "Retirement (PERS)") — downstream classification reads the line text to tag rows as Salary vs Benefits automatically.
-- category must be exactly one of these nine values — pick the closest match. For personnel lines (salaries, benefits, retirement, etc.), use "Other" — the downstream tagger reads the line text directly:
-  * "Software & subscriptions" — software licenses, SaaS, cloud services, IT subscriptions, technology platforms
-  * "Professional services" — consulting, contract services, legal (non-noticing), plan review services, contract inspection, contract engineering, outside professional services
-  * "Training & travel" — conferences, training, certifications, travel, mileage, per diem
-  * "Office & supplies" — office supplies, postage, printing, general operating supplies (non-equipment)
-  * "Memberships & dues" — professional memberships, association dues, subscriptions to publications
-  * "Vehicles & equipment" — vehicles, fleet, field equipment, inspection equipment, tools, fuel, vehicle maintenance, equipment maintenance
-  * "Legal noticing" — public hearing notices, legal advertising, publication of notices
-  * "Capital outlay" — one-time capital purchases, capital improvements, equipment purchases capitalized as assets
-  * "Other" — anything that doesn't clearly fit above (utilities, rent, telephone, generic maintenance of facilities, etc.)
-- ERP-style category labels translate as follows: "Technology" → "Software & subscriptions"; "Maintenance" of fleet/vehicles → "Vehicles & equipment"; "Maintenance" of buildings/facilities → "Other"; "Utilities" → "Other"; "Operating Supplies" → "Office & supplies" unless the line clearly describes equipment (then "Vehicles & equipment"); "Programming" → "Software & subscriptions"; "Contract Services" / "Professional Services" → "Professional services"
+- category must be exactly one of these thirteen values — pick the closest match. For personnel lines (salaries, benefits, retirement, etc.), use "Other Operational Expenses" — the downstream tagger reads the line text directly:
+  * "Professional & Contractual Services" — consulting, contract services, legal counsel (non-noticing), plan review services, contract inspection, contract engineering, outside professional services
+  * "Software & Subscriptions" — software licenses, SaaS, cloud services, IT subscriptions, technology platforms
+  * "Utilities" — electricity, water, sewer, gas, refuse, stormwater utility charges
+  * "Communications" — telephone, cellular, internet, data lines, postage, mailing
+  * "Insurance" — general liability, property, vehicle liability, umbrella policies (NOT workers' comp — that's personnel)
+  * "Repairs & Maintenance" — facility R&M, equipment R&M, HVAC, janitorial supplies, grounds maintenance
+  * "Rent & Facilities" — building rent, equipment leases, facility space charges, storage rental
+  * "Travel" — mileage, per diem, lodging, airfare, parking, conference travel costs
+  * "Training & Professional Development" — conferences, training fees, certifications, CEUs, registrations
+  * "Memberships & Dues" — professional memberships, association dues, subscriptions to publications
+  * "Vehicles & Fleet" — vehicle purchases below capitalization threshold, fuel, vehicle maintenance, fleet services
+  * "Office Supplies" — office supplies, printing, general operating supplies (non-equipment)
+  * "Other Operational Expenses" — anything that doesn't clearly fit above, including public hearing / legal noticing, capital outlay (still tagged include=false separately), and personnel lines awaiting downstream classification
+- ERP-style category labels translate as follows: "Technology" → "Software & Subscriptions"; "Maintenance" of fleet/vehicles → "Vehicles & Fleet"; "Maintenance" of buildings/facilities → "Repairs & Maintenance"; "Operating Supplies" → "Office Supplies" unless the line clearly describes equipment (then "Vehicles & Fleet"); "Programming" → "Software & Subscriptions"; "Contract Services" / "Professional Services" → "Professional & Contractual Services"; "Legal Noticing" → "Other Operational Expenses"
 - amount must be a plain JavaScript number — STRIP any "$" sign, commas, and whitespace ("$620,000" → 620000). Drop any text-formatted ranges, percentages, or footnote markers.
 - Zero amounts: RETAIN. A line item with amount=0 is still a real line item the analyst will review (e.g., a placeholder budget line, a category the city intends to fund later). Do not drop it just because the dollar value is 0.
 - Negative amounts: RETAIN as a negative JavaScript number (e.g. -12500) and set confidence to "low" so the reviewer sees it on the audit list. Do not skip negatives.
