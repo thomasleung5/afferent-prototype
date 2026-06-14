@@ -229,8 +229,12 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     }
   }
   // Backfill for state persisted before allocationBases existed. Without
-  // this, basisForPool(pool, undefined) crashes the matrix.
-  if (!state.allocationBases || state.allocationBases.length === 0) {
+  // this, basisForPool(pool, undefined) crashes the matrix. Only fires
+  // when the field is genuinely missing (null/undefined) — an explicit
+  // empty array is treated as deliberate (e.g. set by clearAll()) and
+  // preserved across rehydrates. resetAll() is the action for users who
+  // want the seed catalog back.
+  if (state.allocationBases == null) {
     state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
   }
   // Backfill capCenterTotals + allocationPercent for state persisted

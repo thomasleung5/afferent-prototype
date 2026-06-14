@@ -1329,7 +1329,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           capCenterDisallowed: {},
           capCenterSources: {},
           studyContext: { ...DEFAULT_STUDY_CONTEXT },
-          allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
+          // Genuinely empty bases on Clear all data. The migration
+          // backfill that fires on rehydrate treats `[]` as deliberate
+          // (only `null`/`undefined` triggers re-seeding), so this stays
+          // empty across page reloads. resetAll() restores the seed
+          // catalog for users who want a fresh starting point.
+          allocationBases: [],
           capBasisUnits: [],
           capDirectAllocations: [],
           directBills: {},

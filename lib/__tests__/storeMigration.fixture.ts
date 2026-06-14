@@ -59,6 +59,39 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ empty state seeded across every backfill");
 }
 
+// ── 1b. allocationBases: explicit empty array is preserved ──────────────
+//
+// `clearAll()` writes `allocationBases: []` to signal "the user wants
+// every basis gone". The migration must NOT re-seed the catalog in that
+// case — that's the bug this test guards against. Only null / undefined
+// triggers the backfill (covered by case 1 above; the other branches in
+// case 1b prove `[]` survives a rehydrate intact).
+{
+  const cleared: Record<string, unknown> = { allocationBases: [] };
+  migratePersistedState(cleared as never);
+  assert.ok(Array.isArray(cleared.allocationBases));
+  assert.equal((cleared.allocationBases as unknown[]).length, 0,
+    "explicit empty array is treated as deliberate clear and preserved");
+
+  // Idempotency on the cleared state — running the migration again
+  // mustn't suddenly re-seed (otherwise a second rehydrate would
+  // resurrect the catalog).
+  migratePersistedState(cleared as never);
+  assert.equal((cleared.allocationBases as unknown[]).length, 0,
+    "rerunning migration keeps the cleared empty array");
+
+  // null is still treated as "missing field" — backfills from seed.
+  const missingNull: Record<string, unknown> = { allocationBases: null };
+  migratePersistedState(missingNull as never);
+  assert.ok(Array.isArray(missingNull.allocationBases));
+  assert.equal(
+    (missingNull.allocationBases as unknown[]).length,
+    SEED_ALLOCATION_BASES.length,
+    "null allocationBases backfills from seed",
+  );
+  console.log("  ✓ allocationBases: empty [] preserved, null re-seeds");
+}
+
 // ── 2. SourceTag coercion + costType / laborType backfill ────────────────
 {
   const state: Record<string, unknown> = {
