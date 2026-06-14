@@ -1,18 +1,7 @@
-import type { ReactNode } from "react";
+import { useMemo } from "react";
+import { DataTable, type Column } from "@/components/table";
 import { SectionLabel } from "@/components/ui";
 import { useBuildState, type Domain } from "@/lib/store";
-
-function ColHeader({
-  children, align = "left",
-}: { children: ReactNode; align?: "left" | "right" }) {
-  return (
-    <div className="mono" style={{
-      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-      textAlign: align,
-    }}>{children}</div>
-  );
-}
 
 const DOMAIN_LABEL: Record<Domain, string> = {
   positions: "Labor",
@@ -22,6 +11,18 @@ const DOMAIN_LABEL: Record<Domain, string> = {
   volume: "Volume of Activity",
   cap: "Overhead Costs",
 };
+
+interface ImportRow {
+  id: string;
+  /** ISO string — kept as the sort key so newest-first ordering is stable. */
+  at: string;
+  domain: Domain;
+  fileName: string;
+  mapped: number;
+  review: number;
+  unmapped: number;
+  dups: number;
+}
 
 function formatImportedAt(iso: string): string {
   const d = new Date(iso);
@@ -33,93 +34,111 @@ function formatImportedAt(iso: string): string {
 }
 
 /** Recent imports feed on the Home screen. Reads the store's `imports` log
- *  (appended by each merge*) and renders newest-first. */
+ *  (appended by each merge*) and renders newest-first via the shared
+ *  DataTable so header/row styling matches every other table in the app. */
 export function AuditTrail() {
   const { imports } = useBuildState();
-  // Each log entry's `id` is Date.now() at write time, so descending id
-  // matches reverse-chronological order without re-parsing `at`.
-  const rows = [...imports].sort((a, b) => b.id - a.id);
+
+  const rows: ImportRow[] = useMemo(() => imports.map((e) => ({
+    id: String(e.id),
+    at: e.at,
+    domain: e.domain,
+    fileName: e.result.fileName,
+    mapped: e.result.mapped,
+    review: e.result.lowConfidence,
+    unmapped: e.result.unmapped,
+    dups: e.result.duplicates,
+  })), [imports]);
+
+  const cols: Column<ImportRow>[] = [
+    {
+      key: "at",
+      label: "Imported",
+      width: "180px",
+      sortable: true,
+      render: (r) => formatImportedAt(r.at),
+    },
+    {
+      key: "domain",
+      label: "Domain",
+      width: "150px",
+      sortable: true,
+      sortKey: (r) => DOMAIN_LABEL[r.domain] ?? r.domain,
+      render: (r) => DOMAIN_LABEL[r.domain] ?? r.domain,
+    },
+    {
+      key: "fileName",
+      label: "File",
+      width: "minmax(220px, 1fr)",
+      sortable: true,
+      render: (r) => (
+        <span
+          title={r.fileName}
+          style={{
+            display: "block",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }}
+        >
+          {r.fileName}
+        </span>
+      ),
+    },
+    {
+      key: "mapped",
+      label: "Mapped",
+      width: "80px",
+      align: "right",
+      sortable: true,
+      render: (r) => <CountCell value={r.mapped}/>,
+    },
+    {
+      key: "review",
+      label: "Review",
+      width: "80px",
+      align: "right",
+      sortable: true,
+      render: (r) => <CountCell value={r.review}/>,
+    },
+    {
+      key: "unmapped",
+      label: "Unmapped",
+      width: "100px",
+      align: "right",
+      sortable: true,
+      render: (r) => <CountCell value={r.unmapped}/>,
+    },
+    {
+      key: "dups",
+      label: "Dups",
+      width: "70px",
+      align: "right",
+      sortable: true,
+      render: (r) => <CountCell value={r.dups}/>,
+    },
+  ];
 
   return (
-    <div style={{
-      background: "var(--paper)", border: "1px solid var(--rule)",
-      padding: 22,
-    }}>
+    <div>
       <SectionLabel right={`${rows.length} import${rows.length === 1 ? "" : "s"}`}>
         Recent imports
       </SectionLabel>
-
-      {rows.length === 0 ? (
-        <div style={{
-          padding: "16px 0 4px",
-          fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.55,
-        }}>
-          Imports will appear here after you upload source files (PDFs or
-          pasted LLM JSON) from any Build page.
-        </div>
-      ) : (
-        <>
-          {/* Column header. Same grid template as the data rows below so
-             *  the count-legend lines up directly over the per-row count
-             *  badges — analysts read what the numbers mean before they
-             *  read the numbers. */}
-          <div style={{
-            display: "grid",
-            gridTemplateColumns: "150px 130px minmax(220px, 1fr) auto",
-            gap: 12,
-            padding: "0 0 8px 0",
-            borderBottom: "1px solid var(--rule)",
-            alignItems: "baseline",
-          }}>
-            <ColHeader>Imported</ColHeader>
-            <ColHeader>Domain</ColHeader>
-            <ColHeader>File</ColHeader>
-            <ColHeader align="right">
-              Mapped / Review / Unmapped / Dups
-            </ColHeader>
-          </div>
-
-          {rows.map((entry, i) => {
-            const r = entry.result;
-            return (
-              <div key={entry.id} style={{
-                display: "grid",
-                gridTemplateColumns: "150px 130px minmax(220px, 1fr) auto",
-                gap: 12,
-                padding: "10px 0",
-                borderBottom: i < rows.length - 1 ? "1px dashed var(--rule)" : "none",
-                alignItems: "baseline",
-              }}>
-                <div className="mono" style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>
-                  {formatImportedAt(entry.at)}
-                </div>
-                <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>
-                  {DOMAIN_LABEL[entry.domain] ?? entry.domain}
-                </div>
-                <div
-                  title={r.fileName}
-                  style={{
-                    fontSize: "var(--t-l7)", color: "var(--ink-2)",
-                    overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                    minWidth: 0,
-                  }}
-                >
-                  {r.fileName}
-                </div>
-                <div className="mono num" style={{
-                  fontSize: "var(--t-l8)", fontWeight: 600,
-                  color: "var(--ink-2)", textAlign: "right",
-                  padding: "2px 6px",
-                  background: "var(--paper-2)", border: "1px solid var(--rule)",
-                  letterSpacing: "0.02em",
-                }}>
-                  {r.mapped}/{r.lowConfidence}/{r.unmapped}/{r.duplicates}
-                </div>
-              </div>
-            );
-          })}
-        </>
-      )}
+      <DataTable
+        cols={cols}
+        rows={rows}
+        defaultSort={{ key: "at", dir: "desc" }}
+        emptyState="Imports will appear here after you upload source files (PDFs or pasted LLM JSON) from any Build page."
+      />
     </div>
+  );
+}
+
+function CountCell({ value }: { value: number }) {
+  return (
+    <span
+      className="num"
+      style={{ color: value > 0 ? "var(--ink)" : "var(--ink-4)" }}
+    >
+      {value}
+    </span>
   );
 }
