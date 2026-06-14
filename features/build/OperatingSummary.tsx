@@ -16,21 +16,22 @@ export function OperatingSummary() {
   const order = derived.activeFeeDepts;
   const byDept = derived.operatingByDept;
   const { dept: searchDept } = useSearch({ from: "/build/operating" });
-  const includedTotal = operating.filter((l) => l.include).reduce((a, l) => a + l.amount, 0);
-  const excluded = operating.filter((l) => !l.include);
+  const operatingScope = operating.filter((l) => l.costType !== "Labor");
+  const includedTotal = operatingScope.filter((l) => l.include).reduce((a, l) => a + l.amount, 0);
+  const excluded = operatingScope.filter((l) => !l.include);
   const excludedTotal = excluded.reduce((a, l) => a + l.amount, 0);
 
   // Only emit a row when the department actually has operating data in
   // the active jurisdiction.
   const activeDepts = order.filter((d) => {
     const r = byDept[d];
-    return r && (r.total > 0 || operating.some((l) => l.dept === d));
+    return r && (r.total > 0 || operatingScope.some((l) => l.dept === d));
   });
 
   const rows: DeptSummaryRow[] = activeDepts.map((d) => {
     const r = byDept[d];
-    const direct = operating.filter((l) => l.include && l.dept === d);
-    const shared = operating.filter((l) => l.include && l.dept === "SHARED:CDS");
+    const direct = operatingScope.filter((l) => l.include && l.dept === d);
+    const shared = operatingScope.filter((l) => l.include && l.dept === "SHARED:CDS");
     const byCat: Record<string, number> = {};
     direct.forEach((l) => { byCat[l.category] = (byCat[l.category] ?? 0) + l.amount; });
     const ledger = Object.entries(byCat)
