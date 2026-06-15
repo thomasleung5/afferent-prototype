@@ -17,7 +17,7 @@
  * data it closes over) so the inner auto-detect effect doesn't churn. */
 
 import { useEffect, useMemo, useRef, useState, type CSSProperties, type ReactNode } from "react";
-import { Btn } from "@/components/ui";
+import { Btn, Spinner } from "@/components/ui";
 import {
   previewExcelFile,
   type ExcelPreviewOk, type PreviewCell, type PreviewSheet,
@@ -37,6 +37,11 @@ export interface ExcelImportState<Entity> {
   fileInputRef: React.RefObject<HTMLInputElement | null>;
   uploading: boolean;
   uploadStatus: Status;
+  /** Filename of the workbook currently being previewed. Set the moment
+   *  the user picks a file; cleared in the `handleFile` finally block.
+   *  Surfaced next to the "Parsing workbook…" status so the user can
+   *  confirm the right document is being processed. */
+  uploadingFileName: string | null;
   preview: ExcelPreviewOk | null;
   sheetIndex: number; setSheetIndex: (n: number) => void;
   headerRow: number; setHeaderRow: (n: number) => void;
@@ -55,6 +60,7 @@ export function useExcelImport<Entity>(
 
   const [uploading, setUploading] = useState(false);
   const [uploadStatus, setUploadStatus] = useState<Status>(null);
+  const [uploadingFileName, setUploadingFileName] = useState<string | null>(null);
   const [preview, setPreview] = useState<ExcelPreviewOk | null>(null);
 
   const [sheetIndex, setSheetIndex] = useState(0);
@@ -104,6 +110,7 @@ export function useExcelImport<Entity>(
     e.target.value = "";
     reset();
     setUploadStatus(null);
+    setUploadingFileName(file.name);
     setUploading(true);
     try {
       const res = await previewExcelFile(file);
@@ -127,11 +134,12 @@ export function useExcelImport<Entity>(
       });
     } finally {
       setUploading(false);
+      setUploadingFileName(null);
     }
   };
 
   return {
-    spec, fileInputRef, uploading, uploadStatus, preview,
+    spec, fileInputRef, uploading, uploadStatus, uploadingFileName, preview,
     sheetIndex, setSheetIndex, headerRow, setHeaderRow,
     cols, setCol, importStatus, warnings, autoMap, handleFile,
   };
@@ -207,7 +215,7 @@ function Panel<Entity>({
   extraReview?: ExcelMappingExtraReview;
 }) {
   const {
-    spec, uploading, uploadStatus, preview, autoMap,
+    spec, uploading, uploadStatus, uploadingFileName, preview, autoMap,
     sheetIndex, setSheetIndex, headerRow, setHeaderRow,
     cols, setCol, importStatus, warnings,
   } = state;
@@ -217,14 +225,27 @@ function Panel<Entity>({
   useEffect(() => setLocalStatus(importStatus), [importStatus]);
   useEffect(() => setLocalWarnings(warnings), [warnings]);
 
-  if (!uploadStatus && !preview && !localStatus && localWarnings.length === 0) {
+  // Render whenever an in-flight upload is being processed OR there is
+  // any settled state to surface. Previously the panel hid itself while
+  // `uploading=true` with no prior status, so the "Parsing workbook…"
+  // line never appeared during a first upload — the user had no
+  // feedback until the request resolved. Including `uploading` here
+  // makes the StatusLine (and its new spinner + filename) visible from
+  // the moment the file is picked.
+  if (!uploading && !uploadStatus && !preview && !localStatus && localWarnings.length === 0) {
     return null;
   }
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 10 }}>
-      {uploadStatus && (
-        <StatusLine status={uploadStatus} loading={uploading} loadingText="Parsing workbook…" label="EXCEL"/>
+      {(uploading || uploadStatus) && (
+        <StatusLine
+          status={uploadStatus}
+          loading={uploading}
+          loadingText="Parsing workbook…"
+          loadingFileName={uploadingFileName}
+          label="EXCEL"
+        />
       )}
       {preview && (
         <InnerMappingPanel
@@ -561,26 +582,54 @@ function ColumnSelect({
 }
 
 function StatusLine({
-  status, loading, loadingText, label,
-}: { status: Status; loading: boolean; loadingText: string; label: string }) {
+  status, loading, loadingText, loadingFileName, label,
+}: {
+  status: Status;
+  loading: boolean;
+  loadingText: string;
+  /** Optional filename to surface beside loadingText while the request
+   *  is in flight. Cleared by the caller when the request resolves. */
+  loadingFileName?: string | null;
+  label: string;
+}) {
   if (!status && !loading) return null;
   return (
-    <div style={{
-      display: "flex", alignItems: "baseline", gap: 12,
-      paddingTop: 4,
-      borderTop: "1px dashed var(--rule)",
-    }}>
+    <div
+      aria-live="polite"
+      aria-busy={loading}
+      style={{
+        display: "flex", alignItems: "baseline", gap: 12,
+        paddingTop: 4,
+        borderTop: "1px dashed var(--rule)",
+      }}
+    >
       <span className="mono" style={{
         fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
         color: "var(--ink-3)", textTransform: "uppercase",
       }}>{label}</span>
       <span style={{
         marginLeft: "auto",
+        display: "inline-flex", alignItems: "center", gap: 8,
         fontSize: 12,
         color: loading ? "var(--ink-3)" : status?.ok ? "var(--pos)" : "var(--warn)",
         fontWeight: loading ? 400 : 500,
       }}>
-        {loading ? loadingText : status?.message}
+        {loading && <Spinner ariaLabel={loadingText}/>}
+        {loading
+          ? (
+            <span>
+              {loadingText}
+              {loadingFileName && (
+                <>
+                  {" "}
+                  <span style={{
+                    color: "var(--ink-2)", fontFamily: "var(--ff-mono)",
+                  }}>· {loadingFileName}</span>
+                </>
+              )}
+            </span>
+          )
+          : status?.message}
       </span>
     </div>
   );

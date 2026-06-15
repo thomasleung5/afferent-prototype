@@ -7,6 +7,7 @@ export { UnitCombobox } from "./UnitCombobox";
 export { ActivityCombobox } from "./ActivityCombobox";
 export { Btn } from "./Btn";
 export { Icon } from "./Icon";
+export { Spinner } from "./Spinner";
 export { RecoveryMeter } from "./RecoveryMeter";
 export { DeptChip } from "./DeptChip";
 export { DeptCellHeader } from "./DeptCellHeader";

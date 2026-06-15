@@ -46,6 +46,28 @@ input, select { font: inherit; color: inherit; }
 }
 .row-flash > * { animation: row-flash 1600ms ease-out; }
 
+/* Inline loading spinner used by the import cards while a PDF or Excel
+   upload is being processed. Pure CSS so it can sit beside the existing
+   "Parsing workbook…" / "Extracting from PDF…" status text without
+   importing an icon framework. Inherits color via `currentColor` so a
+   parent can recolor with var(--ink-3) / var(--accent) etc. */
+@keyframes spinner-rotate {
+  to { transform: rotate(360deg); }
+}
+.spinner {
+  display: inline-block;
+  width: 12px;
+  height: 12px;
+  border: 1.5px solid currentColor;
+  border-top-color: transparent;
+  border-radius: 50%;
+  animation: spinner-rotate 800ms linear infinite;
+  vertical-align: -2px;
+}
+@media (prefers-reduced-motion: reduce) {
+  .spinner { animation-duration: 0ms; }
+}
+
 /* Page shell — every screen wraps with this */
 .page {
   max-width: var(--page-max);

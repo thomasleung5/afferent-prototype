@@ -1,5 +1,5 @@
 import { useRef, useState, type ReactNode } from "react";
-import { Btn, ExpandIndicator, Icon } from "@/components/ui";
+import { Btn, ExpandIndicator, Icon, Spinner } from "@/components/ui";
 
 interface Props {
   // ── PDF upload action ──────────────────────────────────────────────────
@@ -64,8 +64,12 @@ export function InlineImportCard({
 }: Props) {
   // Per-action state: loading flags + last status message. Independent so
   // a stale AI message doesn't get clobbered by a clipboard paste click.
+  // aiFileName surfaces the picked filename next to the loading text so
+  // the user can confirm the right file is being processed. Cleared in
+  // the finally block — never persisted past the request lifecycle.
   const [aiLoading, setAiLoading] = useState(false);
   const [aiStatus, setAiStatus] = useState<Status>(null);
+  const [aiFileName, setAiFileName] = useState<string | null>(null);
   const [pasteLoading, setPasteLoading] = useState(false);
   const [pasteStatus, setPasteStatus] = useState<Status>(null);
   const [advancedOpen, setAdvancedOpen] = useState(false);
@@ -77,6 +81,7 @@ export function InlineImportCard({
     if (!file || !onAiPdfImport) return;
     e.target.value = ""; // allow re-selecting the same file
     setAiStatus(null);
+    setAiFileName(file.name);
     setAiLoading(true);
     try {
       const result = await onAiPdfImport(file);
@@ -85,6 +90,7 @@ export function InlineImportCard({
       setAiStatus({ ok: false, message: err instanceof Error ? err.message : "PDF import failed." });
     } finally {
       setAiLoading(false);
+      setAiFileName(null);
     }
   };
 
@@ -121,6 +127,7 @@ export function InlineImportCard({
           onClick={() => aiPdfInputRef.current?.click()}
           loadingText="Extracting from PDF — this can take 30–60s"
           loading={aiLoading}
+          loadingFileName={aiFileName}
           status={aiStatus}
           accessory={aiPdfAccessory}
         >
@@ -241,6 +248,7 @@ function ActionPanel({
   schema,
   loadingText,
   loading,
+  loadingFileName,
   status,
   accessory,
   children,
@@ -255,6 +263,10 @@ function ActionPanel({
   schema?: ReactNode;
   loadingText: string;
   loading: boolean;
+  /** Filename of the file currently being processed. Surfaced next to
+   *  loadingText so the user can confirm the right document is in
+   *  flight. Cleared by the parent when the request resolves. */
+  loadingFileName?: string | null;
   status: Status;
   /** Extra node rendered to the right of the primary button in the
    *  button row — e.g. a secondary Upload Excel button slotted in by
@@ -293,24 +305,44 @@ function ActionPanel({
         }}>{schema}</pre>
       )}
       {(loading || status) && (
-        <div style={{
-          display: "flex", alignItems: "baseline", gap: 12,
-          paddingTop: 4,
-          borderTop: "1px dashed var(--rule)",
-        }}>
+        <div
+          aria-live="polite"
+          aria-busy={loading}
+          style={{
+            display: "flex", alignItems: "baseline", gap: 12,
+            paddingTop: 4,
+            borderTop: "1px dashed var(--rule)",
+          }}
+        >
           <span className="mono" style={{
             fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
             color: "var(--ink-3)", textTransform: "uppercase",
           }}>{label}</span>
           <span style={{
             marginLeft: "auto",
+            display: "inline-flex", alignItems: "center", gap: 8,
             fontSize: 12,
             color: loading
               ? "var(--ink-3)"
               : status?.ok ? "var(--pos)" : "var(--warn)",
             fontWeight: loading ? 400 : 500,
           }}>
-            {loading ? loadingText : status?.message}
+            {loading && <Spinner ariaLabel={loadingText}/>}
+            {loading
+              ? (
+                <span>
+                  {loadingText}
+                  {loadingFileName && (
+                    <>
+                      {" "}
+                      <span style={{
+                        color: "var(--ink-2)", fontFamily: "var(--ff-mono)",
+                      }}>· {loadingFileName}</span>
+                    </>
+                  )}
+                </span>
+              )
+              : status?.message}
           </span>
         </div>
       )}
