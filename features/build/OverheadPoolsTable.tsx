@@ -13,8 +13,50 @@ export function OverheadPoolsTable() {
     capPools, capCenterOrder, capCenterSources, allocationBases,
     addCapPool, updateCapPool, addAllocationBasis,
   } = useBuildState();
-  const centers = deriveCenters(capPools, capCenterOrder, capCenterSources);
+  return (
+    <OverheadPoolsTableView
+      capPools={capPools}
+      capCenterOrder={capCenterOrder}
+      capCenterSources={capCenterSources}
+      allocationBases={allocationBases}
+      addCapPool={addCapPool}
+      updateCapPool={updateCapPool}
+      addAllocationBasis={addAllocationBasis}
+    />
+  );
+}
 
+interface OverheadPoolsTableViewProps {
+  capPools: CapPool[];
+  capCenterOrder: string[];
+  capCenterSources: Record<string, { name: string }>;
+  allocationBases: AllocationBasis[];
+  addCapPool: (centerKey: string) => void;
+  updateCapPool: (id: string, patch: Partial<CapPool>) => void;
+  addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
+}
+
+/** Pure presentational shell — owns the empty-state branch and the
+ *  per-center sections. Split from OverheadPoolsTable so the SSR-aware
+ *  fixture can render the empty / populated / partial cases without
+ *  fighting Zustand v5's getInitialState SSR snapshot. */
+export function OverheadPoolsTableView({
+  capPools, capCenterOrder, capCenterSources, allocationBases,
+  addCapPool, updateCapPool, addAllocationBasis,
+}: OverheadPoolsTableViewProps) {
+  if (capPools.length === 0) {
+    return (
+      <div style={{
+        background: "var(--paper)", border: "1px solid var(--rule)",
+        padding: 22, fontSize: "var(--fs-ui)", color: "var(--ink-3)",
+      }}>
+        No cost pool data uploaded or added yet. Import a CAP workbook or
+        add a cost pool to start allocating.
+      </div>
+    );
+  }
+
+  const centers = deriveCenters(capPools, capCenterOrder, capCenterSources);
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       {centers.map((c) => {
