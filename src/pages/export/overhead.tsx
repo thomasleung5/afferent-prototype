@@ -951,6 +951,10 @@ function AllocationByCenter({ payload }: { payload: CapExportPayload }) {
     list.sort((a, b) => a.pool.localeCompare(b.pool));
   }
 
+  // Single mode collapses Second + Total into one Allocation column on
+  // every pool page. The lede paragraph follows so analysts see the
+  // matching terminology rather than chasing First/Second references.
+  const isSingle = payload.stepDownMethod === "single";
   return (
     <section className="section section-break" style={{ marginBottom: 24 }}>
       <div className="eyebrow">Section 9</div>
@@ -958,9 +962,10 @@ function AllocationByCenter({ payload }: { payload: CapExportPayload }) {
       <div className="body" style={{ marginBottom: 14, maxWidth: 600 }}>
         Each cost center is reported together with all of its pools&rsquo;
         per-receiver allocation schedules. The <b>Costs to be Allocated</b>
-        summary precedes each center&rsquo;s pool detail blocks so the
-        Departmental + Incoming totals can be cross-checked against the
-        First/Second column subtotals on the pool pages.
+        summary precedes each center&rsquo;s pool detail blocks so the{" "}
+        {isSingle
+          ? <>Departmental + Incoming totals can be cross-checked against the <b>Allocation</b> column subtotals on the pool pages.</>
+          : <>Departmental + Incoming totals can be cross-checked against the First/Second column subtotals on the pool pages.</>}
       </div>
       {payload.model.stepOrder.map((centerKey, idx) => {
         const m = meta.get(centerKey);
@@ -1058,63 +1063,109 @@ function CenterBlock({
       {(departmental >= 0.5 || totalFirst >= 0.5 || totalSecond >= 0.5) && (
         <div className="row" style={{ marginBottom: 18 }}>
           <h3 className="h3">Costs to be Allocated</h3>
-          <table>
-            <thead>
-              <tr>
-                <th>Source</th>
-                <th className="num">First</th>
-                <th className="num">Second</th>
-                <th className="num">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr>
-                <td><b>Departmental Expenditures</b></td>
-                <td className="num"><b>{fmt.dollars(departmental)}</b></td>
-                <td className="num dim">—</td>
-                <td className="num"><b>{fmt.dollars(departmental)}</b></td>
-              </tr>
-              {sourceRows.map((r) => {
-                const isSelf = r.key === centerKey;
-                const total = r.first + r.second;
-                const allZero = r.first < 0.5 && r.second < 0.5;
-                const sourceGl = meta.get(r.key)?.glCode;
-                return (
-                  <tr key={r.key}>
-                    <td style={{ color: allZero ? "var(--ink-4)" : "var(--ink-2)" }}>
-                      {sourceGl && (
-                        <span className="mono dim" style={{
-                          fontSize: 10, marginRight: 6, letterSpacing: "0.02em",
-                        }}>{sourceGl}</span>
-                      )}
-                      {r.name}{isSelf && <span className="mono dim" style={{ marginLeft: 6, fontSize: 9 }}>(SELF)</span>}
-                    </td>
-                    <td className="num" style={{ color: r.first < 0.5 ? "var(--ink-4)" : undefined }}>
-                      {r.first < 0.5 ? "—" : fmt.dollars(r.first)}
-                    </td>
-                    <td className="num" style={{ color: r.second < 0.5 ? "var(--ink-4)" : undefined }}>
-                      {r.second < 0.5 ? "—" : fmt.dollars(r.second)}
-                    </td>
-                    <td className="num" style={{ color: allZero ? "var(--ink-4)" : undefined }}>
-                      {allZero ? "—" : fmt.dollars(total)}
-                    </td>
-                  </tr>
-                );
-              })}
-              <tr className="total">
-                <td>Total Incoming</td>
-                <td className="num">{fmt.dollars(totalFirst)}</td>
-                <td className="num">{fmt.dollars(totalSecond)}</td>
-                <td className="num">{fmt.dollars(totalFirst + totalSecond)}</td>
-              </tr>
-              <tr className="total">
-                <td>Total Costs to be Allocated</td>
-                <td className="num">{fmt.dollars(departmental + totalFirst)}</td>
-                <td className="num">{fmt.dollars(totalSecond)}</td>
-                <td className="num"><b>{fmt.dollars(departmental + totalFirst + totalSecond)}</b></td>
-              </tr>
-            </tbody>
-          </table>
+          {payload.stepDownMethod === "single" ? (
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th className="num">Allocation</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Departmental Expenditures</b></td>
+                  <td className="num"><b>{fmt.dollars(departmental)}</b></td>
+                </tr>
+                {sourceRows.map((r) => {
+                  const isSelf = r.key === centerKey;
+                  const total = r.first + r.second;
+                  const allZero = r.first < 0.5 && r.second < 0.5;
+                  const sourceGl = meta.get(r.key)?.glCode;
+                  return (
+                    <tr key={r.key}>
+                      <td style={{ color: allZero ? "var(--ink-4)" : "var(--ink-2)" }}>
+                        {sourceGl && (
+                          <span className="mono dim" style={{
+                            fontSize: 10, marginRight: 6, letterSpacing: "0.02em",
+                          }}>{sourceGl}</span>
+                        )}
+                        {r.name}{isSelf && <span className="mono dim" style={{ marginLeft: 6, fontSize: 9 }}>(SELF)</span>}
+                      </td>
+                      <td className="num" style={{ color: allZero ? "var(--ink-4)" : undefined }}>
+                        {allZero ? "—" : fmt.dollars(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="total">
+                  <td>Total Incoming</td>
+                  <td className="num">{fmt.dollars(totalFirst + totalSecond)}</td>
+                </tr>
+                <tr className="total">
+                  <td>Total Costs to be Allocated</td>
+                  <td className="num"><b>{fmt.dollars(departmental + totalFirst + totalSecond)}</b></td>
+                </tr>
+              </tbody>
+            </table>
+          ) : (
+            <table>
+              <thead>
+                <tr>
+                  <th>Source</th>
+                  <th className="num">First</th>
+                  <th className="num">Second</th>
+                  <th className="num">Total</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr>
+                  <td><b>Departmental Expenditures</b></td>
+                  <td className="num"><b>{fmt.dollars(departmental)}</b></td>
+                  <td className="num dim">—</td>
+                  <td className="num"><b>{fmt.dollars(departmental)}</b></td>
+                </tr>
+                {sourceRows.map((r) => {
+                  const isSelf = r.key === centerKey;
+                  const total = r.first + r.second;
+                  const allZero = r.first < 0.5 && r.second < 0.5;
+                  const sourceGl = meta.get(r.key)?.glCode;
+                  return (
+                    <tr key={r.key}>
+                      <td style={{ color: allZero ? "var(--ink-4)" : "var(--ink-2)" }}>
+                        {sourceGl && (
+                          <span className="mono dim" style={{
+                            fontSize: 10, marginRight: 6, letterSpacing: "0.02em",
+                          }}>{sourceGl}</span>
+                        )}
+                        {r.name}{isSelf && <span className="mono dim" style={{ marginLeft: 6, fontSize: 9 }}>(SELF)</span>}
+                      </td>
+                      <td className="num" style={{ color: r.first < 0.5 ? "var(--ink-4)" : undefined }}>
+                        {r.first < 0.5 ? "—" : fmt.dollars(r.first)}
+                      </td>
+                      <td className="num" style={{ color: r.second < 0.5 ? "var(--ink-4)" : undefined }}>
+                        {r.second < 0.5 ? "—" : fmt.dollars(r.second)}
+                      </td>
+                      <td className="num" style={{ color: allZero ? "var(--ink-4)" : undefined }}>
+                        {allZero ? "—" : fmt.dollars(total)}
+                      </td>
+                    </tr>
+                  );
+                })}
+                <tr className="total">
+                  <td>Total Incoming</td>
+                  <td className="num">{fmt.dollars(totalFirst)}</td>
+                  <td className="num">{fmt.dollars(totalSecond)}</td>
+                  <td className="num">{fmt.dollars(totalFirst + totalSecond)}</td>
+                </tr>
+                <tr className="total">
+                  <td>Total Costs to be Allocated</td>
+                  <td className="num">{fmt.dollars(departmental + totalFirst)}</td>
+                  <td className="num">{fmt.dollars(totalSecond)}</td>
+                  <td className="num"><b>{fmt.dollars(departmental + totalFirst + totalSecond)}</b></td>
+                </tr>
+              </tbody>
+            </table>
+          )}
         </div>
       )}
 
@@ -1124,7 +1175,13 @@ function CenterBlock({
             Pool allocation detail ({centerPools.length} pool{centerPools.length === 1 ? "" : "s"})
           </h3>
           {centerPools.map((pl) => (
-            <PoolBlock key={pl.id} pool={pl} model={payload.model} bases={payload.allocationBases}/>
+            <PoolBlock
+              key={pl.id}
+              pool={pl}
+              model={payload.model}
+              bases={payload.allocationBases}
+              method={payload.stepDownMethod}
+            />
           ))}
         </>
       )}
@@ -1133,11 +1190,12 @@ function CenterBlock({
 }
 
 function PoolBlock({
-  pool, model, bases,
+  pool, model, bases, method,
 }: {
   pool: CapExportPayload["capPools"][number];
   model: GlStepDownModel;
   bases: CapExportPayload["allocationBases"];
+  method: CapExportPayload["stepDownMethod"];
 }) {
   const resolution = basisForPool(pool, bases);
   const isResolved = resolution.status === "resolved";
@@ -1194,9 +1252,18 @@ function PoolBlock({
           color: isResolved ? "var(--ink-2)" : "var(--warn)",
           fontStyle: isResolved ? "normal" : "italic",
         }}>{basisLabel}</span></span>
-        <span>First Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalFirst)}</b></span>
-        <span>Second Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalSecond)}</b></span>
-        <span>Total: <b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst + totalSecond)}</b></span>
+        {method === "single" ? (
+          // Under single step-down, firstAllocation already equals the
+          // pool's final allocation (engine never emits a Phase 2). A
+          // separate "Total" tile would just duplicate "Allocation".
+          <span>Allocation: <b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst)}</b></span>
+        ) : (
+          <>
+            <span>First Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalFirst)}</b></span>
+            <span>Second Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalSecond)}</b></span>
+            <span>Total: <b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst + totalSecond)}</b></span>
+          </>
+        )}
       </div>
       <table>
         <thead>
@@ -1204,27 +1271,47 @@ function PoolBlock({
             <th>Budget Unit</th>
             <th className="num">Pct</th>
             <th className="num">Gross</th>
-            <th className="num">First</th>
-            <th className="num">Second</th>
-            <th className="num">Total</th>
+            {method === "single" ? (
+              <th className="num">Allocation</th>
+            ) : (
+              <>
+                <th className="num">First</th>
+                <th className="num">Second</th>
+                <th className="num">Total</th>
+              </>
+            )}
           </tr>
         </thead>
         <tbody>
           {allocableRows.length > 0 && (
-            <tr><td colSpan={6} className="section-label">Allocable Budget Units</td></tr>
+            <tr>
+              <td colSpan={method === "single" ? 4 : 6} className="section-label">
+                Allocable Budget Units
+              </td>
+            </tr>
           )}
-          {allocableRows.map((r) => <ScheduleRow key={r.node.key} {...r}/>)}
+          {allocableRows.map((r) => <ScheduleRow key={r.node.key} method={method} {...r}/>)}
           {receivingRows.length > 0 && (
-            <tr><td colSpan={6} className="section-label">Receiving Budget Units</td></tr>
+            <tr>
+              <td colSpan={method === "single" ? 4 : 6} className="section-label">
+                Receiving Budget Units
+              </td>
+            </tr>
           )}
-          {receivingRows.map((r) => <ScheduleRow key={r.node.key} {...r}/>)}
+          {receivingRows.map((r) => <ScheduleRow key={r.node.key} method={method} {...r}/>)}
           <tr className="total">
             <td>Total</td>
             <td className="num">{(allRows.reduce((a, r) => a + r.pct, 0)).toFixed(3)}%</td>
             <td className="num">{fmt.dollars(totalFirst)}</td>
-            <td className="num">{fmt.dollars(totalFirst)}</td>
-            <td className="num">{fmt.dollars(totalSecond)}</td>
-            <td className="num"><b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst + totalSecond)}</b></td>
+            {method === "single" ? (
+              <td className="num"><b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst)}</b></td>
+            ) : (
+              <>
+                <td className="num">{fmt.dollars(totalFirst)}</td>
+                <td className="num">{fmt.dollars(totalSecond)}</td>
+                <td className="num"><b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst + totalSecond)}</b></td>
+              </>
+            )}
           </tr>
         </tbody>
       </table>
@@ -1233,9 +1320,10 @@ function PoolBlock({
 }
 
 function ScheduleRow({
-  node, pct, first, second, total,
+  node, pct, first, second, total, method,
 }: {
   node: GlNode; pct: number; first: number; second: number; total: number;
+  method: CapExportPayload["stepDownMethod"];
 }) {
   return (
     <tr>
@@ -1251,15 +1339,25 @@ function ScheduleRow({
       <td className="num" style={{ color: first < 0.5 ? "var(--ink-4)" : undefined }}>
         {first < 0.5 ? "—" : fmt.dollars(first)}
       </td>
-      <td className="num" style={{ color: first < 0.5 ? "var(--ink-4)" : undefined }}>
-        {first < 0.5 ? "—" : fmt.dollars(first)}
-      </td>
-      <td className="num" style={{ color: second < 0.5 ? "var(--ink-4)" : undefined }}>
-        {second < 0.5 ? "—" : fmt.dollars(second)}
-      </td>
-      <td className="num" style={{ color: total < 0.5 ? "var(--ink-4)" : "var(--ink)", fontWeight: 600 }}>
-        {total < 0.5 ? "—" : fmt.dollars(total)}
-      </td>
+      {method === "single" ? (
+        <td className="num" style={{
+          color: first < 0.5 ? "var(--ink-4)" : "var(--ink)", fontWeight: 600,
+        }}>
+          {first < 0.5 ? "—" : fmt.dollars(first)}
+        </td>
+      ) : (
+        <>
+          <td className="num" style={{ color: first < 0.5 ? "var(--ink-4)" : undefined }}>
+            {first < 0.5 ? "—" : fmt.dollars(first)}
+          </td>
+          <td className="num" style={{ color: second < 0.5 ? "var(--ink-4)" : undefined }}>
+            {second < 0.5 ? "—" : fmt.dollars(second)}
+          </td>
+          <td className="num" style={{ color: total < 0.5 ? "var(--ink-4)" : "var(--ink)", fontWeight: 600 }}>
+            {total < 0.5 ? "—" : fmt.dollars(total)}
+          </td>
+        </>
+      )}
     </tr>
   );
 }

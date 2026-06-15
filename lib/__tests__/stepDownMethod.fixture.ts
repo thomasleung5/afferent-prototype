@@ -45,6 +45,9 @@ import { createBuildSnapshot } from "../storeSnapshot";
 import {
   serializeSnapshot, parseSnapshotJson,
 } from "../snapshotIO";
+import {
+  buildAllocationByCenter, type CapExportPayload,
+} from "../export/capExcel";
 
 const NOW = "2026-01-01T00:00:00.000Z";
 
@@ -349,6 +352,153 @@ function buildSnapshot(stepDownMethod: StepDownMethod): BuildSnapshot {
     );
   }
   console.log("  ✓ snapshot JSON round-trip preserves stepDownMethod");
+}
+
+// ── 7. Allocation Detail exports — column layout per method ─────────────
+//
+// The Allocation by Center Excel sheet is the canonical export surface
+// for the per-receiver schedules the Allocation Detail page renders.
+// Single mode collapses the trailing First / Second / Total triple into
+// a single "Allocation" column; double mode keeps the historical three.
+// The PDF export ships through a different React tree but reads the
+// same engine model + payload field, so cell-level conservation here
+// guards the entire downstream surface.
+
+function basePayload(method: "single" | "double"): CapExportPayload {
+  const model = method === "single" ? singleModel : doubleModel;
+  const fbhrRollup = method === "single" ? singleAllocated : doubleAllocated;
+  return {
+    cityName: "Test City",
+    fiscal: "FY 2025-26",
+    generatedAt: NOW,
+    capPools,
+    allocationBases: bases,
+    capCenterTotals,
+    capCenterDisallowed: {},
+    capCenterOrder,
+    model,
+    // capAllocatedFromGl is keyed by DeptCode; cast to the Record shape
+    // CapExportPayload declares (it just consumes string keys).
+    fbhrRollup: fbhrRollup as unknown as Record<string, number>,
+    stepDownMethod: method,
+  };
+}
+
+// ── 7a. Header row ───────────────────────────────────────────────────────
+{
+  const doubleRows = buildAllocationByCenter(basePayload("double"));
+  const singleRows = buildAllocationByCenter(basePayload("single"));
+
+  // Cells are typed as { value, ... } | string | number — pull out the
+  // raw value uniformly for assertions on header text.
+  const textOf = (cell: unknown): string => {
+    if (typeof cell === "string") return cell;
+    if (cell && typeof cell === "object" && "value" in cell) {
+      return String((cell as { value: unknown }).value ?? "");
+    }
+    return String(cell ?? "");
+  };
+
+  const doubleHeader = doubleRows[0].map(textOf);
+  const singleHeader = singleRows[0].map(textOf);
+
+  assert.equal(doubleHeader.length, 10,
+    "double mode header keeps the historical 10-column schema");
+  assert.deepEqual(
+    doubleHeader.slice(-3),
+    ["First", "Second", "Total"],
+    "double mode header ends in First / Second / Total",
+  );
+
+  assert.equal(singleHeader.length, 8,
+    "single mode header collapses to 8 columns (no Second / Total)");
+  assert.equal(singleHeader[singleHeader.length - 1], "Allocation",
+    "single mode header's trailing column is 'Allocation'");
+  assert.ok(!singleHeader.includes("First"),
+    "single mode header drops 'First' (renamed to Allocation)");
+  assert.ok(!singleHeader.includes("Second"),
+    "single mode header drops 'Second'");
+  // The Pool Detail row also writes a literal "Total" cell ("Pool total"
+  // / "Total Costs to be Allocated") elsewhere — assert only that the
+  // single-mode HEADER row has no standalone "Total" column.
+  assert.ok(!singleHeader.includes("Total"),
+    "single mode header drops 'Total' column");
+  console.log("  ✓ Allocation by Center header: 10 cols (double) / 8 cols (single)");
+}
+
+// ── 7b. Single-mode Allocation column == firstAllocation == alloc2 ───────
+//
+// The contract the column rename promises: under single step-down the
+// engine's firstAllocation IS the receiver's final per-pool allocation
+// (no Phase 2). That same value is what gets exposed as the
+// "Allocation" column. This test pulls the engine cell + the sheet
+// cell and asserts they match for every receiver of the lone pool.
+{
+  const singleRows = buildAllocationByCenter(basePayload("single"));
+
+  // Find the Pool detail rows: emitted under section "Allocable" or
+  // "Receiving". Single-mode row schema:
+  //   ["", "", glCode, name, section, pct, gross, allocation]
+  // Pick out (name → allocation cell) so we can cross-check against the
+  // engine model.
+  type CellValue = number | { value: number };
+  const valueOf = (cell: unknown): number => {
+    if (typeof cell === "number") return cell;
+    if (cell && typeof cell === "object" && "value" in cell) {
+      return Number((cell as { value: unknown }).value ?? 0);
+    }
+    return 0;
+  };
+
+  const detailRows = singleRows.filter(
+    (row) => row[4] === "Allocable" || row[4] === "Receiving",
+  );
+  assert.ok(detailRows.length > 0, "single-mode sheet emits detail rows");
+
+  // alloc2 must equal firstAllocation in single mode by engine
+  // construction. Assert that explicitly first so the column assertion
+  // below has both an engine-side and an export-side anchor.
+  for (const node of singleModel.nodes) {
+    const f = singleModel.firstAllocation["cm-salaries"]?.[node.key] ?? 0;
+    const a = singleModel.alloc2["cm-salaries"]?.[node.key] ?? 0;
+    assert.ok(Math.abs(f - a) < 0.005,
+      `single engine: firstAllocation[${node.key}] equals alloc2[${node.key}]`);
+  }
+
+  // Every emitted detail row's Allocation cell equals the engine's
+  // firstAllocation for that receiver (modulo Excel's currency rounding
+  // to whole dollars in the $#,##0 mask — so we compare on rounded $).
+  for (const row of detailRows) {
+    const receiverName = String((row[3] as CellValue & string) ?? "");
+    const allocationCell = valueOf(row[row.length - 1] as CellValue);
+    const engineNode = singleModel.nodes.find((n) => n.name === receiverName);
+    if (!engineNode) continue;
+    const engineFirst = singleModel.firstAllocation["cm-salaries"]?.[engineNode.key] ?? 0;
+    assert.ok(
+      Math.abs(allocationCell - engineFirst) < 0.5,
+      `Allocation column for ${receiverName} (${allocationCell}) `
+      + `matches firstAllocation (${engineFirst})`,
+    );
+  }
+  console.log("  ✓ single-mode Allocation column = firstAllocation = alloc2 for every receiver");
+}
+
+// ── 7c. Double-mode preserves First/Second/Total per detail row ──────────
+//
+// Regression guard: the column changes are presentation-only, so double
+// mode must keep emitting four trailing cells (gross / first / second /
+// total) on every detail row.
+{
+  const doubleRows = buildAllocationByCenter(basePayload("double"));
+  const detailRows = doubleRows.filter(
+    (row) => row[4] === "Allocable" || row[4] === "Receiving",
+  );
+  assert.ok(detailRows.length > 0, "double-mode sheet emits detail rows");
+  for (const row of detailRows) {
+    assert.equal(row.length, 10,
+      "double-mode detail rows keep the 10-column shape (gross/first/second/total)");
+  }
+  console.log("  ✓ double-mode preserves the First / Second / Total triple on every detail row");
 }
 
 console.log("\nAll stepDownMethod assertions passed.");

@@ -166,7 +166,14 @@ export function AllocationDetailReport() {
 
     if (totalIncoming <= 0.5 && departmental <= 0.5) return null;
 
-    const COL = "80px minmax(180px, 1.6fr) 120px 120px 120px";
+    // Column layout collapses under single step-down: the engine never
+    // produces a second-pass allocation, and Total mathematically
+    // equals First, so we render a single "Allocation" amount column.
+    // Double mode keeps the historical First / Second / Total triple.
+    const isSingle = stepDownMethod === "single";
+    const COL = isSingle
+      ? "80px minmax(180px, 1.6fr) 120px"
+      : "80px minmax(180px, 1.6fr) 120px 120px 120px";
     const centerGl = glCodeByCenterKey.get(centerKey);
     return (
       <div>
@@ -186,12 +193,19 @@ export function AllocationDetailReport() {
           }}>
             <div>Code</div>
             <div>Source</div>
-            <div style={{ textAlign: "right" }}>First</div>
-            <div style={{ textAlign: "right" }}>Second</div>
-            <div style={{ textAlign: "right" }}>Total</div>
+            {isSingle ? (
+              <div style={{ textAlign: "right" }}>Allocation</div>
+            ) : (
+              <>
+                <div style={{ textAlign: "right" }}>First</div>
+                <div style={{ textAlign: "right" }}>Second</div>
+                <div style={{ textAlign: "right" }}>Total</div>
+              </>
+            )}
           </div>
 
           <CostsRow
+            method={stepDownMethod}
             label="Departmental Expenditures"
             first={departmental}
             second={0}
@@ -213,6 +227,7 @@ export function AllocationDetailReport() {
           {sourceRows.map((r) => (
             <CostsRow
               key={r.key}
+              method={stepDownMethod}
               label={r.name}
               glCode={glCodeByCenterKey.get(r.key)}
               first={r.first}
@@ -223,6 +238,7 @@ export function AllocationDetailReport() {
           ))}
 
           <CostsRow
+            method={stepDownMethod}
             label="Total Incoming Costs"
             first={totalFirst}
             second={totalSecond}
@@ -231,6 +247,7 @@ export function AllocationDetailReport() {
             divider="top"
           />
           <CostsRow
+            method={stepDownMethod}
             label="Total Costs to be Allocated"
             first={departmental + totalFirst}
             second={totalSecond}
@@ -357,12 +374,13 @@ export function AllocationDetailReport() {
             }}>{basisName}</span></span>
           </div>
           {!isResolved && <BasisResolutionDiagnostic resolution={resolution}/>}
-          <ColumnHeaders/>
+          <ColumnHeaders method={stepDownMethod}/>
           <SectionHeader label="Allocable Budget Units"/>
           {allocableRows.map((r) => (
             <DetailRow
               key={r.node.key}
               row={r}
+              method={stepDownMethod}
               poolId={pool.id}
               onSetDirectBill={setDirectBill}
             />
@@ -372,11 +390,12 @@ export function AllocationDetailReport() {
             <DetailRow
               key={r.node.key}
               row={r}
+              method={stepDownMethod}
               poolId={pool.id}
               onSetDirectBill={setDirectBill}
             />
           ))}
-          <TotalRow totals={totals}/>
+          <TotalRow totals={totals} method={stepDownMethod}/>
         </div>
       </div>
     );
@@ -384,8 +403,9 @@ export function AllocationDetailReport() {
 }
 
 function CostsRow({
-  label, glCode, first, second, total, emphasis, divider, isSelf,
+  method, label, glCode, first, second, total, emphasis, divider, isSelf,
 }: {
+  method: StepDownMethod;
   label: string;
   glCode?: string;
   first: number;
@@ -397,10 +417,17 @@ function CostsRow({
 }) {
   const fmtMoney = (v: number) => v < 0.5 ? "—" : fmt.dollars(v);
   const dimColor = (v: number) => v < 0.5 ? "var(--ink-4)" : "var(--ink)";
+  const isSingle = method === "single";
+  // Single-step-down collapses to a single Allocation column. The value
+  // we surface is `first` — under single mode the engine never produces
+  // a Second pass, so firstAllocation already equals alloc2 (the final
+  // per-receiver routing). Total is suppressed because it equals First.
   return (
     <div className={emphasis ? undefined : "tbl-row-hover-grid"} style={{
       display: "grid",
-      gridTemplateColumns: "80px minmax(180px, 1.6fr) 120px 120px 120px",
+      gridTemplateColumns: isSingle
+        ? "80px minmax(180px, 1.6fr) 120px"
+        : "80px minmax(180px, 1.6fr) 120px 120px 120px",
       gap: 12,
       padding: emphasis ? "10px 18px" : "6px 18px",
       borderTop: divider === "top" ? "2px solid var(--ink)"
@@ -433,16 +460,25 @@ function CostsRow({
           }}>self</span>
         )}
       </div>
-      <div className="num" style={{ textAlign: "right", color: dimColor(first) }}>
-        {fmtMoney(first)}
-      </div>
-      <div className="num" style={{ textAlign: "right", color: dimColor(second) }}>
-        {fmtMoney(second)}
-      </div>
-      <div className="num" style={{
-        textAlign: "right",
-        color: emphasis ? "var(--accent)" : dimColor(total),
-      }}>{fmtMoney(total)}</div>
+      {isSingle ? (
+        <div className="num" style={{
+          textAlign: "right",
+          color: emphasis ? "var(--accent)" : dimColor(first),
+        }}>{fmtMoney(first)}</div>
+      ) : (
+        <>
+          <div className="num" style={{ textAlign: "right", color: dimColor(first) }}>
+            {fmtMoney(first)}
+          </div>
+          <div className="num" style={{ textAlign: "right", color: dimColor(second) }}>
+            {fmtMoney(second)}
+          </div>
+          <div className="num" style={{
+            textAlign: "right",
+            color: emphasis ? "var(--accent)" : dimColor(total),
+          }}>{fmtMoney(total)}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -577,13 +613,20 @@ function PoolPicker({
 
 // First / Second / Total columns share the 120px width used by the
 // Costs to be Allocated table above so the two schedules line up
-// visually when stacked.
-const COL_GRID = "80px minmax(180px, 1.4fr) 80px 90px 100px 100px 120px 120px 120px";
+// visually when stacked. Single-method drops Second + Total, keeping a
+// single 120px "Allocation" column on the right edge.
+const COL_GRID_DOUBLE = "80px minmax(180px, 1.4fr) 80px 90px 100px 100px 120px 120px 120px";
+const COL_GRID_SINGLE = "80px minmax(180px, 1.4fr) 80px 90px 100px 100px 120px";
 
-function ColumnHeaders() {
+function gridForMethod(method: StepDownMethod): string {
+  return method === "single" ? COL_GRID_SINGLE : COL_GRID_DOUBLE;
+}
+
+function ColumnHeaders({ method }: { method: StepDownMethod }) {
+  const isSingle = method === "single";
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
+      display: "grid", gridTemplateColumns: gridForMethod(method), gap: 12,
       padding: "10px 14px",
       background: "var(--paper-2)",
       borderBottom: "1px solid var(--rule-strong)",
@@ -596,9 +639,15 @@ function ColumnHeaders() {
       <div style={{ textAlign: "right" }}>%</div>
       <div style={{ textAlign: "right" }}>Gross</div>
       <div style={{ textAlign: "right" }}>Direct Billed</div>
-      <div style={{ textAlign: "right" }}>First</div>
-      <div style={{ textAlign: "right" }}>Second</div>
-      <div style={{ textAlign: "right" }}>Total</div>
+      {isSingle ? (
+        <div style={{ textAlign: "right" }}>Allocation</div>
+      ) : (
+        <>
+          <div style={{ textAlign: "right" }}>First</div>
+          <div style={{ textAlign: "right" }}>Second</div>
+          <div style={{ textAlign: "right" }}>Total</div>
+        </>
+      )}
     </div>
   );
 }
@@ -628,9 +677,10 @@ interface Row {
 }
 
 function DetailRow({
-  row, poolId, onSetDirectBill,
+  row, method, poolId, onSetDirectBill,
 }: {
   row: Row;
+  method: StepDownMethod;
   poolId: string;
   onSetDirectBill: (poolId: string, nodeKey: string, amount: number) => void;
 }) {
@@ -640,6 +690,7 @@ function DetailRow({
     v == null ? "—" : fmt.units(v);
   const fmtPct = (v: number) =>
     v <= 0 ? "—" : `${v.toFixed(3)}%`;
+  const isSingle = method === "single";
   // Brief inline error when the user tries to enter a value > Gross. Clears
   // itself after a moment so the input returns to its quiet state.
   const [error, setError] = useState<string | null>(null);
@@ -662,7 +713,7 @@ function DetailRow({
   };
   return (
     <div className="tbl-row-hover-grid" style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
+      display: "grid", gridTemplateColumns: gridForMethod(method), gap: 12,
       padding: "6px 14px",
       borderBottom: "1px solid var(--rule)",
       fontFamily: "var(--ff-mono)",
@@ -727,19 +778,33 @@ function DetailRow({
           </div>
         )}
       </div>
-      <div className="num" style={{
-        textAlign: "right",
-        color: dim(row.first) ? "var(--ink-4)" : "var(--ink)",
-      }}>{fmtMoney(row.first)}</div>
-      <div className="num" style={{
-        textAlign: "right",
-        color: dim(row.second) ? "var(--ink-4)" : "var(--ink)",
-      }}>{fmtMoney(row.second)}</div>
-      <div className="num" style={{
-        textAlign: "right",
-        color: dim(row.total) ? "var(--ink-4)" : "var(--ink)",
-        fontWeight: dim(row.total) ? 400 : 600,
-      }}>{fmtMoney(row.total)}</div>
+      {isSingle ? (
+        // Single mode: one "Allocation" column. Under single step-down
+        // the engine never emits a second-pass value, so row.first
+        // already equals row.total minus row.directBilled — and that's
+        // the per-receiver allocation reported in the engine's alloc2.
+        <div className="num" style={{
+          textAlign: "right",
+          color: dim(row.first) ? "var(--ink-4)" : "var(--ink)",
+          fontWeight: dim(row.first) ? 400 : 600,
+        }}>{fmtMoney(row.first)}</div>
+      ) : (
+        <>
+          <div className="num" style={{
+            textAlign: "right",
+            color: dim(row.first) ? "var(--ink-4)" : "var(--ink)",
+          }}>{fmtMoney(row.first)}</div>
+          <div className="num" style={{
+            textAlign: "right",
+            color: dim(row.second) ? "var(--ink-4)" : "var(--ink)",
+          }}>{fmtMoney(row.second)}</div>
+          <div className="num" style={{
+            textAlign: "right",
+            color: dim(row.total) ? "var(--ink-4)" : "var(--ink)",
+            fontWeight: dim(row.total) ? 400 : 600,
+          }}>{fmtMoney(row.total)}</div>
+        </>
+      )}
     </div>
   );
 }
@@ -770,13 +835,15 @@ function BasisResolutionDiagnostic({ resolution }: { resolution: UnresolvedBasis
 }
 
 function TotalRow({
-  totals,
+  totals, method,
 }: {
   totals: { units: number; percent: number; gross: number; directBilled: number; first: number; second: number; total: number };
+  method: StepDownMethod;
 }) {
+  const isSingle = method === "single";
   return (
     <div style={{
-      display: "grid", gridTemplateColumns: COL_GRID, gap: 12,
+      display: "grid", gridTemplateColumns: gridForMethod(method), gap: 12,
       padding: "10px 14px",
       background: "var(--paper)",
       borderTop: "2px solid var(--ink)",
@@ -801,14 +868,22 @@ function TotalRow({
         textAlign: "right",
         color: totals.directBilled < 0.5 ? "var(--ink-4)" : "var(--ink)",
       }}>{totals.directBilled < 0.5 ? "—" : fmt.dollars(totals.directBilled)}</div>
-      <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(totals.first)}</div>
-      <div className="num" style={{
-        textAlign: "right",
-        color: totals.second < 0.5 ? "var(--ink-4)" : "var(--ink)",
-      }}>{totals.second < 0.5 ? "—" : fmt.dollars(totals.second)}</div>
-      <div className="num" style={{
-        textAlign: "right", color: "var(--accent)",
-      }}>{fmt.dollars(totals.total)}</div>
+      {isSingle ? (
+        <div className="num" style={{
+          textAlign: "right", color: "var(--accent)",
+        }}>{fmt.dollars(totals.first)}</div>
+      ) : (
+        <>
+          <div className="num" style={{ textAlign: "right" }}>{fmt.dollars(totals.first)}</div>
+          <div className="num" style={{
+            textAlign: "right",
+            color: totals.second < 0.5 ? "var(--ink-4)" : "var(--ink)",
+          }}>{totals.second < 0.5 ? "—" : fmt.dollars(totals.second)}</div>
+          <div className="num" style={{
+            textAlign: "right", color: "var(--accent)",
+          }}>{fmt.dollars(totals.total)}</div>
+        </>
+      )}
     </div>
   );
 }

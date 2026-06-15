@@ -45,7 +45,16 @@ export async function exportCapXlsx(p: CapExportPayload): Promise<Blob> {
     { name: "Cost Centers",         rows: buildCenters(p),             columnWidths: [4, 12, 36, 16, 16, 16, 8] },
     { name: "Allocation Bases",     rows: buildBases(p),               columnWidths: [30, 14, 50] },
     { name: "Cost Pools",           rows: buildPools(p),               columnWidths: [12, 30, 38, 14, 12, 12, 14] },
-    { name: "Allocation by Center", rows: buildAllocationByCenter(p),  columnWidths: [4, 30, 36, 16, 12, 12, 14, 14, 14, 14] },
+    {
+      name: "Allocation by Center",
+      rows: buildAllocationByCenter(p),
+      // Trailing widths track the allocation-column block: 3 columns
+      // (First/Second/Total) for double, 1 column (Allocation) for
+      // single. Stays aligned with the row builders' column counts.
+      columnWidths: p.stepDownMethod === "single"
+        ? [4, 30, 36, 16, 12, 12, 14, 14]
+        : [4, 30, 36, 16, 12, 12, 14, 14, 14, 14],
+    },
     { name: "Allocation Matrix",    rows: buildAllocationMatrix(p),    columnWidths: [12, 30, 38, ...new Array(20).fill(14)] },
     { name: "FBHR Roll-up",         rows: buildFbhrRollup(p),          columnWidths: [20, 16, 60] },
   ];
@@ -220,17 +229,28 @@ function buildPools(p: CapExportPayload): Cell[][] {
   return rows;
 }
 
-function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
+export function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
   // Wide schema that holds both blocks:
   //   1. Costs to be Allocated header → A=#, B=Center, C=Source, F=Pct,
-  //      G=Gross, H=First, I=Second, J=Total
+  //      G=Gross, then per-method allocation columns
   //   2. Pool Allocation Detail header → A=Step, B=Pool, C=Receiver glCode,
-  //      D=Receiver name, E=Section, F=Pct, G=Gross, H=First, I=Second, J=Total
-  // Re-using the same 10-column grid keeps everything in one sheet and lets
-  // Excel filters / freezes apply uniformly.
+  //      D=Receiver name, E=Section, F=Pct, G=Gross, then per-method
+  //      allocation columns
+  // Re-using the same column grid keeps everything in one sheet and lets
+  // Excel filters / freezes apply uniformly. Single mode collapses
+  // First / Second / Total into one Allocation column.
+  const isSingle = p.stepDownMethod === "single";
+  // Column count drops from 10 → 8 in single mode. The two trailing
+  // columns are stripped from every row builder below via this width.
+  const colWidth = isSingle ? 8 : 10;
+  const trailingHeaders: Cell[] = isSingle
+    ? [h("Allocation")]
+    : [h("First"), h("Second"), h("Total")];
   const rows: Cell[][] = [
-    [h("#"), h("Center / Pool"), h("Source / Receiver Code"), h("Receiver Name"),
-     h("Section"), h("Pct"), h("Gross"), h("First"), h("Second"), h("Total")],
+    [
+      h("#"), h("Center / Pool"), h("Source / Receiver Code"), h("Receiver Name"),
+      h("Section"), h("Pct"), h("Gross"), ...trailingHeaders,
+    ],
   ];
 
   const stepIndex = new Map<string, number>();
@@ -267,11 +287,7 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
     const centerHeader = centerGl
       ? `${centerGl} · ${centerName.toUpperCase()}`
       : centerName.toUpperCase();
-    rows.push([
-      h(`STEP ${stepLabel}`),
-      h(centerHeader),
-      "", "", "", "", "", "", "", "",
-    ]);
+    rows.push(padRow([h(`STEP ${stepLabel}`), h(centerHeader)], colWidth));
 
     // -------- Costs to be Allocated --------
     const departmental = centerPools
@@ -299,36 +315,80 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
     const totalFirst = sourceRows.reduce((a, r) => a + r.first, 0);
     const totalSecond = sourceRows.reduce((a, r) => a + r.second, 0);
 
-    rows.push(["", h("Costs to be Allocated"), "", "", "", "", "", "", "", ""]);
-    rows.push([
-      "", "", "Departmental Expenditures", "", "", "",
-      n(departmental, "$#,##0"), n(departmental, "$#,##0"), n(0, "$#,##0"), n(departmental, "$#,##0"),
-    ]);
+    rows.push(padRow(["", h("Costs to be Allocated")], colWidth));
+    // Departmental row: gross = departmental; under single mode the
+    // single "Allocation" column carries the same dollars as the gross
+    // (no second-pass redistribution).
+    rows.push(padRow(
+      isSingle
+        ? [
+          "", "", "Departmental Expenditures", "", "", "",
+          n(departmental, "$#,##0"),
+          n(departmental, "$#,##0"),
+        ]
+        : [
+          "", "", "Departmental Expenditures", "", "", "",
+          n(departmental, "$#,##0"), n(departmental, "$#,##0"),
+          n(0, "$#,##0"), n(departmental, "$#,##0"),
+        ],
+      colWidth,
+    ));
     for (const r of sourceRows) {
       const sourceGl = meta.get(r.key)?.glCode;
       const baseLabel = sourceGl ? `${sourceGl} · ${r.name}` : r.name;
       const label = r.key === centerKey ? `${baseLabel} (self)` : baseLabel;
-      rows.push([
-        "", "", label, "", "Incoming", "",
-        "", n(r.first, "$#,##0"), n(r.second, "$#,##0"), n(r.first + r.second, "$#,##0"),
-      ]);
+      rows.push(padRow(
+        isSingle
+          ? [
+            "", "", label, "", "Incoming", "",
+            "",
+            n(r.first + r.second, "$#,##0"),
+          ]
+          : [
+            "", "", label, "", "Incoming", "",
+            "",
+            n(r.first, "$#,##0"), n(r.second, "$#,##0"),
+            n(r.first + r.second, "$#,##0"),
+          ],
+        colWidth,
+      ));
     }
-    rows.push([
-      "", h("Total Incoming"), "", "", "", "",
-      "", n(totalFirst, "$#,##0"), n(totalSecond, "$#,##0"), n(totalFirst + totalSecond, "$#,##0"),
-    ]);
-    rows.push([
-      "", h("Total Costs to be Allocated"), "", "", "", "",
-      "",
-      n(departmental + totalFirst, "$#,##0"),
-      n(totalSecond, "$#,##0"),
-      n(departmental + totalFirst + totalSecond, "$#,##0"),
-    ]);
+    rows.push(padRow(
+      isSingle
+        ? [
+          "", h("Total Incoming"), "", "", "", "",
+          "",
+          n(totalFirst + totalSecond, "$#,##0"),
+        ]
+        : [
+          "", h("Total Incoming"), "", "", "", "",
+          "",
+          n(totalFirst, "$#,##0"), n(totalSecond, "$#,##0"),
+          n(totalFirst + totalSecond, "$#,##0"),
+        ],
+      colWidth,
+    ));
+    rows.push(padRow(
+      isSingle
+        ? [
+          "", h("Total Costs to be Allocated"), "", "", "", "",
+          "",
+          n(departmental + totalFirst + totalSecond, "$#,##0"),
+        ]
+        : [
+          "", h("Total Costs to be Allocated"), "", "", "", "",
+          "",
+          n(departmental + totalFirst, "$#,##0"),
+          n(totalSecond, "$#,##0"),
+          n(departmental + totalFirst + totalSecond, "$#,##0"),
+        ],
+      colWidth,
+    ));
     rows.push([]);
 
     // -------- Pool Allocation Detail for each pool at this center --------
     for (const pl of centerPools) {
-      rows.push(["", h(`Pool · ${pl.pool}`), "", "", "", "", "", "", "", ""]);
+      rows.push(padRow(["", h(`Pool · ${pl.pool}`)], colWidth));
 
       // Derive per-receiver percent from the engine's Phase 1 distribution
       // — first / Σ first across receivers. Reproduces the schedule that
@@ -343,17 +403,21 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
         const total = first + second;
         if (first < 0.5 && second < 0.5) return;
         const pct = firstTotal > 0 ? (first / firstTotal) * 100 : 0;
-        rows.push([
+        const head: Cell[] = [
           "", "",
           node.glCode.startsWith("seed:") ? "" : node.glCode,
           node.name,
           section,
           n(pct / 100, "0.000%"),
           n(gross, "$#,##0"),
-          n(first, "$#,##0"),
-          n(second, "$#,##0"),
-          n(total, "$#,##0"),
-        ]);
+        ];
+        // Under single mode, firstAllocation already equals the
+        // per-receiver final allocation (alloc2) — surface that as the
+        // single Allocation column. Double mode keeps the historical
+        // First / Second / Total triple.
+        rows.push(isSingle
+          ? [...head, n(first, "$#,##0")]
+          : [...head, n(first, "$#,##0"), n(second, "$#,##0"), n(total, "$#,##0")]);
       };
       for (const node of indirectNodes) emit(node, "Allocable");
       for (const node of directNodes)   emit(node, "Receiving");
@@ -361,19 +425,33 @@ function buildAllocationByCenter(p: CapExportPayload): Cell[][] {
       const allKeys = [...indirectNodes, ...directNodes].map((nn) => nn.key);
       const poolFirstTotal  = allKeys.reduce((a, k) => a + (p.model.firstAllocation[pl.id]?.[k] ?? 0), 0);
       const secondTotal = allKeys.reduce((a, k) => a + (p.model.secondAllocation[pl.id]?.[k] ?? 0), 0);
-      rows.push([
+      const totalsHead: Cell[] = [
         "", "", "", h("Pool total"), "",
         n(1, "0.000%"),
         n(poolFirstTotal, "$#,##0"),
-        n(poolFirstTotal, "$#,##0"),
-        n(secondTotal, "$#,##0"),
-        n(poolFirstTotal + secondTotal, "$#,##0"),
-      ]);
+      ];
+      rows.push(isSingle
+        ? [...totalsHead, n(poolFirstTotal, "$#,##0")]
+        : [
+          ...totalsHead,
+          n(poolFirstTotal, "$#,##0"),
+          n(secondTotal, "$#,##0"),
+          n(poolFirstTotal + secondTotal, "$#,##0"),
+        ]);
       rows.push([]);
     }
   });
 
   return rows;
+}
+
+// Right-pad a partial row to the sheet's column count. The
+// AllocationByCenter sheet shifts between 8 and 10 columns depending on
+// stepDownMethod, so every banner / label / total row goes through this
+// helper rather than hard-coded "" arrays at each call site.
+function padRow(cells: Cell[], width: number): Cell[] {
+  if (cells.length >= width) return cells;
+  return [...cells, ...new Array(width - cells.length).fill("") as Cell[]];
 }
 
 function buildAllocationMatrix(p: CapExportPayload): Cell[][] {
