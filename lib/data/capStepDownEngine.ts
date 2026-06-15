@@ -9,10 +9,6 @@
  *   - Imported direct receiver → real glCode is the node.key.
  *   - Imported indirect center → imported glCode (or synth seed:center:*
  *     for centers that never had a glCode imported) is the node.key.
- *   - Synth direct nodes for PLAN/BLDG/ENG are created as stable
- *     placeholder receivers for the empty-state UI (before any CAP
- *     import has been loaded). They do NOT participate in any routing
- *     fallback — pools whose basis can't be resolved leak by design.
  *   - Non-DIRECT pools share a per-basis BasisUnitRow — receiver percents
  *     are derived as `units / Σ units across the basis schedule`. One
  *     schedule serves every pool with the same basisId; receivers are
@@ -43,13 +39,6 @@ interface PoolSchedule {
 import { FEE_DEPTS } from "./departments";
 const FEE_DEPT_SET = new Set<string>(FEE_DEPTS);
 
-/** Stable synth glCode used for PLAN/BLDG/ENG direct-node placeholders
- *  when no imported receiver covers a fee dept. These nodes exist as
- *  visible empty-state receivers for the UI; the engine never routes
- *  $ to them as a fallback. A pool whose basis fails to resolve leaks
- *  by design — see model.diagnostics. */
-const seedDeptKey = (deptCode: DeptCode) => `seed:dept:${deptCode}`;
-
 // ---------------------------------------------------------------------------
 // Types
 // ---------------------------------------------------------------------------
@@ -58,7 +47,8 @@ export type NodeKey = string;
 
 export interface GlNode {
   key: NodeKey;
-  /** Same as `key` — synth seed keys also count as the node's glCode. */
+  /** Same as `key` — for centers without an imported glCode the
+   *  `seed:center:*` synthetic stands in. */
   glCode: string;
   name: string;
   role: "indirect" | "direct";
@@ -176,20 +166,12 @@ export function buildEngineGraph(args: {
    *  as the name (defensive — production state always has metadata). */
   capCenterSources: Record<string, { name: string; source: unknown; sourceFile?: string }>;
   capReceivers: ReceiverEntry[];
-  /** Fee depts the active jurisdiction actually models (typically derived
-   *  from state.positions / state.services). Scopes the placeholder
-   *  direct nodes (step 3 below) so jurisdictions that don't model e.g.
-   *  PARKS / PD / FIRE don't end up with phantom receivers in the empty-
-   *  state UI. Omit to seed every entry in FEE_DEPTS (used by tests +
-   *  jurisdictions that model the full fee-dept set). */
-  modeledFeeDepts?: DeptCode[];
 }): GlEngineGraph {
   // basisUnits / allocationBases are read by computeStepDownGl for
   // schedule derivation; the graph builder no longer materializes a
   // seed-driver matrix from them.
   const {
     directAllocations, capCenterTotals, capCenterSources, capReceivers,
-    modeledFeeDepts,
   } = args;
 
   const nodes: GlNode[] = [];
@@ -222,16 +204,10 @@ export function buildEngineGraph(args: {
   //    are destinations, not pass-throughs. feeDept is set only when the
   //    receiver's classification matches PLAN/BLDG/ENG so FBHR can sum by
   //    fee dept; classification is metadata only and never determines a
-  //    routing destination.
-  //
-  //    No modeledFeeDepts filter here: every receiver in capReceivers came
-  //    from real basisUnits or directAllocations imports (the LAH FY 24/25
-  //    seed bundle has actual Public Safety / Parks / Fire receivers at
-  //    real LAH glCodes). The previous filter was guarding against phantom
-  //    fee-dept receivers in older seed data; that data is gone. FBHR
-  //    roll-up at the edge (capAllocatedFromGl) is what scopes per-dept
-  //    display to the jurisdiction's modeled fee depts — the engine's job
-  //    is to distribute faithfully.
+  //    routing destination. Direct nodes come exclusively from imported
+  //    basisUnits / directAllocations — there is no empty-state placeholder
+  //    fallback. A jurisdiction with no imported receivers shows zero
+  //    direct nodes (and the consuming UI renders its empty state).
   for (const r of capReceivers) {
     if (!r.glCode) continue;
     if (nodeByKey.has(r.glCode)) continue;
@@ -244,33 +220,6 @@ export function buildEngineGraph(args: {
       classification: r.deptCode,
     });
   }
-
-  // 3. Synthetic PLAN/BLDG/ENG direct nodes — empty-state fallback only.
-  //    These exist so the prototype has stable, glCode-keyed receivers when
-  //    no CAP import has been loaded yet. As soon as any imported receiver
-  //    shows up in step 2, the imports own the receiver set and we skip
-  //    seed creation entirely. They are NOT a deptCode-routing fallback
-  //    for DIRECT pools — DIRECT pools route only via their
-  //    DirectAllocationRow (see Phase 1 below).
-  const anyImportedDirect = nodes.some(
-    (n) => n.role === "direct" && !n.key.startsWith("seed:"),
-  );
-  if (!anyImportedDirect) {
-    const seedDepts = modeledFeeDepts && modeledFeeDepts.length > 0
-      ? modeledFeeDepts
-      : FEE_DEPTS;
-    for (const dept of seedDepts) {
-      const key = seedDeptKey(dept);
-      addNode({
-        key, glCode: key, name: dept, role: "direct", feeDept: dept,
-        classification: dept,
-      });
-    }
-  }
-
-  // (Driver-matrix seeding removed with the legacy text-match fallback —
-  // schedules are derived strictly from BasisUnitRow / DirectAllocationRow
-  // inside computeStepDownGl.)
 
   // Direct-allocation receivers are nodes too — buildReceiverRegistry
   // surfaces them, but defensively walk directAllocations here so the

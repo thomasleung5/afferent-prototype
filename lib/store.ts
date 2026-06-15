@@ -1478,13 +1478,6 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     state.allocationBases, state.studyContext,
   );
 
-  // Scope the engine's synthetic fallback direct nodes to the fee depts the
-  // active jurisdiction actually models. Without this, the engine seeds
-  // every entry in FEE_DEPTS and the seed DRIVERS matrix routes real $ to
-  // phantom receivers (e.g. PARKS / PD / FIRE on a Planning/Building/Eng-
-  // only jurisdiction).
-  const modeledFeeDepts: DeptCode[] = activeFeeDepts;
-
   const graph = buildEngineGraph({
     allocationBases: state.allocationBases,
     basisUnits: state.capBasisUnits,
@@ -1492,7 +1485,6 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     capCenterTotals: state.capCenterTotals,
     capCenterSources: state.capCenterSources,
     capReceivers,
-    modeledFeeDepts,
   });
 
   // Single CAP allocation computed with the jurisdiction-wide method

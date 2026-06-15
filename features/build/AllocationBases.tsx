@@ -142,6 +142,17 @@ export function AllocationBases() {
     [derived.capStepDown.nodes, capBasisUnits, columns],
   );
   const [openCell, setOpenCell] = useState<OpenCell | null>(null);
+  if (rows.length === 0) {
+    return (
+      <div style={{
+        background: "var(--paper)", border: "1px solid var(--rule)",
+        padding: 22, fontSize: "var(--fs-ui)", color: "var(--ink-3)",
+      }}>
+        No allocation basis data imported. Import a basis schedule or
+        direct-allocation receivers to see the basis matrix.
+      </div>
+    );
+  }
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <Matrix columns={columns} rows={rows} openCell={openCell} setOpenCell={setOpenCell}/>

@@ -740,4 +740,133 @@ console.log(`  Bogus name + real glCode → PLAN: ${fmt(glRouteFirst["011-3100"]
 assert.equal(Math.round(glRouteFirst["011-3100"] ?? 0), 100000,
   "Pool routed via centerGlCode even when pool.center doesn't match any known center");
 
+// ── Synthetic direct nodes removed ──────────────────────────────────────
+//
+// The graph builder used to seed PLAN/BLDG/ENG (`seed:dept:*`) direct
+// nodes as visible empty-state receivers when no imports had been
+// loaded. That fallback is gone — direct nodes come exclusively from
+// imported basisUnits / directAllocations. Three assertions cover the
+// post-removal contract:
+//   (1) No basis/direct-allocation data → zero direct nodes.
+//   (2) Imported receivers still produce direct nodes (regression).
+//   (3) Missing receiver schedules still produce the existing leakage
+//       diagnostics (no silent fallback path).
+
+console.log("\n== Synthetic direct nodes removed ==");
+
+// (1) Empty CAP data — no receivers, no direct allocations. The graph
+//     still has indirect nodes for the imported center, but the direct
+//     bucket is empty.
+{
+  const emptyCenters = buildCenterMaps(
+    { "City Manager": 100000 },
+    { "City Manager": "011-1200" },
+  );
+  const emptyBases: AllocationBasis[] = [];
+  const emptyBasisUnits: BasisUnitRow[] = [];
+  const emptyDirectAllocations: DirectAllocationRow[] = [];
+  const { entries: emptyReceivers } = buildReceiverRegistry(
+    emptyBasisUnits, emptyDirectAllocations, emptyBases, DEFAULT_STUDY_CONTEXT,
+  );
+  const emptyGraph = buildEngineGraph({
+    allocationBases: emptyBases,
+    basisUnits: emptyBasisUnits,
+    directAllocations: emptyDirectAllocations,
+    capCenterTotals: emptyCenters.totals,
+    capCenterSources: emptyCenters.sources,
+    capReceivers: emptyReceivers,
+  });
+  const directNodes = emptyGraph.nodes.filter((n) => n.role === "direct");
+  console.log(`  (1) Empty CAP data: ${directNodes.length} direct nodes (expect 0)`);
+  assert.equal(directNodes.length, 0,
+    "No basisUnits / directAllocations → zero direct nodes (no seed:dept:* fallback)");
+  // The indirect City Manager node should still be present — center
+  // totals continue to populate indirect nodes.
+  const indirectNodes = emptyGraph.nodes.filter((n) => n.role === "indirect");
+  assert.equal(indirectNodes.length, 1,
+    "Indirect cost centers are still seeded from capCenterTotals");
+  assert.ok(!emptyGraph.nodes.some((n) => n.key.startsWith("seed:dept:")),
+    "No seed:dept:* nodes anywhere in the graph");
+}
+
+// (2) Imported receivers still produce direct nodes — regression cover for
+//     the main routing path. Reuses the top-of-file `graph` so any drift
+//     between the empty-state branch and the populated branch is caught
+//     by the existing assertions; this one just pins the count + keys.
+{
+  const directNodes = graph.nodes.filter((n) => n.role === "direct");
+  const directKeys = directNodes.map((n) => n.key).sort();
+  console.log(`  (2) Imported receivers: ${directNodes.length} direct nodes`);
+  assert.deepEqual(
+    directKeys,
+    ["011-3100", "011-3200", "011-3300", "401-0000"],
+    "Imported receivers produce exactly the expected direct nodes",
+  );
+  assert.ok(!directKeys.some((k) => k.startsWith("seed:dept:")),
+    "Populated graph has no seed:dept:* leftovers");
+}
+
+// (3) Missing receiver schedules still produce the existing leakage
+//     diagnostics. Pool references a catalog basis whose BasisUnitRow
+//     was never imported → engine emits a "no-schedule" diagnostic and
+//     leaks the full eligible $; no synthetic fee-dept fallback absorbs
+//     the dollars silently.
+{
+  const noSchedCenters = buildCenterMaps(
+    { "City Manager": 50000 },
+    { "City Manager": "011-1200" },
+  );
+  const noSchedBases: AllocationBasis[] = [{
+    id: "bas-orphan-schedule",
+    name: "Orphan basis (no imported schedule)",
+    source: "Manual",
+    driverKey: "FTE",
+    createdAt: NOW,
+  }];
+  const noSchedBasisUnits: BasisUnitRow[] = [];      // intentionally empty
+  const noSchedDirectAllocations: DirectAllocationRow[] = [];
+  const noSchedPools: CapPool[] = [{
+    id: "no-sched-pool",
+    center: "City Manager",
+    centerGlCode: noSchedCenters.keyByName["City Manager"],
+    pool: "Costs that can't route",
+    allocationPercent: 100, amount: 50000,
+    basisId: "bas-orphan-schedule", basis: "Orphan basis (no imported schedule)",
+    receiving: "Multiple", recoverability: "TBD", review: "Review",
+  }];
+  const { entries: noSchedReceivers } = buildReceiverRegistry(
+    noSchedBasisUnits, noSchedDirectAllocations, noSchedBases, DEFAULT_STUDY_CONTEXT,
+  );
+  const noSchedGraph = buildEngineGraph({
+    allocationBases: noSchedBases,
+    basisUnits: noSchedBasisUnits,
+    directAllocations: noSchedDirectAllocations,
+    capCenterTotals: noSchedCenters.totals,
+    capCenterSources: noSchedCenters.sources,
+    capReceivers: noSchedReceivers,
+  });
+  const noSchedModel = computeStepDownGl({
+    pools: noSchedPools,
+    centerOrder: [noSchedCenters.keyByName["City Manager"]],
+    bases: noSchedBases,
+    basisUnits: noSchedBasisUnits,
+    directAllocations: noSchedDirectAllocations,
+    graph: noSchedGraph,
+  });
+  console.log(`  (3) Missing schedule: diagnostics=${noSchedModel.diagnostics.length}, leakage=${noSchedModel.leakageByPoolId["no-sched-pool"] ?? 0}`);
+  assert.equal(noSchedModel.diagnostics.length, 1,
+    "Missing receiver schedule still emits exactly one diagnostic");
+  assert.equal(noSchedModel.diagnostics[0].kind, "no-schedule",
+    "Diagnostic kind is 'no-schedule' (the existing leakage path)");
+  assert.equal(noSchedModel.diagnostics[0].poolId, "no-sched-pool");
+  assert.ok(
+    Math.abs((noSchedModel.leakageByPoolId["no-sched-pool"] ?? 0) - 50000) < 0.5,
+    "Full eligible $ leaks — no synthetic fee-dept node absorbs it",
+  );
+  // And no direct nodes were materialized as a side effect.
+  const directNodes = noSchedGraph.nodes.filter((n) => n.role === "direct");
+  assert.equal(directNodes.length, 0,
+    "Missing schedule + no imports → still zero direct nodes");
+}
+
 console.log("\nAll CAP step-down assertions passed.");
