@@ -33,7 +33,7 @@ import {
 import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
-  type GlDriverMatrix, type GlStepDownModel,
+  type GlStepDownModel,
 } from "@/lib/data/capStepDownEngine";
 import {
   deriveFunctionalAllocation, applyFunctionalAllocationFbhr,
@@ -1409,10 +1409,6 @@ interface BuildDerived {
    *  direct node whose feeDept classification matches. Flows into deptFBHR
    *  so the CAP rate ($/hr) reconciles to the pool inventory. */
   capAllocated: Record<DeptCode, number>;
-  /** Per-node, per-basis driver matrix used by the engine. Imported
-   *  receiver units overlay the seed driver row for seed nodes only —
-   *  imported nodes get their units strictly from the receiver aggregation. */
-  capDrivers: GlDriverMatrix;
   /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
    *  seed:* key). Source of truth for the matrix tabs + cell traces. */
   capStepDown: GlStepDownModel;
@@ -1532,7 +1528,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     activeFeeDepts,
     labor, operatingByDept, fbhr, costs, comparisons, impact,
     deptRollup,
-    capAllocated, capDrivers: graph.drivers,
+    capAllocated,
     capStepDown: stepDown,
     utilization,
     functionalAllocation,

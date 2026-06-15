@@ -681,19 +681,21 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
         </thead>
         <tbody>
           {payload.capPools.map((pl) => {
-            const { basis } = basisForPool(pl, payload.allocationBases);
-            const basisRecord = pl.basisId
-              ? payload.allocationBases.find((b) => b.id === pl.basisId)
-              : undefined;
-            const source = basisRecord?.source && basisRecord.source.trim()
-              ? basisRecord.source
+            const resolution = basisForPool(pl, payload.allocationBases);
+            const isResolved = resolution.status === "resolved";
+            const basisLabel = isResolved ? resolution.basis.name : "(unresolved)";
+            const source = isResolved && resolution.basis.source?.trim()
+              ? resolution.basis.source
               : "Not available";
             return (
               <tr key={pl.id}>
                 <td><b>{pl.pool}</b></td>
                 <td style={{ color: "var(--ink-2)" }}>{pl.center}</td>
                 <td>
-                  <span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span>
+                  <span style={{
+                    color: isResolved ? "var(--ink-2)" : "var(--warn)",
+                    fontStyle: isResolved ? "normal" : "italic",
+                  }}>{basisLabel}</span>
                 </td>
                 <td style={{ color: "var(--ink-2)" }}>{source}</td>
               </tr>
@@ -844,7 +846,9 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
         </thead>
         <tbody>
           {payload.capPools.map((pl) => {
-            const { basis } = basisForPool(pl, payload.allocationBases);
+            const resolution = basisForPool(pl, payload.allocationBases);
+            const isResolved = resolution.status === "resolved";
+            const basisLabel = isResolved ? resolution.basis.name : "(unresolved)";
             const gl = meta.get(pl.centerGlCode)?.glCode;
             totalEligible += pl.amount;
             return (
@@ -852,7 +856,10 @@ function CostPools({ payload }: { payload: CapExportPayload }) {
                 <td><span className="mono" style={{ fontSize: 10, color: gl ? "var(--ink-2)" : "var(--ink-4)" }}>{gl ?? "—"}</span></td>
                 <td style={{ color: "var(--ink-2)" }}>{pl.center}</td>
                 <td><b>{pl.pool}</b></td>
-                <td><span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span></td>
+                <td><span style={{
+                  color: isResolved ? "var(--ink-2)" : "var(--warn)",
+                  fontStyle: isResolved ? "normal" : "italic",
+                }}>{basisLabel}</span></td>
                 <td className="num"><b>{fmt.dollars(pl.amount)}</b></td>
               </tr>
             );
@@ -1069,7 +1076,9 @@ function PoolBlock({
   model: GlStepDownModel;
   bases: CapExportPayload["allocationBases"];
 }) {
-  const { basis } = basisForPool(pool, bases);
+  const resolution = basisForPool(pool, bases);
+  const isResolved = resolution.status === "resolved";
+  const basisLabel = isResolved ? resolution.basis.name : "(unresolved basis)";
   const eligibleAmount = pool.amount;
 
   const indirectNodes = model.nodes
@@ -1118,7 +1127,10 @@ function PoolBlock({
         display: "flex", gap: 14,
       }}>
         <span>Allocable: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(eligibleAmount)}</b></span>
-        <span>Basis: <span className="mono">{basis}</span></span>
+        <span>Basis: <span style={{
+          color: isResolved ? "var(--ink-2)" : "var(--warn)",
+          fontStyle: isResolved ? "normal" : "italic",
+        }}>{basisLabel}</span></span>
         <span>First Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalFirst)}</b></span>
         <span>Second Pool: <b style={{ color: "var(--ink-2)" }}>{fmt.dollars(totalSecond)}</b></span>
         <span>Total: <b style={{ color: "var(--accent)" }}>{fmt.dollars(totalFirst + totalSecond)}</b></span>
@@ -1309,7 +1321,9 @@ function AppendixA({ payload }: { payload: CapExportPayload }) {
               );
             }
             return pools.map((pl, i) => {
-              const { basis } = basisForPool(pl, payload.allocationBases);
+              const resolution = basisForPool(pl, payload.allocationBases);
+              const isResolved = resolution.status === "resolved";
+              const basisLabel = isResolved ? resolution.basis.name : "(unresolved)";
               const desc = pl.recoverability && pl.recoverability.trim()
                 ? pl.recoverability
                 : "Not available";
@@ -1318,7 +1332,10 @@ function AppendixA({ payload }: { payload: CapExportPayload }) {
                   <td>{i === 0 ? <b>{centerName}</b> : <span className="dim">{centerName}</span>}</td>
                   <td><b>{pl.pool}</b></td>
                   <td style={{ color: "var(--ink-2)" }}>{desc}</td>
-                  <td><span className="mono" style={{ fontSize: 10, color: "var(--ink-2)" }}>{basis}</span></td>
+                  <td><span style={{
+                    color: isResolved ? "var(--ink-2)" : "var(--warn)",
+                    fontStyle: isResolved ? "normal" : "italic",
+                  }}>{basisLabel}</span></td>
                   <td className="num">{fmt.dollars(pl.amount)}</td>
                   <td className="num">{receiverCount(pl.id)}</td>
                 </tr>
@@ -1336,16 +1353,21 @@ function AppendixA({ payload }: { payload: CapExportPayload }) {
 // ---------------------------------------------------------------------------
 
 function AppendixB({ payload }: { payload: CapExportPayload }) {
+  // Per-basis usage from pools that authoritatively resolve to a catalog
+  // entry. Pools whose basisId is missing or orphaned never appear here —
+  // their leakage is surfaced via the engine diagnostics, not by
+  // misattribution to an inferred basis.
   const usage = new Map<string, { count: number; allocable: number }>();
   for (const pl of payload.capPools) {
-    const { basis } = basisForPool(pl, payload.allocationBases);
-    const cur = usage.get(basis) ?? { count: 0, allocable: 0 };
+    const resolution = basisForPool(pl, payload.allocationBases);
+    if (resolution.status !== "resolved") continue;
+    const cur = usage.get(resolution.basis.id) ?? { count: 0, allocable: 0 };
     cur.count += 1;
     cur.allocable += pl.amount;
-    usage.set(basis, cur);
+    usage.set(resolution.basis.id, cur);
   }
   const rows = payload.allocationBases.map((b) => {
-    const u = usage.get(b.driverKey) ?? { count: 0, allocable: 0 };
+    const u = usage.get(b.id) ?? { count: 0, allocable: 0 };
     return {
       name: b.name,
       driverKey: b.driverKey,
@@ -1459,7 +1481,10 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
 
-      const bases = Array.from(new Set(pools.map((pl) => basisForPool(pl, payload.allocationBases).basis)));
+      const bases = Array.from(new Set(pools.map((pl) => {
+        const r = basisForPool(pl, payload.allocationBases);
+        return r.status === "resolved" ? r.basis.name : "(unresolved)";
+      })));
 
       return {
         center: centerName,

@@ -175,13 +175,16 @@ function buildPools(p: CapExportPayload): Cell[][] {
   const meta = centerMeta(p);
   let total = 0;
   for (const pl of p.capPools) {
-    const { basis } = basisForPool(pl, p.allocationBases);
+    const resolution = basisForPool(pl, p.allocationBases);
+    const basisLabel = resolution.status === "resolved"
+      ? resolution.basis.name
+      : "(unresolved basis)";
     total += pl.amount;
     rows.push([
       meta.get(pl.centerGlCode)?.glCode ?? "—",
       pl.center,
       pl.pool,
-      basis,
+      basisLabel,
       n(pl.amount, "$#,##0"),
     ]);
   }

@@ -392,15 +392,11 @@ assert.equal(Math.round(p2["011-3100"] ?? 0), 30000, "Shared basis: Pool 2 PLAN 
 assert.equal(Math.round(p2["011-3200"] ?? 0), 20000, "Shared basis: Pool 2 BLDG = 40% × $50K");
 
 // Test 7: receiver units counted ONCE per basis. The shared basis lists
-// 60 units against PLAN and 40 against BLDG. graph.drivers should show
-// those exact units (not 120 / 80 from being counted per pool).
-console.log(`  Drivers PLAN/FTE: ${sharedGraph.drivers["011-3100"]?.FTE ?? 0} (expect 60)`);
-console.log(`  Drivers BLDG/FTE: ${sharedGraph.drivers["011-3200"]?.FTE ?? 0} (expect 40)`);
-assert.equal(sharedGraph.drivers["011-3100"]?.FTE ?? 0, 60,
-  "Driver matrix: PLAN units counted once per basis (not per pool)");
-assert.equal(sharedGraph.drivers["011-3200"]?.FTE ?? 0, 40,
-  "Driver matrix: BLDG units counted once per basis (not per pool)");
-
+// 60 units against PLAN and 40 against BLDG. Per-pool routing must
+// derive percents from those raw units (not doubled by per-pool
+// re-counting), which Test 6 above already proves at the allocation
+// level (60/40 splits, not 75/25 or any other ratio).
+//
 // Test 8: ReceiverRegistry surfaces each receiver exactly once even though
 // two pools reference the basis.
 const planEntries = sharedReceivers.filter((r) => r.glCode === "011-3100");
@@ -633,7 +629,8 @@ assert.equal(Math.round(leakTotal), 0,
   "DIRECT pool with no DirectAllocationRow must produce $0 allocations");
 assert.equal(directLeakModel.diagnostics.length, 1,
   "DIRECT pool with no DirectAllocationRow must emit one diagnostic");
-assert.equal(directLeakModel.diagnostics[0].kind, "no-valid-glcodes");
+assert.equal(directLeakModel.diagnostics[0].kind, "no-receivers",
+  "DIRECT pool with no DirectAllocationRow at all → 'no-receivers' (distinct from 'no-valid-glcodes', which fires when receivers exist but none resolve to a node)");
 
 // (c) DIRECT pool with receivers all pointing at unknown glCodes → leaks.
 const directBadPools: CapPool[] = [{

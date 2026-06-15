@@ -1,7 +1,9 @@
 import { useMemo, useState } from "react";
 import { CellInput, SectionLabel } from "@/components/ui";
 import { fmt } from "@/lib/format";
-import { basisForPool } from "@/lib/data/capBasisRouting";
+import {
+  basisForPool, basisUnitRowForBasis, type BasisResolution,
+} from "@/lib/data/capBasisRouting";
 import type { GlNode } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 
@@ -26,10 +28,6 @@ export function AllocationDetailReport() {
     setDirectBill, derived,
   } = useBuildState();
   const model = derived.capStepDown;
-  const basisUnitsByBasisId = useMemo(
-    () => new Map(capBasisUnits.map((bu) => [bu.basisId, bu])),
-    [capBasisUnits],
-  );
   const directByPoolId = useMemo(
     () => new Map(capDirectAllocations.map((da) => [da.poolId, da])),
     [capDirectAllocations],
@@ -242,22 +240,36 @@ export function AllocationDetailReport() {
     const directNodes   = model.nodes.filter((n) => n.role === "direct");
     const sortByGlCode = (a: GlNode, b: GlNode) => a.glCode.localeCompare(b.glCode);
 
-    const { basis } = basisForPool(pool, allocationBases);
-    const isDirectCharge = basis === "DIRECT";
+    // Resolve the pool's CURRENT basisId against the catalog. Unlike the
+    // engine's basisForPool, this never falls back to inferBasis — a
+    // missing or orphaned basisId surfaces as a diagnostic instead of
+    // silently routing through a legacy text-match driver.
+    const resolution = basisForPool(pool, allocationBases);
+    const isResolved = resolution.status === "resolved";
+    const basisName = isResolved
+      ? resolution.basis.name
+      : pool.basis || "(no basis selected)";
+    const isDirectCharge = isResolved && resolution.basis.driverKey === "DIRECT";
     const eligibleAmount = pool.amount;
 
     // Build the per-receiver schedule for this pool. Non-DIRECT pools
     // share their basis's BasisUnitRow — units come from the schedule and
     // percent is derived as units / Σ units. DIRECT pools have their own
-    // explicit DirectAllocationRow with hand-written percents.
+    // explicit DirectAllocationRow with hand-written percents. When the
+    // pool's basisId is unresolved, leave units/percent empty: the engine
+    // may have produced numbers via the legacy fallback, but the report
+    // must not claim those came from a basis the analyst actually chose.
     const schedule = new Map<string, { units?: number; percent: number }>();
-    if (isDirectCharge) {
+    if (!isResolved) {
+      // intentionally empty — diagnostic strip explains.
+    } else if (isDirectCharge) {
       const da = directByPoolId.get(pool.id);
       for (const r of da?.receivers ?? []) {
         schedule.set(r.glCode, { percent: r.percent });
       }
     } else {
-      const bu = basisUnitsByBasisId.get(pool.basisId);
+      // Resolve schedule by the CURRENT basisId, never by stale name.
+      const bu = basisUnitRowForBasis(resolution.basis.id, capBasisUnits);
       const rows = bu?.receivers ?? [];
       const totalUnits = rows.reduce((a, r) => a + r.units, 0);
       for (const r of rows) {
@@ -330,10 +342,13 @@ export function AllocationDetailReport() {
             <span>Allocable: <span className="num" style={{
               color: "var(--ink-2)", fontWeight: 500,
             }}>{fmt.dollars(eligibleAmount)}</span></span>
-            <span>Basis: <span className="mono" style={{
-              color: "var(--ink-2)", letterSpacing: "0.04em",
-            }}>{basis}</span></span>
+            <span>Basis: <span style={{
+              color: isResolved ? "var(--ink-2)" : "var(--ink-4)",
+              fontWeight: 500,
+              fontStyle: isResolved ? "normal" : "italic",
+            }}>{basisName}</span></span>
           </div>
+          {!isResolved && <BasisResolutionDiagnostic resolution={resolution}/>}
           <ColumnHeaders/>
           <SectionHeader label="Allocable Budget Units"/>
           {allocableRows.map((r) => (
@@ -661,6 +676,31 @@ function DetailRow({
         color: dim(row.total) ? "var(--ink-4)" : "var(--ink)",
         fontWeight: dim(row.total) ? 400 : 600,
       }}>{fmtMoney(row.total)}</div>
+    </div>
+  );
+}
+
+type UnresolvedBasis = Exclude<BasisResolution, { status: "resolved" }>;
+
+function BasisResolutionDiagnostic({ resolution }: { resolution: UnresolvedBasis }) {
+  const message = resolution.status === "missing-basisId"
+    ? "This pool has no allocation basis selected. The step-down engine is using a legacy text-match fallback; pick a basis in the Cost Pools table to make this allocation authoritative."
+    : `This pool references basis "${resolution.basisId}", which is not in the current catalog. The step-down engine is using a legacy text-match fallback; re-select a basis in the Cost Pools table.`;
+  return (
+    <div role="alert" style={{
+      padding: "8px 14px",
+      background: "var(--warn-tint)",
+      borderBottom: "1px solid var(--warn)",
+      color: "var(--warn)",
+      fontFamily: "var(--ff-ui)",
+      fontSize: "var(--t-l7)",
+      lineHeight: 1.45,
+    }}>
+      <span className="mono" style={{
+        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
+        textTransform: "uppercase", marginRight: 8,
+      }}>Basis unresolved</span>
+      {message}
     </div>
   );
 }

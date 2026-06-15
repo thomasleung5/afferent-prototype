@@ -9,29 +9,27 @@
  *   - Imported direct receiver → real glCode is the node.key.
  *   - Imported indirect center → imported glCode (or synth seed:center:*
  *     for centers that never had a glCode imported) is the node.key.
- *   - Synth direct nodes for PLAN/BLDG/ENG are created so the seed CAP
- *     state has somewhere to land before any import — they hold seeded
- *     DRIVERS values used by the basis-unit fallback path for pools
- *     whose basisId points at a basis with no imported BasisUnitRow.
- *     Their node.key is a stable synth glCode (seed:dept:PLAN etc.).
+ *   - Synth direct nodes for PLAN/BLDG/ENG are created as stable
+ *     placeholder receivers for the empty-state UI (before any CAP
+ *     import has been loaded). They do NOT participate in any routing
+ *     fallback — pools whose basis can't be resolved leak by design.
  *   - Non-DIRECT pools share a per-basis BasisUnitRow — receiver percents
- *     are derived as `units / Σ units across the basis schedule`.
- *     One schedule serves every pool with the same basisId; receivers
- *     are counted ONCE per basis (never per pool).
+ *     are derived as `units / Σ units across the basis schedule`. One
+ *     schedule serves every pool with the same basisId; receivers are
+ *     counted ONCE per basis (never per pool). If the basisId is missing,
+ *     orphaned, or has no imported schedule, the pool's $ leaks and a
+ *     diagnostic is recorded.
  *   - DIRECT-basis pools route via their explicit DirectAllocationRow —
- *     each receiver has a glCode + percent. No deptCode fallback. If a
- *     DIRECT pool has no DirectAllocationRow (or no valid receivers),
- *     its $ leaks and the pool is surfaced in model.diagnostics for
- *     review tooling. */
+ *     each receiver has a glCode + percent. If a DIRECT pool has no
+ *     DirectAllocationRow (or no valid receivers), its $ leaks and the
+ *     pool is surfaced in model.diagnostics for review tooling. */
 
 import type {
-  AllocationBasis, BasisKey, BasisUnitRow, CapPool, DeptCode,
+  AllocationBasis, BasisUnitRow, CapPool, DeptCode,
   DirectAllocationRow, InstDeptCode,
 } from "../types";
-import {
-  basisForPool, DRIVERS,
-} from "./capBasisRouting";
-import { INST_DEPTS, INDIRECT_CODE_BY_NAME } from "./institutionalDepts";
+import { basisForPool, type BasisResolution } from "./capBasisRouting";
+import { INDIRECT_CODE_BY_NAME } from "./institutionalDepts";
 import type { ReceiverEntry } from "./capReceiverRegistry";
 
 /** Internal per-pool per-receiver share derived from the pool's basis
@@ -45,11 +43,11 @@ interface PoolSchedule {
 import { FEE_DEPTS } from "./departments";
 const FEE_DEPT_SET = new Set<string>(FEE_DEPTS);
 
-/** Stable synth glCode used for PLAN/BLDG/ENG direct nodes when no
- *  imported receiver covers a fee dept. These nodes exist to hold seeded
- *  DRIVERS values for the driver-unit fallback; they are NOT a routing
- *  fallback in the deptCode sense — the engine routes via node.key
- *  (the synth glCode). */
+/** Stable synth glCode used for PLAN/BLDG/ENG direct-node placeholders
+ *  when no imported receiver covers a fee dept. These nodes exist as
+ *  visible empty-state receivers for the UI; the engine never routes
+ *  $ to them as a fallback. A pool whose basis fails to resolve leaks
+ *  by design — see model.diagnostics. */
 const seedDeptKey = (deptCode: DeptCode) => `seed:dept:${deptCode}`;
 
 // ---------------------------------------------------------------------------
@@ -72,11 +70,8 @@ export interface GlNode {
   classification?: InstDeptCode | "OTHER";
 }
 
-export type GlDriverMatrix = Record<NodeKey, Partial<Record<BasisKey, number>>>;
-
 interface GlEngineGraph {
   nodes: GlNode[];
-  drivers: GlDriverMatrix;
   /** centerName → indirect node key. Used by stepOrder construction in
    *  computeStepDownGl (centerOrder is still name-keyed). Pool home
    *  resolution should use resolvePoolHome instead so glCode-stamped
@@ -92,14 +87,21 @@ interface GlEngineGraph {
 }
 
 /** Per-pool diagnostic surfaced when the engine can't route a pool's
- *  net allocable $ to any node — typically a DIRECT pool whose receivers
- *  list is empty or all-zero-glCode. Review tooling can render these
- *  for the user to fix. */
-interface PoolDiagnostic {
+ *  net allocable $ to any node. Review tooling renders these for the
+ *  analyst to fix; exports surface the leakage total so the report
+ *  never claims unresolved pools were authoritatively allocated. */
+export type PoolDiagnosticKind =
+  | "missing-basisId"
+  | "orphaned-basisId"
+  | "no-schedule"
+  | "no-receivers"
+  | "no-valid-glcodes";
+
+export interface PoolDiagnostic {
   poolId: string;
   center: string;
   pool: string;
-  kind: "no-receivers" | "no-valid-glcodes" | "zero-percent-receivers";
+  kind: PoolDiagnosticKind;
   amount: number;
   message: string;
 }
@@ -109,7 +111,8 @@ export interface GlStepDownModel {
    *  what THAT pool distributed to each receiver via its own schedule —
    *  pool's own eligible + pool's share of any incoming $ at its home
    *  center. Matches the standard per-pool "Allocation Detail" attribution.
-   *  Σ over pools of alloc2[*][node] = total $ landing on the node. */
+   *  Σ over pools of alloc2[*][node] = total $ landing on the node minus
+   *  any leakage (see leakageByPoolId). */
   alloc2: Record<string, Record<NodeKey, number>>;
   /** Per-pool gross first-round allocation — pool's own eligible × receiver
    *  percent, BEFORE any direct-bill carve-out. This is the published
@@ -135,22 +138,31 @@ export interface GlStepDownModel {
    *  received across every pool's distribution. */
   directTotals: Record<NodeKey, number>;
   nodes: GlNode[];
-  /** Per-pool routing diagnostics. Populated when a DIRECT pool has no
-   *  DirectAllocationRow / no valid glCodes / all-zero percents, or
-   *  when a non-DIRECT pool's basisUnits + driver-unit fallback yield
-   *  no usable denominator. Review tooling surfaces these so the user
-   *  can fix the underlying pool/receiver data. */
+  /** Per-pool routing diagnostics. Populated when a pool's basisId is
+   *  missing / orphaned, when a non-DIRECT pool's BasisUnitRow is
+   *  missing or empty, or when a DIRECT pool has no valid receivers.
+   *  Review tooling surfaces these so the user can fix the underlying
+   *  pool/basis data. */
   diagnostics: PoolDiagnostic[];
+  /** Per-pool leaked $ — the dollars the engine could not route because
+   *  the pool's basis or schedule failed to resolve. Σ leakageByPoolId
+   *  + Σ alloc2 equals Σ pool.amount: conservation holds across
+   *  allocated dollars and leakage. Sparse — pools that routed
+   *  successfully are absent from the map. */
+  leakageByPoolId: Record<string, number>;
 }
 
 // ---------------------------------------------------------------------------
 // Graph builder
 // ---------------------------------------------------------------------------
 
-/** Build the engine graph from store state. Returns the node list, the
- *  driver matrix (per-node, per-basis units), and resolvers used by
- *  computeStepDownGl. Driver units come from basisUnits — one schedule
- *  per basis serves every pool that selects that basis. */
+/** Build the engine graph from store state. Returns the node list and
+ *  resolvers used by computeStepDownGl. Pool schedules are derived
+ *  on-demand inside computeStepDownGl from the imported BasisUnitRow
+ *  (one row per basis serves every pool that selects that basis) and
+ *  DirectAllocationRow (DIRECT pools). No driver matrix is exposed —
+ *  the legacy seed-driver fallback was removed; a pool whose basis
+ *  fails to resolve leaks and surfaces a diagnostic. */
 export function buildEngineGraph(args: {
   allocationBases: AllocationBasis[];
   basisUnits: BasisUnitRow[];
@@ -165,17 +177,18 @@ export function buildEngineGraph(args: {
   capCenterSources: Record<string, { name: string; source: unknown; sourceFile?: string }>;
   capReceivers: ReceiverEntry[];
   /** Fee depts the active jurisdiction actually models (typically derived
-   *  from state.positions / state.services). Scopes the synthetic
-   *  fallback direct nodes (step 3 below) so jurisdictions that don't
-   *  model e.g. PARKS / PD / FIRE don't end up with phantom receivers
-   *  catching CAP allocation via the seed DRIVERS matrix. Omit to seed
-   *  every entry in FEE_DEPTS (used by tests + jurisdictions that model
-   *  the full fee-dept set). */
+   *  from state.positions / state.services). Scopes the placeholder
+   *  direct nodes (step 3 below) so jurisdictions that don't model e.g.
+   *  PARKS / PD / FIRE don't end up with phantom receivers in the empty-
+   *  state UI. Omit to seed every entry in FEE_DEPTS (used by tests +
+   *  jurisdictions that model the full fee-dept set). */
   modeledFeeDepts?: DeptCode[];
 }): GlEngineGraph {
+  // basisUnits / allocationBases are read by computeStepDownGl for
+  // schedule derivation; the graph builder no longer materializes a
+  // seed-driver matrix from them.
   const {
-    allocationBases, basisUnits, directAllocations,
-    capCenterTotals, capCenterSources, capReceivers,
+    directAllocations, capCenterTotals, capCenterSources, capReceivers,
     modeledFeeDepts,
   } = args;
 
@@ -255,51 +268,9 @@ export function buildEngineGraph(args: {
     }
   }
 
-  // 4. Driver matrix — values keyed by node.key (= glCode). DRIVERS values
-  //    seed onto synth nodes at INIT time; the engine reads drivers[node.key]
-  //    at run time, never by deptCode.
-  const drivers: GlDriverMatrix = {};
-  for (const n of nodes) drivers[n.key] = {};
-
-  // Seed indirect drivers onto synth seed:center:* nodes (centers with no
-  // imported glCode). Imported indirect glCodes get their units later from
-  // receiver-aggregation, so seeding them here would double-count.
-  for (const dept of INST_DEPTS) {
-    if (dept.kind !== "indirect") continue;
-    const nodeKey = indirectNodeByCenter.get(dept.name);
-    if (!nodeKey) continue;
-    const node = nodeByKey.get(nodeKey)!;
-    if (node.key.startsWith("seed:")) {
-      drivers[nodeKey] = { ...(DRIVERS[dept.code] ?? {}) };
-    }
-  }
-
-  // Seed direct drivers onto synth seed:dept:PLAN/BLDG/ENG nodes when
-  // present. Imported direct nodes get their units from the receiver-
-  // aggregation pass below, never from this seed path.
-  for (const dept of FEE_DEPTS) {
-    const key = seedDeptKey(dept);
-    if (nodeByKey.has(key)) {
-      drivers[key] = { ...(DRIVERS[dept] ?? {}) };
-    }
-  }
-
-  // Imported drivers: walk each BasisUnitRow once and write its receivers'
-  // units into the driver matrix. One BasisUnitRow per basis, so each
-  // receiver glCode contributes its units exactly once per basis — no
-  // per-pool duplication is possible.
-  const basisById = new Map(allocationBases.map((b) => [b.id, b]));
-  for (const bu of basisUnits) {
-    const basis = basisById.get(bu.basisId);
-    if (!basis) continue;
-    const driverKey = basis.driverKey;
-    if (driverKey === "DIRECT") continue;
-    for (const r of bu.receivers) {
-      if (!r.glCode || !nodeByKey.has(r.glCode)) continue;
-      if (!Number.isFinite(r.units) || r.units <= 0) continue;
-      drivers[r.glCode][driverKey] = (drivers[r.glCode][driverKey] ?? 0) + r.units;
-    }
-  }
+  // (Driver-matrix seeding removed with the legacy text-match fallback —
+  // schedules are derived strictly from BasisUnitRow / DirectAllocationRow
+  // inside computeStepDownGl.)
 
   // Direct-allocation receivers are nodes too — buildReceiverRegistry
   // surfaces them, but defensively walk directAllocations here so the
@@ -314,7 +285,6 @@ export function buildEngineGraph(args: {
         feeDept: isFeeDept ? (r.deptCode as DeptCode) : undefined,
         classification: r.deptCode,
       });
-      drivers[r.glCode] = {};
     }
   }
 
@@ -338,7 +308,7 @@ export function buildEngineGraph(args: {
     return indirectNodeByCenter.get(pool.center);
   };
 
-  return { nodes, drivers, resolveCenterNode, resolvePoolHome };
+  return { nodes, resolveCenterNode, resolvePoolHome };
 }
 
 // ---------------------------------------------------------------------------
@@ -403,8 +373,9 @@ export function computeStepDownGl(args: {
     pools, centerOrder, bases, basisUnits, directAllocations, graph,
     directBills = {},
   } = args;
-  const { nodes, drivers, resolveCenterNode, resolvePoolHome } = graph;
+  const { nodes, resolveCenterNode, resolvePoolHome } = graph;
   const diagnostics: PoolDiagnostic[] = [];
+  const leakageByPoolId: Record<string, number> = {};
 
   const indirectNodes = nodes.filter((n) => n.role === "indirect");
   const directNodes   = nodes.filter((n) => n.role === "direct");
@@ -414,53 +385,106 @@ export function computeStepDownGl(args: {
   const basisUnitsById = new Map(basisUnits.map((bu) => [bu.basisId, bu]));
   const directByPoolId = new Map(directAllocations.map((da) => [da.poolId, da]));
 
-  // Pre-compute each pool's per-receiver schedule once. Non-DIRECT pools
-  // derive their percents from the shared BasisUnitRow (units / Σ units);
-  // DIRECT pools take their percents straight from DirectAllocationRow.
-  // Receivers without a valid node are filtered out — same node-validity
-  // check Phase 1 / Phase 2 would do, just earlier.
-  const scheduleByPoolId = new Map<string, PoolSchedule>();
+  // Pre-compute each pool's route status + schedule once. Routable pools
+  // get a populated `schedule`; the rest carry a discriminant the Phase 1
+  // loop turns into a diagnostic + leakage entry. No text-match fallback:
+  // a pool whose basis fails to resolve never finds its way back into the
+  // matrix via a seed driver. The engine routes what it can route, and
+  // surfaces what it can't.
+  type PoolRoute =
+    | { state: "routable"; isDirect: boolean; schedule: PoolSchedule }
+    | { state: "missing-basisId" }
+    | { state: "orphaned-basisId"; basisId: string }
+    | { state: "no-schedule"; basisName: string }
+    | { state: "no-receivers" }
+    | { state: "no-valid-glcodes" };
+
+  const routeByPoolId = new Map<string, PoolRoute>();
   for (const p of pools) {
-    const { basis } = basisForPool(p, bases);
-    if (basis === "DIRECT") {
-      const da = directByPoolId.get(p.id);
-      if (!da) { scheduleByPoolId.set(p.id, { receivers: [] }); continue; }
-      const valid = da.receivers.filter(
-        (r) => r.glCode && allNodeKeys.has(r.glCode) && r.percent > 0,
-      );
-      scheduleByPoolId.set(p.id, {
-        receivers: valid.map((r) => ({ glCode: r.glCode, percent: r.percent })),
+    const resolution = basisForPool(p, bases);
+    if (resolution.status === "missing-basisId") {
+      routeByPoolId.set(p.id, { state: "missing-basisId" });
+      continue;
+    }
+    if (resolution.status === "orphaned-basisId") {
+      routeByPoolId.set(p.id, {
+        state: "orphaned-basisId", basisId: resolution.basisId,
       });
       continue;
     }
-    const bu = basisUnitsById.get(p.basisId);
-    if (!bu) { scheduleByPoolId.set(p.id, { receivers: [] }); continue; }
-    const validRows = bu.receivers.filter(
+    const basis = resolution.basis;
+    if (basis.driverKey === "DIRECT") {
+      const da = directByPoolId.get(p.id);
+      if (!da) {
+        routeByPoolId.set(p.id, { state: "no-receivers" });
+        continue;
+      }
+      const valid = da.receivers.filter(
+        (r) => r.glCode && allNodeKeys.has(r.glCode) && r.percent > 0,
+      );
+      if (valid.length === 0) {
+        routeByPoolId.set(p.id, { state: "no-valid-glcodes" });
+        continue;
+      }
+      routeByPoolId.set(p.id, {
+        state: "routable", isDirect: true,
+        schedule: {
+          receivers: valid.map((r) => ({ glCode: r.glCode, percent: r.percent })),
+        },
+      });
+      continue;
+    }
+    const bu = basisUnitsById.get(basis.id);
+    const validRows = bu?.receivers.filter(
       (r) => r.glCode && allNodeKeys.has(r.glCode) && r.units > 0,
-    );
+    ) ?? [];
     const totalUnits = validRows.reduce((a, r) => a + r.units, 0);
-    if (totalUnits <= 0) { scheduleByPoolId.set(p.id, { receivers: [] }); continue; }
-    scheduleByPoolId.set(p.id, {
-      receivers: validRows.map((r) => ({
-        glCode: r.glCode, percent: (r.units / totalUnits) * 100,
-      })),
+    if (!bu || totalUnits <= 0) {
+      routeByPoolId.set(p.id, { state: "no-schedule", basisName: basis.name });
+      continue;
+    }
+    routeByPoolId.set(p.id, {
+      state: "routable", isDirect: false,
+      schedule: {
+        receivers: validRows.map((r) => ({
+          glCode: r.glCode, percent: (r.units / totalUnits) * 100,
+        })),
+      },
     });
   }
 
-  // Helper: does this pool have at least one receiver row that the engine
-  // can route to?
-  const hasValidReceivers = (p: CapPool): boolean =>
-    (scheduleByPoolId.get(p.id)?.receivers.length ?? 0) > 0;
+  // Build a human-readable diagnostic message from the route + leaked $.
+  // Centralized so Phase 1's two leakage points use the same wording.
+  const messageForRoute = (
+    route: Exclude<PoolRoute, { state: "routable" }>,
+    amount: number,
+  ): string => {
+    switch (route.state) {
+      case "missing-basisId":
+        return `Pool has no allocation basis selected. ${fmtUSD(amount)} leaks; pick a basis in the Cost Pools table.`;
+      case "orphaned-basisId":
+        return `Pool references basis "${route.basisId}" which is not in the current catalog. ${fmtUSD(amount)} leaks; re-select a basis.`;
+      case "no-schedule":
+        return `Basis "${route.basisName}" has no imported schedule with positive units. ${fmtUSD(amount)} leaks; import a BasisUnitRow for this basis.`;
+      case "no-receivers":
+        return `DIRECT pool has no DirectAllocationRow. ${fmtUSD(amount)} leaks; add receivers.`;
+      case "no-valid-glcodes":
+        return `DIRECT pool has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(amount)} leaks; add a receiver row with a real glCode.`;
+    }
+  };
 
-  // Helper: append a routing diagnostic for a pool that couldn't reach a
-  // node. The pool's $ becomes leakage.
-  const noteDiagnostic = (
-    p: CapPool, kind: PoolDiagnostic["kind"], amount: number, message: string,
+  // Note an unresolved pool's leakage + diagnostic. Called from Phase 1
+  // with the actual eligible $ that couldn't be routed.
+  const noteLeakage = (
+    p: CapPool, route: Exclude<PoolRoute, { state: "routable" }>, amount: number,
   ) => {
+    if (amount <= 0) return;
     diagnostics.push({
       poolId: p.id, center: p.center, pool: p.pool,
-      kind, amount, message,
+      kind: route.state, amount,
+      message: messageForRoute(route, amount),
     });
+    leakageByPoolId[p.id] = (leakageByPoolId[p.id] ?? 0) + amount;
   };
 
   // Pool sizing for center-level weighting. Primary source is
@@ -524,55 +548,27 @@ export function computeStepDownGl(args: {
   }
 
   // -----------------------------------------------------------------------
-  // distributeAmount — apply pool op's schedule to `amount`, writing into
-  // allocMap. `excludeKeys` is the set of node keys filtered out and
+  // distributeAmount — apply the precomputed schedule to `amount`, writing
+  // into allocMap. `excludeKeys` is the set of node keys filtered out and
   // renormalized over (Phase 2 self + upstream exclusion); pass an empty
   // set in Phase 1 so every listed receiver is eligible. Returns the
-  // per-node distribution.
+  // per-node distribution. Callers must only call this for "routable"
+  // pools — unresolved pools take the leakage branch in Phase 1.
   const distributeAmount = (
-    op: CapPool, amount: number, allocMap: Record<NodeKey, number>,
-    excludeKeys: Set<NodeKey>,
+    schedule: PoolSchedule, amount: number,
+    allocMap: Record<NodeKey, number>, excludeKeys: Set<NodeKey>,
   ): Record<NodeKey, number> => {
     const distributed: Record<NodeKey, number> = {};
     if (amount <= 0) return distributed;
-
-    // Per-pool schedule derived earlier from basisUnits (or
-    // directAllocations for DIRECT pools). Already filtered to receivers
-    // that resolve to a known node and have a non-zero share; apply the
-    // Phase-2 exclude set on top.
-    const schedule = scheduleByPoolId.get(op.id);
-    const validReceivers = (schedule?.receivers ?? []).filter(
+    const validReceivers = schedule.receivers.filter(
       (r) => !excludeKeys.has(r.glCode),
     );
     const totalPct = validReceivers.reduce((a, r) => a + r.percent, 0);
-
-    if (totalPct > 0) {
-      for (const r of validReceivers) {
-        const share = amount * (r.percent / totalPct);
-        allocMap[r.glCode] = (allocMap[r.glCode] ?? 0) + share;
-        distributed[r.glCode] = (distributed[r.glCode] ?? 0) + share;
-      }
-      return distributed;
-    }
-
-    // Basis-unit fallback (seed pools whose basis has no imported
-    // BasisUnitRow). Walk synth seed nodes' driver units for the pool's
-    // basis. DIRECT pools never fall back — they leak instead.
-    const { basis } = basisForPool(op, bases);
-    if (basis === "DIRECT") return distributed;
-    const denomNodes = excludeKeys.size > 0
-      ? nodes.filter((n) => !excludeKeys.has(n.key))
-      : nodes;
-    const totalDriver = denomNodes.reduce(
-      (a, n) => a + (drivers[n.key]?.[basis] ?? 0), 0,
-    );
-    if (totalDriver <= 0) return distributed;
-    for (const n of denomNodes) {
-      const drv = drivers[n.key]?.[basis] ?? 0;
-      if (drv <= 0) continue;
-      const share = amount * (drv / totalDriver);
-      allocMap[n.key] = (allocMap[n.key] ?? 0) + share;
-      distributed[n.key] = (distributed[n.key] ?? 0) + share;
+    if (totalPct <= 0) return distributed;
+    for (const r of validReceivers) {
+      const share = amount * (r.percent / totalPct);
+      allocMap[r.glCode] = (allocMap[r.glCode] ?? 0) + share;
+      distributed[r.glCode] = (distributed[r.glCode] ?? 0) + share;
     }
     return distributed;
   };
@@ -654,27 +650,18 @@ export function computeStepDownGl(args: {
 
     for (const p of centerPools) {
       const poolWeight = weightOf(p);
-      const { basis } = basisForPool(p, bases);
       const firstPool = p.amount + poolWeight * firstInc;
       if (firstPool <= 0) continue;
 
-      // DIRECT pools route strictly via imported receiver glCodes. No
-      // deptCode-derived fallback — if a DIRECT pool has no valid
-      // receivers, the eligible $ leaks and a diagnostic is recorded
-      // for review tooling (per the strict glCode-routing rule).
-      if (basis === "DIRECT") {
-        if (hasValidReceivers(p)) {
-          distributeAmount(p, firstPool, grossAllocation[p.id], new Set());
-        } else {
-          noteDiagnostic(
-            p, "no-valid-glcodes", firstPool,
-            `DIRECT pool has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(firstPool)} leaks; add a receiver row with a real glCode to route this pool.`,
-          );
-        }
+      const route = routeByPoolId.get(p.id);
+      if (!route || route.state !== "routable") {
+        if (route) noteLeakage(p, route, firstPool);
         settleDirectBills(p.id);
         continue;
       }
-      distributeAmount(p, firstPool, grossAllocation[p.id], new Set());
+      // route.schedule was already filtered to receivers with a known
+      // node + non-zero share. distributeAmount handles renormalization.
+      distributeAmount(route.schedule, firstPool, grossAllocation[p.id], new Set());
       settleDirectBills(p.id);
     }
   }
@@ -687,20 +674,13 @@ export function computeStepDownGl(args: {
     const homeKey = resolvePoolHome(p);
     if (homeKey && stepOrderSet.has(homeKey)) continue;
     if (p.amount <= 0) continue;
-    const { basis } = basisForPool(p, bases);
-    if (basis === "DIRECT") {
-      if (hasValidReceivers(p)) {
-        distributeAmount(p, p.amount, grossAllocation[p.id], new Set());
-      } else {
-        noteDiagnostic(
-          p, "no-valid-glcodes", p.amount,
-          `DIRECT pool (orphaned home center) has no imported receiver with a valid glCode + non-zero percent. ${fmtUSD(p.amount)} leaks.`,
-        );
-      }
+    const route = routeByPoolId.get(p.id);
+    if (!route || route.state !== "routable") {
+      if (route) noteLeakage(p, route, p.amount);
       settleDirectBills(p.id);
       continue;
     }
-    distributeAmount(p, p.amount, grossAllocation[p.id], new Set());
+    distributeAmount(route.schedule, p.amount, grossAllocation[p.id], new Set());
     settleDirectBills(p.id);
   }
 
@@ -747,12 +727,16 @@ export function computeStepDownGl(args: {
     const excludeKeys = new Set<NodeKey>([centerKey, ...upstreamKeys]);
 
     for (const p of centerPools) {
-      const { basis } = basisForPool(p, bases);
-      if (basis === "DIRECT") continue;
+      const route = routeByPoolId.get(p.id);
+      // Phase 2 only redistributes for routable non-DIRECT pools. DIRECT
+      // pools and unresolved pools have already been settled (DIRECT in
+      // Phase 1; unresolved as leakage in Phase 1's diagnostic branch),
+      // so they get no Round 2 redistribution.
+      if (!route || route.state !== "routable" || route.isDirect) continue;
       const poolWeight = weightOf(p);
       const secondPool = poolWeight * secondInc;
       if (secondPool <= 0) continue;
-      distributeAmount(p, secondPool, secondAllocation[p.id], excludeKeys);
+      distributeAmount(route.schedule, secondPool, secondAllocation[p.id], excludeKeys);
     }
   }
 
@@ -785,7 +769,7 @@ export function computeStepDownGl(args: {
     grossAllocation, directBillAllocation,
     firstAllocation, secondAllocation,
     stepOrder, directTotals, nodes,
-    diagnostics,
+    diagnostics, leakageByPoolId,
   };
 }
 
