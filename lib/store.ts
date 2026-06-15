@@ -320,8 +320,8 @@ interface BuildActions {
     basisUnitsImported: number;
     poolsImported: number;
     directAllocationsImported: number;
-    /** Rows surfaced for human review (e.g. bases with driverKey "OTHER"
-     *  or any other unresolvable schema mismatch). Already routed into
+    /** Rows surfaced for human review (invalid bases, missing schedules,
+     *  or any other unresolvable CAP schema mismatch). Already routed into
      *  pendingReview.cap; returned here so the page UI can show them
      *  inline without re-reading state. */
     unmappedBases: UnmappedRow[];
@@ -966,7 +966,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         const basisUnitsIn = [...r.basisUnits.mapped, ...r.basisUnits.lowConfidence];
         const poolsIn   = [...r.pools.mapped,   ...r.pools.lowConfidence];
         const directIn  = [...r.directAllocations.mapped, ...r.directAllocations.lowConfidence];
-        const unmappedBases = r.bases.unmapped;
+        const unmappedBases = [
+          ...r.bases.unmapped,
+          ...r.basisUnits.unmapped,
+          ...r.pools.unmapped,
+          ...r.directAllocations.unmapped,
+        ];
 
         const totalMapped =
           r.centers.stats.mapped + r.bases.stats.mapped
@@ -1202,9 +1207,6 @@ export const useBuildStore = create<BuildState & BuildActions>()(
                 ...s.pendingReview.cap,
                 ...unmappedBases,
                 ...r.centers.unmapped,
-                ...r.basisUnits.unmapped,
-                ...r.pools.unmapped,
-                ...r.directAllocations.unmapped,
               ],
             },
             imports: [...s.imports, { id: Date.now(), domain: "cap", result, at }],

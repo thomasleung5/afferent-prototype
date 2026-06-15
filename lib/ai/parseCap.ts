@@ -246,10 +246,31 @@ export function capBasisUnitsToExtractionResult(
   const now = new Date().toISOString();
   const mapped: { entity: BasisUnitRow; lineage: SourceLineage }[] = [];
   const lowConfidence: typeof mapped = [];
+  const unmapped: UnmappedRow[] = [];
 
   rows.forEach((row, i) => {
     const basisName = row.basis?.trim();
-    if (!basisName) return;
+    const reviewLineage: SourceLineage = {
+      file: fileName,
+      sheet: "AI parsed",
+      row: i + 1,
+      rawCells: {
+        issueKind: "invalid-schedule",
+        basis: row.basis ?? null,
+        source: row.source ?? null,
+        receiverCount: Array.isArray(row.receivers) ? row.receivers.length : 0,
+      },
+      confidence: "review",
+      importedAt: now,
+    };
+    if (!basisName) {
+      unmapped.push({
+        reason: "missing-required-field",
+        raw: ["", row.source ?? "", "Schedule has no basis name"],
+        lineage: reviewLineage,
+      });
+      return;
+    }
     const receivers: BasisUnitReceiver[] = [];
     let anyLow = false;
     for (const r of Array.isArray(row.receivers) ? row.receivers : []) {
@@ -263,7 +284,14 @@ export function capBasisUnitsToExtractionResult(
       receivers.push({ dept, glCode, deptCode, units });
       if (r.confidence === "low") anyLow = true;
     }
-    if (receivers.length === 0) return;
+    if (receivers.length === 0) {
+      unmapped.push({
+        reason: "missing-required-field",
+        raw: [basisName, row.source ?? "", "Schedule has no valid receivers"],
+        lineage: reviewLineage,
+      });
+      return;
+    }
 
     const entity: BasisUnitRow = {
       basisId: "",
@@ -290,12 +318,12 @@ export function capBasisUnitsToExtractionResult(
 
   return {
     mapped, lowConfidence,
-    unmapped: [], duplicates: [],
+    unmapped, duplicates: [],
     stats: {
       total: rows.length,
       mapped: mapped.length,
       lowConfidence: lowConfidence.length,
-      unmapped: 0,
+      unmapped: unmapped.length,
       duplicates: 0,
       detected: "Basis units (AI parsed)",
     },
@@ -309,12 +337,12 @@ export function capBasisUnitsToExtractionResult(
 export function capPoolsToExtractionResult(
   rows: PoolRow[],
   fileName: string,
+  importedBases: AllocationBasis[] = [],
 ): ExtractionResult<CapPool> {
-  // Resolve against the seed catalog only — mergeCapBundle re-resolves
-  // basisId post-merge against the effective catalog (seed + newly imported
-  // bases + pre-existing state) so pools that reference a basis imported in
-  // the same bundle still bind correctly.
-  const bases: AllocationBasis[] = SEED_ALLOCATION_BASES;
+  // Resolve against the seed catalog plus bases imported in this bundle.
+  // mergeCapBundle re-resolves again against the effective post-merge
+  // catalog so pre-existing study bases still bind correctly.
+  const bases: AllocationBasis[] = [...SEED_ALLOCATION_BASES, ...importedBases];
   const now = new Date().toISOString();
   const mapped: { entity: CapPool; lineage: SourceLineage }[] = [];
   const lowConfidence: typeof mapped = [];
@@ -491,7 +519,7 @@ const BASIS_KEYS: BasisKey[] = [
   "FTE", "EXPEND", "EXPEND_X", "EXPEND_PW", "PAYROLL", "ACCT", "AGENDA",
   "PRA", "CONTRACT", "SQFT", "VEHICLE", "COMMITS",
   "RECORDS", "EQUAL", "MEETING_HOURS", "MEETINGS", "APPLICATIONS",
-  "RECRUITMENTS", "CLAIMS", "RENTAL_HOURS",
+  "RECRUITMENTS", "CLAIMS", "RENTAL_HOURS", "OTHER",
   "DIRECT",
 ];
 
@@ -569,11 +597,85 @@ export function unmappedBasisDetails(u: UnmappedRow): {
   const cellOrDash = (v: unknown): string =>
     v == null || v === "" ? "—" : String(v);
   return {
-    name: cellOrDash(cells.name),
-    driverKey: cellOrDash(cells.driverKey),
+    name: cellOrDash(cells.name ?? cells.basis ?? cells.pool),
+    driverKey: cellOrDash(cells.driverKey ?? cells.issueKind),
     source: cellOrDash(cells.source),
     reason:
-      u.reason === "missing-required-field" ? "DIRECT without target"
+      cells.issueKind === "missing-basis" ? "pool basis was not imported"
+      : cells.issueKind === "missing-schedule" ? "basis has no receiver schedule"
+      : cells.issueKind === "invalid-schedule" ? "schedule has no valid receivers"
+      : u.reason === "missing-required-field" ? "missing required CAP data"
       : "driver outside named keys",
   };
+}
+
+export function capImportIntegrityIssues(
+  bases: ExtractionResult<AllocationBasis>,
+  basisUnits: ExtractionResult<BasisUnitRow>,
+  pools: ExtractionResult<CapPool>,
+  fileName: string,
+): UnmappedRow[] {
+  const now = new Date().toISOString();
+  const importedBases = [...bases.mapped, ...bases.lowConfidence].map((row) => row.entity);
+  const importedSchedules = [...basisUnits.mapped, ...basisUnits.lowConfidence]
+    .map((row) => row.entity);
+  const importedPools = [...pools.mapped, ...pools.lowConfidence].map((row) => row.entity);
+  const basisByName = new Map(
+    importedBases.map((basis) => [basis.name.trim().toLowerCase(), basis]),
+  );
+  const scheduleNames = new Set(
+    importedSchedules.map((row) => row.basis.trim().toLowerCase()),
+  );
+  const issues: UnmappedRow[] = [];
+  const seenMissingBases = new Set<string>();
+  const seenMissingSchedules = new Set<string>();
+
+  for (const pool of importedPools) {
+    const key = pool.basis.trim().toLowerCase();
+    const basis = basisByName.get(key)
+      ?? SEED_ALLOCATION_BASES.find((candidate) =>
+        candidate.name.trim().toLowerCase() === key);
+    if (!basis) {
+      if (seenMissingBases.has(key)) continue;
+      seenMissingBases.add(key);
+      issues.push({
+        reason: "schema-mismatch",
+        raw: [pool.pool, pool.basis, "Pool basis was not imported"],
+        lineage: {
+          file: fileName,
+          sheet: "AI parsed",
+          rawCells: {
+            issueKind: "missing-basis",
+            name: pool.basis,
+            pool: pool.pool,
+            source: fileName,
+          },
+          confidence: "review",
+          importedAt: now,
+        },
+      });
+      continue;
+    }
+    if (basis.driverKey === "DIRECT" || scheduleNames.has(key)) continue;
+    if (seenMissingSchedules.has(key)) continue;
+    seenMissingSchedules.add(key);
+    issues.push({
+      reason: "missing-required-field",
+      raw: [basis.name, pool.pool, "Basis has no receiver schedule"],
+      lineage: {
+        file: fileName,
+        sheet: "AI parsed",
+        rawCells: {
+          issueKind: "missing-schedule",
+          name: basis.name,
+          pool: pool.pool,
+          driverKey: basis.driverKey,
+          source: basis.source,
+        },
+        confidence: "review",
+        importedAt: now,
+      },
+    });
+  }
+  return issues;
 }

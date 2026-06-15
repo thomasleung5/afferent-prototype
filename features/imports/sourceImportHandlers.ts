@@ -45,6 +45,7 @@ import {
   capBasisUnitsToExtractionResult,
   capPoolsToExtractionResult,
   capDirectAllocationsToExtractionResult,
+  capImportIntegrityIssues,
 } from "@/lib/ai/parseCap";
 
 type LaborRows = Parameters<typeof laborToExtractionResult>[0];
@@ -422,11 +423,22 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
   // clipboard JSON treats each section as optional but requires at least
   // one. Both paths share this bundle-building step.
   const applySections = (sections: CapImportSections, source: string) => {
-    const pools = capPoolsToExtractionResult(sections.pools, source);
+    const bases = capBasesToExtractionResult(sections.bases, source);
+    const importedBases = [...bases.mapped, ...bases.lowConfidence].map((row) => row.entity);
+    const basisUnits = capBasisUnitsToExtractionResult(sections.basisUnits, source);
+    const pools = capPoolsToExtractionResult(sections.pools, source, importedBases);
+    const integrityIssues = capImportIntegrityIssues(bases, basisUnits, pools, source);
     const bundle = {
       centers: capCentersToExtractionResult(sections.centers, source),
-      bases:   capBasesToExtractionResult(sections.bases, source),
-      basisUnits: capBasisUnitsToExtractionResult(sections.basisUnits, source),
+      bases,
+      basisUnits: {
+        ...basisUnits,
+        unmapped: [...basisUnits.unmapped, ...integrityIssues],
+        stats: {
+          ...basisUnits.stats,
+          unmapped: basisUnits.stats.unmapped + integrityIssues.length,
+        },
+      },
       pools,
       directAllocations: capDirectAllocationsToExtractionResult(
         sections.directAllocations, pools, source,

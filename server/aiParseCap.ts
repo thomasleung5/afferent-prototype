@@ -18,6 +18,8 @@ CRITICAL — non-DIRECT pools no longer carry per-pool receiver schedules. The s
 
 DIRECT pools (where the basis's driverKey is "DIRECT") DO carry an explicit per-pool receiver list in "directAllocations" because they have hand-written percent splits, not a denominator.
 
+CRITICAL — allocation-factor inventory exhibits often print several independent bases as parallel column groups over the same receiver rows. Emit a separate "bases" row AND a separate "basisUnits" entry for EVERY named Value column. Never merge parallel bases or select only one. In particular, "Gross Operating Expenses", "Modified Operating Expenses", "City Manager Service Areas", "Assistant City Manager Service Areas", and "Deputy City Manager Service Areas" are five distinct bases with five distinct schedules.
+
 Return ONLY this JSON, no prose:
 
 {
@@ -106,11 +108,11 @@ Extract the catalog of named denominators (drivers) the document defines.
   * "CLAIMS"   — claim counts, claim history, or insurance loss history
   * "RENTAL_HOURS" — rental hours or facility-use hours
   * "DIRECT"   — a one-to-one direct assignment (the pool routes entirely to one department, bypassing the step-down)
-  * "OTHER"    — the basis does not match any key above. Use ONLY as a last resort (see routing rule below).
-- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund" is "EXPEND"; "Budgeted Expenditures (PW Departments Only)" / "Public Works Operating $" → "EXPEND_PW"; "Budgeted Expenditures (excl. Development)" → "EXPEND_X". Use "OTHER" ONLY when the underlying driver is genuinely outside every named key (e.g. "# of Work Stations", "Council Chamber Breakout") — not merely because the wording is unfamiliar. Whenever driverKey is "OTHER", set confidence to "low" so the basis is surfaced for review. Do NOT invent new key values; "OTHER" is the only permitted overflow.
+  * "OTHER"    — a valid custom allocation factor with an explicit basisUnits schedule that does not match a named classification above
+- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund", "Gross Operating Expenses", and "Modified Operating Expenses" are "EXPEND"; "Budgeted Expenditures (PW Departments Only)" / "Public Works Operating $" → "EXPEND_PW"; "Budgeted Expenditures (excl. Development)" → "EXPEND_X". City Manager / Assistant City Manager / Deputy City Manager Service Areas, Cash and Investments, and "As Total City Manager Organization" are valid custom bases and use "OTHER". Do NOT invent new key values; "OTHER" is the permitted custom classification.
 - directTo: optional legacy hint when driverKey === "DIRECT" and there is exactly one receiving InstDeptCode. DIRECT routing is primarily captured in Section 5 directAllocations, so omit directTo when the receiver is a GL-coded budget unit outside the InstDeptCode list or when the pool uses the Section 5 receiver list. Omit when driverKey !== "DIRECT".
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
-- confidence: "high" if name, source, and driverKey are unambiguous from the document; "low" if driverKey is "OTHER" or any field is uncertain.
+- confidence: "high" if name, source, and driverKey are unambiguous from the document, including a clearly named custom "OTHER" basis with a printed schedule; "low" only when a field is uncertain.
 
 ================================================================
 SECTION 3 — Basis units
@@ -122,12 +124,15 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - source: where the unit counts come from (e.g. "HRIS budget worksheet", "Facilities inventory"). Optional but recommended.
 - receivers: the full list of budget units the schedule assigns units to. Each receiver is an object:
   * dept: the receiving budget unit name exactly as written.
-  * glCode: REQUIRED. The budget unit's account / GL code exactly as printed — e.g. "011-1200", "100-10-100", "BLDG", "EQUIP". This is the receiver's UNIQUE IDENTIFIER and the engine's routing key. Capture verbatim. If the document does not print a code for a row, SKIP that row entirely — receivers without a glCode are not extractable.
+  * glCode: REQUIRED. The budget unit's account / GL code exactly as printed when the document provides one combined code — e.g. "011-1200", "100-10-100", "BLDG", "EQUIP". When identity is printed in separate Fund, Department / Organization, and Division / Cost Pool number columns, construct one stable code by joining the printed numeric segments with hyphens in that order (e.g. Fund 100 + Department 512 + Division 0 becomes "100-512-0"). Preserve zero segments because they distinguish organization and fund-total rows. If the document prints no usable identity segments, SKIP that receiver.
   * deptCode: optional InstDeptCode classification — one of "BLDG_USE", "EQUIP", "COUNCIL", "CMGR", "CLERK", "FAS", "ATTY", "INS", "CMTE", "PLAN", "BLDG", "ENG", "PW", "PARKS", "PD", "FIRE", or "OTHER" (for funds/programs with no matching code). When unknown, set "OTHER" — glCode is the identity, deptCode is just classification metadata.
   * units: REQUIRED. The raw allocation-factor units (FTE count, sq ft, etc.). Plain number, no units suffix. Receivers with zero or missing units should be omitted.
   * confidence: "high" if dept, glCode, and units are unambiguous; "low" otherwise.
 - Do NOT include "percent" or "amount" in basis-unit receivers — the engine derives those at run time from units / Σ units across the schedule.
 - Extract each basis schedule ONCE even if multiple pools reference it. If the same set of FTE units is published verbatim for several pools, that's a single basisUnits entry.
+- A schedule spanning multiple consecutive pages is still ONE basisUnits entry. Continue collecting receivers until that named basis's Grand Total row or until a new allocation-factor group begins.
+- In parallel-column exhibits, use only the raw "Value" as units. Ignore "Distribution to All Services" and "Distribution Only to Direct Services" percentages because the engine derives percentages from units.
+- Zero / dash values may be omitted from receivers. Retain every positive printed Value.
 - Skip schedules whose basis is "DIRECT" — DIRECT pools belong in Section 5, not here.
 
 ================================================================
@@ -176,6 +181,7 @@ General rules
 - All monetary values are plain numbers — strip $, commas, whitespace, units.
 - All percentages are plain numbers (0–100) — strip the % sign.
 - Use the exact names / pool labels / basis names as written in the document.
+- Every non-DIRECT basis referenced by a pool MUST appear in "bases". When the document publishes its receiver Value schedule, it MUST also appear in "basisUnits".
 - Return only the JSON object. No prose, no markdown, no explanation.`;
 
 interface CenterRow {

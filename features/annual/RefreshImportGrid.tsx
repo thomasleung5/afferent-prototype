@@ -543,8 +543,8 @@ function CapUnmappedPanel({ unmappedBases, setUnmappedBases }: {
 }) {
   return (
     <ImportReviewPanel
-      label="Bases for review"
-      summary={`${unmappedBases.length} unbound — pick a driverKey or skip.`}
+      label="CAP import review"
+      summary={`${unmappedBases.length} issue${unmappedBases.length === 1 ? "" : "s"} — correct the source or skip.`}
       actions={(
         <ImportReviewAction onClick={() => setUnmappedBases([])}>
           Dismiss all
