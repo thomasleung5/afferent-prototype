@@ -134,6 +134,15 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - In parallel-column exhibits, use only the raw "Value" as units. Ignore "Distribution to All Services" and "Distribution Only to Direct Services" percentages because the engine derives percentages from units.
 - Zero / dash values may be omitted from receivers. Retain every positive printed Value.
 - Skip schedules whose basis is "DIRECT" — DIRECT pools belong in Section 5, not here.
+- COLUMN AND ROW VERIFICATION: When a basis schedule sits among several parallel
+  "Value" columns sharing one header row, identify the correct column by matching
+  its header text to this basis's name — never by position ("middle column",
+  "third column"), since column order varies by document. For every receiver you
+  record, confirm the unit value sits on the exact same printed row as that
+  receiver's department name and code. If the printed Value for a row is "-",
+  blank, or 0, omit that receiver entirely — never carry over a value from the
+  row above or below, even if that neighboring row's value looks plausible for
+  this receiver.
 
 ================================================================
 SECTION 4 — Cost pools
@@ -261,6 +270,170 @@ interface ParseCapResponse {
   message?: string;
 }
 
+const SCHEDULE_BATCH_SIZE = 1;
+
+function scheduleSystem(basisNames: string[]): string {
+  return `You are extracting ONLY allocation-factor receiver schedules from a municipal Cost Allocation Plan PDF.
+
+Return ONLY this JSON:
+{
+  "basisUnits": [
+    {
+      "basis": "Exact requested basis name",
+      "source": "Document section or source note",
+      "receivers": [
+        { "dept": "Department name", "glCode": "100-512-0", "deptCode": "PLAN", "units": 2030145, "confidence": "high" }
+      ]
+    }
+  ]
+}
+
+Extract schedules for exactly these requested bases:
+${basisNames.map((name) => `- ${name}`).join("\n")}
+
+For each basis, search for a column whose header text matches the basis name (allowing minor wording variation). These columns are often printed in groups of 2-4 parallel "Value" columns sharing one header row, sometimes repeated across multiple page groups for different funds/orgs — collect all such rows for the matching basis. For every receiver, verify the value is on the same row as that receiver's name and code; omit rows where the value is "-", blank, or 0.
+
+Rules:
+- Search allocation-factor inventory exhibits and derivation schedules, including multi-page tables.
+- Return a separate basisUnits entry for every requested named Value column whose schedule is printed.
+- Use only the raw Value column as units. Ignore distribution percentages.
+- When Fund, Department / Organization, and Division / Cost Pool numbers are separate, join them in that order with hyphens. Preserve zero segments: Fund 100 + Department 512 + Division 0 becomes "100-512-0".
+- dept is the receiving unit name exactly as printed.
+- deptCode is optional; use "OTHER" when no listed application code fits.
+- Include positive Value rows. Omit zero / dash rows, headers, subtotals, and grand totals.
+- Continue across consecutive pages until the schedule's Grand Total or the next allocation-factor group.
+- Keep the requested basis spelling exactly. Do not rename, merge, or classify bases.
+- If a requested schedule is not printed, omit that basisUnits entry.
+- Return JSON only, without prose or markdown.`;
+}
+
+function scanTopLevelArrayObjects(text: string, key: string): unknown[] {
+  const keyAt = text.indexOf(`"${key}"`);
+  if (keyAt < 0) return [];
+  const arrayAt = text.indexOf("[", keyAt);
+  if (arrayAt < 0) return [];
+
+  const rows: unknown[] = [];
+  let inString = false;
+  let escaped = false;
+  let objectDepth = 0;
+  let objectStart = -1;
+  for (let i = arrayAt + 1; i < text.length; i += 1) {
+    const char = text[i];
+    if (inString) {
+      if (escaped) escaped = false;
+      else if (char === "\\") escaped = true;
+      else if (char === "\"") inString = false;
+      continue;
+    }
+    if (char === "\"") {
+      inString = true;
+      continue;
+    }
+    if (char === "{") {
+      if (objectDepth === 0) objectStart = i;
+      objectDepth += 1;
+      continue;
+    }
+    if (char === "}") {
+      objectDepth -= 1;
+      if (objectDepth === 0 && objectStart >= 0) {
+        try {
+          rows.push(JSON.parse(text.slice(objectStart, i + 1)));
+        } catch {
+          // Skip malformed or truncated rows; complete rows still recover.
+        }
+        objectStart = -1;
+      }
+      continue;
+    }
+    if (char === "]" && objectDepth === 0) break;
+  }
+  return rows;
+}
+
+export function parseBasisUnitsResponse(text: string): BasisUnitsRow[] {
+  const jsonMatch = text.match(/\{[\s\S]*\}/);
+  if (jsonMatch) {
+    try {
+      const parsed = JSON.parse(jsonMatch[0]) as { basisUnits?: unknown };
+      if (Array.isArray(parsed.basisUnits)) return parsed.basisUnits as BasisUnitsRow[];
+    } catch {
+      // Fall through to complete-row recovery.
+    }
+  }
+  return scanTopLevelArrayObjects(text, "basisUnits") as BasisUnitsRow[];
+}
+
+function validSchedule(row: BasisUnitsRow): boolean {
+  return !!row.basis?.trim() && Array.isArray(row.receivers)
+    && row.receivers.some((receiver) =>
+      !!receiver.dept?.trim()
+      && !!receiver.glCode?.trim()
+      && Number.isFinite(Number(receiver.units))
+      && Number(receiver.units) > 0);
+}
+
+function basisNameKey(name: string): string {
+  const key = name.trim().toLowerCase().replace(/[^a-z0-9]+/g, "");
+  if (key === "purchasingstafftimeanalysis") return "purchasingtimeanalysis";
+  return key;
+}
+
+export function alignRecoveredBasisNames(
+  recovered: BasisUnitsRow[],
+  requested: string[],
+): BasisUnitsRow[] {
+  if (recovered.length === 1 && requested.length === 1) {
+    return [{ ...recovered[0], basis: requested[0] }];
+  }
+  const requestedByKey = new Map(
+    requested.map((name) => [basisNameKey(name), name]),
+  );
+  return recovered.map((row) => {
+    const requestedName = requestedByKey.get(basisNameKey(row.basis));
+    return requestedName ? { ...row, basis: requestedName } : row;
+  });
+}
+
+export function missingScheduleBasisNames(
+  bases: BasisRow[],
+  basisUnits: BasisUnitsRow[],
+  pools: PoolRow[],
+): string[] {
+  const directNames = new Set(
+    bases
+      .filter((basis) => basis.driverKey?.trim().toUpperCase() === "DIRECT")
+      .map((basis) => basisNameKey(basis.name)),
+  );
+  const validNames = new Set(
+    basisUnits.filter(validSchedule).map((row) => basisNameKey(row.basis)),
+  );
+  const seen = new Set<string>();
+  const missing: string[] = [];
+  for (const pool of pools) {
+    const name = pool.basis?.trim();
+    if (!name) continue;
+    const key = basisNameKey(name);
+    if (directNames.has(key) || validNames.has(key) || seen.has(key)) continue;
+    seen.add(key);
+    missing.push(name);
+  }
+  return missing;
+}
+
+export function mergeBasisUnits(
+  primary: BasisUnitsRow[],
+  recovered: BasisUnitsRow[],
+): BasisUnitsRow[] {
+  const byName = new Map<string, BasisUnitsRow>();
+  for (const row of [...primary, ...recovered]) {
+    if (!validSchedule(row)) continue;
+    byName.set(basisNameKey(row.basis), row);
+  }
+  return [...byName.values()];
+}
+
 function json(body: ParseCapResponse, init?: ResponseInit): Response {
   return new Response(JSON.stringify(body), {
     ...init,
@@ -321,6 +494,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       latency_ms: elapsed_ms,
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,
+      stop_reason: response.stop_reason,
     });
 
     const jsonMatch = text.match(/\{[\s\S]*\}/);
@@ -373,6 +547,60 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         basisUnits: basisUnits.length, pools: pools.length,
         directAllocations: directAllocations.length,
       });
+    }
+
+    const missingSchedules = missingScheduleBasisNames(bases, basisUnits, pools);
+    if (missingSchedules.length > 0) {
+      logEvent({
+        tag: TAG,
+        msg: "basis schedule recovery start",
+        missing_schedule_count: missingSchedules.length,
+      });
+      for (let i = 0; i < missingSchedules.length; i += SCHEDULE_BATCH_SIZE) {
+        const batch = missingSchedules.slice(i, i + SCHEDULE_BATCH_SIZE);
+        try {
+          const scheduleResponse = await client.messages.create({
+            model: MODEL,
+            max_tokens: 32000,
+            system: scheduleSystem(batch),
+            messages: [{
+              role: "user",
+              content: [{
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdfBase64,
+                },
+              }],
+            }],
+          }, { signal: req.signal });
+          const scheduleText =
+            scheduleResponse.content.find((content) => content.type === "text")?.text ?? "";
+          const recovered = alignRecoveredBasisNames(
+            parseBasisUnitsResponse(scheduleText),
+            batch,
+          );
+          basisUnits = mergeBasisUnits(basisUnits, recovered);
+          logEvent({
+            tag: TAG,
+            msg: "basis schedule recovery batch",
+            requested_count: batch.length,
+            recovered_count: recovered.filter(validSchedule).length,
+            output_tokens: scheduleResponse.usage.output_tokens,
+            stop_reason: scheduleResponse.stop_reason,
+          });
+        } catch (err) {
+          if (err instanceof Error && err.name === "AbortError") throw err;
+          logEvent({
+            level: "warn",
+            tag: TAG,
+            msg: "basis schedule recovery failed",
+            requested_count: batch.length,
+            error: err instanceof Error ? err.message : "Unknown recovery error",
+          });
+        }
+      }
     }
 
     logEvent({

@@ -18,13 +18,13 @@ const bases = capBasesToExtractionResult([
   {
     name: "Modified Operating Expenses",
     source: "Exhibit 5",
-    driverKey: "EXPEND",
+    driverKey: "EXPEND_X",
     confidence: "high",
   },
   {
     name: "City Manager Service Areas",
     source: "Exhibit 5",
-    driverKey: "OTHER",
+    driverKey: "EXPEND",
     confidence: "high",
   },
 ], fileName);
@@ -34,7 +34,7 @@ assert.equal(bases.unmapped.length, 0);
 assert.deepEqual(
   bases.mapped.map((row) => row.entity.driverKey),
   ["EXPEND", "EXPEND", "OTHER"],
-  "multiple bases may share a driverKey and custom OTHER bases remain importable",
+  "Milpitas names override model classification drift",
 );
 console.log("  ✓ CAP bases: duplicate EXPEND classifications + OTHER custom basis import");
 

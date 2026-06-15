@@ -192,7 +192,10 @@ export function capBasesToExtractionResult(
       importedAt: now,
     };
 
-    const driverKey = normBasisKey(row.driverKey) ?? inferBasisKey(row);
+    const driverKey =
+      basisKeyOverride(row.name)
+      ?? normBasisKey(row.driverKey)
+      ?? inferBasisKey(row);
     if (!driverKey) {
       unmapped.push({
         reason: "schema-mismatch",
@@ -527,6 +530,21 @@ function normBasisKey(v: string | undefined): BasisKey | null {
   if (!v) return null;
   const s = v.trim().toUpperCase().replace(/\s+/g, "_");
   return (BASIS_KEYS as readonly string[]).includes(s) ? (s as BasisKey) : null;
+}
+
+function basisKeyOverride(name: string | undefined): BasisKey | null {
+  const text = name?.trim().toLowerCase() ?? "";
+  if (!text) return null;
+  if (
+    text === "gross operating expenses"
+    || text === "modified operating expenses"
+  ) return "EXPEND";
+  if (
+    /^(?:assistant |deputy )?city manager service areas$/.test(text)
+    || text === "cash and investments"
+    || text === "as total city manager organization"
+  ) return "OTHER";
+  return null;
 }
 
 function inferBasisKey(row: BasisRow): BasisKey | null {
