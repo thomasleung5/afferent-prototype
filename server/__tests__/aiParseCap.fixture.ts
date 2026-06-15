@@ -64,9 +64,50 @@ const gross = {
   assert.deepEqual(
     missingScheduleBasisNames(bases, [agenda], pools),
     ["Gross Operating Expenses"],
-    "only referenced non-DIRECT bases without valid schedules are recovered",
+    "legacy driverKey 'DIRECT' bases are still treated as direct and skipped",
   );
-  console.log("  ✓ CAP schedule recovery targets only missing referenced bases");
+  console.log("  ✓ CAP schedule recovery: legacy driverKey DIRECT bases skip recovery");
+}
+
+{
+  // Post-refactor: bases may have no recognizable driverKey at all. Skip
+  // pools whose name appears in directAllocations — the import will fold
+  // those into a synthetic basis schedule. Other pools whose basis has
+  // no schedule still surface for recovery.
+  const bases = [
+    { name: "Gross Operating Expenses", source: "Document", driverKey: "OTHER", confidence: "high" as const },
+    { name: "Novel Custom Basis",       source: "Document", driverKey: "OTHER", confidence: "high" as const },
+    { name: "Town-Wide Support",        source: "Document", driverKey: "OTHER", confidence: "high" as const },
+  ];
+  const pools = [
+    {
+      center: "City Manager", pool: "General Service", allocationPercent: 50,
+      amount: 100, basis: "Gross Operating Expenses", confidence: "high" as const,
+    },
+    {
+      center: "City Council", pool: "Town-Wide Support", allocationPercent: 100,
+      amount: 200, basis: "Town-Wide Support", confidence: "high" as const,
+    },
+    {
+      center: "City Manager", pool: "Law Enforcement Contract", allocationPercent: 10,
+      amount: 50, basis: "Novel Custom Basis", confidence: "high" as const,
+    },
+  ];
+  const directAllocations = [
+    {
+      pool: "Law Enforcement Contract",
+      center: "City Manager",
+      receivers: [{
+        dept: "Sheriff", glCode: "100-700-0", deptCode: "OTHER", percent: 100, confidence: "high" as const,
+      }],
+    },
+  ];
+  assert.deepEqual(
+    missingScheduleBasisNames(bases, [], pools, directAllocations),
+    ["Gross Operating Expenses", "Town-Wide Support"],
+    "Direct pools skip schedule recovery; their bases (here Novel Custom Basis) drop out",
+  );
+  console.log("  ✓ CAP schedule recovery: direct-allocation pools skip schedule lookup regardless of driverKey");
 }
 
 {

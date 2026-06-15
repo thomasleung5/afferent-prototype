@@ -6,7 +6,7 @@ const TAG = "ai-parse-cap";
 
 const MODEL = "claude-sonnet-4-6";
 
-const SYSTEM = `You are extracting Cost Allocation Plan (CAP) data from a municipal document. The document may contain any combination of FIVE sections: (1) cost centers with their source-department total budgets, (2) the allocation-bases catalog with named denominators, (3) basis-level allocation unit schedules, (4) cost pools that allocate a slice of a center's budget, and (5) explicit DIRECT pool allocations.
+const SYSTEM = `You are extracting Cost Allocation Plan (CAP) data from a municipal document. The document may contain any combination of FIVE sections: (1) cost centers with their source-department total budgets, (2) the allocation-bases catalog with named denominators, (3) basis-level allocation unit schedules, (4) cost pools that allocate a slice of a center's budget, and (5) explicit per-pool direct allocations (when a pool is split by a hand-written percent list rather than a denominator).
 
 IMPORTANT — if the document is a comprehensive fee study, annual report, or budget book:
 - Skip narrative chapters, methodology preambles, executive summaries, recommendation tables, fee tables, and rate-derivation tables
@@ -14,9 +14,9 @@ IMPORTANT — if the document is a comprehensive fee study, annual report, or bu
 
 FIRST, detect which sections are present in the document. Populate ONLY the arrays whose section is present. Omit arrays (or return them empty) for sections the document does not contain.
 
-CRITICAL — non-DIRECT pools no longer carry per-pool receiver schedules. The same receivers + units appear once per BASIS in the "basisUnits" array. The engine derives each pool's per-receiver share as units / Σ units across the basis. If two pools share a basis name, they share its receivers — extract the schedule ONCE, in basisUnits.
+CRITICAL — denominator-driven pools (FTE, expenditures, agenda items, square footage, etc.) do not carry per-pool receiver schedules. The same receivers + units appear once per BASIS in the "basisUnits" array. The engine derives each pool's per-receiver share as units / Σ units across the basis. If two pools share a basis name, they share its receivers — extract the schedule ONCE, in basisUnits.
 
-DIRECT pools (where the basis's driverKey is "DIRECT") DO carry an explicit per-pool receiver list in "directAllocations" because they have hand-written percent splits, not a denominator.
+Pools whose document publishes a hand-written percent split — typically "Direct" assignments with no denominator (e.g. "Law Enforcement Contract Support — 100% to Sheriff") — carry an explicit per-pool receiver list in "directAllocations". On import these are folded into per-pool basis schedules automatically; you do not need to mint a placeholder "DIRECT" basis row when the document doesn't define one.
 
 CRITICAL — allocation-factor inventory exhibits often print several independent bases as parallel column groups over the same receiver rows. Emit a separate "bases" row AND a separate "basisUnits" entry for EVERY named Value column. Never merge parallel bases or select only one. In particular, "Gross Operating Expenses", "Modified Operating Expenses", "City Manager Service Areas", "Assistant City Manager Service Areas", and "Deputy City Manager Service Areas" are five distinct bases with five distinct schedules.
 
@@ -29,9 +29,8 @@ Return ONLY this JSON, no prose:
     { "name": "Finance & Administrative Services", "glCode": "011-1400", "totalCost": 1218000, "confidence": "high" }
   ],
   "bases": [
-    { "name": "Budgeted FTE", "source": "HRIS budget worksheet", "methodologyNote": "Authorized FTEs across the budget year.", "driverKey": "FTE", "confidence": "high" },
-    { "name": "AP invoices",  "source": "Finance ledger",         "driverKey": "EXPEND", "confidence": "high" },
-    { "name": "Law Enforcement Direct", "source": "Manual assignment", "driverKey": "DIRECT", "confidence": "high" }
+    { "name": "Budgeted FTE", "source": "HRIS budget worksheet", "methodologyNote": "Authorized FTEs across the budget year.", "confidence": "high" },
+    { "name": "AP invoices",  "source": "Finance ledger",         "confidence": "high" }
   ],
   "basisUnits": [
     {
@@ -83,36 +82,13 @@ SECTION 2 — Allocation bases
 
 Extract the catalog of named denominators (drivers) the document defines.
 
-- name: the basis name as written (e.g. "Budgeted FTE", "AP invoices", "Agenda item count", "Square footage", "PRA request count"). Use these canonical names when the document's wording matches them; otherwise keep the document's wording verbatim.
+- name: the basis name as written (e.g. "Budgeted FTE", "AP invoices", "Agenda item count", "Square footage", "PRA request count"). Keep the document's wording verbatim — do not paraphrase or normalize. Novel / custom basis names are fine.
 - source: the underlying data source quoted in the document (e.g. "HRIS budget worksheet", "Clerk PRA log", "Facilities inventory", "Finance ledger"). If the document does not state a source, infer a short label like "Document".
 - methodologyNote: the longer methodology / explanation paragraph if the document provides one. Omit the field if there is no extended note.
-- driverKey: the modeling-meaningful classification. MUST be exactly one of:
-  * "FTE"      — full-time-equivalent counts (budgeted, actual, time-study %, direct-labor hours)
-  * "EXPEND"   — operating expenditures, AP invoices, permit volume, population, anything denominated in spending
-  * "EXPEND_X" — operating expenditures excluding development services / fee-modeled depts
-  * "EXPEND_PW"— operating expenditures of Public Works departments only (e.g. "Budgeted Expenditures (PW Departments Only)" — restricts denominator to PW-classed depts such as Storm Drain, Street Operations, Pathway Operations)
-  * "PAYROLL"  — payroll transactions, salaries (compensation dollars treated as a count)
-  * "ACCT"     — accounting transactions, GL line counts
-  * "AGENDA"   — Council / Commission agenda item count
-  * "PRA"      — Public Records Act request count
-  * "CONTRACT" — number of executed contracts / procurement actions
-  * "SQFT"     — square footage occupied
-  * "VEHICLE"  — vehicle / fleet depreciation
-  * "COMMITS"  — number of standing committees supported
-  * "RECORDS"  — document / records volume counts, including Laserfiche records
-  * "EQUAL"    — equal allocation to all listed departments / funds / receivers
-  * "MEETING_HOURS" — hours of meetings supported
-  * "MEETINGS" — number of meetings supported
-  * "APPLICATIONS" — applications, permits, or cases processed
-  * "RECRUITMENTS" — recruitment / hiring process counts
-  * "CLAIMS"   — claim counts, claim history, or insurance loss history
-  * "RENTAL_HOURS" — rental hours or facility-use hours
-  * "DIRECT"   — a one-to-one direct assignment (the pool routes entirely to one department, bypassing the step-down)
-  * "OTHER"    — a valid custom allocation factor with an explicit basisUnits schedule that does not match a named classification above
-- driverKey routing: classify by the UNDERLYING DRIVER CONCEPT, not the wording. A novel name that clearly describes a known concept still gets the matching key — e.g. "# of FTE", "Budgeted FTE", and "FY19-20 Personnel Allocations" are all "FTE"; "# of Transactions excluding payroll" is "ACCT"; "Budgeted Expenditures per Fund", "Gross Operating Expenses", and "Modified Operating Expenses" are "EXPEND"; "Budgeted Expenditures (PW Departments Only)" / "Public Works Operating $" → "EXPEND_PW"; "Budgeted Expenditures (excl. Development)" → "EXPEND_X". City Manager / Assistant City Manager / Deputy City Manager Service Areas, Cash and Investments, and "As Total City Manager Organization" are valid custom bases and use "OTHER". Do NOT invent new key values; "OTHER" is the permitted custom classification.
-- directTo: optional legacy hint when driverKey === "DIRECT" and there is exactly one receiving InstDeptCode. DIRECT routing is primarily captured in Section 5 directAllocations, so omit directTo when the receiver is a GL-coded budget unit outside the InstDeptCode list or when the pool uses the Section 5 receiver list. Omit when driverKey !== "DIRECT".
+- driverKey: OPTIONAL legacy classification metadata. The engine no longer reads this field — pools route by basis name and the schedule in Section 3. Omit unless the document itself uses a recognizable short classification (e.g. "FTE", "EXPEND", "DIRECT"). Never invent or guess a key; never reject or reword a basis name because it doesn't match a known classification.
+- directTo: OPTIONAL legacy hint when the basis is hand-written direct routing. Direct pool routing is captured in Section 5 directAllocations; omit unless the document publishes a single named InstDeptCode receiver.
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
-- confidence: "high" if name, source, and driverKey are unambiguous from the document, including a clearly named custom "OTHER" basis with a printed schedule; "low" only when a field is uncertain.
+- confidence: "high" if name + source are unambiguous from the document; "low" only when a field is uncertain.
 
 ================================================================
 SECTION 3 — Basis units
@@ -133,7 +109,7 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - A schedule spanning multiple consecutive pages is still ONE basisUnits entry. Continue collecting receivers until that named basis's Grand Total row or until a new allocation-factor group begins.
 - In parallel-column exhibits, use only the raw "Value" as units. Ignore "Distribution to All Services" and "Distribution Only to Direct Services" percentages because the engine derives percentages from units.
 - Zero / dash values may be omitted from receivers. Retain every positive printed Value.
-- Skip schedules whose basis is "DIRECT" — DIRECT pools belong in Section 5, not here.
+- Skip schedules for pools that publish a hand-written percent split — those go in Section 5 (directAllocations), not here.
 - COLUMN AND ROW VERIFICATION: When a basis schedule sits among several parallel
   "Value" columns sharing one header row, identify the correct column by matching
   its header text to this basis's name — never by position ("middle column",
@@ -171,7 +147,7 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
 SECTION 5 — Direct allocations
 ================================================================
 
-Extract one entry per pool whose basis's driverKey is "DIRECT". DIRECT pools route their full amount through an explicit per-receiver percent split (not via a basis denominator).
+Extract one entry per pool whose document publishes an explicit per-receiver percent split rather than referencing a basis denominator. These are typically labeled "Direct", "Direct Assignment", or simply show a 100% receiver row alongside the pool. On import the split is converted into a per-pool basis schedule — you do not need to mint a placeholder basis in Section 2 for it.
 
 - pool: the pool name as it appears in Section 4.
 - center: optional disambiguator when two pools share a name across different centers. Omit when the name is unique.
@@ -181,7 +157,7 @@ Extract one entry per pool whose basis's driverKey is "DIRECT". DIRECT pools rou
   * deptCode: optional InstDeptCode or "OTHER" (defaults to "OTHER" when unknown).
   * percent: receiver's explicit share of the pool, 0–100 plain number. Receivers in one direct allocation should sum to ~100.
   * confidence: "high" if dept, glCode, and percent are unambiguous; "low" otherwise.
-- Skip pools that are not DIRECT — those route through Section 3 (basisUnits) instead.
+- Skip pools that are denominator-driven — those route through Section 3 (basisUnits) instead.
 
 ================================================================
 General rules
@@ -190,7 +166,7 @@ General rules
 - All monetary values are plain numbers — strip $, commas, whitespace, units.
 - All percentages are plain numbers (0–100) — strip the % sign.
 - Use the exact names / pool labels / basis names as written in the document.
-- Every non-DIRECT basis referenced by a pool MUST appear in "bases". When the document publishes its receiver Value schedule, it MUST also appear in "basisUnits".
+- Every basis referenced by a pool MUST appear in "bases" (unless the pool is captured in Section 5 directAllocations, which is folded into a per-pool basis at import time). When the document publishes a receiver Value schedule for a basis, that schedule MUST also appear in "basisUnits".
 - Return only the JSON object. No prose, no markdown, no explanation.`;
 
 interface CenterRow {
@@ -400,11 +376,21 @@ export function missingScheduleBasisNames(
   bases: BasisRow[],
   basisUnits: BasisUnitsRow[],
   pools: PoolRow[],
+  directAllocations: DirectAllocationsRow[] = [],
 ): string[] {
-  const directNames = new Set(
+  // A basis is direct-routed iff (a) the model labeled it driverKey "DIRECT"
+  // (legacy classification metadata), OR (b) any pool that selects it
+  // appears in directAllocations. Both signals skip schedule recovery —
+  // direct routing is captured in directAllocations, not basisUnits.
+  const directBasisNames = new Set(
     bases
       .filter((basis) => basis.driverKey?.trim().toUpperCase() === "DIRECT")
       .map((basis) => basisNameKey(basis.name)),
+  );
+  const directPoolNames = new Set(
+    directAllocations
+      .map((row) => row.pool?.trim().toLowerCase())
+      .filter((s): s is string => Boolean(s)),
   );
   const validNames = new Set(
     basisUnits.filter(validSchedule).map((row) => basisNameKey(row.basis)),
@@ -415,7 +401,8 @@ export function missingScheduleBasisNames(
     const name = pool.basis?.trim();
     if (!name) continue;
     const key = basisNameKey(name);
-    if (directNames.has(key) || validNames.has(key) || seen.has(key)) continue;
+    if (directPoolNames.has(pool.pool?.trim().toLowerCase() ?? "")) continue;
+    if (directBasisNames.has(key) || validNames.has(key) || seen.has(key)) continue;
     seen.add(key);
     missing.push(name);
   }
@@ -549,7 +536,9 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       });
     }
 
-    const missingSchedules = missingScheduleBasisNames(bases, basisUnits, pools);
+    const missingSchedules = missingScheduleBasisNames(
+      bases, basisUnits, pools, directAllocations,
+    );
     if (missingSchedules.length > 0) {
       logEvent({
         tag: TAG,

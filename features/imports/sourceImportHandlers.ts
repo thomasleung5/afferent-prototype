@@ -427,7 +427,12 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
     const importedBases = [...bases.mapped, ...bases.lowConfidence].map((row) => row.entity);
     const basisUnits = capBasisUnitsToExtractionResult(sections.basisUnits, source);
     const pools = capPoolsToExtractionResult(sections.pools, source, importedBases);
-    const integrityIssues = capImportIntegrityIssues(bases, basisUnits, pools, source);
+    const directAllocations = capDirectAllocationsToExtractionResult(
+      sections.directAllocations, pools, source,
+    );
+    const integrityIssues = capImportIntegrityIssues(
+      bases, basisUnits, pools, directAllocations, source,
+    );
     const bundle = {
       centers: capCentersToExtractionResult(sections.centers, source),
       bases,
@@ -440,9 +445,7 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
         },
       },
       pools,
-      directAllocations: capDirectAllocationsToExtractionResult(
-        sections.directAllocations, pools, source,
-      ),
+      directAllocations,
     };
     const applied = mergeCapBundle(bundle, source);
     setUnmappedBases(applied.unmappedBases);

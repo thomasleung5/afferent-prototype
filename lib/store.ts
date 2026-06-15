@@ -31,6 +31,7 @@ import {
   allocatedHoursByDept, utilizationByDept, type DeptUtilization,
 } from "@/lib/capacity";
 import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
+import { materializeDirectAsBasisUnits } from "@/lib/data/capBasisRouting";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
   type GlStepDownModel, type StepDownMethod,
@@ -1167,18 +1168,80 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             if (!entity.basisId) continue;
             basisUnitsByBasisId.set(entity.basisId, entity);
           }
-          const mergedBasisUnits = [...basisUnitsByBasisId.values()];
 
           // ── 6. Direct allocations ──────────────────────────────────────
-          // Upsert by poolId. Pool ids may have been remapped during the
-          // pools merge (mergeRows dedupes by id) — keep direct rows keyed
-          // by the (possibly fresh) pool id from the import payload.
-          const nextDirect = [...s.capDirectAllocations];
-          const directByPoolId = new Map(nextDirect.map((d) => [d.poolId, d]));
-          for (const { entity } of directIn) {
-            directByPoolId.set(entity.poolId, entity);
+          // Convert each incoming direct allocation into a synthetic
+          // AllocationBasis + BasisUnitRow at merge time and rewrite the
+          // matching pool's basisId to point at it. The synthetic id is
+          // stable per pool (`synth:direct:<poolId>`) and matches what
+          // `materializeDirectAsBasisUnits` would mint at derive time —
+          // converting eagerly avoids carrying a parallel slice for new
+          // imports and lets the engine route every pool through the
+          // single basisUnits path without a fallback.
+          //
+          // Legacy `capDirectAllocations` entries are kept for any pool
+          // we did NOT touch in this import so prior-import data still
+          // computes via the runtime materializer. Pools we DID convert
+          // here have their direct row dropped from the slice — the
+          // synthetic schedule is the new source of truth.
+          const convertedPoolIds = new Set<string>();
+          const poolBasisPatchById = new Map<string, { basisId: string; basis: string }>();
+          for (const { entity: da } of directIn) {
+            const targetPool = fixedPools
+              .map((row) => row.entity)
+              .find((p) => p.id === da.poolId);
+            if (!targetPool) continue;
+            const synthId = `synth:direct:${targetPool.id}`;
+            const synthName = `${targetPool.center} · ${targetPool.pool} Direct`;
+            // Append the synthetic basis to nextBases. Stable id means
+            // re-importing the same direct allocation upserts in place
+            // on the next merge.
+            const existingIdx = nextBases.findIndex((b) => b.id === synthId);
+            const synthBasis: AllocationBasis = {
+              id: synthId,
+              name: synthName,
+              source: "Direct allocation",
+              methodologyNote: "Synthetic schedule generated from direct allocation receivers.",
+              validationStatus: "verified",
+              createdBy: "AI import",
+              createdAt: existingIdx >= 0 ? nextBases[existingIdx].createdAt : at,
+              driverKey: "DIRECT",
+            };
+            if (existingIdx >= 0) nextBases[existingIdx] = synthBasis;
+            else nextBases.push(synthBasis);
+            // Synthetic basisUnit — percents become units. The engine
+            // normalizes by `units / Σ units` which is mathematically
+            // identical to `percent / Σ percent`.
+            basisUnitsByBasisId.set(synthId, {
+              basisId: synthId,
+              basis: synthName,
+              source: "Direct allocation",
+              receivers: da.receivers.map((r) => ({
+                glCode: r.glCode,
+                dept: r.dept,
+                deptCode: r.deptCode,
+                units: r.percent,
+              })),
+            });
+            poolBasisPatchById.set(targetPool.id, { basisId: synthId, basis: synthName });
+            convertedPoolIds.add(targetPool.id);
           }
-          const mergedDirect = [...directByPoolId.values()];
+          // Re-materialize mergedBasisUnits after any synthetic upserts.
+          const finalBasisUnits = [...basisUnitsByBasisId.values()];
+          // Patch the pools whose basisId now points at a synthetic
+          // direct schedule. mergedPools came out of mergeRows by id; we
+          // apply the patch in place.
+          const finalPools = mergedPools.map((p) => {
+            const patch = poolBasisPatchById.get(p.id);
+            return patch ? { ...p, basisId: patch.basisId, basis: patch.basis } : p;
+          });
+          // Drop legacy capDirectAllocations entries for pools we just
+          // converted — the synthetic schedule is now authoritative.
+          // Pools NOT touched by this import keep their pre-existing
+          // direct rows (legacy snapshots compute via runtime materializer).
+          const mergedDirect = s.capDirectAllocations.filter(
+            (d) => !convertedPoolIds.has(d.poolId),
+          );
 
           // Safety-net append: keep any prior-state centers the new
           // import didn't re-declare so their pools don't lose their
@@ -1189,12 +1252,12 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           if (staleCenters.length > 0) nextOrder.push(...staleCenters);
 
           return {
-            capPools: mergedPools,
+            capPools: finalPools,
             capCenterTotals: nextTotals,
             capCenterSources: nextCenterSources,
             capCenterOrder: nextOrder,
             allocationBases: nextBases,
-            capBasisUnits: mergedBasisUnits,
+            capBasisUnits: finalBasisUnits,
             capDirectAllocations: mergedDirect,
             studyContext: mergedContext,
             lineage: { ...s.lineage, ...centerLineage, ...basisLineage, ...poolLineage },
@@ -1475,15 +1538,27 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
 
   // glCode-native CAP engine. Nodes = one indirect node per cost center
   // plus one direct node per imported PLAN/BLDG/ENG-classified receiver glCode.
+  //
+  // Direct allocations are folded into per-pool synthetic basis schedules
+  // before the registry / graph / engine run, so every pool routes
+  // through the same `pool → basisId → BasisUnitRow → receivers` path.
+  // Legacy snapshots with `capDirectAllocations` continue to work via
+  // this materialization step; new imports write basis schedules
+  // directly (see PR 2).
+  const materialized = materializeDirectAsBasisUnits({
+    pools: state.capPools,
+    bases: state.allocationBases,
+    basisUnits: state.capBasisUnits,
+    directAllocations: state.capDirectAllocations,
+  });
+
   const { entries: capReceivers } = buildReceiverRegistry(
-    state.capBasisUnits, state.capDirectAllocations,
-    state.allocationBases, state.studyContext,
+    materialized.basisUnits, materialized.bases, state.studyContext,
   );
 
   const graph = buildEngineGraph({
-    allocationBases: state.allocationBases,
-    basisUnits: state.capBasisUnits,
-    directAllocations: state.capDirectAllocations,
+    allocationBases: materialized.bases,
+    basisUnits: materialized.basisUnits,
     capCenterTotals: state.capCenterTotals,
     capCenterSources: state.capCenterSources,
     capReceivers,
@@ -1495,11 +1570,10 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
   // this one result — so toggling stepDownMethod flips every view
   // coherently and reproducing prior runs only requires switching back.
   const stepDown = computeStepDownGl({
-    pools: state.capPools,
+    pools: materialized.pools,
     centerOrder: state.capCenterOrder,
-    bases: state.allocationBases,
-    basisUnits: state.capBasisUnits,
-    directAllocations: state.capDirectAllocations,
+    bases: materialized.bases,
+    basisUnits: materialized.basisUnits,
     directBills: state.directBills,
     graph,
     method: state.stepDownMethod,

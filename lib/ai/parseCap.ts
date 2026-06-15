@@ -192,18 +192,14 @@ export function capBasesToExtractionResult(
       importedAt: now,
     };
 
+    // driverKey is legacy classification metadata only — the engine
+    // never reads it. Default to "OTHER" when the row's classification
+    // doesn't match a known key; unfamiliar basis names always import.
     const driverKey =
       basisKeyOverride(row.name)
       ?? normBasisKey(row.driverKey)
-      ?? inferBasisKey(row);
-    if (!driverKey) {
-      unmapped.push({
-        reason: "schema-mismatch",
-        raw: [row.name ?? "", row.driverKey ?? "", row.source ?? "", row.methodologyNote ?? ""],
-        lineage,
-      });
-      return;
-    }
+      ?? inferBasisKey(row)
+      ?? "OTHER";
     const directTo = driverKey === "DIRECT" ? normInstDept(row.directTo) ?? undefined : undefined;
 
     const entity: AllocationBasis = {
@@ -218,7 +214,7 @@ export function capBasesToExtractionResult(
       ...(directTo ? { directTo } : {}),
     };
     const extracted = { entity, lineage };
-    if (row.confidence === "low" || !normBasisKey(row.driverKey)) lowConfidence.push(extracted);
+    if (row.confidence === "low") lowConfidence.push(extracted);
     else mapped.push(extracted);
   });
 
@@ -623,7 +619,7 @@ export function unmappedBasisDetails(u: UnmappedRow): {
       : cells.issueKind === "missing-schedule" ? "basis has no receiver schedule"
       : cells.issueKind === "invalid-schedule" ? "schedule has no valid receivers"
       : u.reason === "missing-required-field" ? "missing required CAP data"
-      : "driver outside named keys",
+      : "unresolved CAP data",
   };
 }
 
@@ -631,6 +627,7 @@ export function capImportIntegrityIssues(
   bases: ExtractionResult<AllocationBasis>,
   basisUnits: ExtractionResult<BasisUnitRow>,
   pools: ExtractionResult<CapPool>,
+  directAllocations: ExtractionResult<DirectAllocationRow>,
   fileName: string,
 ): UnmappedRow[] {
   const now = new Date().toISOString();
@@ -638,17 +635,25 @@ export function capImportIntegrityIssues(
   const importedSchedules = [...basisUnits.mapped, ...basisUnits.lowConfidence]
     .map((row) => row.entity);
   const importedPools = [...pools.mapped, ...pools.lowConfidence].map((row) => row.entity);
+  const importedDirect = [
+    ...directAllocations.mapped, ...directAllocations.lowConfidence,
+  ].map((row) => row.entity);
   const basisByName = new Map(
     importedBases.map((basis) => [basis.name.trim().toLowerCase(), basis]),
   );
   const scheduleNames = new Set(
     importedSchedules.map((row) => row.basis.trim().toLowerCase()),
   );
+  // Pools that come with an explicit per-receiver split are direct
+  // allocations and will be folded into a synthetic basis schedule at
+  // merge time — no separate BasisUnitRow is required for them.
+  const directPoolIds = new Set(importedDirect.map((row) => row.poolId));
   const issues: UnmappedRow[] = [];
   const seenMissingBases = new Set<string>();
   const seenMissingSchedules = new Set<string>();
 
   for (const pool of importedPools) {
+    if (directPoolIds.has(pool.id)) continue;
     const key = pool.basis.trim().toLowerCase();
     const basis = basisByName.get(key)
       ?? SEED_ALLOCATION_BASES.find((candidate) =>

@@ -556,14 +556,10 @@ function CapUnmappedPanel({ unmappedBases, setUnmappedBases }: {
         return (
           <ImportReviewRow
             key={i}
-            columns="minmax(220px, 2fr) 120px minmax(140px, 1.4fr) minmax(140px, 1fr) 60px"
+            columns="minmax(220px, 2fr) minmax(140px, 1.4fr) minmax(140px, 1fr) 60px"
             isLast={i === unmappedBases.length - 1}
           >
             <span style={{ color: "var(--ink)" }}>{d.name}</span>
-            <span className="mono" style={{
-              fontSize: "var(--t-l4)", color: "var(--ink-3)",
-              letterSpacing: "0.06em",
-            }}>{d.driverKey}</span>
             <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{d.source}</span>
             <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{d.reason}</span>
             <ImportReviewAction

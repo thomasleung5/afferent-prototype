@@ -1,5 +1,5 @@
 /* Deterministic fixture covering the parallel double step-down engine
- * under the basisUnits + directAllocations model.
+ * under the unified basisUnits routing model.
  *
  * Run with: npm run test:cap
  *
@@ -15,8 +15,10 @@
  *   8. Allocation percents are derived as units / Σ units across the basis.
  *   9. glCode is the receiver routing key.
  *  10. deptCode "OTHER" with a valid glCode is accepted.
- *  11. DIRECT pools route only to explicit DirectAllocationRow receivers;
- *      missing rows or invalid glCodes leak and produce a diagnostic.
+ *  11. Legacy DirectAllocationRow data is materialized into a per-pool
+ *      synthetic basis schedule before the engine runs — DIRECT pools
+ *      route through the same single path as every other pool; missing
+ *      or invalid receivers surface as "no-schedule" leakage.
  */
 
 import assert from "node:assert/strict";
@@ -26,7 +28,10 @@ import type {
 import {
   buildEngineGraph, computeStepDownGl, capAllocatedFromGl,
 } from "../capStepDownEngine";
-import { allocationBasesUsedByPools } from "../capBasisRouting";
+import {
+  allocationBasesUsedByPools, materializeDirectAsBasisUnits,
+  syntheticDirectBasisId,
+} from "../capBasisRouting";
 import { buildReceiverRegistry } from "../capReceiverRegistry";
 import { DEFAULT_STUDY_CONTEXT } from "../studyContext";
 
@@ -168,11 +173,12 @@ assert.deepEqual(
   "Allocation Bases matrix excludes unreferenced catalog entries and DIRECT routes",
 );
 
-// Receivers come from the registry, which now scans basisUnits +
-// directAllocations directly. Built fresh here so the test exercises
-// the same code path the store uses.
+// Receivers come from the registry, which scans basisUnits directly
+// after materialization folds direct allocations into per-pool
+// synthetic schedules. Built fresh here so the test exercises the same
+// code path the store uses.
 const { entries: capReceivers } = buildReceiverRegistry(
-  capBasisUnits, capDirectAllocations, bases, DEFAULT_STUDY_CONTEXT,
+  capBasisUnits, bases, DEFAULT_STUDY_CONTEXT,
 );
 
 // Registry ordering contract — indirect bucket first (alphabetical by
@@ -209,7 +215,6 @@ const { entries: capReceivers } = buildReceiverRegistry(
 const graph = buildEngineGraph({
   allocationBases: bases,
   basisUnits: capBasisUnits,
-  directAllocations: capDirectAllocations,
   capCenterTotals: mainCenters.totals,
   capCenterSources: mainCenters.sources,
   capReceivers,
@@ -220,7 +225,6 @@ const model = computeStepDownGl({
   centerOrder: capCenterOrder,
   bases,
   basisUnits: capBasisUnits,
-  directAllocations: capDirectAllocations,
   graph,
 });
 
@@ -363,12 +367,11 @@ const sharedPools: CapPool[] = [
   },
 ];
 const { entries: sharedReceivers } = buildReceiverRegistry(
-  sharedBasisUnits, [], sharedBases, DEFAULT_STUDY_CONTEXT,
+  sharedBasisUnits, sharedBases, DEFAULT_STUDY_CONTEXT,
 );
 const sharedGraph = buildEngineGraph({
   allocationBases: sharedBases,
   basisUnits: sharedBasisUnits,
-  directAllocations: [],
   capCenterTotals: sharedCtr.totals,
   capCenterSources: sharedCtr.sources,
   capReceivers: sharedReceivers,
@@ -376,7 +379,7 @@ const sharedGraph = buildEngineGraph({
 const sharedModel = computeStepDownGl({
   pools: sharedPools, centerOrder: [sharedCtr.keyByName["Shared Center"]],
   bases: sharedBases, basisUnits: sharedBasisUnits,
-  directAllocations: [], graph: sharedGraph,
+  graph: sharedGraph,
 });
 
 // Test 6: one basis schedule serves both pools — both produce a 60/40 split.
@@ -486,12 +489,11 @@ const wtPools: CapPool[] = [
   },
 ];
 const { entries: wtReceivers } = buildReceiverRegistry(
-  wtBasisUnits, [], wtBases, DEFAULT_STUDY_CONTEXT,
+  wtBasisUnits, wtBases, DEFAULT_STUDY_CONTEXT,
 );
 const wtGraph = buildEngineGraph({
   allocationBases: wtBases,
   basisUnits: wtBasisUnits,
-  directAllocations: [],
   capCenterTotals: wt.totals,
   capCenterSources: wt.sources,
   capReceivers: wtReceivers,
@@ -499,7 +501,7 @@ const wtGraph = buildEngineGraph({
 const wtModel = computeStepDownGl({
   pools: wtPools, centerOrder: wtOrder,
   bases: wtBases, basisUnits: wtBasisUnits,
-  directAllocations: [], graph: wtGraph,
+  graph: wtGraph,
 });
 
 const wtPoolAPlan = wtModel.firstAllocation["wt-pool-a"]?.["011-3100"] ?? 0;
@@ -516,14 +518,21 @@ assert.ok(close(wtPoolBPlan, expectPoolB, 1),
 assert.ok(close(wtPoolAPlan + wtPoolBPlan, 1_072_341, 1),
   "Pool A + Pool B fully redistribute first-incoming");
 
-// ── DIRECT-routing strictness ─────────────────────────────────────────────
+// ── Legacy DirectAllocationRow routing via materialization ────────────────
 //
-// DIRECT pools route via DirectAllocationRow.receivers. Three scenarios:
-//   (a) DIRECT + receiver glCode that points at a node → routes the pool $.
-//   (b) DIRECT + no DirectAllocationRow → leaks, diagnostic recorded.
-//   (c) DIRECT + DirectAllocationRow with all unmatched glCodes → leaks.
+// Legacy snapshots persist directAllocations as a separate slice; the
+// store materializes them into per-pool synthetic basis schedules
+// before the engine runs. Three scenarios:
+//   (a) DIRECT basis + DirectAllocationRow with valid glCode → routes
+//       via materialized synthetic schedule.
+//   (b) DIRECT basis + no DirectAllocationRow at all → no synthetic
+//       schedule minted; the original DIRECT basis has no real
+//       BasisUnitRow either, so the pool leaks with "no-schedule".
+//   (c) DIRECT basis + DirectAllocationRow with novel glCode → engine
+//       graph still materializes a direct node for the unknown glCode
+//       and routes the pool there.
 
-console.log("\n== DIRECT-routing strictness ==");
+console.log("\n== Legacy DirectAllocationRow routing via materialization ==");
 
 const directOnly = buildCenterMaps(
   { "Test Direct Center": 50000 },
@@ -540,7 +549,7 @@ const directOkBases: AllocationBasis[] = [
   },
 ];
 
-// (a) DIRECT + DirectAllocationRow with valid glCode.
+// (a) Legacy DIRECT basis + DirectAllocationRow with valid glCode.
 const directOkPools: CapPool[] = [{
   id: "test-direct-ok",
   center: "Test Direct Center",
@@ -557,33 +566,55 @@ const directOkAllocations: DirectAllocationRow[] = [{
     { dept: "Recreation Admin", glCode: "SEED-RECADMIN", deptCode: "OTHER", percent: 100 },
   ],
 }];
+const directOkMaterialized = materializeDirectAsBasisUnits({
+  pools: directOkPools, bases: directOkBases,
+  basisUnits: directOnlyBasisUnits, directAllocations: directOkAllocations,
+});
+
+// Materialization invariants — a synthetic basis appears for the direct
+// pool; the pool's basisId is rewritten to it.
+const synthIdOk = syntheticDirectBasisId("test-direct-ok");
+assert.ok(
+  directOkMaterialized.bases.some((b) => b.id === synthIdOk),
+  "materializer minted a synthetic basis for the direct pool",
+);
+assert.ok(
+  directOkMaterialized.basisUnits.some((bu) => bu.basisId === synthIdOk),
+  "materializer minted a synthetic basis schedule for the direct pool",
+);
+assert.equal(
+  directOkMaterialized.pools.find((p) => p.id === "test-direct-ok")?.basisId,
+  synthIdOk,
+  "materializer rewrote the pool's basisId to the synthetic id",
+);
+
 const { entries: directOkReceivers } = buildReceiverRegistry(
-  directOnlyBasisUnits, directOkAllocations, directOkBases, DEFAULT_STUDY_CONTEXT,
+  directOkMaterialized.basisUnits, directOkMaterialized.bases, DEFAULT_STUDY_CONTEXT,
 );
 const directOkGraph = buildEngineGraph({
-  allocationBases: directOkBases,
-  basisUnits: directOnlyBasisUnits,
-  directAllocations: directOkAllocations,
+  allocationBases: directOkMaterialized.bases,
+  basisUnits: directOkMaterialized.basisUnits,
   capCenterTotals: directOnly.totals,
   capCenterSources: directOnly.sources,
   capReceivers: directOkReceivers,
 });
 const directOkModel = computeStepDownGl({
-  pools: directOkPools, centerOrder: directOnlyOrder,
-  bases: directOkBases, basisUnits: directOnlyBasisUnits,
-  directAllocations: directOkAllocations, graph: directOkGraph,
+  pools: directOkMaterialized.pools, centerOrder: directOnlyOrder,
+  bases: directOkMaterialized.bases,
+  basisUnits: directOkMaterialized.basisUnits,
+  graph: directOkGraph,
 });
 
-console.log("  (a) DIRECT + valid glCode:");
+console.log("  (a) DIRECT + valid glCode (materialized):");
 console.log(`      Recreation Admin First: ${fmt(directOkModel.firstAllocation["test-direct-ok"]?.["SEED-RECADMIN"] ?? 0)} (expect 50000)`);
 console.log(`      Diagnostics: ${directOkModel.diagnostics.length} (expect 0)`);
 assert.equal(
   Math.round(directOkModel.firstAllocation["test-direct-ok"]?.["SEED-RECADMIN"] ?? 0),
   50000,
-  "DIRECT pool with valid receiver glCode routes the full amount",
+  "Materialized direct schedule with valid receiver glCode routes the full amount",
 );
 assert.equal(directOkModel.diagnostics.length, 0,
-  "DIRECT pool with valid receivers: no diagnostics");
+  "Materialized direct schedule with valid receivers: no diagnostics");
 
 // 11. directTo on the AllocationBasis is METADATA only — the engine must
 //     never use it to route. There is no PARKS node here.
@@ -593,7 +624,9 @@ const parksNode = directOkModel.nodes.find(
 assert.equal(parksNode, undefined,
   "directTo: 'PARKS' must not create a PARKS routing target");
 
-// (b) DIRECT pool with NO DirectAllocationRow at all → pure leakage.
+// (b) DIRECT basis + NO DirectAllocationRow → no synthetic schedule
+//     minted; the original DIRECT basis has no real BasisUnitRow either,
+//     so the engine surfaces "no-schedule" leakage.
 const directLeakPools: CapPool[] = [{
   id: "test-direct-leak",
   center: "Test Direct Center",
@@ -603,36 +636,41 @@ const directLeakPools: CapPool[] = [{
   basisId: "bas-direct", basis: "Direct allocation",
   receiving: "Nowhere", recoverability: "TBD", review: "Review",
 }];
+const directLeakMaterialized = materializeDirectAsBasisUnits({
+  pools: directLeakPools, bases: directOkBases,
+  basisUnits: directOnlyBasisUnits, directAllocations: [],
+});
 const { entries: directLeakReceivers } = buildReceiverRegistry(
-  directOnlyBasisUnits, [], directOkBases, DEFAULT_STUDY_CONTEXT,
+  directLeakMaterialized.basisUnits, directLeakMaterialized.bases, DEFAULT_STUDY_CONTEXT,
 );
 const directLeakGraph = buildEngineGraph({
-  allocationBases: directOkBases,
-  basisUnits: directOnlyBasisUnits,
-  directAllocations: [],
+  allocationBases: directLeakMaterialized.bases,
+  basisUnits: directLeakMaterialized.basisUnits,
   capCenterTotals: directOnly.totals,
   capCenterSources: directOnly.sources,
   capReceivers: directLeakReceivers,
 });
 const directLeakModel = computeStepDownGl({
-  pools: directLeakPools, centerOrder: directOnlyOrder,
-  bases: directOkBases, basisUnits: directOnlyBasisUnits,
-  directAllocations: [], graph: directLeakGraph,
+  pools: directLeakMaterialized.pools, centerOrder: directOnlyOrder,
+  bases: directLeakMaterialized.bases,
+  basisUnits: directLeakMaterialized.basisUnits,
+  graph: directLeakGraph,
 });
 
-console.log("  (b) DIRECT + no DirectAllocationRow:");
+console.log("  (b) DIRECT basis + no DirectAllocationRow:");
 const leakRow = directLeakModel.firstAllocation["test-direct-leak"] ?? {};
 const leakTotal = Object.values(leakRow).reduce((a, v) => a + v, 0);
 console.log(`      Σ firstAllocation = ${fmt(leakTotal)} (expect 0 — pure leakage)`);
 console.log(`      Diagnostics: ${directLeakModel.diagnostics.length} (expect 1)`);
 assert.equal(Math.round(leakTotal), 0,
-  "DIRECT pool with no DirectAllocationRow must produce $0 allocations");
+  "DIRECT basis with no DirectAllocationRow must produce $0 allocations");
 assert.equal(directLeakModel.diagnostics.length, 1,
-  "DIRECT pool with no DirectAllocationRow must emit one diagnostic");
-assert.equal(directLeakModel.diagnostics[0].kind, "no-receivers",
-  "DIRECT pool with no DirectAllocationRow at all → 'no-receivers' (distinct from 'no-valid-glcodes', which fires when receivers exist but none resolve to a node)");
+  "DIRECT basis with no DirectAllocationRow must emit one diagnostic");
+assert.equal(directLeakModel.diagnostics[0].kind, "no-schedule",
+  "Consolidated diagnostic: missing schedule surfaces as 'no-schedule' (former 'no-receivers' rolls in)");
 
-// (c) DIRECT pool with receivers all pointing at unknown glCodes → leaks.
+// (c) DIRECT basis + DirectAllocationRow with novel glCode → engine graph
+//     still creates a direct node for the unknown glCode and routes.
 const directBadPools: CapPool[] = [{
   id: "test-direct-bad",
   center: "Test Direct Center",
@@ -648,21 +686,25 @@ const directBadAllocations: DirectAllocationRow[] = [{
     { dept: "Unknown", glCode: "DOES-NOT-EXIST", deptCode: "OTHER", percent: 100 },
   ],
 }];
+const directBadMaterialized = materializeDirectAsBasisUnits({
+  pools: directBadPools, bases: directOkBases,
+  basisUnits: directOnlyBasisUnits, directAllocations: directBadAllocations,
+});
 const { entries: directBadReceivers } = buildReceiverRegistry(
-  directOnlyBasisUnits, directBadAllocations, directOkBases, DEFAULT_STUDY_CONTEXT,
+  directBadMaterialized.basisUnits, directBadMaterialized.bases, DEFAULT_STUDY_CONTEXT,
 );
 const directBadGraph = buildEngineGraph({
-  allocationBases: directOkBases,
-  basisUnits: directOnlyBasisUnits,
-  directAllocations: directBadAllocations,
+  allocationBases: directBadMaterialized.bases,
+  basisUnits: directBadMaterialized.basisUnits,
   capCenterTotals: directOnly.totals,
   capCenterSources: directOnly.sources,
   capReceivers: directBadReceivers,
 });
 const directBadModel = computeStepDownGl({
-  pools: directBadPools, centerOrder: directOnlyOrder,
-  bases: directOkBases, basisUnits: directOnlyBasisUnits,
-  directAllocations: directBadAllocations, graph: directBadGraph,
+  pools: directBadMaterialized.pools, centerOrder: directOnlyOrder,
+  bases: directBadMaterialized.bases,
+  basisUnits: directBadMaterialized.basisUnits,
+  graph: directBadGraph,
 });
 
 console.log("  (c) DIRECT + receivers all at unknown glCodes:");
@@ -717,12 +759,11 @@ const glRoutePools: CapPool[] = [
   },
 ];
 const { entries: glRouteReceivers } = buildReceiverRegistry(
-  glRouteBasisUnits, [], glRouteBases, DEFAULT_STUDY_CONTEXT,
+  glRouteBasisUnits, glRouteBases, DEFAULT_STUDY_CONTEXT,
 );
 const glRouteGraph = buildEngineGraph({
   allocationBases: glRouteBases,
   basisUnits: glRouteBasisUnits,
-  directAllocations: [],
   capCenterTotals: glRoute.totals,
   capCenterSources: glRoute.sources,
   capReceivers: glRouteReceivers,
@@ -732,7 +773,7 @@ const glRouteModel = computeStepDownGl({
   // centerOrder is NodeKey[] — pass the indirect node's key.
   centerOrder: [glRoute.keyByName["City Manager"]],
   bases: glRouteBases, basisUnits: glRouteBasisUnits,
-  directAllocations: [], graph: glRouteGraph,
+  graph: glRouteGraph,
 });
 
 const glRouteFirst = glRouteModel.firstAllocation["gl-route-pool"] ?? {};
@@ -764,14 +805,12 @@ console.log("\n== Synthetic direct nodes removed ==");
   );
   const emptyBases: AllocationBasis[] = [];
   const emptyBasisUnits: BasisUnitRow[] = [];
-  const emptyDirectAllocations: DirectAllocationRow[] = [];
   const { entries: emptyReceivers } = buildReceiverRegistry(
-    emptyBasisUnits, emptyDirectAllocations, emptyBases, DEFAULT_STUDY_CONTEXT,
+    emptyBasisUnits, emptyBases, DEFAULT_STUDY_CONTEXT,
   );
   const emptyGraph = buildEngineGraph({
     allocationBases: emptyBases,
     basisUnits: emptyBasisUnits,
-    directAllocations: emptyDirectAllocations,
     capCenterTotals: emptyCenters.totals,
     capCenterSources: emptyCenters.sources,
     capReceivers: emptyReceivers,
@@ -824,7 +863,6 @@ console.log("\n== Synthetic direct nodes removed ==");
     createdAt: NOW,
   }];
   const noSchedBasisUnits: BasisUnitRow[] = [];      // intentionally empty
-  const noSchedDirectAllocations: DirectAllocationRow[] = [];
   const noSchedPools: CapPool[] = [{
     id: "no-sched-pool",
     center: "City Manager",
@@ -835,12 +873,11 @@ console.log("\n== Synthetic direct nodes removed ==");
     receiving: "Multiple", recoverability: "TBD", review: "Review",
   }];
   const { entries: noSchedReceivers } = buildReceiverRegistry(
-    noSchedBasisUnits, noSchedDirectAllocations, noSchedBases, DEFAULT_STUDY_CONTEXT,
+    noSchedBasisUnits, noSchedBases, DEFAULT_STUDY_CONTEXT,
   );
   const noSchedGraph = buildEngineGraph({
     allocationBases: noSchedBases,
     basisUnits: noSchedBasisUnits,
-    directAllocations: noSchedDirectAllocations,
     capCenterTotals: noSchedCenters.totals,
     capCenterSources: noSchedCenters.sources,
     capReceivers: noSchedReceivers,
@@ -850,7 +887,6 @@ console.log("\n== Synthetic direct nodes removed ==");
     centerOrder: [noSchedCenters.keyByName["City Manager"]],
     bases: noSchedBases,
     basisUnits: noSchedBasisUnits,
-    directAllocations: noSchedDirectAllocations,
     graph: noSchedGraph,
   });
   console.log(`  (3) Missing schedule: diagnostics=${noSchedModel.diagnostics.length}, leakage=${noSchedModel.leakageByPoolId["no-sched-pool"] ?? 0}`);

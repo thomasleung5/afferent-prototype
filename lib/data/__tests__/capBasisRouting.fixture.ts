@@ -22,7 +22,9 @@
 
 import assert from "node:assert/strict";
 import type { AllocationBasis, BasisUnitRow, CapPool } from "../../types";
-import { basisForPool, basisUnitRowForBasis } from "../capBasisRouting";
+import {
+  basisForPool, basisUnitRowForBasis, materializeDirectAsBasisUnits,
+} from "../capBasisRouting";
 import { buildEngineGraph, computeStepDownGl } from "../capStepDownEngine";
 import { buildReceiverRegistry } from "../capReceiverRegistry";
 import {
@@ -204,10 +206,10 @@ function makePool(overrides: Partial<CapPool>): CapPool {
     },
   ];
 
-  const registry = buildReceiverRegistry(basisUnits, [], fixtureBases, ctx);
+  const registry = buildReceiverRegistry(basisUnits, fixtureBases, ctx);
   const graph = buildEngineGraph({
     allocationBases: fixtureBases,
-    basisUnits, directAllocations: [],
+    basisUnits,
     capCenterTotals: centerTotals,
     capCenterSources: centerSources,
     capReceivers: registry.entries,
@@ -215,7 +217,7 @@ function makePool(overrides: Partial<CapPool>): CapPool {
   const model = computeStepDownGl({
     pools: fixturePools, centerOrder: [centerKey],
     bases: fixtureBases, basisUnits,
-    directAllocations: [], graph,
+    graph,
   });
 
   // Diagnostic kinds match the unresolved pools, one-to-one.
@@ -263,13 +265,16 @@ function makePool(overrides: Partial<CapPool>): CapPool {
 //        matching schedules, so the engine routes them cleanly with
 //        an empty diagnostics list. ──────────────────────────────────
 {
+  const seedMaterialized = materializeDirectAsBasisUnits({
+    pools: CAP_POOLS, bases: SEED_BASES,
+    basisUnits: CAP_BASIS_UNITS, directAllocations: CAP_DIRECT_ALLOCATIONS,
+  });
   const seedRegistry = buildReceiverRegistry(
-    CAP_BASIS_UNITS, CAP_DIRECT_ALLOCATIONS, SEED_BASES, DEFAULT_STUDY_CONTEXT,
+    seedMaterialized.basisUnits, seedMaterialized.bases, DEFAULT_STUDY_CONTEXT,
   );
   const seedGraph = buildEngineGraph({
-    allocationBases: SEED_BASES,
-    basisUnits: CAP_BASIS_UNITS,
-    directAllocations: CAP_DIRECT_ALLOCATIONS,
+    allocationBases: seedMaterialized.bases,
+    basisUnits: seedMaterialized.basisUnits,
     capCenterTotals: CAP_CENTER_TOTALS,
     capCenterSources: Object.fromEntries(
       Object.entries(CAP_CENTER_SOURCES_SEED).map(([k, v]) => [
@@ -279,9 +284,11 @@ function makePool(overrides: Partial<CapPool>): CapPool {
     capReceivers: seedRegistry.entries,
   });
   const seedModel = computeStepDownGl({
-    pools: CAP_POOLS, centerOrder: Object.keys(CAP_CENTER_TOTALS),
-    bases: SEED_BASES, basisUnits: CAP_BASIS_UNITS,
-    directAllocations: CAP_DIRECT_ALLOCATIONS, graph: seedGraph,
+    pools: seedMaterialized.pools,
+    centerOrder: Object.keys(CAP_CENTER_TOTALS),
+    bases: seedMaterialized.bases,
+    basisUnits: seedMaterialized.basisUnits,
+    graph: seedGraph,
   });
 
   assert.deepEqual(seedModel.diagnostics, [],
@@ -336,21 +343,21 @@ function makePool(overrides: Partial<CapPool>): CapPool {
     id: "pool-cm", center: "City Manager", centerGlCode: cmKey,
     pool: "Town-wide Support", amount: 100_000, basisId: "bas-fte",
   });
-  const reg = buildReceiverRegistry(fteUnits, [], fteBasis, ctx);
+  const reg = buildReceiverRegistry(fteUnits, fteBasis, ctx);
   const graph = buildEngineGraph({
-    allocationBases: fteBasis, basisUnits: fteUnits, directAllocations: [],
+    allocationBases: fteBasis, basisUnits: fteUnits,
     capCenterTotals: centerTotals, capCenterSources: centerSources,
     capReceivers: reg.entries,
   });
 
   const doubleModel = computeStepDownGl({
     pools: [pool], centerOrder: [cmKey, insKey],
-    bases: fteBasis, basisUnits: fteUnits, directAllocations: [],
+    bases: fteBasis, basisUnits: fteUnits,
     graph, method: "double",
   });
   const singleModel = computeStepDownGl({
     pools: [pool], centerOrder: [cmKey, insKey],
-    bases: fteBasis, basisUnits: fteUnits, directAllocations: [],
+    bases: fteBasis, basisUnits: fteUnits,
     graph, method: "single",
   });
 

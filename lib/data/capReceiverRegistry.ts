@@ -1,26 +1,28 @@
 /* CAP receiver registry.
  *
- * Distinct receivers across the basis-unit schedules and DIRECT pool
- * allocations, keyed by glCode. glCode is the receiver's identity for
- * step-down routing; deptCode is classification metadata used for
- * grouping/filtering only.
+ * Distinct receivers across all basis-unit schedules, keyed by glCode.
+ * glCode is the receiver's identity for step-down routing; deptCode is
+ * classification metadata used for grouping/filtering only.
  *
  * Identity rules:
- *   - Key on glCode (BasisUnitReceiver / DirectAllocationReceiver both
- *     require it — receivers without a glCode are rejected at import).
+ *   - Key on glCode (BasisUnitReceiver requires it — receivers without
+ *     a glCode are rejected at import).
  *   - Namespace the key by role ("receiver" vs "center") because both can
  *     share a glCode (e.g. "City Manager 011-1200" appears in both maps).
  *   - Prefix with cityId + fiscalYear so cross-study models don't collide.
  *
- * Units are now counted ONCE per basis (not per pool): one BasisUnitRow
- * per basis × one receiver row per glCode within it. The same schedule
+ * Units are counted ONCE per basis (not per pool): one BasisUnitRow per
+ * basis × one receiver row per glCode within it. The same schedule
  * serves every pool whose basisId points at the basis, so no per-pool
  * duplication is possible.
+ *
+ * Direct allocations are folded into per-pool synthetic basis schedules
+ * by `materializeDirectAsBasisUnits` before the registry runs, so this
+ * registry only consumes basisUnits — there is no separate direct-
+ * allocation branch.
  */
 
-import type {
-  BasisUnitRow, DirectAllocationRow, InstDeptCode,
-} from "@/lib/types";
+import type { BasisUnitRow, InstDeptCode } from "@/lib/types";
 import type { BasisKey, AllocationBasis } from "@/lib/types";
 import { INDIRECT_DEPT_CODES } from "./institutionalDepts";
 import type { StudyContext } from "./studyContext";
@@ -58,12 +60,13 @@ interface ReceiverRegistry {
   entries: ReceiverEntry[];
 }
 
-/** Build the registry from the basis-units schedule + DIRECT allocations.
- *  Pure function; the store memoizes the result and exposes it on
- *  `derived`. */
+/** Build the registry from the basis-units schedule. Pure function; the
+ *  store memoizes the result and exposes it on `derived`. After
+ *  `materializeDirectAsBasisUnits` runs upstream, direct-allocation
+ *  receivers are present in basisUnits via per-pool synthetic schedules
+ *  and surface through the same loop as ordinary basis receivers. */
 export function buildReceiverRegistry(
   basisUnits: BasisUnitRow[],
-  directAllocations: DirectAllocationRow[],
   bases: AllocationBasis[],
   ctx: StudyContext,
 ): ReceiverRegistry {
@@ -82,11 +85,14 @@ export function buildReceiverRegistry(
     return entry;
   };
 
-  // Non-DIRECT receivers — one BasisUnitRow per basis, one row per glCode.
+  // One BasisUnitRow per basis, one row per glCode. driverKey is kept
+  // as informational classification on the AllocationBasis but no longer
+  // gates registration — synthetic basis schedules minted from direct
+  // allocations carry driverKey "DIRECT" and still surface their
+  // receivers here.
   for (const bu of basisUnits) {
     const basis = basisById.get(bu.basisId);
     if (!basis) continue;
-    if (basis.driverKey === "DIRECT") continue;
     for (const r of bu.receivers) {
       if (!r.glCode) continue;
       if (!Number.isFinite(r.units) || r.units <= 0) continue;
@@ -95,16 +101,6 @@ export function buildReceiverRegistry(
       entry.sources.push({
         basisId: bu.basisId, basisKey: basis.driverKey, units: r.units,
       });
-    }
-  }
-
-  // DIRECT pool receivers — surfaced so the engine graph creates a node
-  // for each direct target. No units; they don't participate in the
-  // driver matrix.
-  for (const da of directAllocations) {
-    for (const r of da.receivers) {
-      if (!r.glCode) continue;
-      upsert(r.glCode, r.dept, r.deptCode);
     }
   }
 

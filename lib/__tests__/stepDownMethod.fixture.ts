@@ -30,7 +30,7 @@
 
 import assert from "node:assert/strict";
 import type {
-  AllocationBasis, BasisUnitRow, CapPool, DirectAllocationRow,
+  AllocationBasis, BasisUnitRow, CapPool,
 } from "../types";
 import {
   buildEngineGraph, computeStepDownGl, capAllocatedFromGl,
@@ -116,16 +116,13 @@ const capPools: CapPool[] = [{
   review: "Reviewed",
 }];
 
-const capDirectAllocations: DirectAllocationRow[] = [];
-
 const { entries: capReceivers } = buildReceiverRegistry(
-  capBasisUnits, capDirectAllocations, bases, DEFAULT_STUDY_CONTEXT,
+  capBasisUnits, bases, DEFAULT_STUDY_CONTEXT,
 );
 
 const graph = buildEngineGraph({
   allocationBases: bases,
   basisUnits: capBasisUnits,
-  directAllocations: capDirectAllocations,
   capCenterTotals,
   capCenterSources,
   capReceivers,
@@ -136,7 +133,6 @@ const engineArgs = {
   centerOrder: capCenterOrder,
   bases,
   basisUnits: capBasisUnits,
-  directAllocations: capDirectAllocations,
   graph,
 };
 
@@ -177,7 +173,7 @@ function buildSnapshot(stepDownMethod: StepDownMethod): BuildSnapshot {
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
     allocationBases: bases,
     capBasisUnits,
-    capDirectAllocations,
+    capDirectAllocations: [],
     directBills: {},
     volume: [],
     services: [],

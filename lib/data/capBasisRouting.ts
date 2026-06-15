@@ -4,8 +4,7 @@
  * a pool's allocation basis. `basisForPool` resolves a pool's `basisId`
  * against that catalog and returns a discriminated result:
  *
- *   - resolved     — basis catalog entry found; driverKey + directTo
- *                    available for the engine's DIRECT branch.
+ *   - resolved     — basis catalog entry found.
  *   - missing-basisId   — pool.basisId is empty/whitespace. Engine MUST
  *                    treat the pool's net allocable $ as leakage and
  *                    record a diagnostic.
@@ -18,11 +17,18 @@
  * seed DRIVERS matrix. That path masked stale or unmapped pools — the
  * report looked authoritative when the engine was guessing. It is gone.
  *
- * `driverKey` survives ONLY as basis classification + DIRECT detection.
- * It is never used to recover a pool whose basisId failed to resolve.
+ * `driverKey` survives on AllocationBasis only as legacy metadata — the
+ * engine no longer reads it for routing. Direct allocations are converted
+ * into ordinary pool-specific basis schedules via
+ * `materializeDirectAsBasisUnits` before the engine runs, so every pool
+ * resolves through the same `pool → basisId → BasisUnitRow → receivers`
+ * path regardless of whether the original document published it as a
+ * direct allocation or as a basis-driven split.
  */
 
-import type { AllocationBasis, BasisUnitRow, CapPool } from "../types";
+import type {
+  AllocationBasis, BasisUnitRow, CapPool, DirectAllocationRow,
+} from "../types";
 
 /** Outcome of resolving a pool's `basisId` against the current catalog.
  *  Engine and UI both consume this discriminant. */
@@ -71,4 +77,93 @@ export function allocationBasesUsedByPools(
     basis.driverKey !== "DIRECT"
     && (usedIds.has(basis.id) || usedNames.has(basis.name.trim().toLowerCase())),
   );
+}
+
+/** Synthetic AllocationBasis id minted for each direct allocation. Stable
+ *  per pool so engine results don't drift between calls. */
+export function syntheticDirectBasisId(poolId: string): string {
+  return `synth:direct:${poolId}`;
+}
+
+/** True when a basis id was minted by `materializeDirectAsBasisUnits`. */
+export function isSyntheticDirectBasisId(id: string): boolean {
+  return id.startsWith("synth:direct:");
+}
+
+const SYNTHETIC_CREATED_AT = "1970-01-01T00:00:00.000Z";
+
+/** Engine-internal view of CAP state with all direct allocations folded
+ *  into per-pool basis schedules. Outputs are working copies — original
+ *  pools / bases / basisUnits are never mutated.
+ *
+ *  For each DirectAllocationRow whose pool is present in `pools`:
+ *    - mint a synthetic AllocationBasis (id `synth:direct:<poolId>`,
+ *      name "${center} · ${pool} Direct", driverKey "DIRECT" so legacy
+ *      UI that still reads driverKey treats it as direct);
+ *    - mint a synthetic BasisUnitRow whose receivers carry the direct
+ *      allocation's percent values as `units` (normalization in the
+ *      engine is identical: `units / Σ units` = `percent / 100`);
+ *    - rewrite the pool's `basisId` to point at the synthetic basis.
+ *
+ *  Pools without a matching DirectAllocationRow pass through unchanged.
+ *  After materialization the engine routes every pool through the same
+ *  basisUnits path; the original DirectAllocationRow is no longer needed
+ *  downstream. */
+export function materializeDirectAsBasisUnits(args: {
+  pools: CapPool[];
+  bases: AllocationBasis[];
+  basisUnits: BasisUnitRow[];
+  directAllocations: DirectAllocationRow[];
+}): {
+  pools: CapPool[];
+  bases: AllocationBasis[];
+  basisUnits: BasisUnitRow[];
+} {
+  const { pools, bases, basisUnits, directAllocations } = args;
+  if (directAllocations.length === 0) {
+    return { pools, bases, basisUnits };
+  }
+
+  const directByPoolId = new Map(directAllocations.map((da) => [da.poolId, da]));
+  const outPools: CapPool[] = [];
+  const synthBases: AllocationBasis[] = [];
+  const synthBasisUnits: BasisUnitRow[] = [];
+
+  for (const pool of pools) {
+    const da = directByPoolId.get(pool.id);
+    if (!da) {
+      outPools.push(pool);
+      continue;
+    }
+    const synthId = syntheticDirectBasisId(pool.id);
+    const synthName = `${pool.center} · ${pool.pool} Direct`;
+    synthBases.push({
+      id: synthId,
+      name: synthName,
+      source: "Direct allocation",
+      driverKey: "DIRECT",
+      createdAt: SYNTHETIC_CREATED_AT,
+      validationStatus: "verified",
+    });
+    synthBasisUnits.push({
+      basisId: synthId,
+      basis: synthName,
+      source: "Direct allocation",
+      receivers: da.receivers.map((r) => ({
+        glCode: r.glCode,
+        dept: r.dept,
+        deptCode: r.deptCode,
+        units: r.percent,
+      })),
+    });
+    outPools.push({ ...pool, basisId: synthId });
+  }
+
+  return {
+    pools: outPools,
+    bases: synthBases.length > 0 ? [...bases, ...synthBases] : bases,
+    basisUnits: synthBasisUnits.length > 0
+      ? [...basisUnits, ...synthBasisUnits]
+      : basisUnits,
+  };
 }
