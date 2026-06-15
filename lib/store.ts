@@ -33,8 +33,10 @@ import {
 import { buildReceiverRegistry } from "@/lib/data/capReceiverRegistry";
 import {
   buildEngineGraph, capAllocatedFromGl, computeStepDownGl,
-  type GlStepDownModel,
+  type GlStepDownModel, type StepDownMethod,
 } from "@/lib/data/capStepDownEngine";
+
+export type { StepDownMethod } from "@/lib/data/capStepDownEngine";
 import {
   deriveFunctionalAllocation, applyFunctionalAllocationFbhr,
   type FunctionalAllocationDerived,
@@ -130,6 +132,13 @@ export interface BuildSnapshot {
    *  to map the same vendor-supplied category twice. Sparse — only entries
    *  the reviewer explicitly resolved are stored. */
   operatingCategoryMappings: Record<string, OpCategory>;
+  /** Jurisdiction-wide CAP allocation method. Authoritative across the
+   *  whole build model — Allocation Detail, Allocation Matrix, FBHR, Cost
+   *  of Service, and overhead exports all read this. Legacy persisted
+   *  state without this field defaults to "double" (the historical value)
+   *  in storeMigration so existing studies reproduce their current
+   *  results bit-for-bit. */
+  stepDownMethod: StepDownMethod;
 }
 
 export interface StudyVersion {
@@ -219,6 +228,8 @@ export interface BuildState {
   activeFiscalYear: string;
   /** See BuildSnapshot.operatingCategoryMappings. */
   operatingCategoryMappings: Record<string, OpCategory>;
+  /** See BuildSnapshot.stepDownMethod. */
+  stepDownMethod: StepDownMethod;
 }
 
 interface BuildActions {
@@ -328,6 +339,10 @@ interface BuildActions {
    *  department dropdowns and rollups without changing the canonical
    *  registry. */
   setActiveFeeDepts: (depts: DeptCode[]) => void;
+  /** Set the jurisdiction-wide CAP allocation method. Drives every
+   *  downstream calculation (Allocation Detail, Allocation Matrix, FBHR,
+   *  Cost of Service, overhead exports). */
+  setStepDownMethod: (method: StepDownMethod) => void;
   createVersion: (input?: { label?: string; status?: StudyVersionStatus; notes?: string }) => StudyVersion;
   setComparisonVersion: (id: string | null) => void;
   /** Edit one Functional Allocation bucket (name, description,
@@ -441,6 +456,7 @@ const initialState = (): BuildState => {
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
     operatingCategoryMappings: {},
+    stepDownMethod: "double",
   };
   const seedVersion: StudyVersion = {
     id: "version-seed-baseline",
@@ -1250,6 +1266,9 @@ export const useBuildStore = create<BuildState & BuildActions>()(
       setActiveFiscalYear: (fy) =>
         set(() => ({ activeFiscalYear: fy })),
 
+      setStepDownMethod: (method) =>
+        set(() => ({ stepDownMethod: method })),
+
       setActiveFeeDepts: (depts) =>
         set((s) => {
           const valid = new Set(FEE_DEPTS);
@@ -1409,17 +1428,13 @@ interface BuildDerived {
    *  direct node whose feeDept classification matches. Flows into deptFBHR
    *  so the CAP rate ($/hr) reconciles to the pool inventory. */
   capAllocated: Record<DeptCode, number>;
-  /** Pre-computed step-down model (double method). Cells keyed by
-   *  NodeKey (glCode or synth seed:* key). Source of truth for FBHR
-   *  rollup, matrix tabs, and cell traces; downstream calculations
-   *  (capAllocated, fbhr, comparisons) all key off this. */
+  /** Pre-computed step-down model for the currently selected
+   *  jurisdiction-wide method (state.stepDownMethod). Cells keyed by
+   *  NodeKey (glCode or synth seed:* key). Source of truth for every
+   *  downstream consumer — FBHR rollup, Allocation Detail, Allocation
+   *  Matrix, cell traces, exports — so switching method propagates
+   *  everywhere from a single recompute. */
   capStepDown: GlStepDownModel;
-  /** Pre-computed step-down model (single method). Same shape as
-   *  capStepDown; surfaced for the Allocation Detail page's method
-   *  toggle so the analyst can compare side-by-side without recomputing
-   *  in the React tree. Not used by FBHR / Cost of Service — the
-   *  jurisdiction's authoritative method is "double". */
-  capStepDownSingle: GlStepDownModel;
   /** Per-dept capacity reconciliation: allocated demand hours (rolled up
    *  from service × role allocations, routed by role.dept) ÷ productive
    *  supply hours (from the productiveHours roster). Drives the Cost of
@@ -1480,7 +1495,12 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     modeledFeeDepts,
   });
 
-  const stepDownArgs = {
+  // Single CAP allocation computed with the jurisdiction-wide method
+  // the analyst has selected. All downstream consumers (capAllocated,
+  // FBHR, Cost of Service, Allocation Detail/Matrix, exports) read from
+  // this one result — so toggling stepDownMethod flips every view
+  // coherently and reproducing prior runs only requires switching back.
+  const stepDown = computeStepDownGl({
     pools: state.capPools,
     centerOrder: state.capCenterOrder,
     bases: state.allocationBases,
@@ -1488,9 +1508,8 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     directAllocations: state.capDirectAllocations,
     directBills: state.directBills,
     graph,
-  };
-  const stepDown = computeStepDownGl({ ...stepDownArgs, method: "double" });
-  const stepDownSingle = computeStepDownGl({ ...stepDownArgs, method: "single" });
+    method: state.stepDownMethod,
+  });
 
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV
       && stepDown.diagnostics.length > 0) {
@@ -1540,7 +1559,6 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     deptRollup,
     capAllocated,
     capStepDown: stepDown,
-    capStepDownSingle: stepDownSingle,
     utilization,
     functionalAllocation,
   };
@@ -1611,6 +1629,7 @@ export function useBuildState() {
     state.policyTargets, state.policyExceptions,
     state.functionalAllocation,
     state.volume,
+    state.stepDownMethod,
   ]);
 
   return { ...state, derived };

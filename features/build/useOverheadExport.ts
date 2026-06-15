@@ -22,6 +22,7 @@ export function useOverheadExport() {
     capCenterOrder: state.capCenterOrder,
     model: state.derived.capStepDown,
     fbhrRollup: capAllocatedFromGl(state.derived.capStepDown),
+    stepDownMethod: state.stepDownMethod,
   }), [state]);
 
   const downloadExcel = useCallback(async () => {

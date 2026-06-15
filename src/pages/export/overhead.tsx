@@ -34,6 +34,7 @@ export default function OverheadExportPage() {
     capCenterOrder: state.capCenterOrder,
     model: state.derived.capStepDown,
     fbhrRollup: capAllocatedFromGl(state.derived.capStepDown),
+    stepDownMethod: state.stepDownMethod,
   }), [state]);
 
   if (!hydrated) {
@@ -87,22 +88,52 @@ function Toolbar({ payload }: { payload: CapExportPayload }) {
 }
 
 
+// Centralizes every methodology-name surface in the report. Switching
+// stepDownMethod flips both the headline naming ("double" vs "single")
+// and the narrative used in Methodology, Reading the Plan, and the
+// FBHR rollup intro — so a single source-of-truth here keeps the
+// document internally consistent.
+interface MethodologyCopy {
+  /** Long inline phrase, e.g. "double-step-down methodology". */
+  inlinePhrase: string;
+  /** Section / heading-cased name, e.g. "Double-step-down methodology". */
+  headingName: string;
+  /** Short cover-page subtitle suffix. */
+  coverSubtitle: string;
+}
+
+function methodologyCopy(method: CapExportPayload["stepDownMethod"]): MethodologyCopy {
+  if (method === "single") {
+    return {
+      inlinePhrase: "single-step-down methodology",
+      headingName: "Single-step-down methodology",
+      coverSubtitle: "Indirect support service allocation via single-step-down methodology",
+    };
+  }
+  return {
+    inlinePhrase: "double-step-down methodology",
+    headingName: "Double-step-down methodology",
+    coverSubtitle: "Indirect support service allocation via double-step-down methodology",
+  };
+}
+
 function Report({ payload }: { payload: CapExportPayload }) {
   useAutoPrint();
+  const copy = methodologyCopy(payload.stepDownMethod);
   return (
     <div className="report">
-      <Cover payload={payload}/>
+      <Cover payload={payload} copy={copy}/>
       <TableOfContents/>
-      <ExecutiveSummary payload={payload}/>
-      <PurposeAndMethodology/>
-      <ProjectDevelopmentProcess/>
+      <ExecutiveSummary payload={payload} copy={copy}/>
+      <PurposeAndMethodology method={payload.stepDownMethod} copy={copy}/>
+      <ProjectDevelopmentProcess copy={copy}/>
       <DataSourcesAndValidation/>
       <AllocationBasisSummary payload={payload}/>
-      <ReadingThePlan/>
+      <ReadingThePlan copy={copy}/>
       <CostCenters payload={payload}/>
       <CostPools payload={payload}/>
       <AllocationByCenter payload={payload}/>
-      <FbhrRollup payload={payload}/>
+      <FbhrRollup payload={payload} copy={copy}/>
       <Appendices payload={payload}/>
     </div>
   );
@@ -112,7 +143,7 @@ function Report({ payload }: { payload: CapExportPayload }) {
 // Sections
 // ============================================================================
 
-function Cover({ payload }: { payload: CapExportPayload }) {
+function Cover({ payload, copy }: { payload: CapExportPayload; copy: MethodologyCopy }) {
   const totalGross = Object.values(payload.capCenterTotals).reduce((a, v) => a + v, 0);
   const totalDis = Object.values(payload.capCenterDisallowed).reduce((a, v) => a + v, 0);
   const totalNet = Math.max(0, totalGross - totalDis);
@@ -124,7 +155,7 @@ function Cover({ payload }: { payload: CapExportPayload }) {
     <ExportCover
       city={payload.cityName}
       title="Full Cost Allocation Plan"
-      subtitle="Indirect support service allocation via double-step-down methodology"
+      subtitle={copy.coverSubtitle}
       fields={[
         { label: "Fiscal year",            value: payload.fiscal },
         { label: "Net allocable",          value: fmt.dollars(totalNet) },
@@ -196,7 +227,7 @@ function TableOfContents() {
   );
 }
 
-function ExecutiveSummary({ payload }: { payload: CapExportPayload }) {
+function ExecutiveSummary({ payload, copy }: { payload: CapExportPayload; copy: MethodologyCopy }) {
   const totalGross = Object.values(payload.capCenterTotals).reduce((a, v) => a + v, 0);
   const totalDis = Object.values(payload.capCenterDisallowed).reduce((a, v) => a + v, 0);
   const totalNet = Math.max(0, totalGross - totalDis);
@@ -271,14 +302,16 @@ function ExecutiveSummary({ payload }: { payload: CapExportPayload }) {
       <div className="body footnote">
         Largest support function reflects total outgoing allocations from a
         single indirect cost center. Largest receiver reflects total indirect
-        cost received by a single direct department under the double-step-down
-        methodology described in Section 2.
+        cost received by a single direct department under the {copy.inlinePhrase}
+        {" "}described in Section 2.
       </div>
     </section>
   );
 }
 
-function PurposeAndMethodology() {
+function PurposeAndMethodology({
+  method, copy,
+}: { method: CapExportPayload["stepDownMethod"]; copy: MethodologyCopy }) {
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 2</div>
@@ -363,41 +396,71 @@ function PurposeAndMethodology() {
         </p>
       </div>
 
-      <h3 className="h3" style={{ marginTop: 14 }}>Double-step-down methodology</h3>
-      <div className="body">
-        <p>
-          The double-step-down methodology recognizes that central service
-          departments often provide support to one another before
-          ultimately supporting operational departments. Under this
-          methodology, support costs are first distributed among central
-          service departments and then fully allocated to receiving
-          departments and programs.
-        </p>
-      </div>
+      <h3 className="h3" style={{ marginTop: 14 }}>{copy.headingName}</h3>
+      {method === "single" ? (
+        <>
+          <div className="body">
+            <p>
+              The single-step-down methodology allocates each indirect cost
+              center&rsquo;s costs in one pass directly to the receiving
+              direct departments. Indirect centers do not receive
+              allocations from one another; each pool distributes its net
+              allocable cost via its receiver schedule with indirect
+              receivers excluded and the surviving allocation percentages
+              renormalized across direct receivers.
+            </p>
+          </div>
 
-      <h3 className="h3" style={{ marginTop: 12 }}>Phase 1 — First Allocation</h3>
-      <div className="body">
-        <p>
-          For each indirect cost center in step-down order, First Incoming
-          equals the sum of upstream centers&rsquo; Phase 1 contributions.
-          Each pool distributes <b>(own eligible + pool-weight × First
-          Incoming)</b> via its receiver schedule with no receiver
-          exclusions.
-        </p>
-      </div>
+          <h3 className="h3" style={{ marginTop: 12 }}>Allocation pass</h3>
+          <div className="body">
+            <p>
+              For each indirect cost center in step-down order, each pool
+              distributes <b>its full net allocable amount</b> via the
+              pool&rsquo;s receiver schedule. Indirect receivers are
+              excluded and surviving allocation percentages renormalize to
+              100% across the direct receivers. The methodology completes
+              in a single pass with no second phase or further iteration.
+            </p>
+          </div>
+        </>
+      ) : (
+        <>
+          <div className="body">
+            <p>
+              The double-step-down methodology recognizes that central service
+              departments often provide support to one another before
+              ultimately supporting operational departments. Under this
+              methodology, support costs are first distributed among central
+              service departments and then fully allocated to receiving
+              departments and programs.
+            </p>
+          </div>
 
-      <h3 className="h3" style={{ marginTop: 10 }}>Phase 2 — Second Allocation</h3>
-      <div className="body">
-        <p>
-          After Phase 1 completes, for each center in step order Second
-          Incoming equals Total Received less First Incoming. Each pool
-          distributes <b>(pool-weight × Second Incoming)</b> via its
-          schedule with the cost center itself and any upstream cost
-          centers excluded; surviving allocation percentages renormalize to
-          100%. The methodology completes in a single pass with no further
-          iteration.
-        </p>
-      </div>
+          <h3 className="h3" style={{ marginTop: 12 }}>Phase 1 — First Allocation</h3>
+          <div className="body">
+            <p>
+              For each indirect cost center in step-down order, First Incoming
+              equals the sum of upstream centers&rsquo; Phase 1 contributions.
+              Each pool distributes <b>(own eligible + pool-weight × First
+              Incoming)</b> via its receiver schedule with no receiver
+              exclusions.
+            </p>
+          </div>
+
+          <h3 className="h3" style={{ marginTop: 10 }}>Phase 2 — Second Allocation</h3>
+          <div className="body">
+            <p>
+              After Phase 1 completes, for each center in step order Second
+              Incoming equals Total Received less First Incoming. Each pool
+              distributes <b>(pool-weight × Second Incoming)</b> via its
+              schedule with the cost center itself and any upstream cost
+              centers excluded; surviving allocation percentages renormalize to
+              100%. The methodology completes in a single pass with no further
+              iteration.
+            </p>
+          </div>
+        </>
+      )}
 
       <h3 className="h3" style={{ marginTop: 14 }}>Allocation process diagram</h3>
       <div style={{
@@ -526,7 +589,7 @@ function pdfCenterMeta(payload: CapExportPayload): Map<string, { name: string; g
   return m;
 }
 
-function ProjectDevelopmentProcess() {
+function ProjectDevelopmentProcess({ copy }: { copy: MethodologyCopy }) {
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 3</div>
@@ -546,7 +609,7 @@ function ProjectDevelopmentProcess() {
           <li>Selection of allocation bases that reasonably approximate benefit received.</li>
           <li>Collection of allocation statistics from financial, payroll, and operational systems.</li>
           <li>Staff interviews and validation of allocation assumptions with departmental subject-matter staff.</li>
-          <li>Allocation modeling under the double-step-down methodology.</li>
+          <li>Allocation modeling under the {copy.inlinePhrase}.</li>
           <li>Quality control review of pool routing, basis denominators, and conservation of allocable dollars.</li>
           <li>Report development, internal review, and finalization.</li>
         </ul>
@@ -727,7 +790,7 @@ function AllocationBasisSummary({ payload }: { payload: CapExportPayload }) {
   );
 }
 
-function ReadingThePlan() {
+function ReadingThePlan({ copy }: { copy: MethodologyCopy }) {
   return (
     <section className="section section-break" style={{ marginBottom: 32 }}>
       <div className="eyebrow">Section 6</div>
@@ -803,7 +866,7 @@ function ReadingThePlan() {
           </li>
           <li>
             <b>First-pass allocation</b> — the first-phase distribution
-            under the double-step-down methodology; includes a
+            under the {copy.inlinePhrase}; includes a
             department&apos;s own eligible cost plus any upstream first
             incoming.
           </li>
@@ -1201,7 +1264,7 @@ function ScheduleRow({
   );
 }
 
-function FbhrRollup({ payload }: { payload: CapExportPayload }) {
+function FbhrRollup({ payload, copy }: { payload: CapExportPayload; copy: MethodologyCopy }) {
   // Only surface fee depts the jurisdiction actually routes CAP $ to.
   // Hides empty PARKS/PD/FIRE rows on jurisdictions that don't model them.
   const activeDepts = FEE_DEPTS.filter((d) => (payload.fbhrRollup[d] ?? 0) > 0.5);
@@ -1214,8 +1277,7 @@ function FbhrRollup({ payload }: { payload: CapExportPayload }) {
         Allocated indirect support service dollars feeding the Fully
         Burdened Hourly Rate calculation for each fee-supported operating
         department. Equals the sum of receiving-department totals classified
-        to the corresponding fee department under the double-step-down
-        methodology.
+        to the corresponding fee department under the {copy.inlinePhrase}.
       </div>
       <table>
         <thead>

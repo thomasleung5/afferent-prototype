@@ -220,6 +220,14 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (!state.operatingCategoryMappings || typeof state.operatingCategoryMappings !== "object") {
     state.operatingCategoryMappings = {};
   }
+  // stepDownMethod was added after the rest of the schema. Legacy and
+  // pre-feature persisted state lands here with no field set; backfill
+  // "double" so existing studies reproduce the historical results
+  // unchanged. Any other string is coerced back to "double" so a
+  // hand-edited or corrupted value can't ship through to the engine.
+  if (state.stepDownMethod !== "double" && state.stepDownMethod !== "single") {
+    state.stepDownMethod = "double";
+  }
   if (Array.isArray(state.volume)) {
     const needsCoerce = state.volume.some(
       (w: VolumeRow) => !(VALID_SOURCES as string[]).includes(w.source as string),

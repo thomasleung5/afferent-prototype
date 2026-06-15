@@ -38,6 +38,7 @@ export function createBuildSnapshot(state: BuildSnapshot): BuildSnapshot {
     activeFeeDepts: state.activeFeeDepts,
     activeFiscalYear: state.activeFiscalYear,
     operatingCategoryMappings: state.operatingCategoryMappings,
+    stepDownMethod: state.stepDownMethod,
   });
 }
 

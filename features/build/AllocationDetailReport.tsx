@@ -5,7 +5,7 @@ import {
   basisForPool, basisUnitRowForBasis, type BasisResolution,
 } from "@/lib/data/capBasisRouting";
 import type { GlNode, StepDownMethod } from "@/lib/data/capStepDownEngine";
-import { useBuildState } from "@/lib/store";
+import { useBuildState, useBuildActions } from "@/lib/store";
 
 /** Per-pool Allocation Detail report in the standard published CAP format.
  *
@@ -25,14 +25,16 @@ import { useBuildState } from "@/lib/store";
 export function AllocationDetailReport() {
   const {
     capPools, allocationBases, capBasisUnits, capDirectAllocations,
-    setDirectBill, derived,
+    stepDownMethod, setDirectBill, derived,
   } = useBuildState();
-  // Step-down method is a viewing preference local to this page. The
-  // authoritative jurisdiction-wide model (the one FBHR + Cost of Service
-  // read) stays "double" — switching here only re-renders this report
-  // against the alternate engine output the store already memoizes.
-  const [method, setMethod] = useState<StepDownMethod>("double");
-  const model = method === "single" ? derived.capStepDownSingle : derived.capStepDown;
+  // Step-down method is the authoritative jurisdiction-wide selection.
+  // Changing it here flips every downstream view (FBHR, Cost of Service,
+  // Allocation Matrix, exports) because the store recomputes
+  // derived.capStepDown against the new method.
+  const { setStepDownMethod } = useBuildActions((s) => ({
+    setStepDownMethod: s.setStepDownMethod,
+  }));
+  const model = derived.capStepDown;
   const directByPoolId = useMemo(
     () => new Map(capDirectAllocations.map((da) => [da.poolId, da])),
     [capDirectAllocations],
@@ -90,7 +92,7 @@ export function AllocationDetailReport() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <MethodPicker method={method} onChange={setMethod}/>
+      <MethodPicker method={stepDownMethod} onChange={setStepDownMethod}/>
       <PoolPicker
         pools={sortedPools}
         selectedId={selected.id}

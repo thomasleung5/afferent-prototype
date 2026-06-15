@@ -248,6 +248,33 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   console.log("  ✓ functionalAllocation new-shape buckets pass through unchanged");
 }
 
+// ── 8b. stepDownMethod — legacy state defaults to "double" ───────────────
+//
+// Promoting stepDownMethod from a local UI viewing preference to a
+// persisted store field means every existing localStorage snapshot, every
+// server-backed study, and every uploaded JSON envelope rehydrates with
+// the field MISSING. Defaulting to "double" preserves the historical
+// jurisdiction-wide method bit-for-bit. An invalid string (corrupted /
+// hand-edited / typo in a custom export) is also coerced — the engine
+// never sees a value outside the union.
+{
+  const empty: Record<string, unknown> = {};
+  migratePersistedState(empty as never);
+  assert.equal(empty.stepDownMethod, "double",
+    "missing stepDownMethod defaults to 'double' (legacy reproducibility)");
+
+  const single: Record<string, unknown> = { stepDownMethod: "single" };
+  migratePersistedState(single as never);
+  assert.equal(single.stepDownMethod, "single",
+    "user-selected 'single' survives migration unchanged");
+
+  const corrupted: Record<string, unknown> = { stepDownMethod: "triple" };
+  migratePersistedState(corrupted as never);
+  assert.equal(corrupted.stepDownMethod, "double",
+    "unknown method value coerces back to 'double' (safe fallback)");
+  console.log("  ✓ stepDownMethod: defaults to 'double', preserves valid values, coerces invalid");
+}
+
 // ── 9. Idempotency ────────────────────────────────────────────────────────
 // Each scenario runs migratePersistedState twice and asserts the state is
 // byte-identical across the two passes. Versions are stripped because

@@ -17,7 +17,7 @@
  * Mirrors the structure of lib/export/excel.ts (fee study exporter). */
 
 import type { AllocationBasis, CapPool } from "../types";
-import type { GlNode, GlStepDownModel } from "../data/capStepDownEngine";
+import type { GlNode, GlStepDownModel, StepDownMethod } from "../data/capStepDownEngine";
 import { basisForPool } from "../data/capBasisRouting";
 import { FEE_DEPTS } from "../data/departments";
 import { buildXlsxBlob, h, n, type Cell, type SheetSpec } from "./xlsx";
@@ -33,6 +33,10 @@ export interface CapExportPayload {
   capCenterOrder: string[];
   model: GlStepDownModel;
   fbhrRollup: Record<string, number>;
+  /** Allocation method the engine ran. Drives the Summary sheet's
+   *  methodology labels and descriptions so the exported workbook
+   *  matches what the analyst selected in Allocation Detail. */
+  stepDownMethod: StepDownMethod;
 }
 
 export async function exportCapXlsx(p: CapExportPayload): Promise<Blob> {
@@ -78,6 +82,36 @@ function buildSummary(p: CapExportPayload): Cell[][] {
     ["Net Allocable Expenses",       n(totalNet, "$#,##0")],
     [],
     [h("Methodology")],
+    ...methodologyRows(p.stepDownMethod),
+    [],
+    [h("Step-down order")],
+    ...p.model.stepOrder.map((k, i) => {
+      const node = p.model.nodes.find((n) => n.key === k);
+      return [String(i + 1).padStart(2, "0"), node?.name ?? k];
+    }),
+  ];
+}
+
+// Methodology block for the Summary sheet. The double method is the
+// historical NBS-aligned two-phase step-down; the single method is a
+// one-pass variant that allocates each indirect center's costs directly
+// to direct receivers only. Both labels match the Allocation Detail
+// MethodPicker hint text so the export reads consistently with the UI.
+function methodologyRows(method: StepDownMethod): Cell[][] {
+  if (method === "single") {
+    return [
+      ["Approach", "Single step-down allocation (one pass, direct receivers only)"],
+      [
+        "Allocation",
+        "Each indirect cost center allocates its costs once, distributing only to direct receivers. Receiver percents renormalize across the surviving direct receivers; no second pass.",
+      ],
+      [
+        "Indirect-to-indirect transfers",
+        "Suppressed — indirect centers do not receive from one another, so First Incoming is structurally zero and Phase 2 is skipped.",
+      ],
+    ];
+  }
+  return [
     ["Approach", "Sequential two-phase step-down allocation (NBS-aligned)"],
     [
       "Phase 1 (First Allocation)",
@@ -95,12 +129,6 @@ function buildSummary(p: CapExportPayload): Cell[][] {
       "Second Incoming",
       "Total Received − First Incoming (= self + downstream Phase 1 + upstream Phase 2).",
     ],
-    [],
-    [h("Step-down order")],
-    ...p.model.stepOrder.map((k, i) => {
-      const node = p.model.nodes.find((n) => n.key === k);
-      return [String(i + 1).padStart(2, "0"), node?.name ?? k];
-    }),
   ];
 }
 
