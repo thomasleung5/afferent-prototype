@@ -4,7 +4,7 @@ import { fmt } from "@/lib/format";
 import {
   basisForPool, basisUnitRowForBasis, type BasisResolution,
 } from "@/lib/data/capBasisRouting";
-import type { GlNode } from "@/lib/data/capStepDownEngine";
+import type { GlNode, StepDownMethod } from "@/lib/data/capStepDownEngine";
 import { useBuildState } from "@/lib/store";
 
 /** Per-pool Allocation Detail report in the standard published CAP format.
@@ -27,7 +27,12 @@ export function AllocationDetailReport() {
     capPools, allocationBases, capBasisUnits, capDirectAllocations,
     setDirectBill, derived,
   } = useBuildState();
-  const model = derived.capStepDown;
+  // Step-down method is a viewing preference local to this page. The
+  // authoritative jurisdiction-wide model (the one FBHR + Cost of Service
+  // read) stays "double" — switching here only re-renders this report
+  // against the alternate engine output the store already memoizes.
+  const [method, setMethod] = useState<StepDownMethod>("double");
+  const model = method === "single" ? derived.capStepDownSingle : derived.capStepDown;
   const directByPoolId = useMemo(
     () => new Map(capDirectAllocations.map((da) => [da.poolId, da])),
     [capDirectAllocations],
@@ -85,6 +90,7 @@ export function AllocationDetailReport() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
+      <MethodPicker method={method} onChange={setMethod}/>
       <PoolPicker
         pools={sortedPools}
         selectedId={selected.id}
@@ -435,6 +441,62 @@ function CostsRow({
         textAlign: "right",
         color: emphasis ? "var(--accent)" : dimColor(total),
       }}>{fmtMoney(total)}</div>
+    </div>
+  );
+}
+
+function MethodPicker({
+  method, onChange,
+}: { method: StepDownMethod; onChange: (m: StepDownMethod) => void }) {
+  const options: { value: StepDownMethod; label: string; hint: string }[] = [
+    {
+      value: "double", label: "Double step-down",
+      hint: "Each indirect center allocates to all downstream centers, then upstream incoming is redistributed in Phase 2 (self + upstream excluded).",
+    },
+    {
+      value: "single", label: "Single step-down",
+      hint: "Each indirect center allocates once, directly to eligible direct centers only. Driver normalizes across the direct receivers; no second pass.",
+    },
+  ];
+  return (
+    <div>
+      <SectionLabel right={options.find((o) => o.value === method)?.hint}>
+        Allocation method
+      </SectionLabel>
+      <div
+        role="radiogroup"
+        aria-label="Allocation method"
+        style={{
+          display: "inline-flex",
+          border: "1px solid var(--rule)",
+          background: "var(--paper)",
+        }}
+      >
+        {options.map((o, i) => {
+          const active = o.value === method;
+          return (
+            <button
+              key={o.value}
+              role="radio"
+              aria-checked={active}
+              onClick={() => onChange(o.value)}
+              title={o.hint}
+              style={{
+                padding: "6px 14px",
+                fontFamily: "var(--ff-ui)",
+                fontSize: "var(--t-l7)",
+                fontWeight: active ? 600 : 500,
+                color: active ? "var(--paper)" : "var(--ink-2)",
+                background: active ? "var(--ink)" : "transparent",
+                borderLeft: i > 0 ? "1px solid var(--rule)" : "none",
+                cursor: "pointer",
+              }}
+            >
+              {o.label}
+            </button>
+          );
+        })}
+      </div>
     </div>
   );
 }

@@ -1409,9 +1409,17 @@ interface BuildDerived {
    *  direct node whose feeDept classification matches. Flows into deptFBHR
    *  so the CAP rate ($/hr) reconciles to the pool inventory. */
   capAllocated: Record<DeptCode, number>;
-  /** Pre-computed step-down model. Cells keyed by NodeKey (glCode or synth
-   *  seed:* key). Source of truth for the matrix tabs + cell traces. */
+  /** Pre-computed step-down model (double method). Cells keyed by
+   *  NodeKey (glCode or synth seed:* key). Source of truth for FBHR
+   *  rollup, matrix tabs, and cell traces; downstream calculations
+   *  (capAllocated, fbhr, comparisons) all key off this. */
   capStepDown: GlStepDownModel;
+  /** Pre-computed step-down model (single method). Same shape as
+   *  capStepDown; surfaced for the Allocation Detail page's method
+   *  toggle so the analyst can compare side-by-side without recomputing
+   *  in the React tree. Not used by FBHR / Cost of Service — the
+   *  jurisdiction's authoritative method is "double". */
+  capStepDownSingle: GlStepDownModel;
   /** Per-dept capacity reconciliation: allocated demand hours (rolled up
    *  from service × role allocations, routed by role.dept) ÷ productive
    *  supply hours (from the productiveHours roster). Drives the Cost of
@@ -1472,7 +1480,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     modeledFeeDepts,
   });
 
-  const stepDown = computeStepDownGl({
+  const stepDownArgs = {
     pools: state.capPools,
     centerOrder: state.capCenterOrder,
     bases: state.allocationBases,
@@ -1480,7 +1488,9 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     directAllocations: state.capDirectAllocations,
     directBills: state.directBills,
     graph,
-  });
+  };
+  const stepDown = computeStepDownGl({ ...stepDownArgs, method: "double" });
+  const stepDownSingle = computeStepDownGl({ ...stepDownArgs, method: "single" });
 
   if (typeof import.meta !== "undefined" && import.meta.env?.DEV
       && stepDown.diagnostics.length > 0) {
@@ -1530,6 +1540,7 @@ export function deriveBuildDerived(state: BuildSnapshot): BuildDerived {
     deptRollup,
     capAllocated,
     capStepDown: stepDown,
+    capStepDownSingle: stepDownSingle,
     utilization,
     functionalAllocation,
   };

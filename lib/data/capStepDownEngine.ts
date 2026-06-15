@@ -315,12 +315,18 @@ export function buildEngineGraph(args: {
 // Step-down compute
 // ---------------------------------------------------------------------------
 
-/** Sequential two-phase CAP allocation over the glCode graph — implements
- *  the standard full-cost step-down methodology.
+/** Per-method allocation method. See computeStepDownGl docstring. */
+export type StepDownMethod = "double" | "single";
+
+/** Sequential CAP allocation over the glCode graph. The `method` arg
+ *  selects between the standard double step-down (default) and a single-
+ *  pass variant that allocates each indirect center's costs once,
+ *  directly to direct cost centers only.
  *
  *  Step ordering matters: each center sits at a position in stepOrder, and
  *  "upstream" = centers at earlier positions.
  *
+ *  ── DOUBLE STEP-DOWN (method = "double") ──
  *  PHASE 1 (First Allocation, in step order):
  *  For each center C in step order:
  *      firstIncoming[C]   = Σ over UPSTREAM pools q of firstAllocation[q][C]
@@ -328,10 +334,6 @@ export function buildEngineGraph(args: {
  *        firstPool[p]     = p.eligible + p.weight × firstIncoming[C]
  *        distribute firstPool[p] via p's schedule, NO exclusions
  *        (= published "Gross Allocation" / "First Allocation" column total)
- *
- *  Each pool's First Allocation column thus equals (own + share of upstream
- *  contributions) × schedule percent. Self-allocation rows are populated
- *  when the schedule names the pool's home center.
  *
  *  PHASE 2 (Second Allocation, in step order):
  *  After Phase 1 completes, then for each center C in step order:
@@ -350,11 +352,30 @@ export function buildEngineGraph(args: {
  *
  *  alloc2[pool.id][receiver] = First + Second per pool per receiver.
  *  Matches the per-pool "Allocation Detail" page in the published CAP PDF
- *  cell-for-cell. DIRECT-basis pools route their full eligible via their
- *  imported receivers list (each receiver's glCode is the routing target).
- *  If a DIRECT pool has no valid receivers, its eligible $ leaks and the
- *  pool is added to model.diagnostics — never silently rerouted by
- *  deptCode. DIRECT pools skip Phase 2.
+ *  cell-for-cell.
+ *
+ *  ── SINGLE STEP-DOWN (method = "single") ──
+ *  Each indirect center allocates its costs ONCE, directly to direct cost
+ *  centers only. Indirect centers do NOT receive allocations from other
+ *  indirect centers — so firstIncoming is structurally zero, no
+ *  redistribution happens, and Phase 2 is skipped entirely. Concretely:
+ *      For each pool p at center C in step order:
+ *        distribute p.eligible via p's schedule, INDIRECT nodes excluded,
+ *        percents renormalized across the surviving (= direct) receivers.
+ *
+ *  Conservation still holds: Σ alloc2 + Σ leakage = Σ pool.amount. The
+ *  alloc2 row for each pool lists $0 against every indirect node and the
+ *  full direct distribution against direct nodes. secondAllocation is
+ *  zero everywhere; firstAllocation carries the full per-pool routing.
+ *
+ *  ── COMMON TO BOTH METHODS ──
+ *  DIRECT-basis pools route their full eligible via their imported
+ *  receivers list (each receiver's glCode is the routing target). If a
+ *  DIRECT pool has no valid receivers, its eligible $ leaks and the pool
+ *  is added to model.diagnostics — never silently rerouted by deptCode.
+ *  DIRECT pools skip Phase 2 in double mode (no incoming to redistribute);
+ *  in single mode there is no Phase 2 at all. A pool whose basisId is
+ *  missing or orphaned leaks its eligible $ in either method.
  */
 export function computeStepDownGl(args: {
   pools: CapPool[];
@@ -368,10 +389,14 @@ export function computeStepDownGl(args: {
    *  entry can never produce a negative first allocation. Omit / pass {}
    *  when no direct bills are in play (default behaviour). */
   directBills?: Record<string, Record<NodeKey, number>>;
+  /** Step-down method. "double" (default) preserves the standard
+   *  two-phase methodology; "single" runs one pass that excludes
+   *  indirect receivers from every distribution and skips Phase 2. */
+  method?: StepDownMethod;
 }): GlStepDownModel {
   const {
     pools, centerOrder, bases, basisUnits, directAllocations, graph,
-    directBills = {},
+    directBills = {}, method = "double",
   } = args;
   const { nodes, resolveCenterNode, resolvePoolHome } = graph;
   const diagnostics: PoolDiagnostic[] = [];
@@ -519,6 +544,15 @@ export function computeStepDownGl(args: {
     if (!seenStep.has(n.key)) { stepOrder.push(n.key); seenStep.add(n.key); }
   }
 
+  // For "single" mode, every Phase 1 distribution excludes indirect
+  // receivers. That collapses firstIncoming to zero structurally (no
+  // pool ever puts $ on an indirect node) so Phase 2 has nothing to
+  // redistribute — we skip it entirely. The same exclude set is the
+  // mechanism that "normalizes the driver across eligible direct cost
+  // centers only" in single mode.
+  const indirectKeySet = new Set<NodeKey>(indirectNodes.map((n) => n.key));
+  const phase1Exclude = method === "single" ? indirectKeySet : new Set<NodeKey>();
+
   const zeroRow = (): Record<NodeKey, number> =>
     Object.fromEntries(nodes.map((n) => [n.key, 0])) as Record<NodeKey, number>;
 
@@ -661,7 +695,9 @@ export function computeStepDownGl(args: {
       }
       // route.schedule was already filtered to receivers with a known
       // node + non-zero share. distributeAmount handles renormalization.
-      distributeAmount(route.schedule, firstPool, grossAllocation[p.id], new Set());
+      // In single mode, phase1Exclude removes indirect receivers so the
+      // percent denominator collapses to direct-only.
+      distributeAmount(route.schedule, firstPool, grossAllocation[p.id], phase1Exclude);
       settleDirectBills(p.id);
     }
   }
@@ -680,7 +716,7 @@ export function computeStepDownGl(args: {
       settleDirectBills(p.id);
       continue;
     }
-    distributeAmount(route.schedule, p.amount, grossAllocation[p.id], new Set());
+    distributeAmount(route.schedule, p.amount, grossAllocation[p.id], phase1Exclude);
     settleDirectBills(p.id);
   }
 
@@ -691,7 +727,12 @@ export function computeStepDownGl(args: {
   //   secondIncoming[C]  = totalReceived[C] - firstIncoming[C]
   // Each pool at C redistributes its share via the schedule with self +
   // upstream excluded; surviving percents renormalize to 100%.
-  for (const centerKey of stepOrder) {
+  //
+  // Single step-down skips Phase 2 entirely — by construction Phase 1
+  // never put $ on any indirect node, so secondIncoming would be zero
+  // for every center and the loop would no-op. The explicit guard keeps
+  // the math contract self-documenting.
+  if (method === "double") for (const centerKey of stepOrder) {
     const upstreamKeys = upstreamKeysFor(centerKey);
 
     let totalReceived = 0;
