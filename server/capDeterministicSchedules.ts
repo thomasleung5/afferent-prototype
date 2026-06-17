@@ -192,6 +192,26 @@ function headerCandidates(
       // this case properly; without one, there's no way to disambiguate,
       // so skip rather than guess.
       if (isBareGenericMatch) continue;
+      // This fallback treats the matched cell's own column as the Value
+      // column (no nested "Value" subheader was found below it) — only
+      // sound when the cell text basically *is* the basis name/header,
+      // not when it merely shares a substring with it. `headerTextMatches`
+      // allows loose containment (needed for truncations like "AP Inv."
+      // matching "AP Invoices"), but that same looseness lets a short,
+      // generic accounting word — e.g. a dollar-column header literally
+      // named "Expense" — falsely satisfy `"...operatingexpenses".includes
+      // ("expense")` against an unrelated basis name like "Modified
+      // Operating Expenses". CAP exhibits also print narrative "Summary of
+      // Allocation Decisions" tables where each basis *name* appears as a
+      // plain data cell once per cost center, so a real header should also
+      // be the only occurrence of that text in its column. Require both:
+      // near-full-length overlap (not a short fragment) and uniqueness in
+      // the column, before trusting this fallback.
+      const isCloseTextMatch = matchesTarget
+        ? closeHeaderMatch(normalizedCell, normalizedTarget)
+        : closeHeaderMatch(normalizedCell, normalizedBasis);
+      if (!isCloseTextMatch) continue;
+      if (columnTextOccurrences(rows, c, normalizedCell) > 1) continue;
       add(r, c, true);
     }
   }
@@ -209,6 +229,15 @@ function headerCandidates(
   }
 
   return candidates;
+}
+
+function columnTextOccurrences(rows: TextItem[][], columnIndex: number, normalizedText: string): number {
+  let count = 0;
+  for (const row of rows) {
+    const cell = row[columnIndex];
+    if (cell && normalizeHeaderText(cell.text) === normalizedText) count += 1;
+  }
+  return count;
 }
 
 function valueColumnsInRow(row: TextItem[]): number[] {
@@ -419,6 +448,18 @@ function headerTextMatches(normalizedCell: string, normalizedTarget: string): bo
     && (normalizedCell === normalizedTarget
       || normalizedCell.includes(normalizedTarget)
       || normalizedTarget.includes(normalizedCell));
+}
+
+/** Stricter than `headerTextMatches`: rejects short-fragment containment
+ *  (e.g. "Expense" inside "ModifiedOperatingExpenses") while still
+ *  allowing genuine truncations (e.g. "AP Inv." inside "AP Invoices"). */
+function closeHeaderMatch(normalizedCell: string, normalizedTarget: string): boolean {
+  if (!normalizedCell || !normalizedTarget) return false;
+  if (normalizedCell === normalizedTarget) return true;
+  const shorter = normalizedCell.length <= normalizedTarget.length ? normalizedCell : normalizedTarget;
+  const longer = normalizedCell.length <= normalizedTarget.length ? normalizedTarget : normalizedCell;
+  if (!longer.includes(shorter)) return false;
+  return shorter.length >= 6 && shorter.length / longer.length >= 0.6;
 }
 
 function findValueSubheaderColumn(

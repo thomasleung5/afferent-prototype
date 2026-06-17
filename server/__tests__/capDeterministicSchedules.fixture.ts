@@ -909,4 +909,46 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Semantic response: malformed text returns empty array");
 }
 
+{
+  // Regression: real CAP exhibits also print a narrative "Summary of
+  // Allocation Decisions" table that lists each basis's *name* as a plain
+  // data cell once per cost center (e.g. "Modified Operating Expenses"
+  // repeated down a column for every center assigned that factor), and
+  // an unrelated dollar-amount header can contain a short fragment of the
+  // basis name (e.g. "Expense" inside "Allocable Central Service
+  // Expense", which is a substring of "ModifiedOperatingExpenses" once
+  // normalized). If the AI semantic pass mis-identifies this decision
+  // table as the basis's page, the loose `headerTextMatches` containment
+  // check used to let the fallback bind to that dollar column and read
+  // currency amounts as the basis's units. The fallback must require a
+  // close (not fragment) text match, and reject any column where the
+  // basis-name text recurs across multiple rows (a hallmark of decision
+  // data, not a header).
+  const pageItems: TextItem[] = [
+    item("Allocable Central Service", 50, 10, 150),
+    item("Expense", 50, 25, 60),
+    item("Allocation Basis", 250, 10, 150),
+    item("Allocation Factor", 250, 25, 110),
+    item("City Council", 50, 45, 90),
+    item("$ 631,378", 50, 45 + 1, 70),
+    item("City Council Agenda Items", 250, 45, 170),
+    item("City Council", 50, 65, 90),
+    item("$ 0", 50, 65 + 1, 70),
+    item("Modified Operating Expenses", 250, 65, 170),
+    item("Finance", 50, 85, 90),
+    item("$ 0", 50, 85 + 1, 70),
+    item("Modified Operating Expenses", 250, 85, 170),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.equal(result, null,
+    "a decision-table page with no real Value column must not produce fabricated units");
+  console.log("  ✓ Decision-table basis-name fragments don't get mistaken for a Value column");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");
