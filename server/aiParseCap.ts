@@ -725,8 +725,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           }
           const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
           const printedTotal = Number(row.printedTotal);
+          const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
           const deterministicTotalMatchesPrinted = receiverTotalMatchesPrintedTotal(row, result.receivers);
-          if (result.unmatchedReceivers.length > 0 && !deterministicTotalMatchesPrinted) {
+          const shouldFallBack = result.unmatchedReceivers.length > 0
+            || (hasPrintedTotal && !deterministicTotalMatchesPrinted);
+          if (shouldFallBack) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
             logEvent({
@@ -734,7 +737,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               msg: "deterministic schedule per-basis",
               basis: basisName,
               path: "ai-fallback",
-              reason: "unmatched-receivers",
+              reason: result.unmatchedReceivers.length > 0 ? "unmatched-receivers" : "total-mismatch",
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
@@ -742,7 +745,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               blank_receivers: result.blankReceivers.length,
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
-              printed_total: Number.isFinite(printedTotal) && printedTotal > 0 ? printedTotal : undefined,
+              printed_total: hasPrintedTotal ? printedTotal : undefined,
             });
             continue;
           }
