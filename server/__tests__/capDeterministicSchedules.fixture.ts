@@ -273,6 +273,94 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
 }
 
 {
+  // Regression: real CAP exhibits print a generic "Value" subheader on
+  // every basis-schedule page, including unrelated schedules many pages
+  // away within the AI's page-window scan. A bare match on the literal
+  // word "Value" (with no basis-name confirmation) used to register as a
+  // `preferred` candidate regardless of which table it came from, and
+  // candidates were grouped purely by raw column index — so an unrelated
+  // later-page table's "Value" column could be merged into the same
+  // group and, since `evaluatePdfReceiverGroup` resolves receivers into a
+  // single Map keyed by glCode, silently overwrite the correct basis's
+  // value when the same Fund/Org/Division glCode happens to recur (a
+  // realistic case — dept codes like "100-100" repeat across schedules).
+  // Page 2's Y values are offset, matching how aiParseCap.ts shifts each
+  // scanned page's items before clustering (each page's rows otherwise
+  // restart at y≈0 and would collapse into page 1's rows).
+  const PAGE_Y_OFFSET = 10000;
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35, 10, 1),
+    item("Organization", 100, 10, 80, 10, 1),
+    item("Division or Cost Pool", 200, 10, 120, 10, 1),
+    item("Modified Operating Expenses", 430, 10, 170, 10, 1),
+    item("No.", 50, 25, 25, 10, 1),
+    item("Title", 100, 25, 35, 10, 1),
+    item("No.", 200, 25, 25, 10, 1),
+    item("Title", 250, 25, 35, 10, 1),
+    item("No.", 300, 25, 25, 10, 1),
+    item("Title", 350, 25, 35, 10, 1),
+    item("Value", 430, 25, 45, 10, 1),
+    item("400", 50, 45, 25, 10, 1),
+    item("Water M & O Fund", 100, 45, 110, 10, 1),
+    item("0", 200, 45, 10, 10, 1),
+    item("Total Fund", 250, 45, 60, 10, 1),
+    item("0", 300, 45, 10, 10, 1),
+    item("Total Fund", 350, 45, 60, 10, 1),
+    item("2,000", 430, 45, 40, 10, 1),
+    // Filler receiver rows — real CAP schedules run for dozens of rows
+    // per page, so this asserts the fix holds even with realistic
+    // row-index distance between page 1's table and page 2's table (not
+    // just the contrived 1-data-row-per-page case).
+    item("410", 50, 65, 25, 10, 1),
+    item("Sewer M & O Fund", 100, 65, 110, 10, 1),
+    item("0", 200, 65, 10, 10, 1),
+    item("Total Fund", 250, 65, 60, 10, 1),
+    item("0", 300, 65, 10, 10, 1),
+    item("Total Fund", 350, 65, 60, 10, 1),
+    item("500", 430, 65, 40, 10, 1),
+    item("420", 50, 85, 25, 10, 1),
+    item("Gas Fund", 100, 85, 60, 10, 1),
+    item("0", 200, 85, 10, 10, 1),
+    item("Total Fund", 250, 85, 60, 10, 1),
+    item("0", 300, 85, 10, 10, 1),
+    item("Total Fund", 350, 85, 60, 10, 1),
+    item("700", 430, 85, 40, 10, 1),
+    item("Fund", 50, 10 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("Organization", 100, 10 + PAGE_Y_OFFSET, 80, 10, 2),
+    item("Division or Cost Pool", 200, 10 + PAGE_Y_OFFSET, 120, 10, 2),
+    item("Assigned Square Footage", 430, 10 + PAGE_Y_OFFSET, 170, 10, 2),
+    item("No.", 50, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 100, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("No.", 200, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 250, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("No.", 300, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 350, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("Value", 430, 25 + PAGE_Y_OFFSET, 45, 10, 2),
+    item("400", 50, 45 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Water M & O Fund", 100, 45 + PAGE_Y_OFFSET, 110, 10, 2),
+    item("0", 200, 45 + PAGE_Y_OFFSET, 10, 10, 2),
+    item("Total Fund", 250, 45 + PAGE_Y_OFFSET, 60, 10, 2),
+    item("0", 300, 45 + PAGE_Y_OFFSET, 10, 10, 2),
+    item("Total Fund", 350, 45 + PAGE_Y_OFFSET, 60, 10, 2),
+    item("9,999", 430, 45 + PAGE_Y_OFFSET, 40, 10, 2),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Value",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 3);
+  const waterRow = result.receivers.find((r) => r.glCode === "400-0");
+  assert.ok(waterRow);
+  assert.equal(waterRow.units, 2000,
+    "an unrelated page's same-column-index 'Value' table must not contaminate this basis");
+  console.log("  ✓ generic 'Value' header matches on unrelated pages don't contaminate the basis's own column");
+}
+
+{
   // Fund-level rows print the receiver name in the Fund Title column,
   // while the Organization / Division titles are generic "Total Fund".
   // Preserve the fund title so imported schedules do not show a pile of

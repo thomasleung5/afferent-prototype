@@ -164,7 +164,15 @@ function headerCandidates(
         : false;
       if (!matchesTarget && !matchesBasis) continue;
 
-      const valueColumn = findValueSubheaderColumn(rows, r, cell);
+      // A cell whose own text is already the bare generic word "Value" has
+      // nothing to descend into — searching for a "nested Value subheader
+      // below a Value header" is meaningless, and on multi-page scans it
+      // can wrongly latch onto a completely unrelated basis's Value column
+      // several rows down just because the two happen to share an X
+      // position. Only descend when the matched cell is a basis-name-like
+      // parent label (i.e. not itself the generic target word).
+      const isBareGenericMatch = normalizedTarget === "value" && normalizedCell === "value";
+      const valueColumn = isBareGenericMatch ? null : findValueSubheaderColumn(rows, r, cell);
       if (valueColumn) {
         add(valueColumn.rowIndex, valueColumn.columnIndex, true);
         if (includeAlternateValueColumns) {
@@ -174,6 +182,16 @@ function headerCandidates(
         }
         continue;
       }
+      // A bare match on the generic word "Value" itself is ambiguous on
+      // its own — multiple unrelated basis schedules across the scanned
+      // page window can each print their own "Value" column header.
+      // Accepting every such occurrence here as `preferred` let an
+      // unrelated, later-page Value column silently outrank (or get
+      // merged with, by column index) the correct one. When a basis name
+      // is available, the dedicated basis-confirmed scan below resolves
+      // this case properly; without one, there's no way to disambiguate,
+      // so skip rather than guess.
+      if (isBareGenericMatch) continue;
       add(r, c, true);
     }
   }
