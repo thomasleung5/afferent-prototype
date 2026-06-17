@@ -4,6 +4,7 @@ import {
   aiBasisColumnSemantics,
   extractReceiverUnitsFromPdf,
   loadPdfItemsByPage,
+  type DeterministicScheduleResult,
 } from "./capDeterministicSchedules";
 import {
   capDocumentProfileGuidance,
@@ -448,6 +449,39 @@ export function receiverTotalMatchesPrintedTotal(
   return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
 }
 
+export type DeterministicTrustDecision =
+  | { trust: true }
+  | { trust: false; reason: "unmatched-receivers" | "total-mismatch" | "no-resolved-receivers" };
+
+/** Single gate for "should we keep this basis's deterministic PDF read, or
+ *  fall back to the AI-extracted receivers?" All callers must go through
+ *  this function rather than inspecting `DeterministicScheduleResult`
+ *  fields directly — `unmatchedReceivers` is NOT a reliable completeness
+ *  signal on its own: `evaluatePdfReceiverGroup` (used whenever
+ *  `deriveReceiversFromPdf: true`, which is every call site today) always
+ *  returns it empty, since that path derives receivers from PDF rows
+ *  rather than matching against an AI-supplied candidate list. The
+ *  printed-total reconciliation is the strong signal and is checked
+ *  whenever a printed total is available; "no unmatched receivers" alone
+ *  is not sufficient to trust a result. */
+export function evaluateDeterministicResult(
+  row: Pick<BasisUnitsRow, "printedTotal">,
+  result: Pick<DeterministicScheduleResult, "receivers" | "unmatchedReceivers">,
+): DeterministicTrustDecision {
+  if (result.unmatchedReceivers.length > 0) {
+    return { trust: false, reason: "unmatched-receivers" };
+  }
+  const printedTotal = Number(row.printedTotal);
+  const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
+  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers)) {
+    return { trust: false, reason: "total-mismatch" };
+  }
+  if (result.receivers.length === 0) {
+    return { trust: false, reason: "no-resolved-receivers" };
+  }
+  return { trust: true };
+}
+
 export function missingScheduleBasisNames(
   bases: BasisRow[],
   basisUnits: BasisUnitsRow[],
@@ -726,10 +760,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
           const printedTotal = Number(row.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-          const deterministicTotalMatchesPrinted = receiverTotalMatchesPrintedTotal(row, result.receivers);
-          const shouldFallBack = result.unmatchedReceivers.length > 0
-            || (hasPrintedTotal && !deterministicTotalMatchesPrinted);
-          if (shouldFallBack) {
+          const decision = evaluateDeterministicResult(row, result);
+          if (!decision.trust) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
             logEvent({
@@ -737,7 +769,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               msg: "deterministic schedule per-basis",
               basis: basisName,
               path: "ai-fallback",
-              reason: result.unmatchedReceivers.length > 0 ? "unmatched-receivers" : "total-mismatch",
+              reason: decision.reason,
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
@@ -746,23 +778,6 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
               printed_total: hasPrintedTotal ? printedTotal : undefined,
-            });
-            continue;
-          }
-          if (result.receivers.length === 0) {
-            fallbackCount += 1;
-            nextBasisUnits.push(row);
-            logEvent({
-              tag: TAG,
-              msg: "deterministic schedule per-basis",
-              basis: basisName,
-              path: "ai-fallback",
-              reason: "no-resolved-receivers",
-              page: semantic.page,
-              column_header: semantic.basisColumnHeader,
-              ai_receivers: aiReceiverCount,
-              blank_receivers: result.blankReceivers.length,
-              unmatched_receivers: result.unmatchedReceivers.length,
             });
             continue;
           }

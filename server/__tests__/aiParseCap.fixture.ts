@@ -1,6 +1,7 @@
 import assert from "node:assert/strict";
 import {
   alignRecoveredBasisNames,
+  evaluateDeterministicResult,
   mergeBasisUnits,
   missingScheduleBasisNames,
   parseBasisUnitsResponse,
@@ -163,6 +164,63 @@ const gross = {
     "missing printed total cannot prove deterministic completeness",
   );
   console.log("  ✓ deterministic CAP schedules use printed total as reconciliation evidence");
+}
+
+{
+  // Regression: `evaluatePdfReceiverGroup` (the derive-from-PDF path used
+  // at every real call site) always returns `unmatchedReceivers: []`,
+  // since it has no AI candidate list to fail to match against. A gate
+  // that only distrusted a result via `unmatchedReceivers.length > 0`
+  // could never catch a deterministic extraction that silently
+  // undercounted receivers — exactly what happened in production
+  // (Gross/Modified Operating Expenses, FTE, Cash and Investments all
+  // landed below their printed totals while still reporting zero
+  // unmatched receivers). This case is the one that must fail trust.
+  const decision = evaluateDeterministicResult(
+    { printedTotal: 189_758_589 },
+    { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 150_000_000 }], unmatchedReceivers: [] },
+  );
+  assert.deepEqual(decision, { trust: false, reason: "total-mismatch" });
+  console.log("  ✓ evaluateDeterministicResult distrusts a total mismatch even with zero unmatched receivers");
+}
+
+{
+  const decision = evaluateDeterministicResult(
+    { printedTotal: 372.92 },
+    { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 6 }], unmatchedReceivers: [{ dept: "Housing", glCode: "100-700-0" }] },
+  );
+  assert.deepEqual(decision, { trust: false, reason: "unmatched-receivers" });
+  console.log("  ✓ evaluateDeterministicResult distrusts unmatched receivers even if the total happens to reconcile");
+}
+
+{
+  const decision = evaluateDeterministicResult(
+    {},
+    { receivers: [], unmatchedReceivers: [] },
+  );
+  assert.deepEqual(decision, { trust: false, reason: "no-resolved-receivers" });
+  console.log("  ✓ evaluateDeterministicResult distrusts an empty result with no printed total to check");
+}
+
+{
+  const decision = evaluateDeterministicResult(
+    { printedTotal: 372.92 },
+    { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 6 }, { dept: "Recreation", glCode: "100-600-0", units: 366.92 }], unmatchedReceivers: [] },
+  );
+  assert.deepEqual(decision, { trust: true });
+  console.log("  ✓ evaluateDeterministicResult trusts a clean, reconciled result");
+}
+
+{
+  // No printed total to reconcile against — a non-empty, fully-matched
+  // result is still trusted (existing schedules without a printed total
+  // must keep working).
+  const decision = evaluateDeterministicResult(
+    {},
+    { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 6 }], unmatchedReceivers: [] },
+  );
+  assert.deepEqual(decision, { trust: true });
+  console.log("  ✓ evaluateDeterministicResult trusts a fully-matched result with no printed total to reconcile");
 }
 
 console.log("\nAll aiParseCap assertions passed.");
