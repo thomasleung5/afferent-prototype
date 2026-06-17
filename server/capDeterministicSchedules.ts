@@ -53,6 +53,12 @@ export interface DeterministicScheduleResult {
    *  be fully verified" — callers should decide whether to fall back to
    *  the AI receivers or surface for review. */
   unmatchedReceivers: ReceiverIdentity[];
+  /** Printed total read directly from the schedule's own "Grand Total:
+   *  All Services" row, when found. More trustworthy than the primary AI
+   *  parse's `printedTotal` field for reconciliation, since it comes from
+   *  the same column read as the receivers rather than a separate,
+   *  fallible AI extraction. */
+  printedTotalFromPdf?: number;
 }
 
 export interface ExtractReceiverUnitsInput {
@@ -311,6 +317,7 @@ function evaluatePdfReceiverGroup(
   candidates: Array<{ headerRowIndex: number; columnIndex: number; preferred: boolean }>,
 ): DeterministicScheduleResult & { preferred: boolean } {
   const resolvedByCode = new Map<string, ResolvedReceiver>();
+  let printedTotalFromPdf: number | undefined;
 
   for (const candidate of candidates) {
     const table = tableFromScopedRows(rows, candidate.headerRowIndex);
@@ -318,10 +325,22 @@ function evaluatePdfReceiverGroup(
     const identityColumnEnd = firstValueColumnIndex(table.headers);
     for (const row of table.rows) {
       const receiver = receiverIdentityFromTableRow(row.slice(0, identityColumnEnd));
-      if (!receiver) continue;
-      const units = parseUnitsCell(row[candidate.columnIndex] ?? "");
-      if (units == null || units <= 0) continue;
-      resolvedByCode.set(receiver.glCode, { ...receiver, units });
+      if (receiver) {
+        const units = parseUnitsCell(row[candidate.columnIndex] ?? "");
+        if (units != null && units > 0) resolvedByCode.set(receiver.glCode, { ...receiver, units });
+        continue;
+      }
+      // The schedule's own "Grand Total: All Services" row is a far more
+      // reliable reconciliation source than the primary AI parse's
+      // printedTotal field — it's read straight off the same column we're
+      // already extracting receiver units from, rather than guessed by an
+      // earlier, separate AI call. Prefer it when present so a mis-read AI
+      // printedTotal can't cause `evaluateDeterministicResult` to discard
+      // an otherwise-correct deterministic extraction.
+      if (printedTotalFromPdf == null && /grand\s*total\s*:?\s*all\s*services/i.test(row.join(" "))) {
+        const total = parseUnitsCell(row[candidate.columnIndex] ?? "");
+        if (total != null && total > 0) printedTotalFromPdf = total;
+      }
     }
   }
 
@@ -330,6 +349,7 @@ function evaluatePdfReceiverGroup(
     blankReceivers: [],
     unmatchedReceivers: [],
     preferred: candidates.some((candidate) => candidate.preferred),
+    ...(printedTotalFromPdf != null ? { printedTotalFromPdf } : {}),
   };
 }
 

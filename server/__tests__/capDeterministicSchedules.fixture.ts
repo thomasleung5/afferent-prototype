@@ -951,4 +951,60 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Decision-table basis-name fragments don't get mistaken for a Value column");
 }
 
+{
+  // Regression: the primary AI CAP parse's `printedTotal` for a basis is a
+  // separate, fallible extraction from the deterministic receiver-units
+  // read. If it's wrong, `evaluateDeterministicResult` (in aiParseCap.ts)
+  // would wrongly reject an already-correct deterministic result as a
+  // "total-mismatch" and fall back to the AI's own row-shift-prone
+  // receivers. Real CAP exhibits print their own "Grand Total: All
+  // Services" row at the bottom of the schedule, in the same column
+  // already being read for receiver units — that's a more trustworthy
+  // reconciliation source. `extractReceiverUnitsFromPdf` must surface it
+  // as `printedTotalFromPdf` whenever a deriveReceiversFromPdf table
+  // contains that row.
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35, 10, 1),
+    item("Organization", 100, 10, 80, 10, 1),
+    item("Division or Cost Pool", 200, 10, 120, 10, 1),
+    item("Modified Operating Expenses", 430, 10, 170, 10, 1),
+    item("No.", 50, 25, 25, 10, 1),
+    item("Title", 100, 25, 35, 10, 1),
+    item("No.", 200, 25, 25, 10, 1),
+    item("Title", 250, 25, 35, 10, 1),
+    item("No.", 300, 25, 25, 10, 1),
+    item("Title", 350, 25, 35, 10, 1),
+    item("Value", 430, 25, 45, 10, 1),
+    item("400", 50, 45, 25, 10, 1),
+    item("Water M & O Fund", 100, 45, 110, 10, 1),
+    item("0", 200, 45, 10, 10, 1),
+    item("Total Fund", 250, 45, 60, 10, 1),
+    item("0", 300, 45, 10, 10, 1),
+    item("Total Fund", 350, 45, 60, 10, 1),
+    item("2,000", 430, 45, 40, 10, 1),
+    item("410", 50, 65, 25, 10, 1),
+    item("Sewer M & O Fund", 100, 65, 110, 10, 1),
+    item("0", 200, 65, 10, 10, 1),
+    item("Total Fund", 250, 65, 60, 10, 1),
+    item("0", 300, 65, 10, 10, 1),
+    item("Total Fund", 350, 65, 60, 10, 1),
+    item("3,000", 430, 65, 40, 10, 1),
+    item("Grand Total: All Services", 50, 85, 25, 10, 1),
+    item("5,000", 430, 85, 40, 10, 1),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 2,
+    "the Grand Total row must not be mistaken for a receiver row");
+  assert.equal(result.printedTotalFromPdf, 5000,
+    "the schedule's own printed grand total must be read from the same column as receiver units");
+  console.log("  ✓ PDF-derived schedules surface their own printed Grand Total for reconciliation");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");

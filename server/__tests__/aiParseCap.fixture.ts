@@ -223,4 +223,35 @@ const gross = {
   console.log("  ✓ evaluateDeterministicResult trusts a fully-matched result with no printed total to reconcile");
 }
 
+{
+  // Regression: the primary AI CAP parse's own `printedTotal` field is a
+  // separate, fallible extraction — it can itself be wrong even when the
+  // deterministic receiver units are correct (Modified Operating Expenses
+  // on the Milpitas CAP: AI reported 153,010,013 vs. the schedule's true
+  // printed grand total of 154,531,719). The call site in aiParseCap.ts
+  // builds a `reconciliationRow` that prefers `result.printedTotalFromPdf`
+  // (read deterministically from the same column as the receivers) over
+  // the AI's `row.printedTotal` before calling `evaluateDeterministicResult`.
+  // Without that override, a correct deterministic result is wrongly
+  // distrusted; with it, the same result is trusted.
+  const row = { printedTotal: 153_010_013 };
+  const result = {
+    receivers: [{ dept: "Water M & O Fund", glCode: "400-0", units: 154_531_719 }],
+    unmatchedReceivers: [],
+    printedTotalFromPdf: 154_531_719,
+  };
+
+  const withoutOverride = evaluateDeterministicResult(row, result);
+  assert.deepEqual(withoutOverride, { trust: false, reason: "total-mismatch" },
+    "the AI's own mis-read printedTotal alone would wrongly reject a correct result");
+
+  const reconciliationRow = result.printedTotalFromPdf != null
+    ? { ...row, printedTotal: result.printedTotalFromPdf }
+    : row;
+  const withOverride = evaluateDeterministicResult(reconciliationRow, result);
+  assert.deepEqual(withOverride, { trust: true },
+    "preferring the schedule's own printed Grand Total recovers trust in the correct result");
+  console.log("  ✓ printedTotalFromPdf override recovers trust when the AI's printedTotal is wrong");
+}
+
 console.log("\nAll aiParseCap assertions passed.");

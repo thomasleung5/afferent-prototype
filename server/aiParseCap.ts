@@ -758,9 +758,18 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             continue;
           }
           const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
-          const printedTotal = Number(row.printedTotal);
+          // The schedule's own printed "Grand Total: All Services" row
+          // (read deterministically from the same column as the
+          // receivers) is more trustworthy than the primary AI parse's
+          // printedTotal field for reconciliation — a mis-read AI total
+          // would otherwise cause an already-correct deterministic result
+          // to be rejected as a "total-mismatch" false positive.
+          const reconciliationRow = result.printedTotalFromPdf != null
+            ? { ...row, printedTotal: result.printedTotalFromPdf }
+            : row;
+          const printedTotal = Number(reconciliationRow.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-          const decision = evaluateDeterministicResult(row, result);
+          const decision = evaluateDeterministicResult(reconciliationRow, result);
           if (!decision.trust) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
@@ -783,7 +792,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           }
           resolvedCount += 1;
           nextBasisUnits.push({
-            ...row,
+            ...reconciliationRow,
             source: row.source ?? "Deterministic PDF extraction",
             receivers: result.receivers.map((r) => ({
               dept: r.dept,
