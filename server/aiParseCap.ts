@@ -1,5 +1,16 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { readPdfUpload } from "./aiUploadValidator";
+import {
+  aiBasisColumnSemantics,
+  extractReceiverUnitsFromPdf,
+  loadPdfItemsByPage,
+} from "./capDeterministicSchedules";
+import {
+  capDocumentProfileGuidance,
+  detectCapDocumentProfileFromText,
+  type CapDocumentProfile,
+} from "./capDocumentProfiles";
+import { extractPdfTextPreview, type TextItem } from "./pdfTableExtract";
 import { logEvent } from "./logger";
 
 const TAG = "ai-parse-cap";
@@ -36,6 +47,7 @@ Return ONLY this JSON, no prose:
     {
       "basis": "Budgeted FTE",
       "source": "HRIS budget worksheet",
+      "printedTotal": 372.92,
       "receivers": [
         { "dept": "City Council",    "glCode": "100-10-100", "deptCode": "COUNCIL", "units": 5.85, "confidence": "high" },
         { "dept": "Planning Admin",  "glCode": "011-3100",   "deptCode": "PLAN",    "units": 2.92, "confidence": "high" },
@@ -88,6 +100,7 @@ Extract the catalog of named denominators (drivers) the document defines.
 - driverKey: OPTIONAL legacy classification metadata. The engine no longer reads this field — pools route by basis name and the schedule in Section 3. Omit unless the document itself uses a recognizable short classification (e.g. "FTE", "EXPEND", "DIRECT"). Never invent or guess a key; never reject or reword a basis name because it doesn't match a known classification.
 - directTo: OPTIONAL legacy hint when the basis is hand-written direct routing. Direct pool routing is captured in Section 5 directAllocations; omit unless the document publishes a single named InstDeptCode receiver.
 - SKIP duplicate listings, header rows, and explanatory prose paragraphs that aren't structured basis definitions.
+- NAME ALIASES: When the bases catalog and the column header in the allocation-factor exhibit use slightly different wording for the same basis, use the column header wording as the canonical \`name\` — that is what pool rows and basisUnits entries must match. Specifically, "Purchasing Staff Time Analysis" (catalog wording) and "Purchasing Time Analysis" (column header wording) refer to the same basis; record it as "Purchasing Time Analysis" throughout.
 - confidence: "high" if name + source are unambiguous from the document; "low" only when a field is uncertain.
 
 ================================================================
@@ -98,6 +111,17 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 
 - basis: the basis name. MUST match one of the names in Section 2 of the same document (or its canonical seed name).
 - source: where the unit counts come from (e.g. "HRIS budget worksheet", "Facilities inventory"). Optional but recommended.
+- printedTotal: OPTIONAL. When the schedule prints a Grand Total row under
+  the requested basis column, capture it as a plain number. Omit when the
+  document does not print a total for this basis. Never invent or compute it.
+  IMPORTANT — some exhibits print TWO grand total rows per basis column:
+  "Grand Total: All Services" and "Grand Total: Only to Direct Services".
+  When both are present, capture the "Grand Total: All Services" value as
+  printedTotal. The receiver schedules import ALL positive receiver rows,
+  including central-service / internal-service receivers, so the all-services
+  total is the correct verification target. Never capture the
+  "Only to Direct Services" total when an "All Services" total is also present
+  on the same page.
 - receivers: the full list of budget units the schedule assigns units to. Each receiver is an object:
   * dept: the receiving budget unit name exactly as written.
   * glCode: REQUIRED. The budget unit's account / GL code exactly as printed when the document provides one combined code — e.g. "011-1200", "100-10-100", "BLDG", "EQUIP". When identity is printed in separate Fund, Department / Organization, and Division / Cost Pool number columns, construct one stable code by joining the printed numeric segments with hyphens in that order (e.g. Fund 100 + Department 512 + Division 0 becomes "100-512-0"). Preserve zero segments because they distinguish organization and fund-total rows. If the document prints no usable identity segments, SKIP that receiver.
@@ -108,17 +132,34 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - Extract each basis schedule ONCE even if multiple pools reference it. If the same set of FTE units is published verbatim for several pools, that's a single basisUnits entry.
 - A schedule spanning multiple consecutive pages is still ONE basisUnits entry. Continue collecting receivers until that named basis's Grand Total row or until a new allocation-factor group begins.
 - In parallel-column exhibits, use only the raw "Value" as units. Ignore "Distribution to All Services" and "Distribution Only to Direct Services" percentages because the engine derives percentages from units.
-- Zero / dash values may be omitted from receivers. Retain every positive printed Value.
+- Zero / dash values may be omitted from receivers. Retain every positive printed Value, including rows for central services, indirect/internal services, and other non-direct receivers.
 - Skip schedules for pools that publish a hand-written percent split — those go in Section 5 (directAllocations), not here.
-- COLUMN AND ROW VERIFICATION: When a basis schedule sits among several parallel
-  "Value" columns sharing one header row, identify the correct column by matching
-  its header text to this basis's name — never by position ("middle column",
-  "third column"), since column order varies by document. For every receiver you
-  record, confirm the unit value sits on the exact same printed row as that
-  receiver's department name and code. If the printed Value for a row is "-",
-  blank, or 0, omit that receiver entirely — never carry over a value from the
-  row above or below, even if that neighboring row's value looks plausible for
-  this receiver.
+- COLUMN AND ROW VERIFICATION (parallel-column / detached-label PDFs):
+  Allocation-factor exhibits frequently print several independent bases as
+  parallel "Value" columns sharing one receiver-row spine. PDF text layers
+  often emit the receiver-label column and the numeric columns as separate
+  text blocks, which makes it easy to shift a numeric row onto the wrong
+  receiver. Apply ALL of the following:
+  * Identify the requested basis column by matching its header text to this
+    basis's name — never by position ("middle column", "third column"), since
+    column order varies by document.
+  * Extract ONLY the Value printed under that exact basis header. Never
+    borrow a number from an adjacent basis column even if it looks more
+    plausible for the receiver, and never substitute a value from the row
+    above or below.
+  * When the receiver labels and numeric values are emitted as separate
+    text blocks, preserve the visual row order. Align each numeric row to
+    the receiver label that occupies the same printed visual row — not the
+    nearest non-blank label and not the previous receiver.
+  * Do not assign a numeric row to a section header, a blank row, or the
+    prior receiver. If you are not sure which receiver a numeric row
+    belongs to, omit it rather than guess.
+  * If the printed Value for a receiver under the requested basis is a
+    dash, blank, or 0, omit that receiver entirely — even when the next
+    row down or an adjacent basis column has a positive value that would
+    "fit" this receiver.
+  * Before emitting each receiver, re-confirm its units are on the same
+    printed visual row as that receiver's department label and code.
 
 ================================================================
 SECTION 4 — Cost pools
@@ -137,6 +178,7 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
   - When the document publishes ONLY a single dollar figure with no exclusions, set \`amount\` to that figure and omit \`disallowedCost\`.
 - ZERO-AMOUNT POOLS — when \`amount\` is 0 (internal-service / allocable budget units that publish a redistribution schedule with no own dollars), you MUST STILL populate \`personnelCost\`, \`operatingCost\`, and \`disallowedCost\` if the document shows them. A $0 \`amount\` typically arises because gross personnel + operating happens to equal disallowed (everything excluded by policy), or because the unit purely redistributes incoming costs — either way the underlying cost breakdown is real data the document publishes and must be captured. Do NOT collapse those three fields to 0 or omit them just because \`amount\` is 0. Apply the same omit-only-when-unprinted rule that applies to non-zero pools.
 - basis: the allocation basis name (matches Section 2). When this basis appears in Section 3 (basisUnits), the engine uses that schedule. When the basis is DIRECT, the per-pool routing comes from Section 5.
+- When a pool's allocation basis is "Purchasing Staff Time Analysis", normalize it to "Purchasing Time Analysis" to match the column header used in the allocation-factor exhibit.
 - recoverability: short policy note (e.g. "Fully recoverable", "Excluded — General Fund subsidy"). Optional.
 - DO NOT include a "receivers" field on pool rows. The receiver schedule is published once per basis in Section 3 (or per pool in Section 5 for DIRECT pools).
 - KEEP zero-amount pool rows for internal-service / allocable budget units that publish a redistribution schedule (their basis still carries unit counts in Section 3).
@@ -167,6 +209,7 @@ General rules
 - All percentages are plain numbers (0–100) — strip the % sign.
 - Use the exact names / pool labels / basis names as written in the document.
 - Every basis referenced by a pool MUST appear in "bases" (unless the pool is captured in Section 5 directAllocations, which is folded into a per-pool basis at import time). When the document publishes a receiver Value schedule for a basis, that schedule MUST also appear in "basisUnits".
+- NUMERIC RECONSTRUCTION: The PDF text layer sometimes splits a single number across two or more adjacent tokens on the same visual row — either because a dollar sign lands in a separate character run ("$" + "6" + "31,378" = $631,378) or because the leading digit is isolated ("2" + "81,728" = 281,728). Before recording any numeric value, scan all tokens on the same visual row at the same x-cluster and concatenate any digit-only fragments that are adjacent to the main number token. A token qualifies as a fragment if it contains only digits and appears immediately left of a comma-formatted number at the same vertical position.
 - Return only the JSON object. No prose, no markdown, no explanation.`;
 
 interface CenterRow {
@@ -201,6 +244,10 @@ interface BasisUnitReceiverRow {
 interface BasisUnitsRow {
   basis: string;
   source?: string;
+  /** Optional printed Grand Total under the basis's Value column, when the
+   *  document publishes one. Used downstream to verify the extracted
+   *  receiver sum matches the source PDF. */
+  printedTotal?: number;
   receivers: BasisUnitReceiverRow[];
 }
 
@@ -248,8 +295,16 @@ interface ParseCapResponse {
 
 const SCHEDULE_BATCH_SIZE = 1;
 
-function scheduleSystem(basisNames: string[]): string {
+function systemForProfile(profile: CapDocumentProfile): string {
+  return `${SYSTEM}
+
+${capDocumentProfileGuidance(profile)}`;
+}
+
+function scheduleSystem(basisNames: string[], profile: CapDocumentProfile): string {
   return `You are extracting ONLY allocation-factor receiver schedules from a municipal Cost Allocation Plan PDF.
+
+${capDocumentProfileGuidance(profile)}
 
 Return ONLY this JSON:
 {
@@ -257,6 +312,7 @@ Return ONLY this JSON:
     {
       "basis": "Exact requested basis name",
       "source": "Document section or source note",
+      "printedTotal": 372.92,
       "receivers": [
         { "dept": "Department name", "glCode": "100-512-0", "deptCode": "PLAN", "units": 2030145, "confidence": "high" }
       ]
@@ -267,19 +323,28 @@ Return ONLY this JSON:
 Extract schedules for exactly these requested bases:
 ${basisNames.map((name) => `- ${name}`).join("\n")}
 
-For each basis, search for a column whose header text matches the basis name (allowing minor wording variation). These columns are often printed in groups of 2-4 parallel "Value" columns sharing one header row, sometimes repeated across multiple page groups for different funds/orgs — collect all such rows for the matching basis. For every receiver, verify the value is on the same row as that receiver's name and code; omit rows where the value is "-", blank, or 0.
+For each basis, search for a column whose header text matches the basis name (allowing minor wording variation). These columns are often printed in groups of 2-4 parallel "Value" columns sharing one header row, sometimes repeated across multiple page groups for different funds/orgs — collect all such rows for the matching basis. For every receiver, verify the value is on the same printed visual row as that receiver's name and code; omit rows where the value is "-", blank, or 0.
 
 Rules:
 - Search allocation-factor inventory exhibits and derivation schedules, including multi-page tables.
 - Return a separate basisUnits entry for every requested named Value column whose schedule is printed.
 - Use only the raw Value column as units. Ignore distribution percentages.
+- Identify the requested basis column purely by matching its header text to the requested name — never by position ("middle column", "third column"), since column order varies by document.
+- Extract only the Value printed under the matched header. Never borrow a number from an adjacent basis column even if it looks more plausible for the receiver, and never substitute a value from the row above or below.
+- When the PDF text layer emits receiver labels and numeric values as separate text blocks, preserve visual row order. Align each numeric row to the receiver label that occupies the same printed visual row, not the nearest non-blank label and not the previous receiver. Do not assign a numeric row to a section header, a blank row, or a prior receiver.
+- If the printed Value under the requested basis for a receiver is "-", blank, or 0, omit that receiver entirely — even if the next row or an adjacent basis column has a positive value that would "fit" this receiver.
 - When Fund, Department / Organization, and Division / Cost Pool numbers are separate, join them in that order with hyphens. Preserve zero segments: Fund 100 + Department 512 + Division 0 becomes "100-512-0".
 - dept is the receiving unit name exactly as printed.
 - deptCode is optional; use "OTHER" when no listed application code fits.
-- Include positive Value rows. Omit zero / dash rows, headers, subtotals, and grand totals.
+- Include every positive Value row, including central services, indirect/internal services, and other non-direct receivers. Omit zero / dash rows, headers, subtotals, and grand totals.
 - Continue across consecutive pages until the schedule's Grand Total or the next allocation-factor group.
 - Keep the requested basis spelling exactly. Do not rename, merge, or classify bases.
 - If a requested schedule is not printed, omit that basisUnits entry.
+- printedTotal: OPTIONAL. When the schedule prints a Grand Total / Total under the requested basis column, capture it as a plain number. Omit when the document does not print a total for this basis. Never invent or compute it.
+- PRINTED TOTAL SELECTION: Some exhibits print two Grand Total rows per basis column: "Grand Total: All Services" and "Grand Total: Only to Direct Services". When both are present, capture the "Grand Total: All Services" value as \`printedTotal\`, not the "Only to Direct Services" value. The receiver schedules extracted here include all positive receiver rows, including central-service / internal-service rows, so the all-services total is the correct verification target.
+- NUMERIC RECONSTRUCTION: The PDF text layer sometimes splits a single number across two or more adjacent tokens on the same visual row — either because a dollar sign lands in a separate character run ("$" + "6" + "31,378" = $631,378) or because the leading digit is isolated ("2" + "81,728" = 281,728). Before recording any unit value or printedTotal, scan all tokens on the same visual row at the same x-cluster and concatenate any digit-only fragments that are adjacent to the main number token. A token qualifies as a fragment if it contains only digits and appears immediately left of a comma-formatted number at the same vertical position.
+- Before returning, if the extracted receiver sum does not match the printed Grand Total for that basis (when one is printed), re-check for row shift or adjacent-column leakage and correct the schedule before returning.
+- Avoid document-specific hardcoded hints — only the requested basis names above are special.
 - Return JSON only, without prose or markdown.`;
 }
 
@@ -372,6 +437,16 @@ export function alignRecoveredBasisNames(
   });
 }
 
+export function receiverTotalMatchesPrintedTotal(
+  row: Pick<BasisUnitsRow, "printedTotal">,
+  receivers: Array<{ units: number }>,
+): boolean {
+  const printedTotal = Number(row.printedTotal);
+  if (!Number.isFinite(printedTotal) || printedTotal <= 0) return false;
+  const extractedTotal = receivers.reduce((sum, receiver) => sum + receiver.units, 0);
+  return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
+}
+
 export function missingScheduleBasisNames(
   bases: BasisRow[],
   basisUnits: BasisUnitsRow[],
@@ -443,11 +518,28 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
 
   const upload = await readPdfUpload(req);
   if (upload instanceof Response) return upload;
-  const { fileName, fileSizeKb, base64: pdfBase64 } = upload;
+  const { fileName, fileSizeKb, base64: pdfBase64, buffer: pdfBuffer } = upload;
+  let profile = detectCapDocumentProfileFromText("");
+  try {
+    profile = detectCapDocumentProfileFromText(
+      await extractPdfTextPreview(new Uint8Array(pdfBuffer)),
+    );
+  } catch (err) {
+    logEvent({
+      level: "warn",
+      tag: TAG,
+      msg: "cap profile preview failed",
+      error: err instanceof Error ? err.message : "Unknown preview error",
+    });
+  }
 
   logEvent({
     tag: TAG, msg: "anthropic request start",
-    file: fileName, file_kb: fileSizeKb, model: MODEL,
+    file: fileName,
+    file_kb: fileSizeKb,
+    model: MODEL,
+    cap_profile: profile.id,
+    cap_vendor: profile.vendor,
   });
   const t0 = Date.now();
 
@@ -461,7 +553,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       // 32k leaves headroom for the worst-case shape plus the centers /
       // bases sections in the same response.
       max_tokens: 32000,
-      system: SYSTEM,
+      system: systemForProfile(profile),
       messages: [{
         role: "user",
         content: [{
@@ -536,6 +628,187 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       });
     }
 
+    // Deterministic schedule verification (gated rollout).
+    //
+    // When CAP_DETERMINISTIC_SCHEDULES=1, replace AI-extracted basis-unit
+    // receiver lists with coordinate-based reads from the PDF for any
+    // schedule the deterministic path can resolve. This structurally
+    // prevents the row-shift class of bugs (Recreation's FTE landing on
+    // Housing because Housing's cell is blank) by matching receivers via
+    // dept-text identity rather than zipped row order.
+    //
+    // The flag defaults off so existing CAP imports are unchanged until
+    // the path has been verified against real exhibits. The printedTotal
+    // validator already shipped (lib/ai/parseCap.ts) remains the
+    // import-layer backstop regardless of which path produced the units.
+    if (process.env.CAP_DETERMINISTIC_SCHEDULES === "1" && basisUnits.length > 0) {
+      try {
+        const basisNamesForSemantics = basisUnits
+          .map((row) => row.basis?.trim())
+          .filter((s): s is string => Boolean(s));
+        const semantics = await aiBasisColumnSemantics(
+          client,
+          MODEL,
+          pdfBase64,
+          basisNamesForSemantics,
+          req.signal,
+        );
+        const semanticByBasis = new Map(
+          semantics.map((s) => [basisNameKey(s.basis), s]),
+        );
+        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer));
+
+        let resolvedCount = 0;
+        let fallbackCount = 0;
+        const nextBasisUnits: BasisUnitsRow[] = [];
+        for (const row of basisUnits) {
+          const basisName = row.basis?.trim() ?? "";
+          const semantic = semanticByBasis.get(basisNameKey(basisName));
+          if (!semantic) {
+            fallbackCount += 1;
+            nextBasisUnits.push(row);
+            logEvent({
+              tag: TAG,
+              msg: "deterministic schedule per-basis",
+              basis: basisName,
+              path: "ai-fallback",
+              reason: "no-semantic",
+            });
+            continue;
+          }
+          // CAP allocation-factor schedules routinely span 4-8 pages of
+          // receiver rows under one header. Scan a window around the AI's
+          // reported page so continuation rows are visible to the matcher.
+          // Per-page Y offsetting keeps rows from different pages from
+          // collapsing into one cluster (each page's Y restarts at 0).
+          const PAGE_WINDOW_BACK = 1;
+          const PAGE_WINDOW_FORWARD = 8;
+          const PAGE_Y_OFFSET = 10000;
+          const pageItems: TextItem[] = [];
+          for (let off = -PAGE_WINDOW_BACK; off <= PAGE_WINDOW_FORWARD; off += 1) {
+            const p = semantic.page + off;
+            if (p < 1) continue;
+            const itemsOnPage = itemsByPage.get(p);
+            if (!itemsOnPage) continue;
+            for (const it of itemsOnPage) {
+              pageItems.push({ ...it, y: it.y + (off + PAGE_WINDOW_BACK) * PAGE_Y_OFFSET });
+            }
+          }
+          const aiReceiverCount = Array.isArray(row.receivers) ? row.receivers.length : 0;
+          const result = extractReceiverUnitsFromPdf({
+            pageItems,
+            basisColumnHeader: semantic.basisColumnHeader,
+            basisName,
+            expectedTotal: row.printedTotal,
+            deriveReceiversFromPdf: true,
+            receivers: (row.receivers ?? []).map((r) => ({
+              dept: r.dept ?? "",
+              glCode: r.glCode ?? "",
+              deptCode: r.deptCode,
+            })),
+          });
+          if (!result) {
+            fallbackCount += 1;
+            nextBasisUnits.push(row);
+            logEvent({
+              tag: TAG,
+              msg: "deterministic schedule per-basis",
+              basis: basisName,
+              path: "ai-fallback",
+              reason: "no-header",
+              page: semantic.page,
+              column_header: semantic.basisColumnHeader,
+              ai_receivers: aiReceiverCount,
+            });
+            continue;
+          }
+          const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
+          const printedTotal = Number(row.printedTotal);
+          const deterministicTotalMatchesPrinted = receiverTotalMatchesPrintedTotal(row, result.receivers);
+          if (result.unmatchedReceivers.length > 0 && !deterministicTotalMatchesPrinted) {
+            fallbackCount += 1;
+            nextBasisUnits.push(row);
+            logEvent({
+              tag: TAG,
+              msg: "deterministic schedule per-basis",
+              basis: basisName,
+              path: "ai-fallback",
+              reason: "unmatched-receivers",
+              page: semantic.page,
+              column_header: semantic.basisColumnHeader,
+              ai_receivers: aiReceiverCount,
+              resolved_receivers: result.receivers.length,
+              blank_receivers: result.blankReceivers.length,
+              unmatched_receivers: result.unmatchedReceivers.length,
+              deterministic_total: deterministicTotal,
+              printed_total: Number.isFinite(printedTotal) && printedTotal > 0 ? printedTotal : undefined,
+            });
+            continue;
+          }
+          if (result.receivers.length === 0) {
+            fallbackCount += 1;
+            nextBasisUnits.push(row);
+            logEvent({
+              tag: TAG,
+              msg: "deterministic schedule per-basis",
+              basis: basisName,
+              path: "ai-fallback",
+              reason: "no-resolved-receivers",
+              page: semantic.page,
+              column_header: semantic.basisColumnHeader,
+              ai_receivers: aiReceiverCount,
+              blank_receivers: result.blankReceivers.length,
+              unmatched_receivers: result.unmatchedReceivers.length,
+            });
+            continue;
+          }
+          resolvedCount += 1;
+          nextBasisUnits.push({
+            ...row,
+            source: row.source ?? "Deterministic PDF extraction",
+            receivers: result.receivers.map((r) => ({
+              dept: r.dept,
+              glCode: r.glCode,
+              ...(r.deptCode ? { deptCode: r.deptCode } : {}),
+              units: r.units,
+              confidence: "high" as const,
+            })),
+          });
+          logEvent({
+            tag: TAG,
+            msg: "deterministic schedule per-basis",
+            basis: basisName,
+            path: "deterministic",
+            page: semantic.page,
+            column_header: semantic.basisColumnHeader,
+            ai_receivers: aiReceiverCount,
+            resolved_receivers: result.receivers.length,
+            blank_receivers: result.blankReceivers.length,
+            unmatched_receivers: result.unmatchedReceivers.length,
+          });
+        }
+        basisUnits = nextBasisUnits;
+        logEvent({
+          tag: TAG,
+          msg: "deterministic schedule verification",
+          resolved_count: resolvedCount,
+          fallback_count: fallbackCount,
+          semantic_count: semantics.length,
+        });
+      } catch (err) {
+        if (err instanceof Error && err.name === "AbortError") throw err;
+        // Any failure in the deterministic path is non-fatal — fall
+        // through to the existing AI path. The flag-gated rollout means
+        // we'd rather log and continue than break the existing import.
+        logEvent({
+          level: "warn",
+          tag: TAG,
+          msg: "deterministic schedule verification failed",
+          error: err instanceof Error ? err.message : "Unknown error",
+        });
+      }
+    }
+
     const missingSchedules = missingScheduleBasisNames(
       bases, basisUnits, pools, directAllocations,
     );
@@ -551,7 +824,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           const scheduleResponse = await client.messages.create({
             model: MODEL,
             max_tokens: 32000,
-            system: scheduleSystem(batch),
+            system: scheduleSystem(batch, profile),
             messages: [{
               role: "user",
               content: [{
@@ -598,6 +871,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       basisUnits: basisUnits.length, pools: pools.length,
       directAllocations: directAllocations.length,
       file: fileName,
+      cap_profile: profile.id,
     });
     return json({ ok: true, centers, bases, basisUnits, pools, directAllocations });
   } catch (err) {

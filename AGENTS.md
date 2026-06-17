@@ -139,6 +139,29 @@ Preserve the existing separation:
 - Server Excel preview is side-effect-free.
 - Client-side domain converters merge parsed data into the Zustand store.
 
+CAP basis-schedule extraction is a documented exception to the AI-only rule
+for PDFs. Behind the `CAP_DETERMINISTIC_SCHEDULES=1` flag, Section 3 basis
+schedules run a hybrid pipeline:
+
+- The primary CAP AI prompt still runs and is authoritative for receiver
+  IDENTITY (dept name, glCode, deptCode).
+- A small follow-up AI call (`server/capDeterministicSchedules.ts`,
+  `aiBasisColumnSemantics`) identifies the page and exact column header
+  text for each basis's Value column.
+- The unit VALUE for each receiver is read deterministically from the PDF
+  via `pdfjs-dist` (`server/pdfTableExtract.ts`) using coordinate
+  clustering. Receivers are matched to PDF rows by dept text / glCode,
+  never by row index — this structurally prevents the row-shift class of
+  bugs that motivated the work.
+- The `printedTotal` validator (`lib/ai/parseCap.ts`) is the final
+  backstop regardless of which path produced the units.
+
+When extending CAP parsing, keep this split intact: AI for identity +
+semantics, deterministic for cell values. Do not push the deterministic
+path into the other CAP sections (centers, bases, pools, direct
+allocations) without a separate scoping conversation — those sections
+are not gridded tables.
+
 Rules:
 
 - Do not mix AI parsing with deterministic Excel preview logic.
@@ -264,6 +287,11 @@ Every coding task must end with:
 - Local API development usually needs `.env.local`.
 - `AUTH_DEV_BYPASS=1` may be used only in development.
 - AI parsing requires `ANTHROPIC_API_KEY`.
+- `CAP_DETERMINISTIC_SCHEDULES=1` enables the hybrid CAP basis-schedule
+  extractor (coordinate-based unit reads via `pdfjs-dist` + a small AI
+  semantic call). Defaults off; structured per-basis log events under tag
+  `ai-parse-cap` (msg `deterministic schedule per-basis`) describe what
+  was resolved vs fell back to AI on each import.
 - Production requires Supabase env vars and `ALLOWED_ORIGINS`.
 
 # Dependency rules

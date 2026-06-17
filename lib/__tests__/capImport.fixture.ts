@@ -152,17 +152,13 @@ const emptyDirect = capDirectAllocationsToExtractionResult([], pools, fileName);
 const issues = capImportIntegrityIssues(bases, basisUnits, pools, emptyDirect, fileName);
 assert.deepEqual(
   issues.map((issue) => issue.lineage.rawCells?.issueKind).sort(),
-  ["missing-basis", "missing-schedule"],
-);
-assert.ok(
-  issues.some((issue) => issue.lineage.rawCells?.name === "Modified Operating Expenses"),
-  "accepted basis without a valid schedule is flagged",
+  ["missing-basis"],
 );
 assert.ok(
   issues.some((issue) => issue.lineage.rawCells?.name === "Cash and Investments"),
   "pool reference without an imported basis is flagged",
 );
-console.log("  ✓ CAP integrity: unresolved pool bases and missing schedules surface for review");
+console.log("  ✓ CAP integrity: unresolved pool bases surface without duplicating invalid schedules");
 
 // ── Direct allocations: pool with explicit per-receiver percents is skipped
 //    by the integrity check (no schedule required — it'll be converted to
@@ -191,13 +187,149 @@ const issuesWithDirect = capImportIntegrityIssues(
   bases, basisUnits, pools, directAllocations, fileName,
 );
 // The Treasury / Cash and Investments pool is no longer flagged because
-// its DirectAllocationRow covers the routing. The Modified Operating
-// Expenses no-schedule issue still fires for the City Attorney pool.
+// its DirectAllocationRow covers the routing. Modified Operating Expenses
+// was already flagged as an invalid schedule, so it is not repeated as
+// missing here.
 assert.deepEqual(
   issuesWithDirect.map((issue) => issue.lineage.rawCells?.issueKind).sort(),
-  ["missing-schedule"],
+  [],
   "Pool with a DirectAllocationRow skips schedule-required integrity check",
 );
 console.log("  ✓ CAP integrity: pools with direct-allocation receivers bypass schedule check");
+
+// ── printedTotal mismatch: parallel-column row shift on Milpitas Exhibit 5 ──
+//
+// The AI parser occasionally lifts Recreation Administration's FTE value
+// (6.00) onto the prior Housing & Neighborhood Svcs row when the PDF text
+// layer emits receiver labels and numeric columns as separate text blocks.
+// Housing's true Budgeted FTE under that basis is blank, so it should be
+// omitted; the resulting receiver sum is 372.92. When the model shifts the
+// 6.00 onto Housing, the schedule mistakenly includes Housing and sums to
+// 378.92. The printed Grand Total is 372.92 — validation must mark the
+// schedule for review while still letting it import (warn-not-fail), so
+// the engine has data to work with and the importer UI can flag the gap.
+
+{
+  const rowShifted = capBasisUnitsToExtractionResult([
+    {
+      basis: "Budgeted FTE",
+      source: "Exhibit 5",
+      printedTotal: 372.92,
+      receivers: [
+        // Housing's true FTE under Budgeted FTE is blank — including it
+        // here at 6.00 is the row-shift bug we want to flag for review.
+        { dept: "Housing & Neighborhood Svcs", glCode: "100-410-0", deptCode: "OTHER", units: 6.00, confidence: "high" },
+        { dept: "Recreation Administration",   glCode: "100-420-0", deptCode: "PARKS", units: 6.00, confidence: "high" },
+        { dept: "Police Administration",       glCode: "100-700-0", deptCode: "PD",    units: 366.92, confidence: "high" },
+      ],
+    },
+  ], fileName);
+  assert.equal(rowShifted.mapped.length, 0,
+    "row-shifted schedule does not go to mapped (high-confidence)");
+  assert.equal(rowShifted.unmapped.length, 0,
+    "row-shifted schedule no longer discarded as unmapped");
+  assert.equal(rowShifted.lowConfidence.length, 1,
+    "row-shifted schedule imports for review (warn-not-fail)");
+  const flagged = rowShifted.lowConfidence[0];
+  assert.equal(flagged.lineage.rawCells?.issueKind, "schedule-total-mismatch");
+  assert.equal(flagged.lineage.rawCells?.basis, "Budgeted FTE");
+  assert.equal(flagged.lineage.rawCells?.printedTotal, 372.92);
+  const extracted = Number(flagged.lineage.rawCells?.extractedTotal ?? 0);
+  assert.ok(Math.abs(extracted - 378.92) < 1e-6,
+    "extractedTotal field captures the inflated sum");
+  const diff = Number(flagged.lineage.rawCells?.difference ?? 0);
+  assert.ok(Math.abs(diff - 6) < 1e-6,
+    "difference field captures the row-shift gap");
+  assert.equal(flagged.entity.receivers.length, 3,
+    "all three receivers survive — the gap is metadata, not a discard signal");
+  console.log("  ✓ CAP schedules: row-shift imports for review (warn-not-fail)");
+}
+
+{
+  const mismatch = capBasisUnitsToExtractionResult([
+    {
+      basis: "Gross Operating Expenses",
+      source: "Exhibit 5",
+      printedTotal: 10,
+      receivers: [
+        { dept: "Planning", glCode: "100-512-0", deptCode: "PLAN", units: 6, confidence: "high" },
+      ],
+    },
+  ], fileName);
+  const mismatchIssues = capImportIntegrityIssues(
+    bases,
+    mismatch,
+    pools,
+    emptyDirect,
+    fileName,
+  );
+  assert.ok(
+    !mismatchIssues.some((issue) =>
+      issue.lineage.rawCells?.issueKind === "missing-schedule"
+      && issue.lineage.rawCells?.name === "Gross Operating Expenses"),
+    "schedule-total-mismatch should not be duplicated as missing-schedule",
+  );
+  console.log("  ✓ CAP integrity: mismatched schedule is not duplicated as missing");
+}
+
+{
+  const matching = capBasisUnitsToExtractionResult([
+    {
+      basis: "Budgeted FTE",
+      source: "Exhibit 5",
+      printedTotal: 372.92,
+      receivers: [
+        { dept: "Recreation Administration", glCode: "100-420-0", deptCode: "PARKS", units: 6.00, confidence: "high" },
+        { dept: "Police Administration",     glCode: "100-700-0", deptCode: "PD",    units: 366.92, confidence: "high" },
+      ],
+    },
+  ], fileName);
+  assert.equal(matching.mapped.length, 1,
+    "schedule whose extracted sum matches printedTotal imports normally");
+  assert.equal(matching.unmapped.length, 0);
+  assert.equal(matching.mapped[0].lineage.rawCells?.printedTotal, 372.92);
+  const matchedExtracted = Number(matching.mapped[0].lineage.rawCells?.extractedTotal ?? 0);
+  assert.ok(Math.abs(matchedExtracted - 372.92) < 1e-6,
+    "extractedTotal stays in lineage on the imported row for traceability");
+  console.log("  ✓ CAP schedules: matching extracted sum and printedTotal imports normally");
+}
+
+{
+  const tolerance = capBasisUnitsToExtractionResult([
+    {
+      basis: "Budgeted FTE",
+      source: "Exhibit 5",
+      printedTotal: 372.92,
+      receivers: [
+        { dept: "Recreation Administration", glCode: "100-420-0", deptCode: "PARKS", units: 6.00, confidence: "high" },
+        { dept: "Police Administration",     glCode: "100-700-0", deptCode: "PD",    units: 366.42, confidence: "high" },
+      ],
+    },
+  ], fileName);
+  assert.equal(tolerance.mapped.length, 1,
+    "tiny rounding gap inside 0.5% tolerance imports normally");
+  assert.equal(tolerance.unmapped.length, 0);
+  console.log("  ✓ CAP schedules: sub-tolerance rounding differences do not flag");
+}
+
+// Schedules without a printedTotal (the document didn't publish one) must
+// continue to import normally — the validation is a guard, not a gate.
+
+{
+  const noTotal = capBasisUnitsToExtractionResult([
+    {
+      basis: "Budgeted FTE",
+      source: "Exhibit 5",
+      receivers: [
+        { dept: "Recreation Administration", glCode: "100-420-0", deptCode: "PARKS", units: 6.00, confidence: "high" },
+        { dept: "Police Administration",     glCode: "100-700-0", deptCode: "PD",    units: 366.92, confidence: "high" },
+      ],
+    },
+  ], fileName);
+  assert.equal(noTotal.mapped.length, 1);
+  assert.equal(noTotal.unmapped.length, 0);
+  assert.equal(noTotal.mapped[0].lineage.rawCells?.printedTotal, undefined);
+  console.log("  ✓ CAP schedules: schedule without printedTotal imports unchanged");
+}
 
 console.log("\nAll CAP import assertions passed.");

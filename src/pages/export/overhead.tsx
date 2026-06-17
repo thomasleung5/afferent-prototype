@@ -1636,7 +1636,7 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
       const topReceivers = [...receiverByKey.entries()]
         .map(([k, v]) => {
           const n = payload.model.nodes.find((x) => x.key === k);
-          return { name: n?.name ?? k, amount: v };
+          return { key: k, name: n?.name ?? k, amount: v };
         })
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
@@ -1647,6 +1647,7 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
       })));
 
       return {
+        key: node.key,
         center: centerName,
         departmental,
         incoming,
@@ -1683,7 +1684,7 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.center}>
+            <tr key={r.key}>
               <td><b>{r.center}</b></td>
               <td className="num">{fmt.dollars(r.departmental)}</td>
               <td className="num">{r.incoming > 0.5 ? fmt.dollars(r.incoming) : "—"}</td>
@@ -1700,7 +1701,7 @@ function AppendixC({ payload }: { payload: CapExportPayload }) {
               <td style={{ color: "var(--ink-2)" }}>
                 {r.topReceivers.length > 0
                   ? r.topReceivers.map((t, i) => (
-                      <div key={t.name} style={{
+                      <div key={t.key} style={{
                         display: "flex", justifyContent: "space-between",
                         marginTop: i === 0 ? 0 : 1,
                       }}>
@@ -1742,16 +1743,13 @@ function AppendixD({ payload }: { payload: CapExportPayload }) {
         if (amt < 0.5) continue;
         byProviderKey.set(pl.centerGlCode, (byProviderKey.get(pl.centerGlCode) ?? 0) + amt);
       }
-      const byProvider = new Map<string, number>();
-      for (const [key, amt] of byProviderKey) {
-        byProvider.set(meta.get(key)?.name ?? key, amt);
-      }
-      const topProviders = [...byProvider.entries()]
-        .map(([name, amt]) => ({ name, amount: amt }))
+      const topProviders = [...byProviderKey.entries()]
+        .map(([k, amt]) => ({ key: k, name: meta.get(k)?.name ?? k, amount: amt }))
         .sort((a, b) => b.amount - a.amount)
         .slice(0, 3);
 
       return {
+        key: node.key,
         name: node.name,
         total,
         topProviders,
@@ -1784,14 +1782,14 @@ function AppendixD({ payload }: { payload: CapExportPayload }) {
         </thead>
         <tbody>
           {rows.map((r) => (
-            <tr key={r.name}>
+            <tr key={r.key}>
               <td><b>{r.name}</b></td>
               <td className="num">{fmt.dollars(r.total)}</td>
               <td className="num">{r.share.toFixed(1)}%</td>
               <td style={{ color: "var(--ink-2)" }}>
                 {r.topProviders.length > 0
                   ? r.topProviders.map((t, i) => (
-                      <div key={t.name} style={{
+                      <div key={t.key} style={{
                         display: "flex", justifyContent: "space-between",
                         marginTop: i === 0 ? 0 : 1,
                       }}>

@@ -4,6 +4,7 @@ import {
   mergeBasisUnits,
   missingScheduleBasisNames,
   parseBasisUnitsResponse,
+  receiverTotalMatchesPrintedTotal,
 } from "../aiParseCap";
 
 const gross = {
@@ -137,6 +138,31 @@ const gross = {
   assert.equal(merged.length, 1);
   assert.equal(merged[0].receivers[0].units, 99);
   console.log("  ✓ recovered CAP schedules replace same-name first-pass schedules");
+}
+
+{
+  assert.equal(
+    receiverTotalMatchesPrintedTotal(
+      { printedTotal: 372.92 },
+      [{ units: 6 }, { units: 366.92 }],
+    ),
+    true,
+    "deterministic schedule can prove itself against the printed total",
+  );
+  assert.equal(
+    receiverTotalMatchesPrintedTotal(
+      { printedTotal: 372.92 },
+      [{ units: 6 }, { units: 360 }],
+    ),
+    false,
+    "deterministic schedule that does not reconcile should not override uncertainty",
+  );
+  assert.equal(
+    receiverTotalMatchesPrintedTotal({}, [{ units: 372.92 }]),
+    false,
+    "missing printed total cannot prove deterministic completeness",
+  );
+  console.log("  ✓ deterministic CAP schedules use printed total as reconciliation evidence");
 }
 
 console.log("\nAll aiParseCap assertions passed.");

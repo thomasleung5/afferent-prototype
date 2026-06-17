@@ -44,6 +44,10 @@ interface BasisUnitsReceiverRow {
 interface BasisUnitsRow {
   basis: string;
   source?: string;
+  /** Optional printed Grand Total under the basis's Value column, when
+   *  the document publishes one. Used by import validation to flag
+   *  schedules whose receiver sum does not match the printed total. */
+  printedTotal?: number;
   receivers: BasisUnitsReceiverRow[];
 }
 
@@ -292,26 +296,46 @@ export function capBasisUnitsToExtractionResult(
       return;
     }
 
+    const printedTotal = Number(row.printedTotal);
+    const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
+    const extractedTotal = receivers.reduce((s, r) => s + r.units, 0);
+    let totalMismatch = false;
+    let difference = 0;
+    if (hasPrintedTotal) {
+      const tolerance = Math.max(1, Math.abs(printedTotal) * 0.005);
+      difference = extractedTotal - printedTotal;
+      totalMismatch = Math.abs(difference) > tolerance;
+    }
+
     const entity: BasisUnitRow = {
       basisId: "",
       basis: basisName,
       source: row.source?.trim() || undefined,
       receivers,
     };
+    // Warn-and-import on total mismatch: a printed-total / receiver-sum gap
+    // is a data-quality signal, not evidence the schedule is wrong. Earlier
+    // behavior was to discard, which masked recoverable schedules (e.g.
+    // dual-grand-total ambiguity, dollar-sign token fragmentation) behind
+    // the missing-schedule banner. Now we keep the schedule and surface the
+    // gap on the lineage so the importer UI can flag it for human review.
     const lineage: SourceLineage = {
       file: fileName,
       sheet: "AI parsed",
       row: i + 1,
       rawCells: {
+        ...(totalMismatch ? { issueKind: "schedule-total-mismatch" } : {}),
         basis: row.basis,
         source: row.source ?? null,
         receiverCount: receivers.length,
+        ...(hasPrintedTotal ? { printedTotal, extractedTotal } : {}),
+        ...(totalMismatch ? { difference } : {}),
       },
-      confidence: anyLow ? "review" : "high",
+      confidence: anyLow || totalMismatch ? "review" : "high",
       importedAt: now,
     };
     const extracted = { entity, lineage };
-    if (anyLow) lowConfidence.push(extracted);
+    if (anyLow || totalMismatch) lowConfidence.push(extracted);
     else mapped.push(extracted);
   });
 
@@ -618,6 +642,7 @@ export function unmappedBasisDetails(u: UnmappedRow): {
       cells.issueKind === "missing-basis" ? "pool basis was not imported"
       : cells.issueKind === "missing-schedule" ? "basis has no receiver schedule"
       : cells.issueKind === "invalid-schedule" ? "schedule has no valid receivers"
+      : cells.issueKind === "schedule-total-mismatch" ? "schedule receiver sum does not match printed total"
       : u.reason === "missing-required-field" ? "missing required CAP data"
       : "unresolved CAP data",
   };
@@ -643,6 +668,17 @@ export function capImportIntegrityIssues(
   );
   const scheduleNames = new Set(
     importedSchedules.map((row) => row.basis.trim().toLowerCase()),
+  );
+  const reviewedScheduleNames = new Set(
+    basisUnits.unmapped.flatMap((row) => {
+      const cells = row.lineage.rawCells ?? {};
+      const issueKind = cells.issueKind;
+      if (issueKind !== "invalid-schedule" && issueKind !== "schedule-total-mismatch") {
+        return [];
+      }
+      const name = String(cells.basis ?? cells.name ?? "").trim().toLowerCase();
+      return name ? [name] : [];
+    }),
   );
   // Pools that come with an explicit per-receiver split are direct
   // allocations and will be folded into a synthetic basis schedule at
@@ -679,7 +715,9 @@ export function capImportIntegrityIssues(
       });
       continue;
     }
-    if (basis.driverKey === "DIRECT" || scheduleNames.has(key)) continue;
+    if (basis.driverKey === "DIRECT" || scheduleNames.has(key) || reviewedScheduleNames.has(key)) {
+      continue;
+    }
     if (seenMissingSchedules.has(key)) continue;
     seenMissingSchedules.add(key);
     issues.push({
