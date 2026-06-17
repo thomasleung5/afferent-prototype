@@ -553,6 +553,55 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Missing trailing division zero still matches central-service GL code");
 }
 
+{
+  // Inventory-of-allocation-factors exhibits print TWO parallel value
+  // columns for some indirect depts: one under the dept's main/Central
+  // Services pool, one under a "Direct Services" sub-pool — both sharing
+  // identical Fund=100/Org=114, distinguished only by an "Ex. 4"
+  // exhibit-reference marker. tableFromRows joins multi-segment cells
+  // mapped to the same column with a space, so the pool title and the
+  // exhibit marker merge into one cell: "Direct Services Ex. 4". Without
+  // capturing that marker into the GL code, both rows resolve to the same
+  // glCode and the deterministic receiver map silently drops one value
+  // (the Milpitas Modified/Gross Operating Expenses undercount bug).
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35),
+    item("Organization", 100, 10, 80),
+    item("Division or Cost Pool", 200, 10, 120),
+    item("Gross Operating Expenses", 430, 10, 150),
+    item("No.", 50, 25, 25),
+    item("Title", 100, 25, 35),
+    item("No.", 200, 25, 25),
+    item("Title", 250, 25, 35),
+    item("No.", 300, 25, 25),
+    item("Title", 350, 25, 35),
+    item("Value", 430, 25, 45),
+    item("100", 50, 45, 25),
+    item("General", 100, 45, 50),
+    item("City Clerk 114", 200, 45, 110),
+    item("1,000,000", 430, 45, 60),
+    item("100", 50, 65, 25),
+    item("General", 100, 65, 50),
+    item("City Clerk 114", 200, 65, 110),
+    item("Direct Services Ex. 4", 330, 65, 130),
+    item("500,000", 430, 65, 50),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Gross Operating Expenses",
+    basisName: "Gross Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 2);
+  const glCodes = result.receivers.map((r) => r.glCode);
+  assert.equal(new Set(glCodes).size, 2, "the two City Clerk rows must resolve to distinct GL codes");
+  const total = result.receivers.reduce((sum, r) => sum + (r.units ?? 0), 0);
+  assert.equal(total, 1500000, "neither parallel value column should silently overwrite the other");
+  console.log("  ✓ Dual value-column collision: 'Ex. N' marker disambiguates parallel pool rows");
+}
+
 // ─── Suffix-stripped matching ─────────────────────────────────────────────
 
 {

@@ -328,6 +328,16 @@ function receiverIdentityFromTableRow(identityCells: string[]): ReceiverIdentity
     if (/total\s+(organization|fund)/i.test(cell)) {
       const nums = numericTokens(cell);
       if (nums.length > 0) division = nums.at(-1);
+      continue;
+    }
+    // "Ex. 4" style division/cost-pool references: on inventory exhibits,
+    // some depts print two parallel value columns sharing the same fund/org
+    // (e.g. a "Direct Services" sub-pool alongside the dept's main "Central
+    // Services" pool). Without this, both rows resolve to the same glCode
+    // and one silently overwrites the other in the receiver map.
+    const exhibitRef = !division ? cell.match(/\bex\.?\s*(\d+)\b/i) : null;
+    if (exhibitRef) {
+      division = `ex${exhibitRef[1]}`;
     }
   }
 
