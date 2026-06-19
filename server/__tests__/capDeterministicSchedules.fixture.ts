@@ -1007,4 +1007,65 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ PDF-derived schedules surface their own printed Grand Total for reconciliation");
 }
 
+{
+  // Regression: long CAP exhibits paginate by re-printing the full header
+  // block and re-listing every receiver row on the next page when a
+  // schedule spans multiple pages (confirmed against the Milpitas CAP's
+  // own Excel export, where "Table 1" repeats its 3-row header and every
+  // receiver row verbatim at each page break). The multi-page scan window
+  // in aiParseCap.ts concatenates items from several pages into one
+  // pageItems array, so a byte-identical repeated row must not be summed
+  // twice for the same receiver. `evaluatePdfReceiverGroup` resolves
+  // receivers into a Map keyed by glCode, which already guards against
+  // this — this test locks that behavior in.
+  const headerBlock = (page: number, yBase: number) => [
+    item("Fund", 50, yBase, 35, 10, page),
+    item("Organization", 100, yBase, 80, 10, page),
+    item("Division or Cost Pool", 200, yBase, 120, 10, page),
+    item("Modified Operating Expenses", 430, yBase, 170, 10, page),
+    item("No.", 50, yBase + 15, 25, 10, page),
+    item("Title", 100, yBase + 15, 35, 10, page),
+    item("No.", 200, yBase + 15, 25, 10, page),
+    item("Title", 250, yBase + 15, 35, 10, page),
+    item("No.", 300, yBase + 15, 25, 10, page),
+    item("Title", 350, yBase + 15, 35, 10, page),
+    item("Value", 430, yBase + 15, 45, 10, page),
+  ];
+  const receiverRow = (page: number, y: number) => [
+    item("100", 50, y, 25, 10, page),
+    item("General", 100, y, 50, 10, page),
+    item("100", 200, y, 25, 10, page),
+    item("City Council", 250, y, 100, 10, page),
+    item("0", 300, y, 10, 10, page),
+    item("Total Organization", 350, y, 100, 10, page),
+    item("631,378", 430, y, 40, 10, page),
+  ];
+  // aiParseCap.ts offsets each scanned page's Y coordinates by a large
+  // constant so pages don't collapse into the same row cluster (each PDF
+  // page's Y restarts at 0) — mirror that here so the second page's
+  // verbatim repeat is a genuinely separate row, not a merged duplicate.
+  const PAGE_Y_OFFSET = 10000;
+  const pageItems: TextItem[] = [
+    ...headerBlock(1, 10),
+    ...receiverRow(1, 35),
+    // page 2 re-prints the same header block and the same receiver row
+    // verbatim, exactly as the page break does in the real document.
+    ...headerBlock(2, 10 + PAGE_Y_OFFSET),
+    ...receiverRow(2, 35 + PAGE_Y_OFFSET),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 1,
+    "a row repeated verbatim across a page break is one receiver, not two");
+  assert.equal(result.receivers[0].units, 631378,
+    "a repeated page-break row must not be double-counted into the receiver's total");
+  console.log("  ✓ PDF-derived schedules collapse page-break header/row repeats instead of double-counting");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");
