@@ -557,7 +557,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
   let profile = detectCapDocumentProfileFromText("");
   try {
     profile = detectCapDocumentProfileFromText(
-      await extractPdfTextPreview(new Uint8Array(pdfBuffer)),
+      await extractPdfTextPreview(new Uint8Array(pdfBuffer.slice(0))),
     );
   } catch (err) {
     logEvent({
@@ -691,7 +691,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         const semanticByBasis = new Map(
           semantics.map((s) => [basisNameKey(s.basis), s]),
         );
-        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer));
+        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer.slice(0)));
 
         let resolvedCount = 0;
         let fallbackCount = 0;
