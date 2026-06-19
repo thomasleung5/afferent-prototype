@@ -4,6 +4,7 @@ import {
   aiBasisColumnSemantics,
   extractReceiverUnitsFromPdf,
   loadPdfItemsByPage,
+  type DeterministicScheduleResult,
 } from "./capDeterministicSchedules";
 import {
   capDocumentProfileGuidance,
@@ -87,6 +88,7 @@ Extract every named INDIRECT cost center with its total dollar cost — the "100
 - SKIP pool-level subtotals, grand totals, fund totals, and direct departmental operating budgets (Planning, Building, Engineering, Public Works, Parks, Police, Fire). Those are NOT cost centers — they are receivers, not allocators.
 - KEEP rows whose totalCost is zero IF the row appears in the document's Allocation Inventory or ALLOCABLE BUDGET UNITS list — these are internal-service / allocable budget units (e.g. "Fringe Benefits Allocation", "Town Center Operations", "Corp Yard Operations", "Vehicle / Equipment Operations") that have no own dollars but publish a redistribution schedule. A $0 totalCost is NEVER a reason to drop the center or to skip its pools / receivers downstream — the schedule's per-receiver dollars still carry real allocation values that flow into other departments. SKIP rows whose totalCost is missing or non-numeric.
 - confidence: "high" if name and totalCost are unambiguous, "low" otherwise.
+- DUAL ROLE WARNING: in allocation-factor inventory exhibits (Section 3), the SAME row that names an indirect center (e.g. "City Council", "City Manager", "Information Technology") ALSO publishes that center's Value under each parallel basis column (Modified Operating Expenses, Gross Operating Expenses, Assigned Square Footage, etc.). Extracting a row into "centers" here does NOT excuse you from also extracting that identical row as a receiver in EVERY basisUnits schedule on that page in Section 3. Treat the two extractions as fully independent passes over the same source rows — finishing Section 1 must not cause you to skip or "already used" those rows when you build Section 3.
 
 ================================================================
 SECTION 2 — Allocation bases
@@ -132,7 +134,7 @@ Extract one entry per allocation BASIS that has a unit schedule (e.g. an FTE-by-
 - Extract each basis schedule ONCE even if multiple pools reference it. If the same set of FTE units is published verbatim for several pools, that's a single basisUnits entry.
 - A schedule spanning multiple consecutive pages is still ONE basisUnits entry. Continue collecting receivers until that named basis's Grand Total row or until a new allocation-factor group begins.
 - In parallel-column exhibits, use only the raw "Value" as units. Ignore "Distribution to All Services" and "Distribution Only to Direct Services" percentages because the engine derives percentages from units.
-- Zero / dash values may be omitted from receivers. Retain every positive printed Value, including rows for central services, indirect/internal services, and other non-direct receivers.
+- Zero / dash values may be omitted from receivers. Retain every positive printed Value, including rows for central services, indirect/internal services, and other non-direct receivers. Rows under a "Central Services in the General Fund" (or equivalent) heading are NOT exempt — even though those same rows also populate Section 1's centers array, they MUST still appear as receivers here for every basis column where they print a positive Value. Do not drop a row from a basisUnits schedule just because it was already captured in Section 1.
 - Skip schedules for pools that publish a hand-written percent split — those go in Section 5 (directAllocations), not here.
 - COLUMN AND ROW VERIFICATION (parallel-column / detached-label PDFs):
   Allocation-factor exhibits frequently print several independent bases as
@@ -447,6 +449,39 @@ export function receiverTotalMatchesPrintedTotal(
   return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
 }
 
+export type DeterministicTrustDecision =
+  | { trust: true }
+  | { trust: false; reason: "unmatched-receivers" | "total-mismatch" | "no-resolved-receivers" };
+
+/** Single gate for "should we keep this basis's deterministic PDF read, or
+ *  fall back to the AI-extracted receivers?" All callers must go through
+ *  this function rather than inspecting `DeterministicScheduleResult`
+ *  fields directly — `unmatchedReceivers` is NOT a reliable completeness
+ *  signal on its own: `evaluatePdfReceiverGroup` (used whenever
+ *  `deriveReceiversFromPdf: true`, which is every call site today) always
+ *  returns it empty, since that path derives receivers from PDF rows
+ *  rather than matching against an AI-supplied candidate list. The
+ *  printed-total reconciliation is the strong signal and is checked
+ *  whenever a printed total is available; "no unmatched receivers" alone
+ *  is not sufficient to trust a result. */
+export function evaluateDeterministicResult(
+  row: Pick<BasisUnitsRow, "printedTotal">,
+  result: Pick<DeterministicScheduleResult, "receivers" | "unmatchedReceivers">,
+): DeterministicTrustDecision {
+  if (result.unmatchedReceivers.length > 0) {
+    return { trust: false, reason: "unmatched-receivers" };
+  }
+  const printedTotal = Number(row.printedTotal);
+  const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
+  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers)) {
+    return { trust: false, reason: "total-mismatch" };
+  }
+  if (result.receivers.length === 0) {
+    return { trust: false, reason: "no-resolved-receivers" };
+  }
+  return { trust: true };
+}
+
 export function missingScheduleBasisNames(
   bases: BasisRow[],
   basisUnits: BasisUnitsRow[],
@@ -522,7 +557,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
   let profile = detectCapDocumentProfileFromText("");
   try {
     profile = detectCapDocumentProfileFromText(
-      await extractPdfTextPreview(new Uint8Array(pdfBuffer)),
+      await extractPdfTextPreview(new Uint8Array(pdfBuffer.slice(0))),
     );
   } catch (err) {
     logEvent({
@@ -656,7 +691,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         const semanticByBasis = new Map(
           semantics.map((s) => [basisNameKey(s.basis), s]),
         );
-        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer));
+        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer.slice(0)));
 
         let resolvedCount = 0;
         let fallbackCount = 0;
@@ -723,9 +758,19 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             continue;
           }
           const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
-          const printedTotal = Number(row.printedTotal);
-          const deterministicTotalMatchesPrinted = receiverTotalMatchesPrintedTotal(row, result.receivers);
-          if (result.unmatchedReceivers.length > 0 && !deterministicTotalMatchesPrinted) {
+          // The schedule's own printed "Grand Total: All Services" row
+          // (read deterministically from the same column as the
+          // receivers) is more trustworthy than the primary AI parse's
+          // printedTotal field for reconciliation — a mis-read AI total
+          // would otherwise cause an already-correct deterministic result
+          // to be rejected as a "total-mismatch" false positive.
+          const reconciliationRow = result.printedTotalFromPdf != null
+            ? { ...row, printedTotal: result.printedTotalFromPdf }
+            : row;
+          const printedTotal = Number(reconciliationRow.printedTotal);
+          const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
+          const decision = evaluateDeterministicResult(reconciliationRow, result);
+          if (!decision.trust) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
             logEvent({
@@ -733,7 +778,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               msg: "deterministic schedule per-basis",
               basis: basisName,
               path: "ai-fallback",
-              reason: "unmatched-receivers",
+              reason: decision.reason,
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
@@ -741,30 +786,13 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               blank_receivers: result.blankReceivers.length,
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
-              printed_total: Number.isFinite(printedTotal) && printedTotal > 0 ? printedTotal : undefined,
-            });
-            continue;
-          }
-          if (result.receivers.length === 0) {
-            fallbackCount += 1;
-            nextBasisUnits.push(row);
-            logEvent({
-              tag: TAG,
-              msg: "deterministic schedule per-basis",
-              basis: basisName,
-              path: "ai-fallback",
-              reason: "no-resolved-receivers",
-              page: semantic.page,
-              column_header: semantic.basisColumnHeader,
-              ai_receivers: aiReceiverCount,
-              blank_receivers: result.blankReceivers.length,
-              unmatched_receivers: result.unmatchedReceivers.length,
+              printed_total: hasPrintedTotal ? printedTotal : undefined,
             });
             continue;
           }
           resolvedCount += 1;
           nextBasisUnits.push({
-            ...row,
+            ...reconciliationRow,
             source: row.source ?? "Deterministic PDF extraction",
             receivers: result.receivers.map((r) => ({
               dept: r.dept,

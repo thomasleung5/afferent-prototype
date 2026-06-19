@@ -273,6 +273,94 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
 }
 
 {
+  // Regression: real CAP exhibits print a generic "Value" subheader on
+  // every basis-schedule page, including unrelated schedules many pages
+  // away within the AI's page-window scan. A bare match on the literal
+  // word "Value" (with no basis-name confirmation) used to register as a
+  // `preferred` candidate regardless of which table it came from, and
+  // candidates were grouped purely by raw column index — so an unrelated
+  // later-page table's "Value" column could be merged into the same
+  // group and, since `evaluatePdfReceiverGroup` resolves receivers into a
+  // single Map keyed by glCode, silently overwrite the correct basis's
+  // value when the same Fund/Org/Division glCode happens to recur (a
+  // realistic case — dept codes like "100-100" repeat across schedules).
+  // Page 2's Y values are offset, matching how aiParseCap.ts shifts each
+  // scanned page's items before clustering (each page's rows otherwise
+  // restart at y≈0 and would collapse into page 1's rows).
+  const PAGE_Y_OFFSET = 10000;
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35, 10, 1),
+    item("Organization", 100, 10, 80, 10, 1),
+    item("Division or Cost Pool", 200, 10, 120, 10, 1),
+    item("Modified Operating Expenses", 430, 10, 170, 10, 1),
+    item("No.", 50, 25, 25, 10, 1),
+    item("Title", 100, 25, 35, 10, 1),
+    item("No.", 200, 25, 25, 10, 1),
+    item("Title", 250, 25, 35, 10, 1),
+    item("No.", 300, 25, 25, 10, 1),
+    item("Title", 350, 25, 35, 10, 1),
+    item("Value", 430, 25, 45, 10, 1),
+    item("400", 50, 45, 25, 10, 1),
+    item("Water M & O Fund", 100, 45, 110, 10, 1),
+    item("0", 200, 45, 10, 10, 1),
+    item("Total Fund", 250, 45, 60, 10, 1),
+    item("0", 300, 45, 10, 10, 1),
+    item("Total Fund", 350, 45, 60, 10, 1),
+    item("2,000", 430, 45, 40, 10, 1),
+    // Filler receiver rows — real CAP schedules run for dozens of rows
+    // per page, so this asserts the fix holds even with realistic
+    // row-index distance between page 1's table and page 2's table (not
+    // just the contrived 1-data-row-per-page case).
+    item("410", 50, 65, 25, 10, 1),
+    item("Sewer M & O Fund", 100, 65, 110, 10, 1),
+    item("0", 200, 65, 10, 10, 1),
+    item("Total Fund", 250, 65, 60, 10, 1),
+    item("0", 300, 65, 10, 10, 1),
+    item("Total Fund", 350, 65, 60, 10, 1),
+    item("500", 430, 65, 40, 10, 1),
+    item("420", 50, 85, 25, 10, 1),
+    item("Gas Fund", 100, 85, 60, 10, 1),
+    item("0", 200, 85, 10, 10, 1),
+    item("Total Fund", 250, 85, 60, 10, 1),
+    item("0", 300, 85, 10, 10, 1),
+    item("Total Fund", 350, 85, 60, 10, 1),
+    item("700", 430, 85, 40, 10, 1),
+    item("Fund", 50, 10 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("Organization", 100, 10 + PAGE_Y_OFFSET, 80, 10, 2),
+    item("Division or Cost Pool", 200, 10 + PAGE_Y_OFFSET, 120, 10, 2),
+    item("Assigned Square Footage", 430, 10 + PAGE_Y_OFFSET, 170, 10, 2),
+    item("No.", 50, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 100, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("No.", 200, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 250, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("No.", 300, 25 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Title", 350, 25 + PAGE_Y_OFFSET, 35, 10, 2),
+    item("Value", 430, 25 + PAGE_Y_OFFSET, 45, 10, 2),
+    item("400", 50, 45 + PAGE_Y_OFFSET, 25, 10, 2),
+    item("Water M & O Fund", 100, 45 + PAGE_Y_OFFSET, 110, 10, 2),
+    item("0", 200, 45 + PAGE_Y_OFFSET, 10, 10, 2),
+    item("Total Fund", 250, 45 + PAGE_Y_OFFSET, 60, 10, 2),
+    item("0", 300, 45 + PAGE_Y_OFFSET, 10, 10, 2),
+    item("Total Fund", 350, 45 + PAGE_Y_OFFSET, 60, 10, 2),
+    item("9,999", 430, 45 + PAGE_Y_OFFSET, 40, 10, 2),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Value",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 3);
+  const waterRow = result.receivers.find((r) => r.glCode === "400-0");
+  assert.ok(waterRow);
+  assert.equal(waterRow.units, 2000,
+    "an unrelated page's same-column-index 'Value' table must not contaminate this basis");
+  console.log("  ✓ generic 'Value' header matches on unrelated pages don't contaminate the basis's own column");
+}
+
+{
   // Fund-level rows print the receiver name in the Fund Title column,
   // while the Organization / Division titles are generic "Total Fund".
   // Preserve the fund title so imported schedules do not show a pile of
@@ -553,6 +641,55 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Missing trailing division zero still matches central-service GL code");
 }
 
+{
+  // Inventory-of-allocation-factors exhibits print TWO parallel value
+  // columns for some indirect depts: one under the dept's main/Central
+  // Services pool, one under a "Direct Services" sub-pool — both sharing
+  // identical Fund=100/Org=114, distinguished only by an "Ex. 4"
+  // exhibit-reference marker. tableFromRows joins multi-segment cells
+  // mapped to the same column with a space, so the pool title and the
+  // exhibit marker merge into one cell: "Direct Services Ex. 4". Without
+  // capturing that marker into the GL code, both rows resolve to the same
+  // glCode and the deterministic receiver map silently drops one value
+  // (the Milpitas Modified/Gross Operating Expenses undercount bug).
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35),
+    item("Organization", 100, 10, 80),
+    item("Division or Cost Pool", 200, 10, 120),
+    item("Gross Operating Expenses", 430, 10, 150),
+    item("No.", 50, 25, 25),
+    item("Title", 100, 25, 35),
+    item("No.", 200, 25, 25),
+    item("Title", 250, 25, 35),
+    item("No.", 300, 25, 25),
+    item("Title", 350, 25, 35),
+    item("Value", 430, 25, 45),
+    item("100", 50, 45, 25),
+    item("General", 100, 45, 50),
+    item("City Clerk 114", 200, 45, 110),
+    item("1,000,000", 430, 45, 60),
+    item("100", 50, 65, 25),
+    item("General", 100, 65, 50),
+    item("City Clerk 114", 200, 65, 110),
+    item("Direct Services Ex. 4", 330, 65, 130),
+    item("500,000", 430, 65, 50),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Gross Operating Expenses",
+    basisName: "Gross Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 2);
+  const glCodes = result.receivers.map((r) => r.glCode);
+  assert.equal(new Set(glCodes).size, 2, "the two City Clerk rows must resolve to distinct GL codes");
+  const total = result.receivers.reduce((sum, r) => sum + (r.units ?? 0), 0);
+  assert.equal(total, 1500000, "neither parallel value column should silently overwrite the other");
+  console.log("  ✓ Dual value-column collision: 'Ex. N' marker disambiguates parallel pool rows");
+}
+
 // ─── Suffix-stripped matching ─────────────────────────────────────────────
 
 {
@@ -770,6 +907,165 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   assert.deepEqual(parseBasisSemanticResponse("not json"), []);
   assert.deepEqual(parseBasisSemanticResponse("{ broken"), []);
   console.log("  ✓ Semantic response: malformed text returns empty array");
+}
+
+{
+  // Regression: real CAP exhibits also print a narrative "Summary of
+  // Allocation Decisions" table that lists each basis's *name* as a plain
+  // data cell once per cost center (e.g. "Modified Operating Expenses"
+  // repeated down a column for every center assigned that factor), and
+  // an unrelated dollar-amount header can contain a short fragment of the
+  // basis name (e.g. "Expense" inside "Allocable Central Service
+  // Expense", which is a substring of "ModifiedOperatingExpenses" once
+  // normalized). If the AI semantic pass mis-identifies this decision
+  // table as the basis's page, the loose `headerTextMatches` containment
+  // check used to let the fallback bind to that dollar column and read
+  // currency amounts as the basis's units. The fallback must require a
+  // close (not fragment) text match, and reject any column where the
+  // basis-name text recurs across multiple rows (a hallmark of decision
+  // data, not a header).
+  const pageItems: TextItem[] = [
+    item("Allocable Central Service", 50, 10, 150),
+    item("Expense", 50, 25, 60),
+    item("Allocation Basis", 250, 10, 150),
+    item("Allocation Factor", 250, 25, 110),
+    item("City Council", 50, 45, 90),
+    item("$ 631,378", 50, 45 + 1, 70),
+    item("City Council Agenda Items", 250, 45, 170),
+    item("City Council", 50, 65, 90),
+    item("$ 0", 50, 65 + 1, 70),
+    item("Modified Operating Expenses", 250, 65, 170),
+    item("Finance", 50, 85, 90),
+    item("$ 0", 50, 85 + 1, 70),
+    item("Modified Operating Expenses", 250, 85, 170),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.equal(result, null,
+    "a decision-table page with no real Value column must not produce fabricated units");
+  console.log("  ✓ Decision-table basis-name fragments don't get mistaken for a Value column");
+}
+
+{
+  // Regression: the primary AI CAP parse's `printedTotal` for a basis is a
+  // separate, fallible extraction from the deterministic receiver-units
+  // read. If it's wrong, `evaluateDeterministicResult` (in aiParseCap.ts)
+  // would wrongly reject an already-correct deterministic result as a
+  // "total-mismatch" and fall back to the AI's own row-shift-prone
+  // receivers. Real CAP exhibits print their own "Grand Total: All
+  // Services" row at the bottom of the schedule, in the same column
+  // already being read for receiver units — that's a more trustworthy
+  // reconciliation source. `extractReceiverUnitsFromPdf` must surface it
+  // as `printedTotalFromPdf` whenever a deriveReceiversFromPdf table
+  // contains that row.
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35, 10, 1),
+    item("Organization", 100, 10, 80, 10, 1),
+    item("Division or Cost Pool", 200, 10, 120, 10, 1),
+    item("Modified Operating Expenses", 430, 10, 170, 10, 1),
+    item("No.", 50, 25, 25, 10, 1),
+    item("Title", 100, 25, 35, 10, 1),
+    item("No.", 200, 25, 25, 10, 1),
+    item("Title", 250, 25, 35, 10, 1),
+    item("No.", 300, 25, 25, 10, 1),
+    item("Title", 350, 25, 35, 10, 1),
+    item("Value", 430, 25, 45, 10, 1),
+    item("400", 50, 45, 25, 10, 1),
+    item("Water M & O Fund", 100, 45, 110, 10, 1),
+    item("0", 200, 45, 10, 10, 1),
+    item("Total Fund", 250, 45, 60, 10, 1),
+    item("0", 300, 45, 10, 10, 1),
+    item("Total Fund", 350, 45, 60, 10, 1),
+    item("2,000", 430, 45, 40, 10, 1),
+    item("410", 50, 65, 25, 10, 1),
+    item("Sewer M & O Fund", 100, 65, 110, 10, 1),
+    item("0", 200, 65, 10, 10, 1),
+    item("Total Fund", 250, 65, 60, 10, 1),
+    item("0", 300, 65, 10, 10, 1),
+    item("Total Fund", 350, 65, 60, 10, 1),
+    item("3,000", 430, 65, 40, 10, 1),
+    item("Grand Total: All Services", 50, 85, 25, 10, 1),
+    item("5,000", 430, 85, 40, 10, 1),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 2,
+    "the Grand Total row must not be mistaken for a receiver row");
+  assert.equal(result.printedTotalFromPdf, 5000,
+    "the schedule's own printed grand total must be read from the same column as receiver units");
+  console.log("  ✓ PDF-derived schedules surface their own printed Grand Total for reconciliation");
+}
+
+{
+  // Regression: long CAP exhibits paginate by re-printing the full header
+  // block and re-listing every receiver row on the next page when a
+  // schedule spans multiple pages (confirmed against the Milpitas CAP's
+  // own Excel export, where "Table 1" repeats its 3-row header and every
+  // receiver row verbatim at each page break). The multi-page scan window
+  // in aiParseCap.ts concatenates items from several pages into one
+  // pageItems array, so a byte-identical repeated row must not be summed
+  // twice for the same receiver. `evaluatePdfReceiverGroup` resolves
+  // receivers into a Map keyed by glCode, which already guards against
+  // this — this test locks that behavior in.
+  const headerBlock = (page: number, yBase: number) => [
+    item("Fund", 50, yBase, 35, 10, page),
+    item("Organization", 100, yBase, 80, 10, page),
+    item("Division or Cost Pool", 200, yBase, 120, 10, page),
+    item("Modified Operating Expenses", 430, yBase, 170, 10, page),
+    item("No.", 50, yBase + 15, 25, 10, page),
+    item("Title", 100, yBase + 15, 35, 10, page),
+    item("No.", 200, yBase + 15, 25, 10, page),
+    item("Title", 250, yBase + 15, 35, 10, page),
+    item("No.", 300, yBase + 15, 25, 10, page),
+    item("Title", 350, yBase + 15, 35, 10, page),
+    item("Value", 430, yBase + 15, 45, 10, page),
+  ];
+  const receiverRow = (page: number, y: number) => [
+    item("100", 50, y, 25, 10, page),
+    item("General", 100, y, 50, 10, page),
+    item("100", 200, y, 25, 10, page),
+    item("City Council", 250, y, 100, 10, page),
+    item("0", 300, y, 10, 10, page),
+    item("Total Organization", 350, y, 100, 10, page),
+    item("631,378", 430, y, 40, 10, page),
+  ];
+  // aiParseCap.ts offsets each scanned page's Y coordinates by a large
+  // constant so pages don't collapse into the same row cluster (each PDF
+  // page's Y restarts at 0) — mirror that here so the second page's
+  // verbatim repeat is a genuinely separate row, not a merged duplicate.
+  const PAGE_Y_OFFSET = 10000;
+  const pageItems: TextItem[] = [
+    ...headerBlock(1, 10),
+    ...receiverRow(1, 35),
+    // page 2 re-prints the same header block and the same receiver row
+    // verbatim, exactly as the page break does in the real document.
+    ...headerBlock(2, 10 + PAGE_Y_OFFSET),
+    ...receiverRow(2, 35 + PAGE_Y_OFFSET),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Modified Operating Expenses",
+    basisName: "Modified Operating Expenses",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 1,
+    "a row repeated verbatim across a page break is one receiver, not two");
+  assert.equal(result.receivers[0].units, 631378,
+    "a repeated page-break row must not be double-counted into the receiver's total");
+  console.log("  ✓ PDF-derived schedules collapse page-break header/row repeats instead of double-counting");
 }
 
 console.log("\nAll capDeterministicSchedules assertions passed.");
