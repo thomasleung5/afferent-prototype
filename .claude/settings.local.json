@@ -177,7 +177,15 @@
       "Bash(npm update *)",
       "Bash(STRICT_BUILD=1 VITE_SUPABASE_URL=https://dummy.supabase.co VITE_SUPABASE_ANON_KEY=dummy npm run build)",
       "Bash(echo \"Exit: $?\")",
-      "Bash(grep -rn \"useBuildStore\\\\.setState\\\\|useBuildStore\\\\.getState\\\\|useBuildStore$\" /Users/thomasleung/Developer/afferent-prototype --include=\"*.ts\" --include=\"*.tsx\")"
+      "Bash(grep -rn \"useBuildStore\\\\.setState\\\\|useBuildStore\\\\.getState\\\\|useBuildStore$\" /Users/thomasleung/Developer/afferent-prototype --include=\"*.ts\" --include=\"*.tsx\")",
+      "Bash(kill 56824 23668)",
+      "Bash(kill 45707 56877 41900 56838)",
+      "Bash(kill 57069 57082 57083 57084 57122 57103 41900)",
+      "Bash(kill 59079 59081 59095 59097 59098 59117 59136)",
+      "Bash(kill 60452 60454 60467 60468 60469 60504 60507)",
+      "Bash(kill 64056 64058 64071 64072 64073 64100 64111)",
+      "Bash(lsof -ti:3000,8787)",
+      "Bash(kill 41900 71179 71180)"
     ]
   }
 }
