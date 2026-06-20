@@ -12,16 +12,29 @@ import {
 
 let passed = 0;
 
-// ── reset: local-only ────────────────────────────────────────────
+// ── reset: local-only seeded workspace ───────────────────────────
+{
+  const msg = resetConfirmCopy({
+    jurisdictionName: "Maplewood",
+    activeStudyName: null,
+  });
+  assert.match(msg, /Reset Maplewood to the seed model/);
+  assert.match(msg, /Local edits will be discarded/);
+  assert.doesNotMatch(msg, /server draft/i,
+    "no server-draft mention when no active study");
+  passed++;
+}
+
+// ── reset: local-only blank workspace ────────────────────────────
 {
   const msg = resetConfirmCopy({
     jurisdictionName: "Los Altos Hills",
     activeStudyName: null,
+    blankWorkspace: true,
   });
-  assert.match(msg, /Reset Los Altos Hills to the seed model/);
+  assert.match(msg, /Reset Los Altos Hills to a blank workspace/);
   assert.match(msg, /Local edits will be discarded/);
-  assert.doesNotMatch(msg, /server draft/i,
-    "no server-draft mention when no active study");
+  assert.doesNotMatch(msg, /seed model/i);
   passed++;
 }
 
@@ -30,8 +43,10 @@ let passed = 0;
   const msg = resetConfirmCopy({
     jurisdictionName: "Los Altos Hills",
     activeStudyName: "FY26 Fee Study",
+    blankWorkspace: true,
   });
   assert.match(msg, /Reset Los Altos Hills/);
+  assert.match(msg, /blank workspace/);
   assert.match(msg, /Local edits will be discarded/);
   assert.match(msg, /Because "FY26 Fee Study" is active/);
   assert.match(msg, /auto-save will also update that server draft/);
@@ -43,9 +58,11 @@ let passed = 0;
   const msg = clearConfirmCopy({
     jurisdictionName: "Los Altos Hills",
     activeStudyName: null,
+    blankWorkspace: true,
   });
   assert.match(msg, /Clear all build data for Los Altos Hills/);
   assert.match(msg, /empties every input slice/);
+  assert.doesNotMatch(msg, /seed/i);
   assert.doesNotMatch(msg, /server draft/i);
   passed++;
 }

@@ -18,10 +18,12 @@
 import { useCallback, useEffect, useState } from "react";
 import {
   createStudy, listOrganizations, listStudies,
+  saveStudySnapshot,
   type Organization, type Study,
 } from "@/lib/studies/studiesApi";
 import { setActiveStudy } from "@/lib/studies/activeStudy";
 import { enableSandboxMode } from "@/lib/studies/sandboxMode";
+import { createBuildSnapshot, useBuildStore } from "@/lib/store";
 
 type Phase = "loading" | "ok" | "not-configured" | "error";
 
@@ -32,12 +34,14 @@ export function StudySelectionGate() {
   const [errorMsg, setErrorMsg] = useState("");
   const [working, setWorking] = useState<"create" | null>(null);
   const [selectedOrgId, setSelectedOrgId] = useState<string | null>(null);
+  const activeJurisdictionId = useBuildStore((s) => s.activeJurisdictionId);
+  const activeFiscalYear = useBuildStore((s) => s.activeFiscalYear);
 
   const load = useCallback(async () => {
     setPhase("loading");
     setErrorMsg("");
     const [studiesRes, orgsRes] = await Promise.all([
-      listStudies(),
+      listStudies({ jurisdictionId: activeJurisdictionId }),
       listOrganizations(),
     ]);
     if (!studiesRes.ok) {
@@ -50,10 +54,12 @@ export function StudySelectionGate() {
       else { setPhase("error"); setErrorMsg(orgsRes.message); }
       return;
     }
-    setStudies(studiesRes.studies);
+    setStudies(studiesRes.studies.filter(
+      (s) => s.jurisdiction_id === activeJurisdictionId,
+    ));
     setOrganizations(orgsRes.organizations);
     setPhase("ok");
-  }, []);
+  }, [activeJurisdictionId]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -84,14 +90,23 @@ export function StudySelectionGate() {
       const res = await createStudy({
         organizationId: inferredOrgId,
         name: name.trim(),
-        fiscalYear: fy?.trim() || undefined,
+        fiscalYear: fy?.trim() || activeFiscalYear,
+        jurisdictionId: activeJurisdictionId,
       });
       if (!res.ok) {
         setPhase("error");
         setErrorMsg(res.message);
         return;
       }
+      const snapshot = createBuildSnapshot(useBuildStore.getState());
+      const saved = await saveStudySnapshot(res.study.id, snapshot);
       setActiveStudy({ id: res.study.id, name: res.study.name });
+      if (!saved.ok) {
+        window.alert(
+          `Created "${res.study.name}", but the initial save failed (${saved.message}). `
+          + "Open the Studies menu and click Save now to retry.",
+        );
+      }
     } finally {
       setWorking(null);
     }

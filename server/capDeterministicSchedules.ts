@@ -1030,14 +1030,17 @@ interface AnthropicMessageParams {
   system: string;
   messages: Array<{
     role: "user";
-    content: Array<{
-      type: "document";
-      source: {
-        type: "base64";
-        media_type: "application/pdf";
-        data: string;
-      };
-    }>;
+    content: Array<
+      | { type: "text"; text: string }
+      | {
+          type: "document";
+          source: {
+            type: "base64";
+            media_type: "application/pdf";
+            data: string;
+          };
+        }
+    >;
   }>;
 }
 
@@ -1105,7 +1108,7 @@ export function parseBasisSemanticResponse(text: string): BasisColumnSemantic[] 
 export async function aiBasisColumnSemantics(
   client: AnthropicLike,
   model: string,
-  pdfBase64: string,
+  pdfText: string,
   basisNames: string[],
   signal?: AbortSignal,
 ): Promise<BasisColumnSemantic[]> {
@@ -1117,8 +1120,8 @@ export async function aiBasisColumnSemantics(
     messages: [{
       role: "user",
       content: [{
-        type: "document",
-        source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+        type: "text",
+        text: pdfText,
       }],
     }],
   }, signal ? { signal } : undefined);

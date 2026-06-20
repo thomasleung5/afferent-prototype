@@ -53,6 +53,7 @@ create index if not exists organization_members_user_idx
 create table if not exists public.studies (
   id               uuid primary key default gen_random_uuid(),
   organization_id  uuid not null references public.organizations(id) on delete cascade,
+  jurisdiction_id  text check (jurisdiction_id is null or length(jurisdiction_id) between 1 and 100),
   name             text not null check (length(name) between 1 and 200),
   fiscal_year      text check (fiscal_year is null or length(fiscal_year) between 1 and 50),
   created_by       uuid not null references auth.users(id),
@@ -62,6 +63,8 @@ create table if not exists public.studies (
 );
 create index if not exists studies_org_idx
   on public.studies (organization_id);
+create index if not exists studies_org_jurisdiction_idx
+  on public.studies (organization_id, jurisdiction_id);
 
 -- study_drafts -------------------------------------------------------
 -- The live, mutable working snapshot. One row per study (PK = study_id).

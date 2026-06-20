@@ -18,10 +18,14 @@ interface ConfirmArgs {
   jurisdictionName: string;
   /** Display name of the active server study, or null when in local-only. */
   activeStudyName: string | null;
+  /** True when reset returns the demo to an empty workspace instead of seeded data. */
+  blankWorkspace?: boolean;
 }
 
 export function resetConfirmCopy(args: ConfirmArgs): string {
-  const head = `Reset ${args.jurisdictionName} to the seed model?`;
+  const head = args.blankWorkspace
+    ? `Reset ${args.jurisdictionName} to a blank workspace?`
+    : `Reset ${args.jurisdictionName} to the seed model?`;
   const body = "Local edits will be discarded.";
   if (args.activeStudyName) {
     return [
@@ -35,7 +39,9 @@ export function resetConfirmCopy(args: ConfirmArgs): string {
 
 export function clearConfirmCopy(args: ConfirmArgs): string {
   const head = `Clear all build data for ${args.jurisdictionName}?`;
-  const body = "This empties every input slice — including the seed. You can re-seed afterward with Reset.";
+  const body = args.blankWorkspace
+    ? "This empties every input slice."
+    : "This empties every input slice — including the seed. You can re-seed afterward with Reset.";
   if (args.activeStudyName) {
     return [
       head, "",

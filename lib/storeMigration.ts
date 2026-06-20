@@ -56,9 +56,11 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   if (!state.activeJurisdictionId) {
     state.activeJurisdictionId = DEFAULT_JURISDICTION_ID;
   }
+  const activeJurisdiction = getJurisdiction(state.activeJurisdictionId);
+  const isBlankWorkspace = activeJurisdiction?.blankWorkspace === true;
   if (!state.activeFiscalYear) {
     state.activeFiscalYear =
-      getJurisdiction(state.activeJurisdictionId)?.defaultFiscalYear ?? "FY 2025-26";
+      activeJurisdiction?.defaultFiscalYear ?? "FY 2025-26";
   }
   if (!Array.isArray(state.activeFeeDepts) || state.activeFeeDepts.length === 0) {
     const active = new Set<DeptCode>();
@@ -70,14 +72,18 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   }
   if (!state.capCenterDisallowed) state.capCenterDisallowed = {};
   if (state.capBasisUnits == null) {
-    state.capBasisUnits = CAP_BASIS_UNITS.map((bu) => ({
-      ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
-    }));
+    state.capBasisUnits = isBlankWorkspace
+      ? []
+      : CAP_BASIS_UNITS.map((bu) => ({
+        ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
+      }));
   }
   if (state.capDirectAllocations == null) {
-    state.capDirectAllocations = CAP_DIRECT_ALLOCATIONS.map((da) => ({
-      ...da, receivers: da.receivers.map((r) => ({ ...r })),
-    }));
+    state.capDirectAllocations = isBlankWorkspace
+      ? []
+      : CAP_DIRECT_ALLOCATIONS.map((da) => ({
+        ...da, receivers: da.receivers.map((r) => ({ ...r })),
+      }));
   }
   if (state.directBills == null) {
     state.directBills = {};
@@ -90,14 +96,14 @@ export function migratePersistedState(state: Partial<BuildState>): void {
     state.serviceRoleAllocations = {};
   }
 
-  // Backfill seed imports if the persisted store has an empty log. The
-  // Annual Update tab needs at least one import to render the Refresh
-  // cards / Change queue / Packet narrative; new users get these from
-  // initialState(), but earlier sessions stored [].
+  // Backfill seed imports for seeded demo workspaces if the persisted
+  // store has an empty log. Blank workspaces must stay truly empty.
   if (!state.imports || state.imports.length === 0) {
-    state.imports = IMPORTS.map((e) => ({
-      ...e, result: { ...e.result, warnings: [...e.result.warnings] },
-    }));
+    state.imports = isBlankWorkspace
+      ? []
+      : IMPORTS.map((e) => ({
+        ...e, result: { ...e.result, warnings: [...e.result.warnings] },
+      }));
   }
 
   // Seed functional-allocation buckets on stores that pre-date the slice.
@@ -105,7 +111,9 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   // imports + allocationBases backfill pattern above) — only null /
   // undefined triggers re-seeding.
   if (state.functionalAllocation == null) {
-    state.functionalAllocation = FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b }));
+    state.functionalAllocation = isBlankWorkspace
+      ? []
+      : FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b }));
   }
 
   // capCenterSources default — keyed by center identity (glCode or synth),
@@ -240,10 +248,10 @@ export function migratePersistedState(state: Partial<BuildState>): void {
   // this, basisForPool(pool, undefined) crashes the matrix. Only fires
   // when the field is genuinely missing (null/undefined) — an explicit
   // empty array is treated as deliberate (e.g. set by clearAll()) and
-  // preserved across rehydrates. resetAll() is the action for users who
-  // want the seed catalog back.
+  // preserved across rehydrates. Seeded workspaces restore the catalog;
+  // blank workspaces stay empty.
   if (state.allocationBases == null) {
-    state.allocationBases = SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
+    state.allocationBases = isBlankWorkspace ? [] : SEED_ALLOCATION_BASES.map((b) => ({ ...b }));
   }
   // Backfill capCenterTotals + allocationPercent for state persisted
   // before the % column became editable. Derive totals from Σ amount per

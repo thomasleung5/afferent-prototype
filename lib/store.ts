@@ -214,15 +214,16 @@ export interface BuildState {
   comparisonVersionId: string | null;
   /** Active demo jurisdiction the UI is bound to. Read via
    *  useActiveJurisdiction(); switched via setActiveJurisdiction. Defaults
-   *  to "los-altos-hills" — the only jurisdiction with full seed data
-   *  today. Placeholder jurisdictions in lib/data/jurisdictions can be
+   *  to "los-altos-hills" — a live blank jurisdiction. Placeholder
+   *  jurisdictions in lib/data/jurisdictions can be
    *  selected from the TopBar dropdown but render an empty / coming-
    *  soon state until seed data is added.
    *
    *  Not currently used as a data-namespace key inside this store — the
    *  prototype keeps a flat data layout because only one jurisdiction
-   *  has data. When a second jurisdiction comes online we'll need to
-   *  shard the data slices by activeJurisdictionId × activeFiscalYear,
+   *  is active at a time. When richer multi-jurisdiction editing comes
+   *  online we'll need to shard the data slices by
+   *  activeJurisdictionId × activeFiscalYear,
    *  which the active-context layer is set up to enable. */
   activeJurisdictionId: string;
   activeFeeDepts: DeptCode[];
@@ -411,35 +412,37 @@ function synthCenterKey(name: string): string {
 }
 
 const initialState = (): BuildState => {
-  const pools = CAP_POOLS.map((p) => ({ ...p }));
+  const defaultJurisdiction = getJurisdiction(DEFAULT_JURISDICTION_ID);
+  const startsBlank = defaultJurisdiction?.blankWorkspace === true;
+  const pools = startsBlank ? [] : CAP_POOLS.map((p) => ({ ...p }));
   const state: BuildSnapshot = {
-    productiveHours: PRODUCTIVE_HOURS.map((p) => ({ ...p })),
-    operating: OPERATING.map((o) => ({ ...o })),
+    productiveHours: startsBlank ? [] : PRODUCTIVE_HOURS.map((p) => ({ ...p })),
+    operating: startsBlank ? [] : OPERATING.map((o) => ({ ...o })),
     capPools: pools,
-    capCenterTotals: { ...CAP_CENTER_TOTALS },
+    capCenterTotals: startsBlank ? {} : { ...CAP_CENTER_TOTALS },
     capCenterDisallowed: {},
-    capCenterSources: Object.fromEntries(
+    capCenterSources: startsBlank ? {} : Object.fromEntries(
       Object.entries(CAP_CENTER_SOURCES_SEED).map(([key, meta]) => [
         key, { name: meta.name, source: "seed" as SourceTag },
       ]),
     ),
     studyContext: { ...DEFAULT_STUDY_CONTEXT },
-    allocationBases: SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
-    capBasisUnits: CAP_BASIS_UNITS.map((bu) => ({
+    allocationBases: startsBlank ? [] : SEED_ALLOCATION_BASES.map((b) => ({ ...b })),
+    capBasisUnits: startsBlank ? [] : CAP_BASIS_UNITS.map((bu) => ({
       ...bu, receivers: bu.receivers.map((r) => ({ ...r })),
     })),
-    capDirectAllocations: CAP_DIRECT_ALLOCATIONS.map((da) => ({
+    capDirectAllocations: startsBlank ? [] : CAP_DIRECT_ALLOCATIONS.map((da) => ({
       ...da, receivers: da.receivers.map((r) => ({ ...r })),
     })),
     directBills: {},
-    volume: VOLUME.map((w) => ({ ...w })),
-    services: SERVICES.map((s) => ({ ...s })),
+    volume: startsBlank ? [] : VOLUME.map((w) => ({ ...w })),
+    services: startsBlank ? [] : SERVICES.map((s) => ({ ...s })),
     // Sparse by design — populated lazily via setServiceRoleAllocations
     // when the user edits a service's mix. Reads fall back to
     // defaultRoleAllocationsForService when a service has no entry here.
     serviceRoleAllocations: {},
-    policyTargets: POLICY_TARGETS.map((p) => ({ ...p })),
-    policyExceptions: POLICY_EXCEPTIONS.map((e) => ({ ...e })),
+    policyTargets: startsBlank ? [] : POLICY_TARGETS.map((p) => ({ ...p })),
+    policyExceptions: startsBlank ? [] : POLICY_EXCEPTIONS.map((e) => ({ ...e })),
     lineage: {},
     pendingReview: { ...emptyPending },
     // Preserve the bundle's published step-down sequence rather than
@@ -449,11 +452,13 @@ const initialState = (): BuildState => {
     // centers in source order). defaultCenterOrder remains the fallback
     // for state that arrives without an explicit order (post-rehydration
     // backfill in storeMigration).
-    capCenterOrder: Object.keys(CAP_CENTER_TOTALS),
-    imports: IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
-    functionalAllocation: FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
+    capCenterOrder: startsBlank ? [] : Object.keys(CAP_CENTER_TOTALS),
+    imports: startsBlank
+      ? []
+      : IMPORTS.map((e) => ({ ...e, result: { ...e.result, warnings: [...e.result.warnings] } })),
+    functionalAllocation: startsBlank ? [] : FUNCTIONAL_ALLOCATION_SEED.map((b) => ({ ...b })),
     activeJurisdictionId: DEFAULT_JURISDICTION_ID,
-    activeFeeDepts: feeDeptsFromServices(SERVICES),
+    activeFeeDepts: startsBlank ? [] : feeDeptsFromServices(SERVICES),
     activeFiscalYear:
       getJurisdiction(DEFAULT_JURISDICTION_ID)?.defaultFiscalYear ?? "FY 2025-26",
     operatingCategoryMappings: {},
@@ -462,11 +467,13 @@ const initialState = (): BuildState => {
   const seedVersion: StudyVersion = {
     id: "version-seed-baseline",
     versionNumber: 1,
-    label: "Seed baseline",
+    label: startsBlank ? "Blank baseline" : "Seed baseline",
     status: "adopted",
     createdAt: "2026-01-01T00:00:00.000Z",
     createdBy: "system",
-    notes: "Initial model snapshot for variance explanations.",
+    notes: startsBlank
+      ? "Initial blank workspace snapshot."
+      : "Initial model snapshot for variance explanations.",
     sourceImportIds: state.imports.map((i) => i.id),
     snapshot: createBuildSnapshot(state),
   };
@@ -1416,8 +1423,8 @@ export const useBuildStore = create<BuildState & BuildActions>()(
           // Genuinely empty bases on Clear all data. The migration
           // backfill that fires on rehydrate treats `[]` as deliberate
           // (only `null`/`undefined` triggers re-seeding), so this stays
-          // empty across page reloads. resetAll() restores the seed
-          // catalog for users who want a fresh starting point.
+          // empty across page reloads. resetAll() restores the active
+          // default baseline, which may be blank or seeded.
           allocationBases: [],
           capBasisUnits: [],
           capDirectAllocations: [],
