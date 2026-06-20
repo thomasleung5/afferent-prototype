@@ -640,10 +640,7 @@ function parseUnitsCell(cell: string): number | null {
   const trimmed = cell.trim();
   if (!trimmed) return null;
   if (trimmed === "-" || trimmed === "—" || trimmed === "–") return null;
-  // Some bases (e.g. "As Total City Manager Organization" on exhibits that
-  // print a department's distribution share rather than a literal count)
-  // are read from a percentage column — "6.8%" means the unit value is 6.8.
-  const cleaned = trimmed.replace(/[\s,$%]/g, "");
+  const cleaned = trimmed.replace(/[\s,$]/g, "");
   if (!cleaned) return null;
   // Parenthesized negative ("(123)") — engineers occasionally render in
   // accounting style. We treat negatives as "not a valid unit count" and
@@ -784,7 +781,6 @@ ${basisNames.map((name) => `- ${name}`).join("\n")}
 Rules:
 - Identify the column header by matching the basis's name to the header row text on the relevant page.
 - Use the EXACT text as printed (preserve capitalization and punctuation).
-- Some exhibits print several metrics side by side under one named header, each broken into generic sub-columns like "Value", "Distribution to All Services", and "Distribution Only to Direct Services". When a basis represents a department's percentage share of a total (e.g. its name contains "As Total", "Distribution", "Percent", or "% of") rather than a literal dollar amount or count, report the "Distribution to All Services" (or equivalent percentage) sub-column's header text for that basis — not the generic "Value" sub-column, which can hold an unrelated rounded integer on these exhibits.
 - If a basis has no printed schedule, omit it from the array.
 - Do not invent header text. If unsure, omit.
 - Return JSON only, no prose.`;

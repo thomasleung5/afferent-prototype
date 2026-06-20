@@ -442,11 +442,27 @@ export function alignRecoveredBasisNames(
 export function receiverTotalMatchesPrintedTotal(
   row: Pick<BasisUnitsRow, "printedTotal">,
   receivers: Array<{ units: number }>,
+  opts?: { allowUndercount?: boolean },
 ): boolean {
   const printedTotal = Number(row.printedTotal);
   if (!Number.isFinite(printedTotal) || printedTotal <= 0) return false;
   const extractedTotal = receivers.reduce((sum, receiver) => sum + receiver.units, 0);
-  return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
+  const tolerance = Math.max(1, Math.abs(printedTotal) * 0.005);
+  if (opts?.allowUndercount) return extractedTotal <= printedTotal + tolerance;
+  return Math.abs(extractedTotal - printedTotal) <= tolerance;
+}
+
+/** "As Total ... Organization"-style bases print a department's share of
+ *  the total as a percentage, and round shares under ~0.5% to a printed
+ *  dash rather than "0". Reading the schedule's literal Value column for
+ *  these bases is correct as far as it goes, but it structurally cannot
+ *  reconstruct the rows the PDF itself chose not to print — the
+ *  deterministic total will legitimately undercount the printed grand
+ *  total. That's a known property of the source document, not a
+ *  mismatched-column read, so these bases are allowed to undercount
+ *  without triggering AI fallback (which has no better data either). */
+export function isDistributionShareBasis(basisName: string): boolean {
+  return /^as\s+total\b/i.test(basisName.trim());
 }
 
 export type DeterministicTrustDecision =
@@ -467,13 +483,14 @@ export type DeterministicTrustDecision =
 export function evaluateDeterministicResult(
   row: Pick<BasisUnitsRow, "printedTotal">,
   result: Pick<DeterministicScheduleResult, "receivers" | "unmatchedReceivers">,
+  opts?: { allowUndercount?: boolean },
 ): DeterministicTrustDecision {
   if (result.unmatchedReceivers.length > 0) {
     return { trust: false, reason: "unmatched-receivers" };
   }
   const printedTotal = Number(row.printedTotal);
   const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers)) {
+  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers, opts)) {
     return { trust: false, reason: "total-mismatch" };
   }
   if (result.receivers.length === 0) {
@@ -769,7 +786,9 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             : row;
           const printedTotal = Number(reconciliationRow.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-          const decision = evaluateDeterministicResult(reconciliationRow, result);
+          const decision = evaluateDeterministicResult(reconciliationRow, result, {
+            allowUndercount: isDistributionShareBasis(basisName),
+          });
           if (!decision.trust) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
