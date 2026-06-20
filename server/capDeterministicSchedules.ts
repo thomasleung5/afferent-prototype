@@ -109,17 +109,59 @@ export function extractReceiverUnitsFromPdf(
   const normalizedTarget = normalizeHeaderText(basisColumnHeader);
   const normalizedBasis = normalizeHeaderText(basisName ?? "");
   const hasExpectedTotal = Number.isFinite(Number(expectedTotal)) && Number(expectedTotal) > 0;
-  const candidates = headerCandidates(rows, normalizedTarget, normalizedBasis, hasExpectedTotal);
-  if (candidates.length === 0) return null;
 
-  const groups = candidateGroups(candidates);
-  const results = groups.map((group) => deriveReceiversFromPdf
-    ? evaluatePdfReceiverGroup(rows, group)
-    : evaluateCandidateGroup(rows, group, receivers));
+  // NBS-template gridded schedules (identified by a GL-code-style anchor
+  // row, e.g. "011 - 1100") print each column's header word-wrapped across
+  // many physical lines, with different columns wrapping to different
+  // numbers of lines — no single PDF text item ever contains the full
+  // header phrase. On this layout, prefer reconstructing each column's
+  // full header text (by clustering data-row X positions, then
+  // concatenating the wrapped header-band rows projected onto those
+  // columns) and matching against the *whole* phrase. Whole-phrase
+  // matching is far less prone to false positives than single-fragment
+  // matching below — e.g. a lone wrapped line reading "FY 24/25 Budgeted"
+  // can accidentally satisfy a loose substring match against a different
+  // basis's full header "FY 24/25 Budgeted FTE" even though it's actually
+  // a fragment of an unrelated column's header.
+  const isGriddedSchedule = rows.some((row) => GL_CODE_ROW_PATTERN.test(row[0]?.text.trim() ?? ""));
+  if (isGriddedSchedule) {
+    const wrappedGroups = findWrappedHeaderGroups(rows, normalizedTarget, normalizedBasis);
+    if (wrappedGroups.length > 0) {
+      const wrappedResults = wrappedGroups.map((group) => deriveReceiversFromPdf
+        ? evaluateWrappedPdfReceiverGroup(group)
+        : evaluateWrappedCandidateGroup(group, receivers));
+      return pickBestResult(wrappedResults, hasExpectedTotal, Number(expectedTotal));
+    }
+  }
+
+  const candidates = headerCandidates(rows, normalizedTarget, normalizedBasis, hasExpectedTotal);
+
+  if (candidates.length > 0) {
+    const groups = candidateGroups(candidates);
+    const results = groups.map((group) => deriveReceiversFromPdf
+      ? evaluatePdfReceiverGroup(rows, group)
+      : evaluateCandidateGroup(rows, group, receivers));
+    return pickBestResult(results, hasExpectedTotal, Number(expectedTotal));
+  }
+
+  // Fallback for non-gridded layouts: reconstruct wrapped headers the same
+  // way, in case a schedule wraps its header without a GL-code anchor row.
+  const wrappedGroups = findWrappedHeaderGroups(rows, normalizedTarget, normalizedBasis);
+  if (wrappedGroups.length === 0) return null;
+  const wrappedResults = wrappedGroups.map((group) => deriveReceiversFromPdf
+    ? evaluateWrappedPdfReceiverGroup(group)
+    : evaluateWrappedCandidateGroup(group, receivers));
+  return pickBestResult(wrappedResults, hasExpectedTotal, Number(expectedTotal));
+}
+
+function pickBestResult(
+  results: Array<DeterministicScheduleResult & { preferred: boolean }>,
+  hasExpectedTotal: boolean,
+  printedTotal: number,
+): DeterministicScheduleResult | null {
   if (results.length === 0) return null;
 
   if (hasExpectedTotal) {
-    const printedTotal = Number(expectedTotal);
     const tolerance = Math.max(1, Math.abs(printedTotal) * 0.005);
     const preferredResults = results.filter((result) => result.preferred);
     const candidatesToRank = preferredResults.length > 0 ? preferredResults : results;
@@ -142,6 +184,239 @@ export function extractReceiverUnitsFromPdf(
     if (a.receivers.length !== b.receivers.length) return b.receivers.length - a.receivers.length;
     return a.unmatchedReceivers.length - b.unmatchedReceivers.length;
   })[0];
+}
+
+// ─── Wrapped multi-line header fallback ───────────────────────────────────
+//
+// Gridded CAP exhibits (e.g. the NBS template) print a single logical
+// column header word-wrapped across 3-9 physical lines, and different
+// columns wrap to different numbers of lines — so no single PDF text item
+// ever equals (or contains) the full header phrase the AI semantic pass
+// reports. The fix: derive column positions from X-clustering across the
+// whole page (robust to any one row being sparse), reassemble each
+// column's full header text by concatenating every header-band item whose
+// X-center falls in that column's band, and match against that instead.
+
+/** Identity-code rows in these exhibits look like "011 - 1100" or
+ *  "048-6900" — a fund/org code pair, optionally hyphenated without
+ *  spaces. Used to find the first real data row on a page (the boundary
+ *  between the wrapped header band above it and the data below). */
+const GL_CODE_ROW_PATTERN = /^\d{2,4}\s*-\s*\d{2,5}$/;
+
+/** Repeated page boilerplate (title / subtitle / "Prepared by" footer)
+ *  that would otherwise pollute header-band text reconstruction if it
+ *  happens to land near a column's X position. */
+const BOILERPLATE_LINE = /^(town of|cost allocation plan|source cost data|prepared by|fiscal year)/i;
+
+interface WrappedHeaderGroup {
+  /** All clustered rows on the schedule's page, in top-to-bottom order. */
+  pageRows: TextItem[][];
+  /** Index into pageRows of the first real data row (GL-code-pattern row). */
+  anchorLocal: number;
+  /** Column band X-centers, left to right. */
+  centers: number[];
+  xTolerance: number;
+  columnIndex: number;
+  preferred: boolean;
+}
+
+/** Group text items into X-position bands (columns), analogous to
+ *  clusterRows' Y-clustering but along the horizontal axis. */
+function clusterColumns(items: TextItem[], xTolerance = 25): TextItem[][] {
+  if (items.length === 0) return [];
+  const sorted = [...items].sort((a, b) => (a.x + a.width / 2) - (b.x + b.width / 2));
+  const cols: TextItem[][] = [];
+  let current: TextItem[] = [];
+  let currentXMid = -Infinity;
+  for (const item of sorted) {
+    const xMid = item.x + item.width / 2;
+    if (current.length === 0 || Math.abs(xMid - currentXMid) <= xTolerance) {
+      current.push(item);
+      currentXMid = median(current.map((it) => it.x + it.width / 2));
+    } else {
+      cols.push(current);
+      current = [item];
+      currentXMid = xMid;
+    }
+  }
+  if (current.length > 0) cols.push(current);
+  return cols;
+}
+
+/** Project a set of rows onto fixed column centers (nearest-center
+ *  assignment, multi-item cells space-joined) — the same scheme
+ *  `tableFromRows` uses for a single anchor row, generalized to centers
+ *  derived from whole-page clustering instead. */
+function projectRowsToColumns(rows: TextItem[][], centers: number[], xTolerance: number): string[][] {
+  return rows.map((row) => {
+    const cells: string[][] = Array.from({ length: centers.length }, () => []);
+    for (const item of row) {
+      const itemCenter = item.x + item.width / 2;
+      let nearestCol = -1;
+      let nearestDistance = Infinity;
+      for (let c = 0; c < centers.length; c += 1) {
+        const d = Math.abs(itemCenter - centers[c]);
+        if (d < nearestDistance) {
+          nearestDistance = d;
+          nearestCol = c;
+        }
+      }
+      if (nearestCol >= 0 && nearestDistance <= xTolerance) cells[nearestCol].push(item.text);
+    }
+    return cells.map((parts) => parts.join(" "));
+  });
+}
+
+function findWrappedHeaderGroups(
+  rows: TextItem[][],
+  normalizedTarget: string,
+  normalizedBasis: string,
+): WrappedHeaderGroup[] {
+  const groups: WrappedHeaderGroup[] = [];
+  const seenPages = new Set<number>();
+
+  for (let r = 0; r < rows.length; r += 1) {
+    const first = rows[r][0];
+    if (!first || seenPages.has(first.page)) continue;
+    if (!GL_CODE_ROW_PATTERN.test(first.text.trim())) continue;
+    seenPages.add(first.page);
+
+    const pageRowIndices: number[] = [];
+    for (let i = 0; i < rows.length; i += 1) {
+      if (rows[i][0]?.page === first.page) pageRowIndices.push(i);
+    }
+    const anchorLocal = pageRowIndices.indexOf(r);
+    if (anchorLocal < 0) continue;
+    // Drop stray "$" glyphs — many CAP PDFs emit the currency symbol as a
+    // separate text run a few points left of its number, which otherwise
+    // clusters into its own bogus column between two real ones.
+    const pageRows = pageRowIndices.map((i) => rows[i].filter((it) => it.text.trim() !== "$"));
+
+    // Derive column positions from the DATA rows only, not the header
+    // band: wrapped header phrases are visually wide (often spanning the
+    // width of 2-3 real data columns), so clustering header text together
+    // with data would drag column centers off the data's true positions.
+    // Data values are narrow and consistently placed, giving a clean grid.
+    const columnBands = clusterColumns(pageRows.slice(anchorLocal).flat(), 30);
+    if (columnBands.length === 0) continue;
+    columnBands.sort(
+      (a, b) => median(a.map((it) => it.x + it.width / 2)) - median(b.map((it) => it.x + it.width / 2)),
+    );
+    const centers = columnBands.map((band) => median(band.map((it) => it.x + it.width / 2)));
+    const xTolerance = 30;
+
+    const headerBandRows = pageRows
+      .slice(0, anchorLocal)
+      .filter((row) => !BOILERPLATE_LINE.test(row.map((it) => it.text).join(" ")));
+    const headerTextsByColumn = projectRowsToColumns(headerBandRows, centers, xTolerance)
+      .reduce<string[]>((acc, projectedRow) => {
+        projectedRow.forEach((cell, c) => {
+          if (cell) acc[c] = acc[c] ? `${acc[c]} ${cell}` : cell;
+        });
+        return acc;
+      }, Array.from({ length: centers.length }, () => ""));
+
+    for (let c = 0; c < headerTextsByColumn.length; c += 1) {
+      const normalizedCell = normalizeHeaderText(headerTextsByColumn[c]);
+      if (!normalizedCell) continue;
+      const matchesTarget = headerTextMatches(normalizedCell, normalizedTarget);
+      const matchesBasis = normalizedBasis ? headerTextMatches(normalizedCell, normalizedBasis) : false;
+      if (matchesTarget || matchesBasis) {
+        groups.push({ pageRows, anchorLocal, centers, xTolerance, columnIndex: c, preferred: true });
+      }
+    }
+  }
+
+  return groups;
+}
+
+/** Identity columns precede the first value column. Neither "any row
+ *  numeric" nor "majority of rows numeric" reliably separates the two:
+ *  a single atypical identity row (e.g. a fund-only code with no org
+ *  suffix, parsing as a bare number) can poison an "any" check, and a
+ *  legitimately sparse value column — many CAP allocation factors apply
+ *  to only a handful of receivers — can fail a "majority" check. The
+ *  reliable signal is column *type purity*: an identity column always
+ *  carries non-numeric text on at least one row (department names, GL
+ *  codes with separators); a value column's non-blank cells are always
+ *  numeric, no matter how sparse. Scan left to right and stop at the
+ *  first column where no row's cell is non-blank-and-non-numeric. */
+function identityColumnEndFromDataRows(dataRows: string[][]): number {
+  if (dataRows.length === 0) return 1;
+  const numCols = dataRows.reduce((max, row) => Math.max(max, row.length), 0);
+  let end = 0;
+  for (; end < numCols; end += 1) {
+    const hasTextCell = dataRows.some((row) => {
+      const cell = (row[end] ?? "").trim();
+      return cell !== "" && parseUnitsCell(cell) == null;
+    });
+    if (!hasTextCell) break;
+  }
+  return Math.max(end, 1);
+}
+
+function evaluateWrappedCandidateGroup(
+  group: WrappedHeaderGroup,
+  receivers: ReceiverIdentity[],
+): DeterministicScheduleResult & { preferred: boolean } {
+  const { pageRows, anchorLocal, centers, xTolerance, columnIndex, preferred } = group;
+  const projected = projectRowsToColumns(pageRows, centers, xTolerance);
+  const dataRows = projected.slice(anchorLocal);
+  const identityColumnEnd = identityColumnEndFromDataRows(dataRows);
+
+  const resolved: ResolvedReceiver[] = [];
+  const blankReceivers: ReceiverIdentity[] = [];
+  const unmatchedReceivers: ReceiverIdentity[] = [];
+
+  for (const receiver of receivers) {
+    const tableRowIndex = findReceiverRow(dataRows, receiver, identityColumnEnd);
+    if (tableRowIndex < 0) {
+      unmatchedReceivers.push(receiver);
+      continue;
+    }
+    const cell = dataRows[tableRowIndex][columnIndex] ?? "";
+    const units = parseUnitsCell(cell);
+    if (units == null || units <= 0) {
+      blankReceivers.push(receiver);
+      continue;
+    }
+    resolved.push({ ...receiver, units });
+  }
+
+  return { receivers: resolved, blankReceivers, unmatchedReceivers, preferred };
+}
+
+function evaluateWrappedPdfReceiverGroup(
+  group: WrappedHeaderGroup,
+): DeterministicScheduleResult & { preferred: boolean } {
+  const { pageRows, anchorLocal, centers, xTolerance, columnIndex, preferred } = group;
+  const projected = projectRowsToColumns(pageRows, centers, xTolerance);
+  const dataRows = projected.slice(anchorLocal);
+  const identityColumnEnd = identityColumnEndFromDataRows(dataRows);
+
+  const resolvedByCode = new Map<string, ResolvedReceiver>();
+  let printedTotalFromPdf: number | undefined;
+
+  for (const row of dataRows) {
+    const receiver = receiverIdentityFromTableRow(row.slice(0, identityColumnEnd));
+    if (receiver) {
+      const units = parseUnitsCell(row[columnIndex] ?? "");
+      if (units != null && units > 0) resolvedByCode.set(receiver.glCode, { ...receiver, units });
+      continue;
+    }
+    if (printedTotalFromPdf == null && /grand\s*total\s*:?\s*all\s*services/i.test(row.join(" "))) {
+      const total = parseUnitsCell(row[columnIndex] ?? "");
+      if (total != null && total > 0) printedTotalFromPdf = total;
+    }
+  }
+
+  return {
+    receivers: [...resolvedByCode.values()],
+    blankReceivers: [],
+    unmatchedReceivers: [],
+    preferred,
+    ...(printedTotalFromPdf != null ? { printedTotalFromPdf } : {}),
+  };
 }
 
 function headerCandidates(
@@ -361,6 +636,24 @@ function receiverIdentityFromTableRow(identityCells: string[]): ReceiverIdentity
   if (/\bgrand total\b|\bsubtotal\b/i.test(identityText)) return null;
 
   const first = cells[0];
+
+  // Gridded basis schedules (NBS-template, e.g. "011 - 1100") print the
+  // full GL code as its own bare leading cell — fund and org/dept code
+  // joined by a dash, no department text mixed in — with the department
+  // name in a wholly separate following cell. The general dept-with-
+  // trailing-number heuristic below assumes a single combined cell and
+  // requires a second numeric token elsewhere to build a 2-part code,
+  // which a plain-text dept name (e.g. "City Council") never has. Handle
+  // this bare-code shape directly: split the code on its own digits, and
+  // treat the remaining cells as the department name.
+  const isBareGlCode = /^\d+(\s*-\s*\d+)+$/.test(first);
+  if (isBareGlCode) {
+    const dept = cells.slice(1).join(" ");
+    const codeParts = numericTokens(first);
+    const direct = receiverFromParts(dept, codeParts);
+    if (direct) return direct;
+  }
+
   const firstTrailing = trailingNumber(first);
   if (firstTrailing && !isPlainNumber(first)) {
     const dept = stripTrailingNumber(first);

@@ -1068,4 +1068,49 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ PDF-derived schedules collapse page-break header/row repeats instead of double-counting");
 }
 
+// ─── Wrapped multi-line gridded header (Los Altos Hills page-84/85 shape) ──
+//
+// NBS-template gridded basis-schedule exhibits print each column's header
+// word-wrapped across several physical lines, with different columns
+// wrapping to different numbers of lines — no single PDF text item ever
+// contains the full header phrase. headerCandidates()'s single-cell match
+// always returns zero candidates on this layout. A GL-code-style anchor
+// row ("011 - 1100") signals the gridded shape; extractReceiverUnitsFromPdf
+// should then reconstruct each column's full header by clustering the
+// DATA rows' X positions (data values are narrow and well-separated, even
+// though the header text above them is wide and wraps) and concatenating
+// the header-band rows projected onto those columns.
+{
+  const pageItems: TextItem[] = [
+    // Wrapped 2-line header for the identity column, then a clean 2-line
+    // wrap for the basis column itself, well clear of any other column.
+    item("Budget", 50, 10, 60),
+    item("Budgeted", 250, 10, 70),
+    item("Unit",   50, 25, 60),
+    item("FTE",    250, 25, 70),
+    // Data rows — narrow, well-separated columns.
+    item("011 - 1100",    50, 50, 60),
+    item("City Council",  120, 50, 90),
+    item("42.00",         250, 50, 40),
+    item("011 - 1200",    50, 70, 60),
+    item("City Manager",  120, 70, 90),
+    item("3.00",          250, 70, 40),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Budgeted FTE",
+    basisName: "Budgeted FTE",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result, "wrapped multi-line header should resolve via the gridded-schedule fallback");
+  assert.equal(result.receivers.length, 2);
+  const council = result.receivers.find((r) => r.glCode.includes("011") && r.glCode.includes("1100"));
+  const manager = result.receivers.find((r) => r.glCode.includes("011") && r.glCode.includes("1200"));
+  assert.ok(council && manager, "both receivers should resolve by GL code from the identity columns");
+  assert.equal(council!.units, 42);
+  assert.equal(manager!.units, 3);
+  console.log("  ✓ Wrapped multi-line gridded header resolves via data-derived column reconstruction");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");
