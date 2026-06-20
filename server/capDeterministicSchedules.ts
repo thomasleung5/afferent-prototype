@@ -793,6 +793,7 @@ interface AnthropicMessageParams {
         media_type: "application/pdf";
         data: string;
       };
+      cache_control?: { type: "ephemeral" };
     }>;
   }>;
 }
@@ -875,6 +876,11 @@ export async function aiBasisColumnSemantics(
       content: [{
         type: "document",
         source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+        // Same PDF bytes the primary CAP parse just uploaded — caching the
+        // document block lets this call (and the schedule-recovery calls
+        // that follow it) read the PDF from Anthropic's cache instead of
+        // re-billing the full document as fresh input tokens.
+        cache_control: { type: "ephemeral" },
       }],
     }],
   }, signal ? { signal } : undefined);

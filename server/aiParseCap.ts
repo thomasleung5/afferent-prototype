@@ -611,6 +611,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         content: [{
           type: "document",
           source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+          // The same PDF bytes are re-sent to the basis-semantic call and
+          // to each schedule-recovery batch below — caching this document
+          // block lets those later calls read it from Anthropic's cache
+          // instead of re-billing the full document as fresh input tokens.
+          cache_control: { type: "ephemeral" },
         }],
       }],
     }, {
@@ -625,6 +630,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       latency_ms: elapsed_ms,
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,
+      cache_creation_input_tokens: response.usage.cache_creation_input_tokens ?? 0,
+      cache_read_input_tokens: response.usage.cache_read_input_tokens ?? 0,
       stop_reason: response.stop_reason,
     });
 
@@ -905,6 +912,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
                   media_type: "application/pdf",
                   data: pdfBase64,
                 },
+                // Each batch re-sends the same PDF bytes already cached by
+                // the primary parse call above — keep the breakpoint here
+                // so every batch in this loop (and any later batch) hits
+                // the cache instead of re-billing the full document.
+                cache_control: { type: "ephemeral" },
               }],
             }],
           }, { signal: req.signal });
@@ -920,7 +932,10 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             msg: "basis schedule recovery batch",
             requested_count: batch.length,
             recovered_count: recovered.filter(validSchedule).length,
+            input_tokens: scheduleResponse.usage.input_tokens,
             output_tokens: scheduleResponse.usage.output_tokens,
+            cache_creation_input_tokens: scheduleResponse.usage.cache_creation_input_tokens ?? 0,
+            cache_read_input_tokens: scheduleResponse.usage.cache_read_input_tokens ?? 0,
             stop_reason: scheduleResponse.stop_reason,
           });
         } catch (err) {
