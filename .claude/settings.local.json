@@ -190,9 +190,7 @@
       "Bash(kill 17064 17067 41900)",
       "Bash(git fetch *)",
       "Bash(kill 17537 17538 41900)",
-      "Bash(kill 19423 19424 41900)",
-      "Bash(kill 19871 19872 41900)",
-      "Bash(pkill -f \"vite\\\\|hono\\\\|wrangler\\\\|tsx watch\")"
+      "Bash(kill 19423 19424 41900)"
     ]
   }
 }
