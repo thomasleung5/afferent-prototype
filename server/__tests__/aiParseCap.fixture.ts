@@ -167,6 +167,28 @@ const gross = {
 }
 
 {
+  // Percentage-allocation schedules (e.g. ATCMO on the Milpitas FY24-25 CAP,
+  // page 17) often have long tails of sub-1% receivers that the PDF rounds
+  // to 0. With 18 receivers, integer rounding alone can shift the visible
+  // total by up to ±9 from the true 100. A strict 1-unit tolerance would
+  // wrongly reject the deterministic read and fall back to AI receivers.
+  const eighteenReceivers = Array.from({ length: 18 }, () => ({ units: 0 }));
+  // 12 receivers show as 0 (true values <0.5%); 6 receivers carry the rest.
+  eighteenReceivers[0].units = 30;
+  eighteenReceivers[1].units = 22;
+  eighteenReceivers[2].units = 18;
+  eighteenReceivers[3].units = 12;
+  eighteenReceivers[4].units = 8;
+  eighteenReceivers[5].units = 4;
+  assert.equal(
+    receiverTotalMatchesPrintedTotal({ printedTotal: 100 }, eighteenReceivers),
+    true,
+    "rounding-credible drift across many receivers must not reject deterministic",
+  );
+  console.log("  ✓ receiverTotalMatchesPrintedTotal tolerates rounding drift across many receivers");
+}
+
+{
   // Regression: `evaluatePdfReceiverGroup` (the derive-from-PDF path used
   // at every real call site) always returns `unmatchedReceivers: []`,
   // since it has no AI candidate list to fail to match against. A gate
