@@ -774,7 +774,6 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             });
             continue;
           }
-          const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
           // The schedule's own printed "Grand Total: All Services" row
           // (read deterministically from the same column as the
           // receivers) is more trustworthy than the primary AI parse's
@@ -786,7 +785,31 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             : row;
           const printedTotal = Number(reconciliationRow.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-          const decision = evaluateDeterministicResult(reconciliationRow, result, {
+
+          // Percentage-based bases (e.g. "As Total City Manager
+          // Organization") print a rounded-to-whole-number Value next to a
+          // one-decimal percentage of the same share. Value's rounding
+          // loses information across enough small departments that its
+          // total legitimately falls short of the printed grand total
+          // (confirmed against the Milpitas CAP: Value sums to 94 against
+          // a printed 100, while the percentage column sums to exactly
+          // 100.0). Prefer the percentage-derived receivers whenever they
+          // reconcile better than Value did, before falling back to
+          // accepting Value's known undercount.
+          let effectiveResult = result;
+          if (isDistributionShareBasis(basisName) && result.percentReceivers && result.percentReceivers.length > 0) {
+            const percentPrintedTotal = result.percentTotalFromPdf ?? printedTotal;
+            const percentTotal = result.percentReceivers.reduce((sum, receiver) => sum + receiver.units, 0);
+            const percentTolerance = Math.max(1, Math.abs(percentPrintedTotal) * 0.005);
+            if (
+              Number.isFinite(percentPrintedTotal) && percentPrintedTotal > 0
+              && Math.abs(percentTotal - percentPrintedTotal) <= percentTolerance
+            ) {
+              effectiveResult = { ...result, receivers: result.percentReceivers };
+            }
+          }
+          const deterministicTotal = effectiveResult.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
+          const decision = evaluateDeterministicResult(reconciliationRow, effectiveResult, {
             allowUndercount: isDistributionShareBasis(basisName),
           });
           if (!decision.trust) {
@@ -801,7 +824,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
-              resolved_receivers: result.receivers.length,
+              resolved_receivers: effectiveResult.receivers.length,
               blank_receivers: result.blankReceivers.length,
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
@@ -813,7 +836,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           nextBasisUnits.push({
             ...reconciliationRow,
             source: row.source ?? "Deterministic PDF extraction",
-            receivers: result.receivers.map((r) => ({
+            receivers: effectiveResult.receivers.map((r) => ({
               dept: r.dept,
               glCode: r.glCode,
               ...(r.deptCode ? { deptCode: r.deptCode } : {}),
@@ -829,7 +852,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             page: semantic.page,
             column_header: semantic.basisColumnHeader,
             ai_receivers: aiReceiverCount,
-            resolved_receivers: result.receivers.length,
+            resolved_receivers: effectiveResult.receivers.length,
+            used_percent_column: effectiveResult !== result,
             blank_receivers: result.blankReceivers.length,
             unmatched_receivers: result.unmatchedReceivers.length,
           });

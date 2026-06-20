@@ -1008,6 +1008,60 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
 }
 
 {
+  // Distribution-share bases (e.g. "As Total City Manager Organization")
+  // print a Value column rounded to a whole number immediately to the left
+  // of a one-decimal "Distribution to All Services" percentage column for
+  // the same underlying share. The Value column's rounding loses precision
+  // for small shares; the percentage column does not. evaluatePdfReceiverGroup
+  // must surface the adjacent percentage cell as `percentReceivers` so
+  // callers (aiParseCap.ts) can prefer it when it reconciles better than
+  // Value's rounded total.
+  const pageItems: TextItem[] = [
+    item("Fund", 50, 10, 35, 10, 1),
+    item("Organization", 100, 10, 80, 10, 1),
+    item("Division or Cost Pool", 200, 10, 120, 10, 1),
+    item("As Total City Manager Organization", 430, 10, 90, 10, 1),
+    item("No.", 50, 25, 25, 10, 1),
+    item("Title", 100, 25, 35, 10, 1),
+    item("No.", 200, 25, 25, 10, 1),
+    item("Title", 250, 25, 35, 10, 1),
+    item("Value", 430, 25, 45, 10, 1),
+    item("Distribution", 480, 25, 60, 10, 1),
+    item("100", 50, 45, 25, 10, 1),
+    item("General", 100, 45, 60, 10, 1),
+    item("413", 200, 45, 25, 10, 1),
+    item("Land Development", 250, 45, 70, 10, 1),
+    item("7", 430, 45, 20, 10, 1),
+    item("6.8% 6.8%", 480, 45, 60, 10, 1),
+    item("100", 50, 65, 25, 10, 1),
+    item("General", 100, 65, 60, 10, 1),
+    item("162", 200, 65, 25, 10, 1),
+    item("Senior Services", 250, 65, 70, 10, 1),
+    item("0", 430, 65, 20, 10, 1),
+    item("0.2% 0.2%", 480, 65, 60, 10, 1),
+    item("Grand Total: All Services", 50, 85, 25, 10, 1),
+    item("7", 430, 85, 20, 10, 1),
+    item("7.0%", 480, 85, 60, 10, 1),
+  ];
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: "Value",
+    basisName: "As Total City Manager Organization",
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result);
+  assert.equal(result.receivers.length, 1, "Value column drops the rounded-to-zero Senior Services row");
+  const valueTotal = result.receivers.reduce((sum, r) => sum + r.units, 0);
+  assert.equal(valueTotal, 7, "Value column undercounts because 0.2% rounds away entirely");
+  assert.equal(result.percentReceivers?.length, 2, "the percentage column keeps both rows, including the rounded-to-zero one");
+  const percentTotal = (result.percentReceivers ?? []).reduce((sum, r) => sum + r.units, 0);
+  assert.equal(percentTotal, 7, "percentages: 6.8 + 0.2 = 7.0, matching the printed grand total exactly");
+  assert.equal(result.percentTotalFromPdf, 7, "the percentage Grand Total is read from the same adjacent column as the receivers");
+  console.log("  ✓ Distribution-share bases surface a more precise percentReceivers alongside the rounded Value receivers");
+}
+
+{
   // Regression: long CAP exhibits paginate by re-printing the full header
   // block and re-listing every receiver row on the next page when a
   // schedule spans multiple pages (confirmed against the Milpitas CAP's

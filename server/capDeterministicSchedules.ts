@@ -59,6 +59,18 @@ export interface DeterministicScheduleResult {
    *  the same column read as the receivers rather than a separate,
    *  fallible AI extraction. */
   printedTotalFromPdf?: number;
+  /** Alternate read of the percentage column immediately to the right of
+   *  the resolved Value column (e.g. "Distribution to All Services"),
+   *  when present. Percentages carry one decimal place where Value is
+   *  rounded to a whole number, so they're a more precise read of the
+   *  same share for percentage-based bases (see `isDistributionShareBasis`
+   *  in aiParseCap.ts) whenever Value's rounding loses information.
+   *  Populated alongside `receivers` whenever an adjacent percentage cell
+   *  was found; callers decide whether to prefer it. */
+  percentReceivers?: ResolvedReceiver[];
+  /** Grand-total reconciliation value for `percentReceivers`, read from
+   *  the same "Grand Total: All Services" row as `printedTotalFromPdf`. */
+  percentTotalFromPdf?: number;
 }
 
 export interface ExtractReceiverUnitsInput {
@@ -317,17 +329,29 @@ function evaluatePdfReceiverGroup(
   candidates: Array<{ headerRowIndex: number; columnIndex: number; preferred: boolean }>,
 ): DeterministicScheduleResult & { preferred: boolean } {
   const resolvedByCode = new Map<string, ResolvedReceiver>();
+  const percentByCode = new Map<string, ResolvedReceiver>();
   let printedTotalFromPdf: number | undefined;
+  let percentTotalFromPdf: number | undefined;
 
   for (const candidate of candidates) {
     const table = tableFromScopedRows(rows, candidate.headerRowIndex);
     if (candidate.columnIndex < 0 || candidate.columnIndex >= table.headers.length) continue;
     const identityColumnEnd = firstValueColumnIndex(table.headers);
+    // CAP allocation-factor exhibits commonly print a "Distribution to All
+    // Services" percentage column immediately to the right of a basis's
+    // Value column. The percentage carries one decimal place where Value
+    // is rounded to a whole number, so it's a more precise read of the
+    // same underlying share whenever Value's rounding loses information.
+    // Only collected as an alternate candidate here — callers decide
+    // whether to prefer it (see `isDistributionShareBasis`).
+    const percentColumnIndex = candidate.columnIndex + 1;
     for (const row of table.rows) {
       const receiver = receiverIdentityFromTableRow(row.slice(0, identityColumnEnd));
       if (receiver) {
         const units = parseUnitsCell(row[candidate.columnIndex] ?? "");
         if (units != null && units > 0) resolvedByCode.set(receiver.glCode, { ...receiver, units });
+        const percent = parsePercentCell(row[percentColumnIndex] ?? "");
+        if (percent != null && percent > 0) percentByCode.set(receiver.glCode, { ...receiver, units: percent });
         continue;
       }
       // The schedule's own "Grand Total: All Services" row is a far more
@@ -340,6 +364,8 @@ function evaluatePdfReceiverGroup(
       if (printedTotalFromPdf == null && /grand\s*total\s*:?\s*all\s*services/i.test(row.join(" "))) {
         const total = parseUnitsCell(row[candidate.columnIndex] ?? "");
         if (total != null && total > 0) printedTotalFromPdf = total;
+        const percentTotal = parsePercentCell(row[percentColumnIndex] ?? "");
+        if (percentTotal != null && percentTotal > 0) percentTotalFromPdf = percentTotal;
       }
     }
   }
@@ -350,6 +376,8 @@ function evaluatePdfReceiverGroup(
     unmatchedReceivers: [],
     preferred: candidates.some((candidate) => candidate.preferred),
     ...(printedTotalFromPdf != null ? { printedTotalFromPdf } : {}),
+    ...(percentByCode.size > 0 ? { percentReceivers: [...percentByCode.values()] } : {}),
+    ...(percentTotalFromPdf != null ? { percentTotalFromPdf } : {}),
   };
 }
 
@@ -650,6 +678,27 @@ function parseUnitsCell(cell: string): number | null {
   const n = Number(cleaned);
   if (!Number.isFinite(n)) return null;
   return n;
+}
+
+/** Parse a percentage cell (e.g. "6.8%") to its numeric value (6.8).
+ *  Returns null on blank, dash, or text that isn't a percentage — this
+ *  deliberately rejects plain numbers so it can be used to test "is the
+ *  adjacent column actually a percentage column" without a header check.
+ *
+ *  Multi-line allocation-factor tables often print two percentage
+ *  sub-columns ("Distribution to All Services" and "Distribution Only to
+ *  Direct Services") whose headers fall outside the anchor row, so both
+ *  values land in one cell joined by a space (e.g. "6.8% 6.8%"). Reads
+ *  only the first token — the two are frequently identical, and when they
+ *  differ, "Distribution to All Services" (the one this column targets)
+ *  is the one printed first. */
+function parsePercentCell(cell: string): number | null {
+  const trimmed = cell.trim();
+  if (!trimmed || trimmed === "-" || trimmed === "—" || trimmed === "–") return null;
+  const match = trimmed.match(/^(-?[\d,]*\.?\d+)%/);
+  if (!match) return null;
+  const n = Number(match[1].replace(/,/g, ""));
+  return Number.isFinite(n) ? n : null;
 }
 
 /** Normalize a header text for matching: lowercase, collapse whitespace,
