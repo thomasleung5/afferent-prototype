@@ -3,7 +3,6 @@ import { readPdfUpload } from "./aiUploadValidator";
 import {
   aiBasisColumnSemantics,
   extractReceiverUnitsFromPdf,
-  loadPdfItemsByPage,
   type DeterministicScheduleResult,
 } from "./capDeterministicSchedules";
 import {
@@ -11,7 +10,7 @@ import {
   detectCapDocumentProfileFromText,
   type CapDocumentProfile,
 } from "./capDocumentProfiles";
-import { extractPdfTextPreview, type TextItem } from "./pdfTableExtract";
+import { clusterRows, extractTextItems, type TextItem } from "./pdfTableExtract";
 import { logEvent } from "./logger";
 
 const TAG = "ai-parse-cap";
@@ -296,11 +295,84 @@ interface ParseCapResponse {
 }
 
 const SCHEDULE_BATCH_SIZE = 1;
+const AI_SCHEDULE_RECOVERY_ENABLED = process.env.CAP_AI_SCHEDULE_RECOVERY === "1";
+
+const DETERMINISTIC_SCHEDULE_OVERRIDE = `================================================================
+DETERMINISTIC SCHEDULE MODE OVERRIDE
+================================================================
+
+The server will read Section 3 basis-unit receiver schedules deterministically
+from PDF coordinates after this response. For this primary parse:
+
+- Return "basisUnits": [].
+- Do NOT extract receiver schedules, receiver unit rows, or printedTotal rows.
+- Still extract Section 1 centers, Section 2 bases, Section 4 pools, and
+  Section 5 directAllocations.
+- Make sure every denominator-driven pool's "basis" field preserves the exact
+  printed basis/column name, because the deterministic pass uses those names
+  to locate and read the schedules.`;
+
+function groupItemsByPage(items: TextItem[]): Map<number, TextItem[]> {
+  const byPage = new Map<number, TextItem[]>();
+  for (const item of items) {
+    const bucket = byPage.get(item.page) ?? [];
+    bucket.push(item);
+    byPage.set(item.page, bucket);
+  }
+  return byPage;
+}
+
+function textFromPageItems(items: TextItem[]): string {
+  return clusterRows(items)
+    .map((row) => row.map((item) => item.text).join(" "))
+    .join("\n")
+    .replace(/[ \t]+/g, " ")
+    .trim();
+}
+
+function capTextPreview(items: TextItem[], maxPages = 12): string {
+  return items
+    .filter((item) => item.page <= maxPages)
+    .map((item) => item.text)
+    .join(" ")
+    .replace(/\s+/g, " ")
+    .trim();
+}
+
+function capTextForAi(items: TextItem[]): string {
+  const pages = [...groupItemsByPage(items).entries()]
+    .sort(([a], [b]) => a - b)
+    .map(([page, pageItems]) => ({ page, text: textFromPageItems(pageItems) }));
+  return pages
+    .filter((page) => page.text.length > 0)
+    .map((page) => `--- Page ${page.page} ---\n${page.text}`)
+    .join("\n\n");
+}
+
+function uniqueBasisNames(names: string[]): string[] {
+  return names
+    .map((name) => name.trim())
+    .filter(Boolean)
+    .filter((name, index, all) =>
+      all.findIndex((candidate) => basisNameKey(candidate) === basisNameKey(name)) === index);
+}
 
 function systemForProfile(profile: CapDocumentProfile): string {
   return `${SYSTEM}
 
 ${capDocumentProfileGuidance(profile)}`;
+}
+
+function primarySystemForProfile(
+  profile: CapDocumentProfile,
+  opts: { deterministicSchedules: boolean },
+): string {
+  const base = systemForProfile(profile);
+  return opts.deterministicSchedules
+    ? `${base}
+
+${DETERMINISTIC_SCHEDULE_OVERRIDE}`
+    : base;
 }
 
 function scheduleSystem(basisNames: string[], profile: CapDocumentProfile): string {
@@ -554,10 +626,23 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
   const upload = await readPdfUpload(req);
   if (upload instanceof Response) return upload;
   const { fileName, fileSizeKb, base64: pdfBase64, buffer: pdfBuffer } = upload;
+  let pdfItemsPromise: Promise<TextItem[]> | null = null;
+  const getPdfItems = (): Promise<TextItem[]> => {
+    pdfItemsPromise ??= extractTextItems(new Uint8Array(pdfBuffer.slice(0)));
+    return pdfItemsPromise;
+  };
+  let extractedPdfText: string | null = null;
+  const getExtractedPdfText = async (): Promise<string> => {
+    if (extractedPdfText == null) {
+      extractedPdfText = capTextForAi(await getPdfItems());
+    }
+    return extractedPdfText;
+  };
   let profile = detectCapDocumentProfileFromText("");
+  const deterministicSchedulesEnabled = process.env.CAP_DETERMINISTIC_SCHEDULES === "1";
   try {
     profile = detectCapDocumentProfileFromText(
-      await extractPdfTextPreview(new Uint8Array(pdfBuffer.slice(0))),
+      capTextPreview(await getPdfItems()),
     );
   } catch (err) {
     logEvent({
@@ -587,8 +672,10 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       // truncates partway through the receivers array on real documents;
       // 32k leaves headroom for the worst-case shape plus the centers /
       // bases sections in the same response.
-      max_tokens: 32000,
-      system: systemForProfile(profile),
+      max_tokens: deterministicSchedulesEnabled ? 16000 : 32000,
+      system: primarySystemForProfile(profile, {
+        deterministicSchedules: deterministicSchedulesEnabled,
+      }),
       messages: [{
         role: "user",
         content: [{
@@ -676,22 +763,50 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
     // the path has been verified against real exhibits. The printedTotal
     // validator already shipped (lib/ai/parseCap.ts) remains the
     // import-layer backstop regardless of which path produced the units.
-    if (process.env.CAP_DETERMINISTIC_SCHEDULES === "1" && basisUnits.length > 0) {
+    if (deterministicSchedulesEnabled) {
       try {
-        const basisNamesForSemantics = basisUnits
-          .map((row) => row.basis?.trim())
-          .filter((s): s is string => Boolean(s));
+        const missingForDeterministic = missingScheduleBasisNames(
+          bases, basisUnits, pools, directAllocations,
+        );
+        const basisNamesForDeterministic = uniqueBasisNames([
+          ...bases.map((basis) => basis.name ?? ""),
+          ...basisUnits
+            .map((row) => row.basis?.trim())
+            .filter((s): s is string => Boolean(s)),
+          ...missingForDeterministic,
+        ]);
         const semantics = await aiBasisColumnSemantics(
           client,
           MODEL,
-          pdfBase64,
-          basisNamesForSemantics,
+          await getExtractedPdfText(),
+          basisNamesForDeterministic,
           req.signal,
         );
         const semanticByBasis = new Map(
           semantics.map((s) => [basisNameKey(s.basis), s]),
         );
-        const itemsByPage = await loadPdfItemsByPage(new Uint8Array(pdfBuffer.slice(0)));
+        const itemsByPage = groupItemsByPage(await getPdfItems());
+        const itemsForSemantic = (semantic: { page: number }): TextItem[] => {
+          // CAP allocation-factor schedules routinely span 4-8 pages of
+          // receiver rows under one header. Scan a window around the AI's
+          // reported page so continuation rows are visible to the matcher.
+          // Per-page Y offsetting keeps rows from different pages from
+          // collapsing into one cluster (each page's Y restarts at 0).
+          const PAGE_WINDOW_BACK = 1;
+          const PAGE_WINDOW_FORWARD = 8;
+          const PAGE_Y_OFFSET = 10000;
+          const pageItems: TextItem[] = [];
+          for (let off = -PAGE_WINDOW_BACK; off <= PAGE_WINDOW_FORWARD; off += 1) {
+            const p = semantic.page + off;
+            if (p < 1) continue;
+            const itemsOnPage = itemsByPage.get(p);
+            if (!itemsOnPage) continue;
+            for (const it of itemsOnPage) {
+              pageItems.push({ ...it, y: it.y + (off + PAGE_WINDOW_BACK) * PAGE_Y_OFFSET });
+            }
+          }
+          return pageItems;
+        };
 
         let resolvedCount = 0;
         let fallbackCount = 0;
@@ -711,24 +826,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             });
             continue;
           }
-          // CAP allocation-factor schedules routinely span 4-8 pages of
-          // receiver rows under one header. Scan a window around the AI's
-          // reported page so continuation rows are visible to the matcher.
-          // Per-page Y offsetting keeps rows from different pages from
-          // collapsing into one cluster (each page's Y restarts at 0).
-          const PAGE_WINDOW_BACK = 1;
-          const PAGE_WINDOW_FORWARD = 8;
-          const PAGE_Y_OFFSET = 10000;
-          const pageItems: TextItem[] = [];
-          for (let off = -PAGE_WINDOW_BACK; off <= PAGE_WINDOW_FORWARD; off += 1) {
-            const p = semantic.page + off;
-            if (p < 1) continue;
-            const itemsOnPage = itemsByPage.get(p);
-            if (!itemsOnPage) continue;
-            for (const it of itemsOnPage) {
-              pageItems.push({ ...it, y: it.y + (off + PAGE_WINDOW_BACK) * PAGE_Y_OFFSET });
-            }
-          }
+          const pageItems = itemsForSemantic(semantic);
           const aiReceiverCount = Array.isArray(row.receivers) ? row.receivers.length : 0;
           const result = extractReceiverUnitsFromPdf({
             pageItems,
@@ -770,7 +868,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           const printedTotal = Number(reconciliationRow.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
           const decision = evaluateDeterministicResult(reconciliationRow, result);
-          if (!decision.trust) {
+          if (!decision.trust && decision.reason === "no-resolved-receivers") {
             fallbackCount += 1;
             nextBasisUnits.push(row);
             logEvent({
@@ -813,14 +911,109 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             resolved_receivers: result.receivers.length,
             blank_receivers: result.blankReceivers.length,
             unmatched_receivers: result.unmatchedReceivers.length,
+            ...(decision.trust ? {} : {
+              review_reason: decision.reason,
+              deterministic_total: deterministicTotal,
+              printed_total: hasPrintedTotal ? printedTotal : undefined,
+            }),
           });
         }
         basisUnits = nextBasisUnits;
+        let missingResolvedCount = 0;
+        let missingFallbackCount = 0;
+        const validScheduleNames = new Set(
+          basisUnits.filter(validSchedule).map((row) => basisNameKey(row.basis)),
+        );
+        const unresolvedForDeterministic = basisNamesForDeterministic
+          .filter((basisName) => !validScheduleNames.has(basisNameKey(basisName)));
+        for (const basisName of unresolvedForDeterministic) {
+          const semantic = semanticByBasis.get(basisNameKey(basisName));
+          if (!semantic) {
+            missingFallbackCount += 1;
+            logEvent({
+              tag: TAG,
+              msg: "deterministic missing schedule per-basis",
+              basis: basisName,
+              path: "ai-recovery-fallback",
+              reason: "no-semantic",
+            });
+            continue;
+          }
+          const result = extractReceiverUnitsFromPdf({
+            pageItems: itemsForSemantic(semantic),
+            basisColumnHeader: semantic.basisColumnHeader,
+            basisName,
+            deriveReceiversFromPdf: true,
+            receivers: [],
+          });
+          if (!result) {
+            missingFallbackCount += 1;
+            logEvent({
+              tag: TAG,
+              msg: "deterministic missing schedule per-basis",
+              basis: basisName,
+              path: "ai-recovery-fallback",
+              reason: "no-header",
+              page: semantic.page,
+              column_header: semantic.basisColumnHeader,
+            });
+            continue;
+          }
+          const candidateRow: BasisUnitsRow = {
+            basis: basisName,
+            source: "Deterministic PDF extraction",
+            ...(result.printedTotalFromPdf != null ? { printedTotal: result.printedTotalFromPdf } : {}),
+            receivers: result.receivers.map((r) => ({
+              dept: r.dept,
+              glCode: r.glCode,
+              ...(r.deptCode ? { deptCode: r.deptCode } : {}),
+              units: r.units,
+              confidence: "high" as const,
+            })),
+          };
+          const decision = evaluateDeterministicResult(candidateRow, result);
+          if (!decision.trust && decision.reason === "no-resolved-receivers") {
+            missingFallbackCount += 1;
+            logEvent({
+              tag: TAG,
+              msg: "deterministic missing schedule per-basis",
+              basis: basisName,
+              path: "ai-recovery-fallback",
+              reason: decision.reason,
+              page: semantic.page,
+              column_header: semantic.basisColumnHeader,
+              resolved_receivers: result.receivers.length,
+              blank_receivers: result.blankReceivers.length,
+              deterministic_total: result.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
+              printed_total: result.printedTotalFromPdf,
+            });
+            continue;
+          }
+          missingResolvedCount += 1;
+          basisUnits = mergeBasisUnits(basisUnits, [candidateRow]);
+          logEvent({
+            tag: TAG,
+            msg: "deterministic missing schedule per-basis",
+            basis: basisName,
+            path: "deterministic",
+            page: semantic.page,
+            column_header: semantic.basisColumnHeader,
+            resolved_receivers: result.receivers.length,
+            blank_receivers: result.blankReceivers.length,
+            ...(decision.trust ? {} : {
+              review_reason: decision.reason,
+              deterministic_total: result.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
+              printed_total: result.printedTotalFromPdf,
+            }),
+          });
+        }
         logEvent({
           tag: TAG,
           msg: "deterministic schedule verification",
           resolved_count: resolvedCount,
           fallback_count: fallbackCount,
+          missing_resolved_count: missingResolvedCount,
+          missing_fallback_count: missingFallbackCount,
           semantic_count: semantics.length,
         });
       } catch (err) {
@@ -840,7 +1033,17 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
     const missingSchedules = missingScheduleBasisNames(
       bases, basisUnits, pools, directAllocations,
     );
-    if (missingSchedules.length > 0) {
+    if (deterministicSchedulesEnabled && missingSchedules.length > 0 && !AI_SCHEDULE_RECOVERY_ENABLED) {
+      logEvent({
+        level: "warn",
+        tag: TAG,
+        msg: "basis schedule recovery skipped",
+        reason: "deterministic-mode-ai-recovery-disabled",
+        missing_schedule_count: missingSchedules.length,
+        missing_schedules: missingSchedules,
+      });
+    }
+    if (missingSchedules.length > 0 && (!deterministicSchedulesEnabled || AI_SCHEDULE_RECOVERY_ENABLED)) {
       logEvent({
         tag: TAG,
         msg: "basis schedule recovery start",
@@ -856,12 +1059,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             messages: [{
               role: "user",
               content: [{
-                type: "document",
-                source: {
-                  type: "base64",
-                  media_type: "application/pdf",
-                  data: pdfBase64,
-                },
+                type: "text",
+                text: await getExtractedPdfText(),
               }],
             }],
           }, { signal: req.signal });
@@ -877,6 +1076,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             msg: "basis schedule recovery batch",
             requested_count: batch.length,
             recovered_count: recovered.filter(validSchedule).length,
+            input_tokens: scheduleResponse.usage.input_tokens,
             output_tokens: scheduleResponse.usage.output_tokens,
             stop_reason: scheduleResponse.stop_reason,
           });

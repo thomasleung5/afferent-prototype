@@ -31,6 +31,7 @@ export interface Organization {
 export interface Study {
   id: string;
   organization_id: string;
+  jurisdiction_id: string | null;
   name: string;
   fiscal_year: string | null;
   created_by: string;
@@ -125,14 +126,24 @@ export function listOrganizations(): Promise<ApiResult<{ organizations: Organiza
 // Studies
 // ====================================================================
 
-export function listStudies(): Promise<ApiResult<{ studies: Study[] }>> {
-  return studiesFetch("/api/studies");
+export interface ListStudiesInput {
+  jurisdictionId?: string;
+}
+
+export function listStudies(input: ListStudiesInput = {}): Promise<ApiResult<{ studies: Study[] }>> {
+  const qs = new URLSearchParams();
+  if (input.jurisdictionId?.trim()) {
+    qs.set("jurisdictionId", input.jurisdictionId.trim());
+  }
+  const suffix = qs.toString() ? `?${qs.toString()}` : "";
+  return studiesFetch(`/api/studies${suffix}`);
 }
 
 export interface CreateStudyRequest {
   organizationId: string;
   name: string;
   fiscalYear?: string;
+  jurisdictionId?: string;
 }
 
 export function createStudy(input: CreateStudyRequest): Promise<ApiResult<{ study: Study }>> {

@@ -61,6 +61,10 @@ function forbidden(c: Context<AuthEnv>, message = "You don't have permission to 
   return c.json({ ok: false, message }, 403);
 }
 
+function conflict(c: Context<AuthEnv>, message: string) {
+  return c.json({ ok: false, message }, 409);
+}
+
 function notFound(c: Context<AuthEnv>, message = "Not found.") {
   return c.json({ ok: false, message }, 404);
 }
@@ -109,12 +113,12 @@ async function recordAuditEvent(args: {
 async function lookupRoleForStudy(
   studyId: string,
   userId: string,
-): Promise<{ role: string; organizationId: string } | null> {
+): Promise<{ role: string; organizationId: string; jurisdictionId: string | null } | null> {
   const db = getDbClient();
   if (!db) return null;
   const { data: study } = await db
     .from("studies")
-    .select("id, organization_id")
+    .select("id, organization_id, jurisdiction_id")
     .eq("id", studyId)
     .maybeSingle();
   if (!study) return null;
@@ -125,7 +129,18 @@ async function lookupRoleForStudy(
     .eq("user_id", userId)
     .maybeSingle();
   if (!member || !isValidRole(member.role)) return null;
-  return { role: member.role, organizationId: study.organization_id };
+  return {
+    role: member.role,
+    organizationId: study.organization_id,
+    jurisdictionId: typeof study.jurisdiction_id === "string" ? study.jurisdiction_id : null,
+  };
+}
+
+function snapshotJurisdictionId(snapshot: Record<string, unknown>): string | null {
+  const value = snapshot.activeJurisdictionId;
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : null;
 }
 
 export const studiesRoutes = new Hono<AuthEnv>();
@@ -152,12 +167,21 @@ studiesRoutes.get("/", async (c) => {
     return c.json({ ok: true, studies: [] });
   }
 
-  const { data: studies, error } = await db
+  const requestedJurisdictionId = c.req.query("jurisdictionId")?.trim() ?? "";
+  if (requestedJurisdictionId.length > 100) {
+    return badRequest(c, "jurisdictionId must be ≤ 100 characters.");
+  }
+
+  let query = db
     .from("studies")
-    .select("id, organization_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
+    .select("id, organization_id, jurisdiction_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
     .in("organization_id", orgIds)
     .is("archived_at", null)
     .order("updated_at", { ascending: false });
+  if (requestedJurisdictionId) {
+    query = query.eq("jurisdiction_id", requestedJurisdictionId);
+  }
+  const { data: studies, error } = await query;
   if (error) return serverError(c, "GET /api/studies", error.message);
 
   return c.json({ ok: true, studies: studies ?? [] });
@@ -192,11 +216,12 @@ studiesRoutes.post("/", async (c) => {
     .from("studies")
     .insert({
       organization_id: input.organizationId,
+      jurisdiction_id: input.jurisdictionId ?? null,
       name: input.name,
       fiscal_year: input.fiscalYear ?? null,
       created_by: user.id,
     })
-    .select("id, organization_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
+    .select("id, organization_id, jurisdiction_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
     .single();
   if (error || !created) {
     return serverError(c, "POST /api/studies", error?.message ?? "insert returned no row");
@@ -205,7 +230,11 @@ studiesRoutes.post("/", async (c) => {
   await recordAuditEvent({
     studyId: created.id,
     eventType: "study.created",
-    payload: { name: created.name, fiscal_year: created.fiscal_year },
+    payload: {
+      name: created.name,
+      fiscal_year: created.fiscal_year,
+      jurisdiction_id: created.jurisdiction_id,
+    },
     actorUserId: user.id,
   });
 
@@ -230,7 +259,7 @@ studiesRoutes.get("/:id", async (c) => {
 
   const { data: study, error: studyErr } = await db
     .from("studies")
-    .select("id, organization_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
+    .select("id, organization_id, jurisdiction_id, name, fiscal_year, created_by, created_at, updated_at, archived_at")
     .eq("id", id)
     .single();
   if (studyErr || !study) return notFound(c, "Study not found.");
@@ -264,6 +293,15 @@ studiesRoutes.put("/:id/snapshot", async (c) => {
   if (!lookup) return notFound(c, "Study not found.");
   if (!canMutateDraft(lookup.role)) {
     return forbidden(c, "You don't have permission to edit this study.");
+  }
+
+  const incomingJurisdictionId = snapshotJurisdictionId(validation.value.snapshot);
+  if (
+    lookup.jurisdictionId
+    && incomingJurisdictionId
+    && incomingJurisdictionId !== lookup.jurisdictionId
+  ) {
+    return conflict(c, "Study belongs to a different workspace.");
   }
 
   // Optimistic-lock check: if the caller quoted a revision they expect
@@ -308,7 +346,14 @@ studiesRoutes.put("/:id/snapshot", async (c) => {
   }
 
   // Bump the study's updated_at as well so list views sort sensibly.
-  await db.from("studies").update({ updated_at: new Date().toISOString() }).eq("id", id);
+  // Legacy studies created before workspace binding get backfilled from
+  // the first saved snapshot that declares an activeJurisdictionId.
+  await db.from("studies").update({
+    updated_at: new Date().toISOString(),
+    ...(!lookup.jurisdictionId && incomingJurisdictionId
+      ? { jurisdiction_id: incomingJurisdictionId }
+      : {}),
+  }).eq("id", id);
 
   await recordAuditEvent({
     studyId: id,

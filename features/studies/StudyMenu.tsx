@@ -23,7 +23,9 @@ import {
   type CSSProperties, type ReactNode,
 } from "react";
 import { useAuth } from "@/lib/auth/AuthContext";
-import { createBuildSnapshot, useBuildActions, useBuildStore } from "@/lib/store";
+import {
+  createBuildSnapshot, useBuildActions, useBuildStore,
+} from "@/lib/store";
 import {
   createStudy, createStudyVersion, getStudy, getStudyVersion,
   listOrganizations, listStudies, listStudyVersions, saveStudySnapshot,
@@ -67,6 +69,8 @@ function StudyMenuMounted() {
   const [serverError, setServerError] = useState<string>("");
   const active = useActiveStudy();
   const activeId = active?.id ?? null;
+  const activeJurisdictionId = useBuildStore((s) => s.activeJurisdictionId);
+  const activeFiscalYear = useBuildStore((s) => s.activeFiscalYear);
   const [working, setWorking] = useState<WorkingKind>(null);
   const [status, setStatus] = useState<Status>(null);
   // Multi-org picker — user-chosen org id for the next "New study…".
@@ -99,7 +103,7 @@ function StudyMenuMounted() {
     setServerState("loading");
     setServerError("");
     const [studiesRes, orgsRes] = await Promise.all([
-      listStudies(),
+      listStudies({ jurisdictionId: activeJurisdictionId }),
       listOrganizations(),
     ]);
     if (!studiesRes.ok) {
@@ -112,12 +116,15 @@ function StudyMenuMounted() {
       else { setServerState("error"); setServerError(orgsRes.message); }
       return;
     }
-    setStudies(studiesRes.studies);
+    const workspaceStudies = studiesRes.studies.filter(
+      (s) => s.jurisdiction_id === activeJurisdictionId,
+    );
+    setStudies(workspaceStudies);
     setOrganizations(orgsRes.organizations);
     setServerState("ok");
     // Stale active id (not in the visible list) → clear + surface a
     // top-bar notice so the user notices without opening the menu.
-    if (activeId && !studiesRes.studies.some((s) => s.id === activeId)) {
+    if (activeId && !workspaceStudies.some((s) => s.id === activeId)) {
       clearActiveStudy();
       emitStaleStudyNotice(STALE_NOTICE_MESSAGE);
       return;
@@ -125,12 +132,12 @@ function StudyMenuMounted() {
     // Backfill the stored name (legacy id-only entry, or server-side
     // rename).
     const match = activeId
-      ? studiesRes.studies.find((s) => s.id === activeId) ?? null
+      ? workspaceStudies.find((s) => s.id === activeId) ?? null
       : null;
     if (match && match.name !== active?.name) {
       setActiveStudy({ id: match.id, name: match.name });
     }
-  }, [activeId, active]);
+  }, [activeId, active, activeJurisdictionId]);
 
   // Lazy first load when the menu opens.
   useEffect(() => {
@@ -150,6 +157,18 @@ function StudyMenuMounted() {
     // useEffect should not re-run on dep changes.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Workspace changes invalidate the current study list. Refresh against
+  // the new workspace and clear any remembered active study that does not
+  // belong there.
+  useEffect(() => {
+    setStudies(null);
+    setServerState("idle");
+    void refresh();
+    // Intentionally keyed only to the workspace id; refresh reads the
+    // latest active-study ref from the render that scheduled this effect.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeJurisdictionId]);
 
   // Reset the versions sub-view whenever the active study changes
   // so we don't render a previous study's version list.
@@ -192,7 +211,7 @@ function StudyMenuMounted() {
   const isSandbox = useSandboxMode();
   const autosave = useAutoSaveStudy({
     activeStudyId: activeId,
-    enabled: serverState === "ok" && activeId != null,
+    enabled: serverState === "ok" && activeStudy != null,
     isNotConfigured: serverState === "not-configured",
     // StudyMenu only mounts when configured && session (see the top
     // of this file), so callers can treat this as a stable `true`.
@@ -263,7 +282,8 @@ function StudyMenuMounted() {
       const res = await createStudy({
         organizationId: inferredOrgId,
         name: name.trim(),
-        fiscalYear: fyInput?.trim() || undefined,
+        fiscalYear: fyInput?.trim() || activeFiscalYear,
+        jurisdictionId: activeJurisdictionId,
       });
       if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       setActiveStudy({ id: res.study.id, name: res.study.name });
@@ -477,7 +497,7 @@ function StudyMenuMounted() {
             </div>
           )}
 
-          {serverState === "ok" && activeId && (
+          {serverState === "ok" && activeStudy && (
             <SyncStatusRow
               status={autosave.status}
               onSaveNow={() => { void handleSaveNow(); }}
@@ -495,19 +515,19 @@ function StudyMenuMounted() {
               <MenuAction
                 label="Load draft"
                 sub="Replace local edits with the selected study's saved draft."
-                disabled={!activeId || working === "load"}
+                disabled={!activeStudy || working === "load"}
                 onClick={() => { void handleLoad(); }}
               />
               <MenuAction
                 label="Cut version…"
                 sub="Snapshot the current state as a named, immutable version."
-                disabled={!activeId || working === "version"}
+                disabled={!activeStudy || working === "version"}
                 onClick={() => { void handleCutVersion(); }}
               />
               <MenuAction
                 label="Versions…"
                 sub="Browse + load named versions previously cut for this study."
-                disabled={!activeId}
+                disabled={!activeStudy}
                 onClick={handleEnterVersions}
               />
               {creatableOrgs && creatableOrgs.length > 1 && (

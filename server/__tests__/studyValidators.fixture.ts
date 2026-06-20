@@ -34,12 +34,14 @@ let passed = 0;
     organizationId: UUID,
     name: "  FY26 fee study  ",
     fiscalYear: " FY 2025-26 ",
+    jurisdictionId: " city-of-milpitas ",
   });
   assert.equal(r.ok, true);
   if (r.ok) {
     assert.equal(r.value.organizationId, UUID);
     assert.equal(r.value.name, "FY26 fee study", "name trimmed");
     assert.equal(r.value.fiscalYear, "FY 2025-26", "fy trimmed");
+    assert.equal(r.value.jurisdictionId, "city-of-milpitas", "jurisdiction trimmed");
   }
   passed++;
 }
@@ -88,6 +90,18 @@ let passed = 0;
   });
   assert.equal(r.ok, false);
   if (!r.ok) assert.match(r.message, /fiscalYear must be ≤ 50/);
+  passed++;
+}
+
+// ── validateCreateStudy: oversize jurisdictionId ──────────────────
+{
+  const r = validateCreateStudy({
+    organizationId: UUID,
+    name: "ok",
+    jurisdictionId: "x".repeat(101),
+  });
+  assert.equal(r.ok, false);
+  if (!r.ok) assert.match(r.message, /jurisdictionId must be ≤ 100/);
   passed++;
 }
 

@@ -46,6 +46,7 @@ function buildApp() {
 const VALID_SNAPSHOT = {
   services: [], operating: [], productiveHours: [],
   studyContext: { cityId: "x", fiscalYear: "FY 2025-26" },
+  activeJurisdictionId: "city-of-milpitas",
   activeFiscalYear: "FY 2025-26",
 };
 
@@ -87,6 +88,7 @@ async function main(): Promise<void> {
     mock.queueResponse("studies", {
       data: [{
         id: STUDY_A_ID, organization_id: ORG_A_ID, name: "FY26 Fee Study",
+        jurisdiction_id: "city-of-milpitas",
         fiscal_year: "FY 2025-26", created_by: TEST_USER.id,
         created_at: "2026-05-01T00:00:00Z",
         updated_at: "2026-05-15T00:00:00Z",
@@ -95,7 +97,10 @@ async function main(): Promise<void> {
       error: null,
     });
     setDbClientProviderForTests(() => mock.client);
-    const res = await app.request("/api/studies", { method: "GET" });
+    const res = await app.request(
+      "/api/studies?jurisdictionId=city-of-milpitas",
+      { method: "GET" },
+    );
     assert.equal(res.status, 200);
     const body = await res.json() as { ok: boolean; studies: Array<{ id: string; name: string }> };
     assert.equal(body.ok, true);
@@ -107,6 +112,11 @@ async function main(): Promise<void> {
     assert.ok(memCall?.filters.some((f) => f.kind === "eq" && f.args[0] === "user_id" && f.args[1] === TEST_USER.id));
     const studiesCall = mock.calls.find((c) => c.table === "studies");
     assert.ok(studiesCall?.filters.some((f) => f.kind === "in" && f.args[0] === "organization_id"));
+    assert.ok(studiesCall?.filters.some((f) =>
+      f.kind === "eq"
+      && f.args[0] === "jurisdiction_id"
+      && f.args[1] === "city-of-milpitas",
+    ));
     passed++;
   }
 
@@ -145,6 +155,7 @@ async function main(): Promise<void> {
     mock.queueResponse("studies", {
       data: {
         id: STUDY_A_ID, organization_id: ORG_A_ID, name: "FY27 Fee Study",
+        jurisdiction_id: "city-of-milpitas",
         fiscal_year: "FY 2026-27", created_by: TEST_USER.id,
         created_at: "2026-06-01T00:00:00Z",
         updated_at: "2026-06-01T00:00:00Z",
@@ -161,6 +172,7 @@ async function main(): Promise<void> {
         organizationId: ORG_A_ID,
         name: "FY27 Fee Study",
         fiscalYear: "FY 2026-27",
+        jurisdictionId: "city-of-milpitas",
       }),
     });
     assert.equal(res.status, 201);
@@ -172,6 +184,9 @@ async function main(): Promise<void> {
     const auditPayload = auditCall?.payload as { event_type?: string; actor_user_id?: string } | undefined;
     assert.equal(auditPayload?.event_type, "study.created");
     assert.equal(auditPayload?.actor_user_id, TEST_USER.id);
+    const insertCall = mock.calls.find((c) => c.table === "studies" && c.op === "insert");
+    const insertPayload = insertCall?.payload as { jurisdiction_id?: string } | undefined;
+    assert.equal(insertPayload?.jurisdiction_id, "city-of-milpitas");
     passed++;
   }
 
@@ -225,6 +240,7 @@ async function main(): Promise<void> {
     mock.queueResponse("studies", {
       data: {
         id: STUDY_A_ID, organization_id: ORG_A_ID, name: "FY26",
+        jurisdiction_id: "city-of-milpitas",
         fiscal_year: "FY 2025-26", created_by: TEST_USER.id,
         created_at: "x", updated_at: "y", archived_at: null,
       },
@@ -283,7 +299,12 @@ async function main(): Promise<void> {
     const mock = createMockDb();
     // lookupRoleForStudy.
     mock.queueResponse("studies", {
-      data: { id: STUDY_A_ID, organization_id: ORG_A_ID }, error: null,
+      data: {
+        id: STUDY_A_ID,
+        organization_id: ORG_A_ID,
+        jurisdiction_id: "city-of-milpitas",
+      },
+      error: null,
     });
     mock.queueResponse("organization_members", {
       data: { role: "owner" }, error: null,
@@ -325,6 +346,40 @@ async function main(): Promise<void> {
     const audit = mock.calls.find((c) => c.table === "study_audit_events");
     const auditPayload = audit?.payload as { event_type?: string };
     assert.equal(auditPayload?.event_type, "draft.upsert");
+    passed++;
+  }
+
+  // ── PUT /:id/snapshot — workspace mismatch → 409 ───────────────
+  {
+    const mock = createMockDb();
+    mock.queueResponse("studies", {
+      data: {
+        id: STUDY_A_ID,
+        organization_id: ORG_A_ID,
+        jurisdiction_id: "city-of-milpitas",
+      },
+      error: null,
+    });
+    mock.queueResponse("organization_members", {
+      data: { role: "owner" }, error: null,
+    });
+    setDbClientProviderForTests(() => mock.client);
+    const res = await app.request(`/api/studies/${STUDY_A_ID}/snapshot`, {
+      method: "PUT",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({
+        snapshot: { ...VALID_SNAPSHOT, activeJurisdictionId: "los-altos-hills" },
+      }),
+    });
+    assert.equal(res.status, 409);
+    const body = await res.json() as { ok: boolean; message: string };
+    assert.equal(body.ok, false);
+    assert.match(body.message, /different workspace/i);
+    assert.equal(
+      mock.calls.filter((c) => c.table === "study_drafts" && c.op === "upsert").length,
+      0,
+      "no upsert on workspace mismatch",
+    );
     passed++;
   }
 

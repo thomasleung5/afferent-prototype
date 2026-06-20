@@ -21,6 +21,7 @@ export type ValidationResult<T> =
 const MAX_NAME = 200;
 const MAX_LABEL = 200;
 const MAX_FY = 50;
+const MAX_JURISDICTION_ID = 100;
 const MAX_NOTES = 10_000;
 
 /** Match the UUID v4 shape Supabase uses. Case-insensitive. */
@@ -36,6 +37,7 @@ export interface CreateStudyInput {
   organizationId: string;
   name: string;
   fiscalYear?: string;
+  jurisdictionId?: string;
 }
 
 export function validateCreateStudy(body: unknown): ValidationResult<CreateStudyInput> {
@@ -71,12 +73,25 @@ export function validateCreateStudy(body: unknown): ValidationResult<CreateStudy
     fiscalYear = trimmedFy.length > 0 ? trimmedFy : undefined;
   }
 
+  let jurisdictionId: string | undefined;
+  if (o.jurisdictionId != null) {
+    if (typeof o.jurisdictionId !== "string") {
+      return { ok: false, message: "jurisdictionId must be a string when set." };
+    }
+    const trimmedJurisdictionId = o.jurisdictionId.trim();
+    if (trimmedJurisdictionId.length > MAX_JURISDICTION_ID) {
+      return { ok: false, message: `jurisdictionId must be ≤ ${MAX_JURISDICTION_ID} characters.` };
+    }
+    jurisdictionId = trimmedJurisdictionId.length > 0 ? trimmedJurisdictionId : undefined;
+  }
+
   return {
     ok: true,
     value: {
       organizationId: o.organizationId,
       name: trimmedName,
       fiscalYear,
+      jurisdictionId,
     },
   };
 }
