@@ -28,12 +28,24 @@ export function useActiveFiscalYear(): string {
 }
 
 /** Atomically switch the active jurisdiction AND swap the demo data
- *  the rest of the app reads from. The canonical LAH demo comes from
- *  resetAll(); seed-file jurisdictions load their declared snapshot
- *  directly. */
+ *  the rest of the app reads from. Seed-file jurisdictions load their
+ *  declared snapshot directly; blank workspaces clear every input slice
+ *  and then mark the target jurisdiction active. */
 export async function switchJurisdiction(id: string): Promise<void> {
   const target = getJurisdiction(id);
   if (!target) return;
+
+  if (target.blankWorkspace) {
+    const store = useBuildStore.getState();
+    store.clearAll();
+    useBuildStore.setState({
+      activeJurisdictionId: target.id,
+      activeFiscalYear: target.defaultFiscalYear,
+      operatingCategoryMappings: {},
+      stepDownMethod: "double",
+    });
+    return;
+  }
 
   if (!target.seedFile) {
     useBuildStore.getState().resetAll();

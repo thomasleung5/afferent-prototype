@@ -9,8 +9,9 @@
  *
  * Adding a new demo jurisdiction:
  *   1. Append an entry to JURISDICTIONS.
- *   2. If the demo has data, point dataAvailable=true and seed the
- *      corresponding rows somewhere reachable.
+ *   2. If the demo has seeded data, point dataAvailable=true and seed
+ *      the corresponding rows somewhere reachable. For a live blank
+ *      workspace, set dataAvailable=true and blankWorkspace=true.
  *   3. The TopBar selector will pick it up automatically when more
  *      than one jurisdiction has dataAvailable=true.
  */
@@ -37,6 +38,9 @@ export interface Jurisdiction {
   /** When false, this entry is a placeholder — selecting it should show
    *  an empty / coming-soon state rather than rendering live data. */
   dataAvailable: boolean;
+  /** When true, selecting this live demo clears every input slice and
+   *  keeps the target jurisdiction active instead of loading a seed. */
+  blankWorkspace?: boolean;
   /** Path to a JSON file containing the jurisdiction's seed snapshot.
    *  Loaded by switchJurisdiction(id) on selection. Omit (or leave
    *  undefined) for the canonical default jurisdiction whose seed
@@ -54,6 +58,7 @@ export const JURISDICTIONS: Jurisdiction[] = [
     peers: ["Atherton", "Portola Valley", "Woodside", "Hillsborough", "Monte Sereno"],
     preparedBy: "Finance Department",
     dataAvailable: true,
+    blankWorkspace: true,
   },
   {
     id: "city-of-maplewood",
@@ -82,6 +87,17 @@ export const JURISDICTIONS: Jurisdiction[] = [
     peers: [],
     preparedBy: "Finance Department",
     dataAvailable: false,
+  },
+  {
+    id: "city-of-milpitas",
+    name: "City of Milpitas",
+    fiscalYears: ["FY 2025-26"],
+    defaultFiscalYear: "FY 2025-26",
+    departments: ["Planning", "Building", "Engineering"],
+    peers: [],
+    preparedBy: "Finance Department",
+    dataAvailable: true,
+    blankWorkspace: true,
   },
   {
     id: "city-of-redwood-city",

@@ -23,8 +23,7 @@ export function ModelSettingsMenu() {
   const fiscalYear = useActiveFiscalYear();
   const active = useActiveJurisdiction();
   const activeStudy = useActiveStudy();
-  const { resetAll, clearAll } = useBuildActions((s) => ({
-    resetAll: s.resetAll,
+  const { clearAll } = useBuildActions((s) => ({
     clearAll: s.clearAll,
   }));
   const [open, setOpen] = useState(false);
@@ -80,7 +79,7 @@ export function ModelSettingsMenu() {
     }
   }
 
-  function confirmReset() {
+  async function confirmReset() {
     setOpen(false);
     // Reset is intentionally NOT autosave-suppressed: when a server
     // study is active and the user confirms, that study's draft SHOULD
@@ -89,8 +88,15 @@ export function ModelSettingsMenu() {
     const ok = window.confirm(resetConfirmCopy({
       jurisdictionName: active.name,
       activeStudyName,
+      blankWorkspace: active.blankWorkspace,
     }));
-    if (ok) resetAll();
+    if (!ok) return;
+    setWorking(true);
+    try {
+      await switchJurisdiction(active.id);
+    } finally {
+      setWorking(false);
+    }
   }
 
   function confirmClear() {
@@ -98,6 +104,7 @@ export function ModelSettingsMenu() {
     const ok = window.confirm(clearConfirmCopy({
       jurisdictionName: active.name,
       activeStudyName,
+      blankWorkspace: active.blankWorkspace,
     }));
     if (ok) clearAll();
   }

@@ -10,9 +10,8 @@
  *   3. Once cleared, re-running the migration on the cleared snapshot
  *      keeps allocationBases empty (the migration treats `[]` as a
  *      deliberate clear; only null/undefined re-seeds).
- *   4. resetAll() restores the seed model afterwards — Clear is
- *      irreversible from the user's standpoint, but Reset gives
- *      analysts a way back to the canonical baseline.
+ *   4. resetAll() restores the default workspace baseline. Los Altos
+ *      Hills is a live blank workspace, so reset stays blank.
  *
  * tsx (Node) has no localStorage; install a Storage-compatible shim on
  * globalThis BEFORE importing the store module so its module-level
@@ -37,7 +36,6 @@ const shim: Storage = {
 async function main(): Promise<void> {
   const { useBuildStore } = await import("../store");
   const { migratePersistedState } = await import("../storeMigration");
-  const { SEED_ALLOCATION_BASES } = await import("../data/allocationBasesCatalog");
 
   // The persist middleware key — duplicated from store.ts STORAGE_KEY
   // so the fixture can read/inspect the persisted blob directly.
@@ -45,14 +43,16 @@ async function main(): Promise<void> {
 
   let passed = 0;
 
-  // ── 1. Seed baseline carries allocation bases ────────────────────
+  // ── 1. Default baseline is blank ─────────────────────────────────
   {
     useBuildStore.getState().resetAll();
-    const bases = useBuildStore.getState().allocationBases;
-    assert.ok(bases.length > 0, "seed model ships with allocation bases");
-    assert.equal(bases.length, SEED_ALLOCATION_BASES.length);
+    const state = useBuildStore.getState();
+    assert.equal(state.activeJurisdictionId, "los-altos-hills");
+    assert.deepEqual(state.allocationBases, []);
+    assert.deepEqual(state.services, []);
+    assert.deepEqual(state.imports, []);
     passed += 1;
-    console.log("  ✓ seed baseline carries the SEED_ALLOCATION_BASES catalog");
+    console.log("  ✓ default reset baseline is blank Los Altos Hills");
   }
 
   // ── 2. clearAll() empties allocationBases + the persisted blob ────
@@ -99,16 +99,16 @@ async function main(): Promise<void> {
     console.log("  ✓ migration preserves empty allocationBases through rehydrate");
   }
 
-  // ── 4. resetAll() restores the seed model after a clear ──────────
+  // ── 4. resetAll() restores the blank default after a clear ───────
   {
     useBuildStore.getState().resetAll();
-    const bases = useBuildStore.getState().allocationBases;
-    assert.equal(bases.length, SEED_ALLOCATION_BASES.length,
-      "resetAll() restores the canonical seed catalog");
-    assert.ok(useBuildStore.getState().services.length > 0,
-      "resetAll() also restores the services seed");
+    const state = useBuildStore.getState();
+    assert.deepEqual(state.allocationBases, [],
+      "resetAll() keeps the blank default allocation catalog empty");
+    assert.deepEqual(state.services, [],
+      "resetAll() keeps the blank default services empty");
     passed += 1;
-    console.log("  ✓ resetAll() restores the seed model after clearAll()");
+    console.log("  ✓ resetAll() restores blank default after clearAll()");
   }
 
   console.log(`\n${passed}/4 store clear / reset assertions passed.`);

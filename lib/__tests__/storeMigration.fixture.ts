@@ -3,8 +3,7 @@
  * Run with: npm run test:store-migration
  *
  * Covers every backfill in `migratePersistedState`:
- *   1. Empty/partial state — every required field gets seeded so the
- *      Zustand store hydrates into a usable shape.
+ *   1. Empty/partial state — every required field gets a usable default.
  *   2. SourceTag coercion — unknown/missing source values become "seed";
  *      valid values pass through. operating rows get costType + laborType
  *      defaults when missing.
@@ -43,29 +42,24 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   assert.deepEqual(state.capCenterDisallowed, {});
   assert.deepEqual(state.serviceRoleAllocations, {},
     "serviceRoleAllocations backfills to empty override map");
-  assert.ok(Array.isArray(state.imports));
-  assert.equal((state.imports as unknown[]).length, IMPORTS.length);
+  assert.deepEqual(state.imports, [], "default blank workspace does not backfill sample imports");
   assert.ok(Array.isArray(state.allocationBases));
-  assert.equal((state.allocationBases as unknown[]).length, SEED_ALLOCATION_BASES.length);
+  assert.equal((state.allocationBases as unknown[]).length, 0,
+    "default blank workspace does not backfill seed allocation bases");
   assert.ok(Array.isArray(state.functionalAllocation),
-    "functionalAllocation backfilled from seed when missing");
-  assert.equal(
-    (state.functionalAllocation as unknown[]).length,
-    FUNCTIONAL_ALLOCATION_SEED.length,
-    "functionalAllocation seed restored in full",
-  );
+    "functionalAllocation backfilled to an array when missing");
+  assert.equal((state.functionalAllocation as unknown[]).length, 0,
+    "default blank workspace does not backfill functional allocation seed");
   assert.ok(Array.isArray(state.versions));
   assert.equal((state.versions as unknown[]).length, 1);
-  console.log("  ✓ empty state seeded across every backfill");
+  console.log("  ✓ empty state defaults to blank workspace without sample data");
 }
 
 // ── 1b. allocationBases: explicit empty array is preserved ──────────────
 //
 // `clearAll()` writes `allocationBases: []` to signal "the user wants
 // every basis gone". The migration must NOT re-seed the catalog in that
-// case — that's the bug this test guards against. Only null / undefined
-// triggers the backfill (covered by case 1 above; the other branches in
-// case 1b prove `[]` survives a rehydrate intact).
+// case — that's the bug this test guards against.
 {
   const cleared: Record<string, unknown> = { allocationBases: [] };
   migratePersistedState(cleared as never);
@@ -80,16 +74,38 @@ import { FUNCTIONAL_ALLOCATION_SEED } from "../data/functionalAllocation";
   assert.equal((cleared.allocationBases as unknown[]).length, 0,
     "rerunning migration keeps the cleared empty array");
 
-  // null is still treated as "missing field" — backfills from seed.
-  const missingNull: Record<string, unknown> = { allocationBases: null };
+  // null is still treated as "missing field" for the seeded sample.
+  const missingNull: Record<string, unknown> = {
+    activeJurisdictionId: "city-of-maplewood",
+    allocationBases: null,
+  };
   migratePersistedState(missingNull as never);
   assert.ok(Array.isArray(missingNull.allocationBases));
   assert.equal(
     (missingNull.allocationBases as unknown[]).length,
     SEED_ALLOCATION_BASES.length,
-    "null allocationBases backfills from seed",
+    "null allocationBases backfills from seed for sample workspaces",
   );
-  console.log("  ✓ allocationBases: empty [] preserved, null re-seeds");
+  console.log("  ✓ allocationBases: empty [] preserved, sample null re-seeds");
+}
+
+// ── 1c. seeded workspaces still backfill seed-only slices ───────────────
+{
+  const seeded: Record<string, unknown> = {
+    activeJurisdictionId: "city-of-maplewood",
+    allocationBases: null,
+    capBasisUnits: null,
+    capDirectAllocations: null,
+    functionalAllocation: null,
+    imports: [],
+  };
+  migratePersistedState(seeded as never);
+  assert.equal((seeded.imports as unknown[]).length, IMPORTS.length);
+  assert.equal((seeded.allocationBases as unknown[]).length, SEED_ALLOCATION_BASES.length);
+  assert.equal((seeded.functionalAllocation as unknown[]).length, FUNCTIONAL_ALLOCATION_SEED.length);
+  assert.ok((seeded.capBasisUnits as unknown[]).length > 0);
+  assert.ok((seeded.capDirectAllocations as unknown[]).length > 0);
+  console.log("  ✓ seeded workspaces still receive seed backfills");
 }
 
 // ── 2. SourceTag coercion + costType / laborType backfill ────────────────
