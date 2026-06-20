@@ -332,4 +332,82 @@ console.log("  ✓ CAP integrity: pools with direct-allocation receivers bypass 
   console.log("  ✓ CAP schedules: schedule without printedTotal imports unchanged");
 }
 
+// ── Pool basis with AI-added qualifier still resolves to the catalog ─────
+//
+// On the Milpitas FY24-25 CAP, the AI's pools section often qualifies a
+// basis with a parenthesized clause that doesn't appear in the bases
+// section's canonical name (e.g. pool.basis = "Gross Operating Expenses
+// (excl. Planning)" while the basis entry is "Gross Operating Expenses").
+// normBasisName must strip that suffix and still bind the pool's basisId
+// to the catalog entry, otherwise the engine treats the pool's allocable
+// money as leakage and the basis disappears from the Allocation Bases
+// matrix even though it was imported.
+{
+  const qualifiedPools = capPoolsToExtractionResult([
+    {
+      center: "Planning",
+      pool: "General Service",
+      allocationPercent: 33,
+      amount: 250_000,
+      basis: "Gross Operating Expenses (excl. Planning Permits)",
+      confidence: "high",
+    },
+    {
+      center: "Public Works",
+      pool: "Engineering",
+      allocationPercent: 50,
+      amount: 400_000,
+      basis: "Modified Operating Expenses – PW Departments Only",
+      confidence: "high",
+    },
+  ], fileName, importedBases);
+  assert.ok(
+    qualifiedPools.mapped.every((row) => row.entity.basisId),
+    "Pools with AI-qualifier suffixes still resolve to their catalog basisId",
+  );
+  assert.equal(
+    qualifiedPools.mapped[0].entity.basisId,
+    importedBases.find((b) => b.name === "Gross Operating Expenses")?.id,
+  );
+  assert.equal(
+    qualifiedPools.mapped[1].entity.basisId,
+    importedBases.find((b) => b.name === "Modified Operating Expenses")?.id,
+  );
+  console.log("  ✓ CAP pools: AI qualifier suffixes don't break basisId resolution");
+}
+
+// ── Integrity check accepts qualified pool basis as routed ───────────────
+//
+// Companion test: with qualifier-suffixed pool basis text, the integrity
+// scan must not falsely surface a `missing-basis` or `missing-schedule`
+// issue for a basis that has both a catalog entry and a schedule under the
+// canonical name.
+{
+  const qualifiedPools = capPoolsToExtractionResult([
+    {
+      center: "Planning",
+      pool: "General Service",
+      allocationPercent: 33,
+      amount: 250_000,
+      basis: "Gross Operating Expenses (excl. Planning Permits)",
+      confidence: "high",
+    },
+  ], fileName, importedBases);
+  const qualifiedIssues = capImportIntegrityIssues(
+    bases, basisUnits, qualifiedPools, emptyDirect, fileName,
+  );
+  assert.ok(
+    !qualifiedIssues.some((issue) =>
+      issue.lineage.rawCells?.issueKind === "missing-basis"),
+    "Qualifier-suffixed pool basis must not be flagged as missing-basis",
+  );
+  assert.ok(
+    !qualifiedIssues.some((issue) =>
+      issue.lineage.rawCells?.issueKind === "missing-schedule"
+      && issue.lineage.rawCells?.name === "Gross Operating Expenses"),
+    "Qualifier-suffixed pool basis must not be flagged as missing-schedule",
+  );
+  console.log("  ✓ CAP integrity: qualifier-suffixed pool basis accepted as routed");
+}
+
 console.log("\nAll CAP import assertions passed.");

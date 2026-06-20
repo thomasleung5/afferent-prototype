@@ -611,17 +611,39 @@ function normBasisName(
   v: string,
   catalog: AllocationBasis[] = SEED_ALLOCATION_BASES,
 ): AllocationBasis | null {
+  const loose = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
+  const tryMatch = (text: string): AllocationBasis | null => {
+    const lc = text.toLowerCase();
+    const exact = catalog.find((b) => b.name.toLowerCase() === lc)
+      ?? SEED_ALLOCATION_BASES.find((b) => b.name.toLowerCase() === lc);
+    if (exact) return exact;
+    const key = loose(text);
+    if (!key) return null;
+    return catalog.find((b) => loose(b.name) === key)
+      ?? SEED_ALLOCATION_BASES.find((b) => loose(b.name) === key)
+      ?? null;
+  };
+
   const s = v.trim();
   if (!s) return null;
-  const lc = s.toLowerCase();
-  const exact = catalog.find((b) => b.name.toLowerCase() === lc)
-    ?? SEED_ALLOCATION_BASES.find((b) => b.name.toLowerCase() === lc);
-  if (exact) return exact;
-  const loose = (x: string) => x.toLowerCase().replace(/[^a-z0-9]+/g, "");
-  const key = loose(s);
-  return catalog.find((b) => loose(b.name) === key)
-    ?? SEED_ALLOCATION_BASES.find((b) => loose(b.name) === key)
-    ?? null;
+  const direct = tryMatch(s);
+  if (direct) return direct;
+
+  // AI prompts often qualify a pool's basis with a parenthesized clause or
+  // trailing dash-clause that doesn't appear in the basis section's name
+  // (e.g. "Gross Operating Expenses (excl. Planning)" or "Modified
+  // Operating Expenses – PW Only"). Strip those and retry so the pool's
+  // basisId still binds to the catalog entry; otherwise the engine treats
+  // the pool's allocable $ as leakage and the basis is invisible in the
+  // Allocation Bases matrix.
+  const stripped = s.replace(/\s*\([^)]*\)\s*/g, " ")
+    .replace(/\s+[-–—]\s+.*$/, "")
+    .trim();
+  if (stripped && stripped !== s) {
+    const fromStripped = tryMatch(stripped);
+    if (fromStripped) return fromStripped;
+  }
+  return null;
 }
 
 /** Pull display fields out of an unmapped CAP-basis lineage. The rawCells
@@ -690,10 +712,12 @@ export function capImportIntegrityIssues(
 
   for (const pool of importedPools) {
     if (directPoolIds.has(pool.id)) continue;
+    // Resolve the pool's free-text basis through the same matcher import
+    // uses for basisId assignment, so AI-added qualifiers (e.g. "Gross
+    // Operating Expenses (excl. Planning)") don't falsely flag the pool as
+    // referencing an un-imported basis.
+    const basis = normBasisName(pool.basis, importedBases);
     const key = pool.basis.trim().toLowerCase();
-    const basis = basisByName.get(key)
-      ?? SEED_ALLOCATION_BASES.find((candidate) =>
-        candidate.name.trim().toLowerCase() === key);
     if (!basis) {
       if (seenMissingBases.has(key)) continue;
       seenMissingBases.add(key);
@@ -715,11 +739,16 @@ export function capImportIntegrityIssues(
       });
       continue;
     }
-    if (basis.driverKey === "DIRECT" || scheduleNames.has(key) || reviewedScheduleNames.has(key)) {
+    const canonicalKey = basis.name.trim().toLowerCase();
+    if (
+      basis.driverKey === "DIRECT"
+      || scheduleNames.has(canonicalKey)
+      || reviewedScheduleNames.has(canonicalKey)
+    ) {
       continue;
     }
-    if (seenMissingSchedules.has(key)) continue;
-    seenMissingSchedules.add(key);
+    if (seenMissingSchedules.has(canonicalKey)) continue;
+    seenMissingSchedules.add(canonicalKey);
     issues.push({
       reason: "missing-required-field",
       raw: [basis.name, pool.pool, "Basis has no receiver schedule"],
