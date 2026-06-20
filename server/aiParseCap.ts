@@ -446,16 +446,7 @@ export function receiverTotalMatchesPrintedTotal(
   const printedTotal = Number(row.printedTotal);
   if (!Number.isFinite(printedTotal) || printedTotal <= 0) return false;
   const extractedTotal = receivers.reduce((sum, receiver) => sum + receiver.units, 0);
-  // Per-receiver integer rounding error is bounded by ±0.5, so total drift
-  // across N receivers cannot exceed N × 0.5 from rounding alone. Schedules
-  // where many small allocations round to 0 (e.g. percentage bases with long
-  // tails of sub-1% receivers) legitimately undercount by several units.
-  const tolerance = Math.max(
-    1,
-    Math.abs(printedTotal) * 0.005,
-    receivers.length * 0.5,
-  );
-  return Math.abs(extractedTotal - printedTotal) <= tolerance;
+  return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
 }
 
 export type DeterministicTrustDecision =
