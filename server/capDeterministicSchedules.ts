@@ -1062,7 +1062,16 @@ interface AnthropicLike {
 export function buildBasisSemanticSystem(basisNames: string[]): string {
   return `You are identifying which page and column header carries each named basis's Value column in a Cost Allocation Plan PDF.
 
-For every basis below, report the 1-indexed page number where its unit schedule's header row appears, and the EXACT column header text used over its Value column. Do not report the basis name itself unless that is also the column header text — column headers often use slightly different wording (e.g. basis "Budgeted FTE" might be printed as "FTE" or "F.T.E." in the column header).
+These documents typically mention a basis name in MULTIPLE places: once per-pool, next to that pool's individual allocation detail (a page with just one basis name and that pool's receivers), and ALSO once in a consolidated schedule appendix — usually near the end of the document — where MANY bases appear side-by-side as columns in a single wide grid, with GL-code/department rows running down the left and a unit value under each basis's column for every row.
+
+You must report the page of the CONSOLIDATED GRID, not a per-pool mention. Identify it by this shape:
+- The header band lists several different basis names as column headers across the same page (not just the one basis you're currently resolving).
+- Each row begins with a GL code / department identity (e.g. "011 - 1100" / "City Council"), and the same rows repeat across all the basis columns on that page.
+- A per-pool detail page, by contrast, shows only ONE basis name and is paired with "Allocation Units" / "Percent" / dollar-amount columns for a single pool — that is NOT the page to report, even though the basis name appears there too.
+
+If a basis name appears on both an appendix grid page and one or more per-pool pages, you MUST report the appendix grid page.
+
+For every basis below, report the 1-indexed page number where its column appears in the consolidated grid, and the EXACT column header text used over its Value column there. Do not report the basis name itself unless that is also the column header text — column headers often use slightly different wording (e.g. basis "Budgeted FTE" might be printed as "FTE" or "F.T.E." in the column header).
 
 Return ONLY this JSON:
 {
@@ -1075,9 +1084,9 @@ Basis names:
 ${basisNames.map((name) => `- ${name}`).join("\n")}
 
 Rules:
-- Identify the column header by matching the basis's name to the header row text on the relevant page.
+- Identify the column header by matching the basis's name to the header row text on the consolidated grid page, not a per-pool detail page.
 - Use the EXACT text as printed (preserve capitalization and punctuation).
-- If a basis has no printed schedule, omit it from the array.
+- If a basis has no consolidated-grid schedule, omit it from the array — do not fall back to a per-pool detail page.
 - Do not invent header text. If unsure, omit.
 - Return JSON only, no prose.`;
 }
