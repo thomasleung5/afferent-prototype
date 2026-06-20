@@ -1113,4 +1113,93 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Wrapped multi-line gridded header resolves via data-derived column reconstruction");
 }
 
+// ─── Sibling-column prefix collision ──────────────────────────────────────
+//
+// Real-world regression (Los Altos Hills CAP, page 84): two basis columns
+// differ only by a trailing qualifier — "...excl. debt, capital outlay,
+// transfers" vs. the same text plus "- Excluding Planning, Building, &
+// Engineering". The shorter sibling's reconstructed header text is a
+// strict prefix of the longer one's, so a plain substring-containment
+// check binds both basis names to the SAME (shorter) column — leaking the
+// general column's values (which include Planning/Building/Engineering
+// receivers) into the excluding-basis result. The "Excluding..." text also
+// visually wraps past the midpoint toward the next column over, which the
+// header-band projection must still resolve to the correct (true) column
+// rather than dropping it for being outside the data xTolerance.
+{
+  const pageItems: TextItem[] = [
+    // Header band: column A's two-line wrap, then column B's three-line
+    // wrap whose final line drifts toward column B's right neighbor.
+    item("FY 24/25 Budgeted Expenditures per Fund,", 380, 10, 150),
+    item("Department, and/or Division (excl. debt,", 380, 22, 150),
+    item("capital outlay, transfers)", 380, 34, 150),
+    item("FY 24/25 Budgeted Expenditures per Fund,", 470, 10, 150),
+    item("Department, and/or Division (excl. debt,", 470, 22, 150),
+    item("capital outlay, transfers) - Excluding Planning,", 470, 34, 150),
+    item("Building, & Engineering", 530, 46, 90),
+    // Data rows. Column A (general) has a value for every dept; column B
+    // (excluding P/B/E) omits Building Admin and Engineering Admin.
+    item("011 - 1100",            50, 70, 60),
+    item("City Council",          120, 70, 90),
+    item("449,077",               395, 70, 60),
+    item("449,077",               478, 70, 60),
+    item("011 - 3200",            50, 90, 60),
+    item("Building Admin",        120, 90, 90),
+    item("2,690,548",             395, 90, 60),
+    item("011 - 3300",            50, 110, 60),
+    item("Engineering Administration", 120, 110, 150),
+    item("1,394,527",             395, 110, 60),
+  ];
+  const target = "FY 24/25 Budgeted Expenditures per Fund, Department, and/or Division (excl. debt, capital outlay, transfers) - Excluding Planning, Building, & Engineering";
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: target,
+    basisName: target,
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result, "sibling-column basis should resolve to its own column, not the general one");
+  const codes = result.receivers.map((r) => r.glCode);
+  assert.ok(codes.includes("011-1100"), "City Council should keep its excluding-basis value");
+  assert.ok(!codes.includes("011-3200"), "Building Admin has no value in the excluding-P/B/E column");
+  assert.ok(!codes.includes("011-3300"), "Engineering Administration has no value in the excluding-P/B/E column");
+  console.log("  ✓ Sibling basis columns differing only by a trailing qualifier resolve independently");
+}
+
+// ─── Bare fund-only identity code ─────────────────────────────────────────
+//
+// Real-world regression (Los Altos Hills CAP, "043 WESTWIND BARN CIP
+// ADMIN"): a capital-fund administrative row prints a single bare numeric
+// code (no dash, no separate org segment) followed directly by the
+// department name. Every other identity shape in receiverIdentityFromTableRow
+// expects either a dashed multi-segment code or a fund+org+dept structure,
+// so this 2-cell [code, dept] shape previously fell through to `return
+// null`, silently dropping the row instead of resolving it.
+{
+  const pageItems: TextItem[] = [
+    item("FY 23/24 Contracts Count per Fund,", 380, 10, 150),
+    item("Department, and/or Division", 380, 22, 150),
+    item("011 - 1200",           50, 50, 60),
+    item("City Manager",         120, 50, 90),
+    item("20",                   395, 50, 40),
+    item("043",                  50, 70, 60),
+    item("WESTWIND BARN CIP ADMIN", 120, 70, 150),
+    item("2",                    395, 70, 40),
+  ];
+  const target = "FY 23/24 Contracts Count per Fund, Department, and/or Division";
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: target,
+    basisName: target,
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result, "bare fund-only code row should not block schedule resolution");
+  const westwind = result.receivers.find((r) => r.glCode === "043");
+  assert.ok(westwind, "WESTWIND BARN CIP ADMIN should resolve from its bare fund code");
+  assert.equal(westwind!.dept, "WESTWIND BARN CIP ADMIN");
+  assert.equal(westwind!.units, 2);
+  console.log("  ✓ Bare single-segment fund code (no org/dash) resolves a receiver identity");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");
