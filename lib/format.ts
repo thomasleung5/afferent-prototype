@@ -34,3 +34,24 @@ export const fmt = {
     return n.toLocaleString(undefined, { maximumFractionDigits: decimals });
   },
 };
+
+/** Strips a storage path and trailing timestamp suffix off an uploaded
+ *  filename for display, and decodes any URL-encoding (e.g. "%20").
+ *  The raw value is never mutated — callers keep it for retrieval; this
+ *  only governs what gets rendered. Truncation to the container width is
+ *  left to CSS (text-overflow: ellipsis). */
+export function displayFileName(raw: string | null | undefined): string {
+  if (!raw) return "";
+  let name = raw;
+  try {
+    name = decodeURIComponent(name);
+  } catch {
+    // Not URL-encoded (or malformed) — use as-is.
+  }
+  const lastSlash = Math.max(name.lastIndexOf("/"), name.lastIndexOf("\\"));
+  if (lastSlash >= 0) name = name.slice(lastSlash + 1);
+  // Drop a "-<13-digit-ms-timestamp>" or "_<13-digit-ms-timestamp>"
+  // suffix inserted before the extension by storage upload paths.
+  name = name.replace(/[-_]\d{13}(?=\.[^.]+$)/, "");
+  return name;
+}

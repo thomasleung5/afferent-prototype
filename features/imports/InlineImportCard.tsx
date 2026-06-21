@@ -1,5 +1,6 @@
 import { useRef, useState, type ReactNode } from "react";
 import { Btn, ExpandIndicator, Icon, Spinner } from "@/components/ui";
+import { displayFileName } from "@/lib/format";
 
 interface Props {
   // ── PDF upload action ──────────────────────────────────────────────────
@@ -68,6 +69,11 @@ export function InlineImportCard({
   // the user can confirm the right file is being processed. Cleared in
   // the finally block — never persisted past the request lifecycle.
   const [aiLoading, setAiLoading] = useState(false);
+  // Single-pipeline loading label — "Uploading" while the file leaves the
+  // browser, then "Extracting from PDF" for the (much longer) server-side
+  // parse. Only one of these is ever shown at a time, alongside the one
+  // status row below the button — never two stacked loading indicators.
+  const [aiStage, setAiStage] = useState<"uploading" | "extracting">("uploading");
   const [aiStatus, setAiStatus] = useState<Status>(null);
   const [aiFileName, setAiFileName] = useState<string | null>(null);
   const [pasteLoading, setPasteLoading] = useState(false);
@@ -82,13 +88,16 @@ export function InlineImportCard({
     e.target.value = ""; // allow re-selecting the same file
     setAiStatus(null);
     setAiFileName(file.name);
+    setAiStage("uploading");
     setAiLoading(true);
+    const toExtracting = setTimeout(() => setAiStage("extracting"), 500);
     try {
       const result = await onAiPdfImport(file);
       setAiStatus(result);
     } catch (err) {
       setAiStatus({ ok: false, message: err instanceof Error ? err.message : "PDF import failed." });
     } finally {
+      clearTimeout(toExtracting);
       setAiLoading(false);
       setAiFileName(null);
     }
@@ -122,10 +131,10 @@ export function InlineImportCard({
           tone="primary"
           label={aiPdfLabel}
           icon="sparkles"
-          buttonText={aiLoading ? "Uploading…" : aiPdfLabel}
+          buttonText={aiPdfLabel}
           buttonDisabled={aiLoading}
           onClick={() => aiPdfInputRef.current?.click()}
-          loadingText="Extracting from PDF — this can take 30–60s"
+          loadingText={aiStage === "uploading" ? "Uploading" : "Extracting from PDF — this can take 30–60s"}
           loading={aiLoading}
           loadingFileName={aiFileName}
           status={aiStatus}
@@ -337,7 +346,9 @@ function ActionPanel({
                       {" "}
                       <span style={{
                         color: "var(--ink-2)", fontFamily: "var(--ff-mono)",
-                      }}>· {loadingFileName}</span>
+                        display: "inline-block", maxWidth: 260, verticalAlign: "bottom",
+                        overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                      }} title={loadingFileName}>· {displayFileName(loadingFileName)}</span>
                     </>
                   )}
                 </span>

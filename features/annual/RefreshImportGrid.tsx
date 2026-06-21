@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
-  deriveRefreshSections, type RefreshSectionCard,
+  deriveRefreshSections, OPTIONAL_DOMAINS, type RefreshSectionCard,
 } from "@/lib/data/annual";
 import { InlineImportCard } from "@/features/imports/InlineImportCard";
 import {
@@ -19,6 +19,7 @@ import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
 import { CellSelect } from "@/components/ui";
+import { displayFileName } from "@/lib/format";
 import {
   useLaborImportHandlers, useOperatingImportHandlers,
   useServicesImportHandlers, useVolumeImportHandlers,
@@ -39,11 +40,6 @@ const LOADED_NOUN: Record<Domain, { singular: string; plural: string }> = {
   fees:      { singular: "fee",        plural: "fees" },
   cap:       { singular: "pool",       plural: "pools" },
 };
-
-/** Domains the analyst can skip — published only when the jurisdiction
- *  has a Cost Allocation Plan. Surfaced as a small "Optional" pill next
- *  to the card title. */
-const OPTIONAL_DOMAINS: ReadonlySet<Domain> = new Set<Domain>(["cap"]);
 
 /** Plain-English description of the kinds of source documents the
  *  domain's parser knows how to read. Surfaced in the expanded card so
@@ -360,17 +356,12 @@ function ExpandedDetail({
         display: "flex", flexDirection: "column", gap: 12,
       }}
     >
-      {/* Example source documents */}
-      <div style={{ display: "flex", flexWrap: "wrap", gap: 6 }}>
-        {supported.map((label) => (
-          <span key={label} className="mono" style={{
-            fontSize: "var(--t-l4)", color: "var(--ink-2)",
-            padding: "2px 8px",
-            border: "1px solid var(--rule)",
-            background: "var(--paper-2)",
-            letterSpacing: "0.04em",
-          }}>{label}</span>
-        ))}
+      {/* Example source documents — reference only, not a selector; the
+          parser auto-detects document type from content. */}
+      <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.5 }}>
+        <span className="mono" style={{
+          fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase",
+        }}>Accepts:</span>{" "}{supported.join(", ")}
       </div>
 
       {/* Import actions — PDF primary, paste hidden behind Advanced */}
@@ -405,7 +396,7 @@ function ExpandedDetail({
               }}>
                 <span style={{
                   overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }} title={entry.result.fileName}>{entry.result.fileName}</span>
+                }} title={entry.result.fileName}>{displayFileName(entry.result.fileName)}</span>
                 <span className="num" style={{ color: "var(--ink-3)" }}>
                   {entry.result.rows.toLocaleString()} rows
                 </span>
