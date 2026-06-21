@@ -47,6 +47,11 @@ const DOMAIN_SECTION_CODE: Record<Domain, string> = {
 // (optional — only relevant when the jurisdiction publishes a CAP).
 const ALL_DOMAINS: Domain[] = ["positions", "operating", "services", "volume", "fees", "cap"];
 
+/** Domains the analyst can skip — published only when the jurisdiction
+ *  has a Cost Allocation Plan. Excluded from the Sources Connected
+ *  denominator; tracked separately as an "optional connected" note. */
+export const OPTIONAL_DOMAINS: ReadonlySet<Domain> = new Set<Domain>(["cap"]);
+
 export interface AnnualChange {
   id: string;
   change: string;
@@ -83,6 +88,9 @@ interface RefreshSummary {
   totalReview: number;
   inputsRefreshed: number;
   totalInputs: number;
+  /** Count of optional domains (e.g. CAP) that have at least one import,
+   *  tracked outside the required X-of-Y denominator. */
+  optionalConnected: number;
   lastRefresh: string;
 }
 
@@ -138,14 +146,20 @@ export function deriveRefreshSections(input: AnnualInput): RefreshSectionCard[] 
 export function deriveRefreshSummary(input: AnnualInput): RefreshSummary {
   const cards = deriveRefreshSections(input);
   const importedCards = cards.filter((c) => c.hasImports);
+  const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
+  const importedRequiredCards = requiredCards.filter((c) => c.hasImports);
+  const optionalConnected = cards.filter(
+    (c) => OPTIONAL_DOMAINS.has(c.domain) && c.hasImports,
+  ).length;
   const totalReview = importedCards.reduce((a, c) => a + c.review, 0);
   const lastRefresh = importedCards
     .map((c) => c.lastImport).filter(Boolean)
     .sort().reverse()[0];
   return {
     totalReview,
-    inputsRefreshed: importedCards.length,
-    totalInputs: ALL_DOMAINS.length,
+    inputsRefreshed: importedRequiredCards.length,
+    totalInputs: requiredCards.length,
+    optionalConnected,
     lastRefresh: lastRefresh ? formatStamp(lastRefresh) : "Seed data",
   };
 }

@@ -26,7 +26,16 @@ export default function SourceDataPage() {
       <StatusRow items={[
         {
           label: "Sources connected",
-          value: `${summary.inputsRefreshed} of ${summary.totalInputs}`,
+          value: (
+            <>
+              {summary.inputsRefreshed} of {summary.totalInputs} required
+              {summary.optionalConnected > 0 && (
+                <span style={{ color: "var(--ink-3)", fontWeight: 400 }}>
+                  {" "}· +{summary.optionalConnected} optional connected
+                </span>
+              )}
+            </>
+          ),
           tone: summary.inputsRefreshed === summary.totalInputs ? "pos" : undefined,
         },
         {
