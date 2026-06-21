@@ -191,7 +191,14 @@
       "Bash(git fetch *)",
       "Bash(kill 17537 17538 41900)",
       "Bash(kill 19423 19424 41900)",
-      "Bash(kill 41900 48729 48743)"
+      "Bash(kill 41900 48729 48743)",
+      "Bash(kill 41900 56914 56917)",
+      "Bash(kill 41900 64708 64719)",
+      "Bash(git rev-list *)",
+      "Bash(git merge *)",
+      "Read(//tmp/**)",
+      "Bash(kill 65132 65133)",
+      "Bash(kill 41900 66984 66985)"
     ]
   }
 }
