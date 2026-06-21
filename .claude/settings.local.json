@@ -207,7 +207,10 @@
       "Skill(run)",
       "Bash(tee /tmp/milpitas-verify-output.log)",
       "Bash(tee /tmp/milpitas-e2e-output.log)",
-      "Bash(echo \"exit code: $?\")"
+      "Bash(echo \"exit code: $?\")",
+      "Bash(npm ls *)",
+      "Bash(echo \"exit: $?\")",
+      "Bash(STRICT_BUILD=1 VITE_SUPABASE_URL=https://dummy.supabase.co VITE_SUPABASE_ANON_KEY=dummy-anon-key npm run build)"
     ]
   }
 }
