@@ -106,10 +106,40 @@ export function extractReceiverUnitsFromPdf(
   const rows = clusterRows(pageItems);
   if (rows.length < 2) return null;
 
-  const normalizedTarget = normalizeHeaderText(basisColumnHeader);
-  const normalizedBasis = normalizeHeaderText(basisName ?? "");
   const hasExpectedTotal = Number.isFinite(Number(expectedTotal)) && Number(expectedTotal) > 0;
 
+  for (const { normalizedTarget, normalizedBasis } of headerMatchAttempts(
+    basisColumnHeader,
+    basisName ?? "",
+  )) {
+    const result = extractReceiverUnitsForHeaderAttempt({
+      rows,
+      normalizedTarget,
+      normalizedBasis,
+      hasExpectedTotal,
+      expectedTotal: Number(expectedTotal),
+      deriveReceiversFromPdf,
+      receivers,
+    });
+    if (result) return result;
+  }
+
+  return null;
+}
+
+function extractReceiverUnitsForHeaderAttempt(args: {
+  rows: TextItem[][];
+  normalizedTarget: string;
+  normalizedBasis: string;
+  hasExpectedTotal: boolean;
+  expectedTotal: number;
+  deriveReceiversFromPdf?: boolean;
+  receivers: ReceiverIdentity[];
+}): DeterministicScheduleResult | null {
+  const {
+    rows, normalizedTarget, normalizedBasis, hasExpectedTotal,
+    expectedTotal, deriveReceiversFromPdf, receivers,
+  } = args;
   // NBS-template gridded schedules (identified by a GL-code-style anchor
   // row, e.g. "011 - 1100") print each column's header word-wrapped across
   // many physical lines, with different columns wrapping to different
@@ -130,7 +160,7 @@ export function extractReceiverUnitsFromPdf(
       const wrappedResults = wrappedGroups.map((group) => deriveReceiversFromPdf
         ? evaluateWrappedPdfReceiverGroup(group)
         : evaluateWrappedCandidateGroup(group, receivers));
-      return pickBestResult(wrappedResults, hasExpectedTotal, Number(expectedTotal));
+      return pickBestResult(wrappedResults, hasExpectedTotal, expectedTotal);
     }
   }
 
@@ -141,7 +171,7 @@ export function extractReceiverUnitsFromPdf(
     const results = groups.map((group) => deriveReceiversFromPdf
       ? evaluatePdfReceiverGroup(rows, group)
       : evaluateCandidateGroup(rows, group, receivers));
-    return pickBestResult(results, hasExpectedTotal, Number(expectedTotal));
+    return pickBestResult(results, hasExpectedTotal, expectedTotal);
   }
 
   // Fallback for non-gridded layouts: reconstruct wrapped headers the same
@@ -151,7 +181,47 @@ export function extractReceiverUnitsFromPdf(
   const wrappedResults = wrappedGroups.map((group) => deriveReceiversFromPdf
     ? evaluateWrappedPdfReceiverGroup(group)
     : evaluateWrappedCandidateGroup(group, receivers));
-  return pickBestResult(wrappedResults, hasExpectedTotal, Number(expectedTotal));
+  return pickBestResult(wrappedResults, hasExpectedTotal, expectedTotal);
+}
+
+function headerMatchAttempts(
+  basisColumnHeader: string,
+  basisName: string,
+): Array<{ normalizedTarget: string; normalizedBasis: string }> {
+  const targetAliases = normalizedHeaderAliases(basisColumnHeader);
+  const basisAliases = normalizedHeaderAliases(basisName);
+  const attempts: Array<{ normalizedTarget: string; normalizedBasis: string }> = [];
+  const seen = new Set<string>();
+
+  for (const normalizedTarget of targetAliases) {
+    for (const normalizedBasis of basisAliases) {
+      const key = `${normalizedTarget}|${normalizedBasis}`;
+      if (seen.has(key)) continue;
+      seen.add(key);
+      attempts.push({ normalizedTarget, normalizedBasis });
+    }
+  }
+
+  return attempts;
+}
+
+function normalizedHeaderAliases(text: string): string[] {
+  const normalized = normalizeHeaderText(text);
+  if (!normalized) return [""];
+
+  const aliases = new Set([normalized]);
+  if (
+    normalized === "budgetedfte"
+    || normalized === "fte"
+    || normalized === "fulltimeequivalentemployees"
+    || normalized === "fulltimeequivalentemployee"
+  ) {
+    aliases.add("fulltimeequivalentemployees");
+    aliases.add("budgetedfte");
+    aliases.add("fte");
+  }
+
+  return [...aliases];
 }
 
 function pickBestResult(
