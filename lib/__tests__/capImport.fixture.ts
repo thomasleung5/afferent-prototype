@@ -55,6 +55,31 @@ assert.deepEqual(
 );
 console.log("  ✓ CAP bases: custom basis with unrecognized category imports as OTHER");
 
+// ── Bases: name containing "direct" is not auto-classified as DIRECT ──────
+//
+// Real-world regression (Los Altos Hills CAP, "Direct to Parks and
+// Recreation"): this is an ordinary basis-driven schedule on the document's
+// consolidated grid, not a hand-written percent-split direct allocation.
+// inferBasisKey previously matched /\bdirect\b/ against the basis name text
+// and force-classified it driverKey "DIRECT", which allocationBasesUsedByPools
+// (lib/data/capBasisRouting.ts) then silently filtered out of the Allocation
+// Bases matrix even though it had a valid Section 3 receiver schedule.
+const directNamedBases = capBasesToExtractionResult([
+  {
+    name: "Direct to Parks and Recreation",
+    source: "Exhibit 5",
+    driverKey: "",
+    confidence: "high",
+  },
+], fileName);
+assert.equal(directNamedBases.mapped.length, 1);
+assert.equal(
+  directNamedBases.mapped[0].entity.driverKey,
+  "OTHER",
+  "A basis name containing 'direct' must not be auto-classified DIRECT without an explicit driverKey",
+);
+console.log("  ✓ CAP bases: 'direct' in a basis name no longer forces driverKey DIRECT");
+
 const importedBases = bases.mapped.map((row) => row.entity);
 
 // ── Basis units: regression cover for valid + invalid schedules ──────────
