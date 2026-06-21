@@ -41,18 +41,6 @@ const LOADED_NOUN: Record<Domain, { singular: string; plural: string }> = {
   cap:       { singular: "pool",       plural: "pools" },
 };
 
-/** Plain-English description of the kinds of source documents the
- *  domain's parser knows how to read. Surfaced in the expanded card so
- *  users see what they can upload before they're asked to pick a file. */
-const SUPPORTED_DOCS: Record<Domain, string[]> = {
-  positions: ["Personnel budget", "Salary & benefits report", "Position roster"],
-  operating: ["Budget book", "Expenditure detail report", "Operating budget extract"],
-  volume:    ["Annual report", "Permit-volume table", "Activity / volume appendix"],
-  services:  ["Prior fee study", "Cost-of-service report", "Services catalog export"],
-  fees:      ["Adopted fee schedule", "Master fee resolution"],
-  cap:       ["Cost Allocation Plan", "Indirect cost rate proposal"],
-};
-
 export function RefreshImportGrid() {
   const state = useBuildState();
   const input = {
@@ -341,7 +329,6 @@ interface ExpandedDetailProps {
 function ExpandedDetail({
   card, imports, importer, aiPdfAccessory, aiPdfBelow, children,
 }: ExpandedDetailProps) {
-  const supported = SUPPORTED_DOCS[card.domain];
   const history = imports
     .filter((e) => e.domain === card.domain)
     .sort((a, b) => (b.at > a.at ? 1 : -1))
@@ -356,14 +343,6 @@ function ExpandedDetail({
         display: "flex", flexDirection: "column", gap: 12,
       }}
     >
-      {/* Example source documents — reference only, not a selector; the
-          parser auto-detects document type from content. */}
-      <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.5 }}>
-        <span className="mono" style={{
-          fontWeight: 600, letterSpacing: "0.1em", textTransform: "uppercase",
-        }}>Accepts:</span>{" "}{supported.join(", ")}
-      </div>
-
       {/* Import actions — PDF primary, paste hidden behind Advanced */}
       <InlineImportCard
         onAiPdfImport={importer.aiPdf}
