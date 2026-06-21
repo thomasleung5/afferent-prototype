@@ -697,6 +697,19 @@ function receiverIdentityFromTableRow(identityCells: string[]): ReceiverIdentity
     if (dept) return { dept, glCode: first };
   }
 
+  // Bare alphabetic receiver codes (e.g. consolidated-grid "AO" / "All
+  // Other") label catch-all receivers that carry no numeric GL code at
+  // all — every branch above requires at least one digit to build a code,
+  // so this row would otherwise fall through to the `!fund` rejection
+  // below. Treat the bare short all-caps code as the glCode directly,
+  // mirroring the bare-numeric-fund-code shape above but for non-numeric
+  // codes.
+  const isBareAlphaCode = /^[A-Z]{1,4}$/.test(first);
+  if (isBareAlphaCode && cells.length === 2 && !isPlainNumber(cells[1])) {
+    const dept = stripTrailingNumber(cells[1]).trim();
+    if (dept) return { dept, glCode: first };
+  }
+
   const fund = isPlainNumber(cells[0]) ? cells[0] : undefined;
   if (!fund) return null;
   const fundTitle = cells[1] && !isPlainNumber(cells[1]) ? stripTrailingNumber(cells[1]) : "";
