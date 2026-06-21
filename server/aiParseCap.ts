@@ -192,6 +192,8 @@ SECTION 5 — Direct allocations
 
 Extract one entry per pool whose document publishes an explicit per-receiver percent split rather than referencing a basis denominator. These are typically labeled "Direct", "Direct Assignment", or simply show a 100% receiver row alongside the pool. On import the split is converted into a per-pool basis schedule — you do not need to mint a placeholder basis in Section 2 for it.
 
+- DO NOT classify a basis into this section just because its NAME contains the word "Direct" (e.g. "Direct to Parks and Recreation"). A basis name is a label, not a routing instruction — if that basis prints a Value column on the same consolidated grid as the document's other named bases (GL-code rows down the left, one unit value per receiver under the basis's own header), it is an ordinary basis-driven schedule and belongs in Section 3 (basisUnits), even when only one receiver has a positive value. Section 5 is reserved for pools where the document itself publishes a hand-written percent-split table with NO basis column / denominator schedule at all — judge by the document's structure for that pool, never by whether "Direct" appears in a name.
+
 - pool: the pool name as it appears in Section 4.
 - center: optional disambiguator when two pools share a name across different centers. Omit when the name is unique.
 - receivers: explicit list of receiving budget units. Each receiver:

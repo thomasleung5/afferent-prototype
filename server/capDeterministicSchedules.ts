@@ -305,10 +305,19 @@ function findWrappedHeaderGroups(
     const centers = columnBands.map((band) => median(band.map((it) => it.x + it.width / 2)));
     const xTolerance = 30;
 
+    // Wrapped header phrases can drift further from their data column's
+    // center than the data values themselves (e.g. a second header line
+    // like "Building, & Engineering" sitting past the midpoint to its
+    // column's right neighbor) — `xTolerance` is tuned for compact data
+    // cells and drops such drifted text instead of assigning it to the
+    // nearest column. Header text has no risk of being confused with an
+    // adjacent table's data (boilerplate lines are already filtered out
+    // below), so project it onto the nearest column unconditionally
+    // rather than capping by the data tolerance.
     const headerBandRows = pageRows
       .slice(0, anchorLocal)
       .filter((row) => !BOILERPLATE_LINE.test(row.map((it) => it.text).join(" ")));
-    const headerTextsByColumn = projectRowsToColumns(headerBandRows, centers, xTolerance)
+    const headerTextsByColumn = projectRowsToColumns(headerBandRows, centers, Infinity)
       .reduce<string[]>((acc, projectedRow) => {
         projectedRow.forEach((cell, c) => {
           if (cell) acc[c] = acc[c] ? `${acc[c]} ${cell}` : cell;
@@ -316,14 +325,29 @@ function findWrappedHeaderGroups(
         return acc;
       }, Array.from({ length: centers.length }, () => ""));
 
+    // Sibling basis columns on these grids routinely differ only by a
+    // trailing qualifier — e.g. "...excl. debt, capital outlay,
+    // transfers" vs. the same text plus "- Excluding Planning, Building,
+    // & Engineering" — so the shorter sibling's header is a strict prefix
+    // of the longer one's. `headerTextMatches`' containment check alone
+    // would bind both basis names to whichever column it sees first.
+    // Exact-normalized-text matches are unambiguous and must win outright;
+    // only fall back to containment when no column matches exactly.
+    const exactColumns: number[] = [];
+    const looseColumns: number[] = [];
     for (let c = 0; c < headerTextsByColumn.length; c += 1) {
       const normalizedCell = normalizeHeaderText(headerTextsByColumn[c]);
       if (!normalizedCell) continue;
+      if (normalizedCell === normalizedTarget || (normalizedBasis && normalizedCell === normalizedBasis)) {
+        exactColumns.push(c);
+        continue;
+      }
       const matchesTarget = headerTextMatches(normalizedCell, normalizedTarget);
       const matchesBasis = normalizedBasis ? headerTextMatches(normalizedCell, normalizedBasis) : false;
-      if (matchesTarget || matchesBasis) {
-        groups.push({ pageRows, anchorLocal, centers, xTolerance, columnIndex: c, preferred: true });
-      }
+      if (matchesTarget || matchesBasis) looseColumns.push(c);
+    }
+    for (const c of exactColumns.length > 0 ? exactColumns : looseColumns) {
+      groups.push({ pageRows, anchorLocal, centers, xTolerance, columnIndex: c, preferred: true });
     }
   }
 
@@ -659,6 +683,18 @@ function receiverIdentityFromTableRow(identityCells: string[]): ReceiverIdentity
     const dept = stripTrailingNumber(first);
     const codeParts = [firstTrailing, ...cells.slice(1).flatMap((cell) => numericTokens(cell))];
     return receiverFromParts(dept, codeParts);
+  }
+
+  // Single-segment fund-only admin rows (e.g. CIP fund "043 WESTWIND BARN
+  // CIP ADMIN") print just a bare numeric fund code with no separate org
+  // digits anywhere in the row — every other shape above requires a
+  // second numeric token to build a 2-part code, which this row will
+  // never have. Treat the bare leading number as the complete glCode
+  // directly rather than discarding the row as unparseable.
+  if (isPlainNumber(first) && cells.length === 2 && !isPlainNumber(cells[1])
+    && numericTokens(cells[1]).length === 0) {
+    const dept = stripTrailingNumber(cells[1]).trim();
+    if (dept) return { dept, glCode: first };
   }
 
   const fund = isPlainNumber(cells[0]) ? cells[0] : undefined;
