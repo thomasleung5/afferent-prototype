@@ -10,7 +10,7 @@ import {
   detectCapDocumentProfileFromText,
   type CapDocumentProfile,
 } from "./capDocumentProfiles";
-import { clusterRows, extractTextItems, type TextItem } from "./pdfTableExtract";
+import { extractTextItems, type TextItem } from "./pdfTableExtract";
 import { logEvent } from "./logger";
 
 const TAG = "ai-parse-cap";
@@ -334,14 +334,6 @@ function groupItemsByPage(items: TextItem[]): Map<number, TextItem[]> {
   return byPage;
 }
 
-function textFromPageItems(items: TextItem[]): string {
-  return clusterRows(items)
-    .map((row) => row.map((item) => item.text).join(" "))
-    .join("\n")
-    .replace(/[ \t]+/g, " ")
-    .trim();
-}
-
 function capTextPreview(items: TextItem[], maxPages = 12): string {
   return items
     .filter((item) => item.page <= maxPages)
@@ -349,16 +341,6 @@ function capTextPreview(items: TextItem[], maxPages = 12): string {
     .join(" ")
     .replace(/\s+/g, " ")
     .trim();
-}
-
-function capTextForAi(items: TextItem[]): string {
-  const pages = [...groupItemsByPage(items).entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([page, pageItems]) => ({ page, text: textFromPageItems(pageItems) }));
-  return pages
-    .filter((page) => page.text.length > 0)
-    .map((page) => `--- Page ${page.page} ---\n${page.text}`)
-    .join("\n\n");
 }
 
 function uniqueBasisNames(names: string[]): string[] {
@@ -526,11 +508,27 @@ export function alignRecoveredBasisNames(
 export function receiverTotalMatchesPrintedTotal(
   row: Pick<BasisUnitsRow, "printedTotal">,
   receivers: Array<{ units: number }>,
+  opts?: { allowUndercount?: boolean },
 ): boolean {
   const printedTotal = Number(row.printedTotal);
   if (!Number.isFinite(printedTotal) || printedTotal <= 0) return false;
   const extractedTotal = receivers.reduce((sum, receiver) => sum + receiver.units, 0);
-  return Math.abs(extractedTotal - printedTotal) <= Math.max(1, Math.abs(printedTotal) * 0.005);
+  const tolerance = Math.max(1, Math.abs(printedTotal) * 0.005);
+  if (opts?.allowUndercount) return extractedTotal <= printedTotal + tolerance;
+  return Math.abs(extractedTotal - printedTotal) <= tolerance;
+}
+
+/** "As Total ... Organization"-style bases print a department's share of
+ *  the total as a percentage, and round shares under ~0.5% to a printed
+ *  dash rather than "0". Reading the schedule's literal Value column for
+ *  these bases is correct as far as it goes, but it structurally cannot
+ *  reconstruct the rows the PDF itself chose not to print — the
+ *  deterministic total will legitimately undercount the printed grand
+ *  total. That's a known property of the source document, not a
+ *  mismatched-column read, so these bases are allowed to undercount
+ *  without triggering AI fallback (which has no better data either). */
+export function isDistributionShareBasis(basisName: string): boolean {
+  return /^as\s+total\b/i.test(basisName.trim());
 }
 
 export type DeterministicTrustDecision =
@@ -551,13 +549,14 @@ export type DeterministicTrustDecision =
 export function evaluateDeterministicResult(
   row: Pick<BasisUnitsRow, "printedTotal">,
   result: Pick<DeterministicScheduleResult, "receivers" | "unmatchedReceivers">,
+  opts?: { allowUndercount?: boolean },
 ): DeterministicTrustDecision {
   if (result.unmatchedReceivers.length > 0) {
     return { trust: false, reason: "unmatched-receivers" };
   }
   const printedTotal = Number(row.printedTotal);
   const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers)) {
+  if (hasPrintedTotal && !receiverTotalMatchesPrintedTotal(row, result.receivers, opts)) {
     return { trust: false, reason: "total-mismatch" };
   }
   if (result.receivers.length === 0) {
@@ -643,13 +642,6 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
     pdfItemsPromise ??= extractTextItems(new Uint8Array(pdfBuffer.slice(0)));
     return pdfItemsPromise;
   };
-  let extractedPdfText: string | null = null;
-  const getExtractedPdfText = async (): Promise<string> => {
-    if (extractedPdfText == null) {
-      extractedPdfText = capTextForAi(await getPdfItems());
-    }
-    return extractedPdfText;
-  };
   let profile = detectCapDocumentProfileFromText("");
   const deterministicSchedulesEnabled = process.env.CAP_DETERMINISTIC_SCHEDULES === "1";
   try {
@@ -693,6 +685,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         content: [{
           type: "document",
           source: { type: "base64", media_type: "application/pdf", data: pdfBase64 },
+          // The same PDF bytes are re-sent to the basis-semantic call and
+          // to each schedule-recovery batch below — caching this document
+          // block lets those later calls read it from Anthropic's cache
+          // instead of re-billing the full document as fresh input tokens.
+          cache_control: { type: "ephemeral" },
         }],
       }],
     }, {
@@ -707,6 +704,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
       latency_ms: elapsed_ms,
       input_tokens: response.usage.input_tokens,
       output_tokens: response.usage.output_tokens,
+      cache_creation_input_tokens: response.usage.cache_creation_input_tokens ?? 0,
+      cache_read_input_tokens: response.usage.cache_read_input_tokens ?? 0,
       stop_reason: response.stop_reason,
     });
 
@@ -790,7 +789,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         const semantics = await aiBasisColumnSemantics(
           client,
           MODEL,
-          await getExtractedPdfText(),
+          pdfBase64,
           basisNamesForDeterministic,
           req.signal,
         );
@@ -867,7 +866,6 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             });
             continue;
           }
-          const deterministicTotal = result.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
           // The schedule's own printed "Grand Total: All Services" row
           // (read deterministically from the same column as the
           // receivers) is more trustworthy than the primary AI parse's
@@ -879,8 +877,34 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             : row;
           const printedTotal = Number(reconciliationRow.printedTotal);
           const hasPrintedTotal = Number.isFinite(printedTotal) && printedTotal > 0;
-          const decision = evaluateDeterministicResult(reconciliationRow, result);
-          if (!decision.trust && decision.reason === "no-resolved-receivers") {
+
+          // Percentage-based bases (e.g. "As Total City Manager
+          // Organization") print a rounded-to-whole-number Value next to a
+          // one-decimal percentage of the same share. Value's rounding
+          // loses information across enough small departments that its
+          // total legitimately falls short of the printed grand total
+          // (confirmed against the Milpitas CAP: Value sums to 94 against
+          // a printed 100, while the percentage column sums to exactly
+          // 100.0). Prefer the percentage-derived receivers whenever they
+          // reconcile better than Value did, before falling back to
+          // accepting Value's known undercount.
+          let effectiveResult = result;
+          if (isDistributionShareBasis(basisName) && result.percentReceivers && result.percentReceivers.length > 0) {
+            const percentPrintedTotal = result.percentTotalFromPdf ?? printedTotal;
+            const percentTotal = result.percentReceivers.reduce((sum, receiver) => sum + receiver.units, 0);
+            const percentTolerance = Math.max(1, Math.abs(percentPrintedTotal) * 0.005);
+            if (
+              Number.isFinite(percentPrintedTotal) && percentPrintedTotal > 0
+              && Math.abs(percentTotal - percentPrintedTotal) <= percentTolerance
+            ) {
+              effectiveResult = { ...result, receivers: result.percentReceivers };
+            }
+          }
+          const deterministicTotal = effectiveResult.receivers.reduce((sum, receiver) => sum + receiver.units, 0);
+          const decision = evaluateDeterministicResult(reconciliationRow, effectiveResult, {
+            allowUndercount: isDistributionShareBasis(basisName),
+          });
+          if (!decision.trust) {
             fallbackCount += 1;
             nextBasisUnits.push(row);
             logEvent({
@@ -892,7 +916,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
-              resolved_receivers: result.receivers.length,
+              resolved_receivers: effectiveResult.receivers.length,
               blank_receivers: result.blankReceivers.length,
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
@@ -904,7 +928,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           nextBasisUnits.push({
             ...reconciliationRow,
             source: row.source ?? "Deterministic PDF extraction",
-            receivers: result.receivers.map((r) => ({
+            receivers: effectiveResult.receivers.map((r) => ({
               dept: r.dept,
               glCode: r.glCode,
               ...(r.deptCode ? { deptCode: r.deptCode } : {}),
@@ -920,14 +944,10 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             page: semantic.page,
             column_header: semantic.basisColumnHeader,
             ai_receivers: aiReceiverCount,
-            resolved_receivers: result.receivers.length,
+            resolved_receivers: effectiveResult.receivers.length,
+            used_percent_column: effectiveResult !== result,
             blank_receivers: result.blankReceivers.length,
             unmatched_receivers: result.unmatchedReceivers.length,
-            ...(decision.trust ? {} : {
-              review_reason: decision.reason,
-              deterministic_total: deterministicTotal,
-              printed_total: hasPrintedTotal ? printedTotal : undefined,
-            }),
           });
         }
         basisUnits = nextBasisUnits;
@@ -1071,8 +1091,17 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             messages: [{
               role: "user",
               content: [{
-                type: "text",
-                text: await getExtractedPdfText(),
+                type: "document",
+                source: {
+                  type: "base64",
+                  media_type: "application/pdf",
+                  data: pdfBase64,
+                },
+                // Each batch re-sends the same PDF bytes already cached by
+                // the primary parse call above — keep the breakpoint here
+                // so every batch in this loop (and any later batch) hits
+                // the cache instead of re-billing the full document.
+                cache_control: { type: "ephemeral" },
               }],
             }],
           }, { signal: req.signal });
@@ -1090,6 +1119,8 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             recovered_count: recovered.filter(validSchedule).length,
             input_tokens: scheduleResponse.usage.input_tokens,
             output_tokens: scheduleResponse.usage.output_tokens,
+            cache_creation_input_tokens: scheduleResponse.usage.cache_creation_input_tokens ?? 0,
+            cache_read_input_tokens: scheduleResponse.usage.cache_read_input_tokens ?? 0,
             stop_reason: scheduleResponse.stop_reason,
           });
         } catch (err) {

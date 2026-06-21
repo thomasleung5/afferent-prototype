@@ -2,6 +2,7 @@ import assert from "node:assert/strict";
 import {
   alignRecoveredBasisNames,
   evaluateDeterministicResult,
+  isDistributionShareBasis,
   mergeBasisUnits,
   missingScheduleBasisNames,
   parseBasisUnitsResponse,
@@ -164,6 +165,60 @@ const gross = {
     "missing printed total cannot prove deterministic completeness",
   );
   console.log("  ✓ deterministic CAP schedules use printed total as reconciliation evidence");
+}
+
+{
+  // "As Total ... Organization"-style bases print a department's
+  // percentage SHARE of the total; their literal Value sub-column rounds
+  // to whole numbers and prints a dash (not "0") for any department under
+  // ~0.5% share, so the deterministic total legitimately undercounts the
+  // printed grand total. `allowUndercount` lets that known-incomplete
+  // result stand rather than falling back to AI's own (worse) guess, but
+  // must still catch a genuine overcount — that's still a row-shift/
+  // double-count bug, not a documented source-data limitation.
+  assert.equal(
+    receiverTotalMatchesPrintedTotal(
+      { printedTotal: 100 },
+      [{ units: 94 }],
+      { allowUndercount: true },
+    ),
+    true,
+    "allowUndercount trusts a deterministic total that falls short of the printed total",
+  );
+  assert.equal(
+    receiverTotalMatchesPrintedTotal(
+      { printedTotal: 100 },
+      [{ units: 110 }],
+      { allowUndercount: true },
+    ),
+    false,
+    "allowUndercount still distrusts a deterministic total that exceeds the printed total",
+  );
+  console.log("  ✓ allowUndercount only relaxes the gate for undercounting, not overcounting");
+}
+
+{
+  assert.equal(isDistributionShareBasis("As Total City Manager Organization"), true);
+  assert.equal(isDistributionShareBasis("  as total of something  "), true);
+  assert.equal(isDistributionShareBasis("Modified Operating Expenses"), false);
+  assert.equal(isDistributionShareBasis("Gross Operating Expenses"), false);
+  console.log("  ✓ isDistributionShareBasis recognizes only \"As Total ...\" basis names");
+}
+
+{
+  // End-to-end: the same total-mismatch case from above (which fails the
+  // default strict gate) is trusted once routed through
+  // evaluateDeterministicResult with allowUndercount set, mirroring the
+  // call site's `{ allowUndercount: isDistributionShareBasis(basisName) }`.
+  const row = { printedTotal: 100 };
+  const result = { receivers: [{ dept: "Land Development", glCode: "100-413-0", units: 94 }], unmatchedReceivers: [] };
+
+  const strict = evaluateDeterministicResult(row, result);
+  assert.deepEqual(strict, { trust: false, reason: "total-mismatch" });
+
+  const relaxed = evaluateDeterministicResult(row, result, { allowUndercount: true });
+  assert.deepEqual(relaxed, { trust: true });
+  console.log("  ✓ evaluateDeterministicResult trusts an undercounted distribution-share basis when allowUndercount is set");
 }
 
 {
