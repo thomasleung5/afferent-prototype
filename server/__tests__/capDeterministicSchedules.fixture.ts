@@ -1202,4 +1202,42 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
   console.log("  ✓ Bare single-segment fund code (no org/dash) resolves a receiver identity");
 }
 
+// ─── Bare alphabetic identity code ─────────────────────────────────────────
+//
+// Real-world regression (Los Altos Hills CAP, consolidated grid pages 84/85):
+// the catch-all receiver prints as a single "AO- All Other" text item on
+// per-pool detail pages, but on the consolidated grid it's split into two
+// adjacent cells: a bare alphabetic code "AO" and a department-name cell
+// "All Other" — no digits anywhere in the row. Every existing identity shape
+// in receiverIdentityFromTableRow requires at least one digit to build a
+// glCode, so this row previously fell through to `return null`, silently
+// dropping "All Other" from the resolved receivers.
+{
+  const pageItems: TextItem[] = [
+    item("FY 23/24 Number of Accounting", 380, 10, 150),
+    item("Transactions per Fund, Department,", 380, 22, 150),
+    item("and/or Division", 380, 34, 150),
+    item("011 - 1200",  50, 50, 60),
+    item("City Manager", 120, 50, 90),
+    item("20",           395, 50, 40),
+    item("AO",            50, 70, 60),
+    item("All Other",     120, 70, 90),
+    item("110",           395, 70, 40),
+  ];
+  const target = "FY 23/24 Number of Accounting Transactions per Fund, Department, and/or Division";
+  const result = extractReceiverUnitsFromPdf({
+    pageItems,
+    basisColumnHeader: target,
+    basisName: target,
+    deriveReceiversFromPdf: true,
+    receivers: [],
+  });
+  assert.ok(result, "bare alphabetic code row should not block schedule resolution");
+  const allOther = result.receivers.find((r) => r.glCode === "AO");
+  assert.ok(allOther, "All Other should resolve from its bare alphabetic code");
+  assert.equal(allOther!.dept, "All Other");
+  assert.equal(allOther!.units, 110);
+  console.log("  ✓ Bare alphabetic code (no digits) resolves a receiver identity");
+}
+
 console.log("\nAll capDeterministicSchedules assertions passed.");
