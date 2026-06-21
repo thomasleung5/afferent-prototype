@@ -518,6 +518,112 @@ assert.ok(close(wtPoolBPlan, expectPoolB, 1),
 assert.ok(close(wtPoolAPlan + wtPoolBPlan, 1_072_341, 1),
   "Pool A + Pool B fully redistribute first-incoming");
 
+// Published incoming-cost rows override derived weights when they reconcile.
+// ClearSource-style functional tables publish exact First Allocation dollars
+// by function column (e.g. Town Center Operations page 69). Those values are
+// the source of truth for Gross Allocation in Allocation Detail; p+o /
+// functionalCost remain trace/weighting fallbacks.
+
+console.log("\n== Center-pool weighting by published incoming rows ==");
+
+const tcBases: AllocationBasis[] = [
+  {
+    id: "tc-upstream", name: "Town upstream", source: "Fixture",
+    driverKey: "FTE", createdAt: NOW, validationStatus: "verified",
+  },
+  {
+    id: "tc-inner", name: "Town Center schedule", source: "Fixture",
+    driverKey: "OTHER", createdAt: NOW, validationStatus: "verified",
+  },
+];
+const tc = buildCenterMaps(
+  { "Upstream Center": 229_416, "Town Center Operations": 0 },
+  { "Upstream Center": "UP-TC", "Town Center Operations": "061-1480" },
+);
+const tcOrder = [tc.keyByName["Upstream Center"], tc.keyByName["Town Center Operations"]];
+const tcBasisUnits: BasisUnitRow[] = [
+  {
+    basisId: "tc-upstream", basis: "Town upstream",
+    receivers: [
+      { dept: "Town Center Operations", glCode: "061-1480", deptCode: "OTHER", units: 100 },
+    ],
+  },
+  {
+    basisId: "tc-inner", basis: "Town Center schedule",
+    receivers: [
+      { dept: "Planning Admin", glCode: "011-3100", deptCode: "PLAN", units: 100 },
+    ],
+  },
+];
+const tcPools: CapPool[] = [
+  {
+    id: "tc-upstream-pool",
+    center: "Upstream Center", centerGlCode: tc.keyByName["Upstream Center"],
+    pool: "Upstream Pool",
+    allocationPercent: 100, amount: 229_416,
+    basisId: "tc-upstream", basis: "Town upstream",
+    receiving: "Town Center Operations", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+  {
+    id: "tc-town-center",
+    center: "Town Center Operations", centerGlCode: tc.keyByName["Town Center Operations"],
+    pool: "Town Center Operations",
+    allocationPercent: 64.4, amount: 0,
+    personnelCost: 1, operatingCost: 1, functionalCost: 198_381,
+    firstIncomingCost: 147_737, secondIncomingCost: 50_645,
+    basisId: "tc-inner", basis: "Town Center schedule",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+  {
+    id: "tc-town-wide",
+    center: "Town Center Operations", centerGlCode: tc.keyByName["Town Center Operations"],
+    pool: "Town-wide Operations",
+    allocationPercent: 2.1, amount: 0,
+    personnelCost: 1, operatingCost: 1, functionalCost: 6_471,
+    firstIncomingCost: 4_819, secondIncomingCost: 1_652,
+    basisId: "tc-inner", basis: "Town Center schedule",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+  {
+    id: "tc-it",
+    center: "Town Center Operations", centerGlCode: tc.keyByName["Town Center Operations"],
+    pool: "Town-wide IT Support",
+    allocationPercent: 33.5, amount: 0,
+    personnelCost: 1, operatingCost: 1, functionalCost: 103_209,
+    firstIncomingCost: 76_861, secondIncomingCost: 26_348,
+    basisId: "tc-inner", basis: "Town Center schedule",
+    receiving: "PLAN", recoverability: "Fully recoverable", review: "Reviewed",
+  },
+];
+const { entries: tcReceivers } = buildReceiverRegistry(
+  tcBasisUnits, tcBases, DEFAULT_STUDY_CONTEXT,
+);
+const tcGraph = buildEngineGraph({
+  allocationBases: tcBases,
+  basisUnits: tcBasisUnits,
+  capCenterTotals: tc.totals,
+  capCenterSources: tc.sources,
+  capReceivers: tcReceivers,
+});
+const tcModel = computeStepDownGl({
+  pools: tcPools, centerOrder: tcOrder,
+  bases: tcBases, basisUnits: tcBasisUnits,
+  graph: tcGraph,
+});
+assert.ok(close(tcModel.firstAllocation["tc-town-center"]?.["011-3100"] ?? 0, 147_737, 1),
+  "Town Center Operations uses published First Allocation");
+assert.ok(close(tcModel.firstAllocation["tc-town-wide"]?.["011-3100"] ?? 0, 4_819, 1),
+  "Town-wide Operations uses published First Allocation");
+assert.ok(close(tcModel.firstAllocation["tc-it"]?.["011-3100"] ?? 0, 76_861, 1),
+  "Town-wide IT Support uses published First Allocation");
+assert.ok(close(
+  (tcModel.firstAllocation["tc-town-center"]?.["011-3100"] ?? 0)
+  + (tcModel.firstAllocation["tc-town-wide"]?.["011-3100"] ?? 0)
+  + (tcModel.firstAllocation["tc-it"]?.["011-3100"] ?? 0),
+  229_416,
+  2,
+), "Published First Allocation rows reconcile to center incoming");
+
 // ── Legacy DirectAllocationRow routing via materialization ────────────────
 //
 // Legacy snapshots persist directAllocations as a separate slice; the

@@ -502,11 +502,11 @@ export interface CapPool {
    *  center should normally reconcile to 100% but may temporarily drift
    *  during editing. */
   allocationPercent: number;
-  /** Net allocable dollars for this pool — the amount the step-down engine
-   *  distributes downstream. Denormalized derived value:
-   *  capCenterTotals[center] × allocationPercent / 100. Kept in sync by
-   *  updateCapPool/updateCenterTotal so downstream readers (step-down
-   *  engine, exports) can ignore the percent indirection. */
+  /** Own net departmental allocable dollars for this pool before incoming
+   *  reallocations. For ordinary centers this is the Phase 1 amount the
+   *  step-down engine distributes. For zero-dollar redistribution centers,
+   *  source-published incoming shares may be carried separately in
+   *  firstIncomingCost / secondIncomingCost. */
   amount: number;
   /** Foreign key into BuildState.allocationBases. Drives which catalog
    *  entry's source/methodology display under the pool's basis cell, AND
@@ -530,6 +530,19 @@ export interface CapPool {
    *  exclude this figure (net allocable = gross − disallowed); the
    *  engine reads `amount` directly. Optional. */
   disallowedCost?: number;
+  /** Source-published share of the center's First Allocation / incoming
+   *  reallocation assigned to this pool. Used for zero-departmental-cost
+   *  redistribution centers (e.g. Town Center Operations) when the CAP
+   *  publishes exact functional-cost split rows. Optional. */
+  firstIncomingCost?: number;
+  /** Source-published share of the center's Second Allocation / incoming
+   *  reallocation assigned to this pool. Optional counterpart to
+   *  firstIncomingCost. */
+  secondIncomingCost?: number;
+  /** Source-published TOTAL FUNCTIONAL COSTS for this pool. Trace field
+   *  used as a weighting fallback when explicit first/second incoming
+   *  amounts are not available. Optional. */
+  functionalCost?: number;
   /** Free-text policy explanation (e.g. "Fully recoverable", "Excluded —
    *  public benefit"). Surfaced in exports for context. */
   recoverability: string;

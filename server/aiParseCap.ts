@@ -60,6 +60,7 @@ Return ONLY this JSON, no prose:
       "center": "City Manager", "pool": "Management Support",
       "allocationPercent": 33, "amount": 777868,
       "personnelCost": 612000, "operatingCost": 215868, "disallowedCost": 50000,
+      "firstIncomingCost": 147737, "secondIncomingCost": 50645, "functionalCost": 198381,
       "basis": "Budgeted FTE",
       "recoverability": "Fully recoverable", "confidence": "high"
     }
@@ -171,14 +172,16 @@ Extract every cost-pool row that allocates a slice of an indirect center's budge
 - center: the cost-center name this pool belongs to (matches a Section 1 center name).
 - pool: the human-readable pool / function name (e.g. "Management Support", "Records", "Council / Legislative Support").
 - allocationPercent: the pool's claimed share of the center, 0–100 plain number, no % sign.
-- amount: the net allocable dollar amount this pool distributes. Plain number, no $ or commas. This is the figure after disallowed costs are removed (gross − disallowed), which is what the step-down engine actually distributes.
+- amount: the pool's own net departmental allocable dollars before incoming-cost reallocations. Plain number, no $ or commas. This is the figure after disallowed costs are removed from the pool's own departmental expenditures (gross − disallowed). Do NOT include "First Allocation", "Second Allocation", "Reallocation of Incoming Costs", or "TOTAL FUNCTIONAL COSTS" in amount; those belong in firstIncomingCost, secondIncomingCost, and functionalCost.
 - personnelCost: the personnel-cost portion the document publishes for this pool — salaries + benefits, taxes, retirement, fringe. Plain number, no $ or commas. Omit when the document does not break out personnel from operating.
 - operatingCost: the operating-cost portion the document publishes — non-personnel spend (contracts, supplies, services, equipment). Plain number, no $ or commas. Omit when not broken out.
 - disallowedCost: dollars excluded from allocation per the document's policy — typically capital outlay, one-time charges, grant-funded line items, pass-throughs, or any "Disallowed" / "Excluded" / "Non-allocable" column. Plain number, no $ or commas. Omit when the document does not call out an excluded portion.
   - When the document prints both a gross and a net figure with disallowed = gross − net, capture \`amount\` as the net (already excluded) AND capture \`disallowedCost\` as the excluded portion.
   - When the document publishes ONLY a single dollar figure with no exclusions, set \`amount\` to that figure and omit \`disallowedCost\`.
-- \`amount\` IS THE POOL'S TOTAL DISTRIBUTED DOLLAR FIGURE, NOT THE CENTER'S OWN DEPARTMENTAL SPEND. Internal-service / allocable budget units (e.g. "Fringe Benefits Allocation", "Town Center Operations", "Corp Yard Operations", "Vehicle / Equipment Operations") often show $0 of their OWN "Departmental Expenditures" because they originate no direct cost of their own — every dollar they distribute came in from other centers as "Incoming Costs". That does NOT make \`amount\` zero. \`amount\` is the pool's "Total Costs to be Allocated" (Departmental Expenditures + Incoming Costs, net of any disallowed portion) — the figure on the pool's own Allocation Detail/Summary page that the receivers actually sum to. Read the pool's printed allocation total, not its center's departmental-expenditures line.
-- ZERO-AMOUNT POOLS — a pool's \`amount\` is genuinely 0 only when the document's own allocation/total column FOR THAT POOL prints 0 or blank — e.g. gross personnel + operating happens to equal disallowed (everything excluded by policy) so nothing is left to distribute. It is never 0 merely because the funding source was incoming costs rather than departmental expenditures. When \`amount\` is genuinely 0, you MUST STILL populate \`personnelCost\`, \`operatingCost\`, and \`disallowedCost\` if the document shows them — the underlying cost breakdown is real data the document publishes and must be captured; do NOT collapse those three fields to 0 or omit them just because \`amount\` is 0. Apply the same omit-only-when-unprinted rule that applies to non-zero pools.
+- firstIncomingCost: OPTIONAL. When a pool/function detail table publishes "Reallocation of Incoming Costs" → "First Allocation" by pool/function column, capture that pool's dollar value. This is common for zero-departmental-cost redistribution centers such as Town Center Operations. Plain number, no $ or commas, no parentheses.
+- secondIncomingCost: OPTIONAL. When the same table publishes "Second Allocation" by pool/function column, capture that pool's dollar value.
+- functionalCost: OPTIONAL. When the table publishes "TOTAL FUNCTIONAL COSTS" by pool/function column, capture that pool's dollar value. This is source-published trace/weighting evidence and may equal amount + firstIncomingCost + secondIncomingCost.
+- ZERO-AMOUNT POOLS — a pool's \`amount\` is genuinely 0 when the document's own net departmental expenditures for that pool are 0 or blank. Internal-service / allocable budget units (e.g. "Town Center Operations", "Corp Yard Operations", "Vehicle / Equipment Operations") often show $0 of their OWN "Departmental Expenditures" because they originate no direct cost of their own, while still publishing non-zero "First Allocation", "Second Allocation", or "TOTAL FUNCTIONAL COSTS" from incoming costs. Keep amount=0 in that case and capture the incoming-cost rows in firstIncomingCost / secondIncomingCost / functionalCost. When \`amount\` is 0, still populate \`personnelCost\`, \`operatingCost\`, and \`disallowedCost\` if the document shows them.
 - basis: the allocation basis name (matches Section 2). When this basis appears in Section 3 (basisUnits), the engine uses that schedule. When the basis is DIRECT, the per-pool routing comes from Section 5.
 - When a pool's allocation basis is "Purchasing Staff Time Analysis", normalize it to "Purchasing Time Analysis" to match the column header used in the allocation-factor exhibit.
 - recoverability: short policy note (e.g. "Fully recoverable", "Excluded — General Fund subsidy"). Optional.
@@ -280,6 +283,12 @@ interface PoolRow {
   operatingCost?: number;
   /** Disallowed / excluded portion (capital, one-time, pass-through). Optional. */
   disallowedCost?: number;
+  /** Source-published First Allocation incoming-cost share for this pool. Optional. */
+  firstIncomingCost?: number;
+  /** Source-published Second Allocation incoming-cost share for this pool. Optional. */
+  secondIncomingCost?: number;
+  /** Source-published TOTAL FUNCTIONAL COSTS for this pool. Optional. */
+  functionalCost?: number;
   basis: string;
   /** Free-text receiver caption shown on the source PDF. Optional. */
   receiving?: string;

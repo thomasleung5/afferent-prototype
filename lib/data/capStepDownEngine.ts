@@ -425,17 +425,37 @@ export function computeStepDownGl(args: {
   };
 
   // Pool sizing for center-level weighting. Primary source is
-  // `pool.amount` (the net-allocable headline). When that's zero —
+  // `pool.amount` (own net allocable dollars). When that's zero —
   // typical for redistribution units like Town Center Operations whose
-  // headline is $0 but whose document publishes personnel + operating
-  // as the implicit weighting basis — fall back to (personnelCost +
-  // operatingCost). This ratio is used to determine each pool's share
-  // of its center's incoming dollars; it does NOT add own dollars
+  // departmental expenditures are $0 but whose document publishes incoming
+  // functional-cost rows — prefer functionalCost, then fall back to
+  // (personnelCost + operatingCost). This ratio determines each pool's
+  // share of its center's incoming dollars; it does NOT add own dollars
   // (which would double-count the incoming flow).
   const poolSize = (p: CapPool): number => {
     if (p.amount > 0) return p.amount;
+    if ((p.functionalCost ?? 0) > 0) return p.functionalCost ?? 0;
     const breakdown = (p.personnelCost ?? 0) + (p.operatingCost ?? 0);
     return breakdown > 0 ? breakdown : 0;
+  };
+
+  const publishedIncomingByPool = (
+    centerPools: CapPool[],
+    field: "firstIncomingCost" | "secondIncomingCost",
+    expectedTotal: number,
+  ): Map<string, number> | null => {
+    if (expectedTotal <= 0) return null;
+    const values = new Map<string, number>();
+    let sum = 0;
+    for (const p of centerPools) {
+      const raw = p[field];
+      const value = Number.isFinite(raw) && raw != null && raw > 0 ? raw : 0;
+      values.set(p.id, value);
+      sum += value;
+    }
+    if (sum <= 0) return null;
+    const tolerance = Math.max(1, Math.abs(expectedTotal) * 0.005);
+    return Math.abs(sum - expectedTotal) <= tolerance ? values : null;
   };
 
   // Step order — drives the engine. Both Phase 1 and Phase 2 iterate
@@ -593,10 +613,14 @@ export function computeStepDownGl(args: {
       if (totalAllocPct > 0) return (p.allocationPercent ?? 0) / totalAllocPct;
       return 1 / Math.max(1, centerPools.length);
     };
+    const publishedFirstIncoming = publishedIncomingByPool(
+      centerPools, "firstIncomingCost", firstInc,
+    );
 
     for (const p of centerPools) {
       const poolWeight = weightOf(p);
-      const firstPool = p.amount + poolWeight * firstInc;
+      const incomingShare = publishedFirstIncoming?.get(p.id) ?? (poolWeight * firstInc);
+      const firstPool = p.amount + incomingShare;
       if (firstPool <= 0) continue;
 
       const route = routeByPoolId.get(p.id);
@@ -675,6 +699,9 @@ export function computeStepDownGl(args: {
       if (totalAllocPct > 0) return (p.allocationPercent ?? 0) / totalAllocPct;
       return 1 / Math.max(1, centerPools.length);
     };
+    const publishedSecondIncoming = publishedIncomingByPool(
+      centerPools, "secondIncomingCost", secondInc,
+    );
 
     // Phase 2 schedule excludes self (center) AND every upstream center.
     const excludeKeys = new Set<NodeKey>([centerKey, ...upstreamKeys]);
@@ -685,7 +712,7 @@ export function computeStepDownGl(args: {
       // have already been settled in Phase 1's leakage branch.
       if (!route || route.state !== "routable") continue;
       const poolWeight = weightOf(p);
-      const secondPool = poolWeight * secondInc;
+      const secondPool = publishedSecondIncoming?.get(p.id) ?? (poolWeight * secondInc);
       if (secondPool <= 0) continue;
       distributeAmount(route.schedule, secondPool, secondAllocation[p.id], excludeKeys);
     }

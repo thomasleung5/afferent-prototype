@@ -198,7 +198,12 @@
       "Bash(git merge *)",
       "Read(//tmp/**)",
       "Bash(kill 65132 65133)",
-      "Bash(kill 41900 66984 66985)"
+      "Bash(kill 41900 66984 66985)",
+      "Bash(kill 41900 71054 71073)",
+      "Bash(kill 41900 73259 73279)",
+      "Bash(kill 75169 75170)",
+      "Bash(kill 41900 75293 75304)",
+      "Bash(kill 41900 *)"
     ]
   }
 }

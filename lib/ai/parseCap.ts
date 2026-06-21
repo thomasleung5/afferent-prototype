@@ -80,6 +80,12 @@ interface PoolRow {
   operatingCost?: number;
   /** Disallowed / excluded portion (capital, one-time, pass-through). Optional. */
   disallowedCost?: number;
+  /** Source-published First Allocation incoming-cost share for this pool. Optional. */
+  firstIncomingCost?: number;
+  /** Source-published Second Allocation incoming-cost share for this pool. Optional. */
+  secondIncomingCost?: number;
+  /** Source-published TOTAL FUNCTIONAL COSTS for this pool. Optional. */
+  functionalCost?: number;
   basis: string;
   receiving?: string;
   recoverability?: string;
@@ -392,6 +398,9 @@ export function capPoolsToExtractionResult(
     const personnelCost = optMoney(row.personnelCost);
     const operatingCost = optMoney(row.operatingCost);
     const disallowedCost = optMoney(row.disallowedCost);
+    const firstIncomingCost = optMoney(row.firstIncomingCost);
+    const secondIncomingCost = optMoney(row.secondIncomingCost);
+    const functionalCost = optMoney(row.functionalCost);
 
     const lineage: SourceLineage = {
       file: fileName,
@@ -403,6 +412,9 @@ export function capPoolsToExtractionResult(
         personnelCost: row.personnelCost ?? null,
         operatingCost: row.operatingCost ?? null,
         disallowedCost: row.disallowedCost ?? null,
+        firstIncomingCost: row.firstIncomingCost ?? null,
+        secondIncomingCost: row.secondIncomingCost ?? null,
+        functionalCost: row.functionalCost ?? null,
         basis: row.basis,
       },
       confidence: row.confidence === "high" ? "high" : "review",
@@ -425,6 +437,9 @@ export function capPoolsToExtractionResult(
       ...(personnelCost  != null ? { personnelCost }  : {}),
       ...(operatingCost  != null ? { operatingCost }  : {}),
       ...(disallowedCost != null ? { disallowedCost } : {}),
+      ...(firstIncomingCost  != null ? { firstIncomingCost }  : {}),
+      ...(secondIncomingCost != null ? { secondIncomingCost } : {}),
+      ...(functionalCost     != null ? { functionalCost }     : {}),
       recoverability: row.recoverability?.trim() || "TBD",
       review: row.confidence === "high" ? "Reviewed" : "Review",
     };
