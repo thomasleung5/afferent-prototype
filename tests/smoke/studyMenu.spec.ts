@@ -44,13 +44,16 @@ test.describe("Studies popover", () => {
     // Default route mocks — happy path: the user belongs to one
     // owner org with one existing study. Individual tests can
     // override these with another page.route() before navigation.
-    await page.route("**/api/studies", async (route) => {
+    await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       await fulfillJson(route, 200, {
         ok: true,
         studies: [{
           id: TEST_STUDY_ID,
           organization_id: TEST_ORG_ID,
+          // Must match the store's DEFAULT_JURISDICTION_ID ("los-altos-hills")
+          // — the popover filters the list client-side by activeJurisdictionId.
+          jurisdiction_id: "los-altos-hills",
           name: "FY26 Fee Study",
           fiscal_year: "FY 2025-26",
           created_by: "00000000-0000-0000-0000-0000000000aa",
@@ -121,7 +124,7 @@ test.describe("Studies popover", () => {
     });
     // Override studies to be empty so the popover shows the
     // no-studies body text and the disabled "New study…" action.
-    await page.route("**/api/studies", async (route) => {
+    await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       await fulfillJson(route, 200, { ok: true, studies: [] });
     });
@@ -138,7 +141,7 @@ test.describe("Studies popover", () => {
 
   test("503 from /api/studies surfaces 'Storage not configured' notice", async ({ page }) => {
     // 503 from either endpoint maps to the "not configured" branch.
-    await page.route("**/api/studies", async (route) => {
+    await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       await fulfillJson(route, 503, {
         ok: false,

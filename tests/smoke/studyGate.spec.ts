@@ -38,13 +38,16 @@ test.describe("Study selection gate", () => {
     await page.route("**/api/**", async (route) => {
       await fulfillJson(route, 503, { ok: false, message: "test mock missing" });
     });
-    await page.route("**/api/studies", async (route) => {
+    await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       await fulfillJson(route, 200, {
         ok: true,
         studies: [{
           id: TEST_STUDY_ID,
           organization_id: TEST_ORG_ID,
+          // Must match the store's DEFAULT_JURISDICTION_ID ("los-altos-hills")
+          // — the gate filters the list client-side by activeJurisdictionId.
+          jurisdiction_id: "los-altos-hills",
           name: "FY26 Fee Study",
           fiscal_year: "FY 2025-26",
           created_by: "00000000-0000-0000-0000-0000000000aa",
@@ -109,7 +112,7 @@ test.describe("Study selection gate", () => {
   });
 
   test("503 from /api/studies surfaces the 'not configured' copy in the gate", async ({ page }) => {
-    await page.route("**/api/studies", async (route) => {
+    await page.route(/\/api\/studies(\?.*)?$/, async (route) => {
       if (route.request().method() !== "GET") return route.fallback();
       await fulfillJson(route, 503, {
         ok: false,
