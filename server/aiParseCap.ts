@@ -991,11 +991,31 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             });
             continue;
           }
+          // Same percentage-column preference as the primary per-basis
+          // loop above: "As Total ..." bases print a rounded-to-whole-
+          // number Value column whose total legitimately falls short of
+          // the printed grand total, while the percentage column (when
+          // present) reconciles exactly. This loop runs for bases the
+          // primary AI parse never returned at all (Milpitas's ClearSource
+          // export resolves every basis through this path), so it needs
+          // the same treatment, not just the loop above.
+          let effectiveResult = result;
+          if (isDistributionShareBasis(basisName) && result.percentReceivers && result.percentReceivers.length > 0) {
+            const percentPrintedTotal = result.percentTotalFromPdf;
+            const percentTotal = result.percentReceivers.reduce((sum, receiver) => sum + receiver.units, 0);
+            const percentTolerance = Math.max(1, Math.abs(percentPrintedTotal ?? 0) * 0.005);
+            if (
+              Number.isFinite(percentPrintedTotal) && (percentPrintedTotal ?? 0) > 0
+              && Math.abs(percentTotal - (percentPrintedTotal ?? 0)) <= percentTolerance
+            ) {
+              effectiveResult = { ...result, receivers: result.percentReceivers };
+            }
+          }
           const candidateRow: BasisUnitsRow = {
             basis: basisName,
             source: "Deterministic PDF extraction",
             ...(result.printedTotalFromPdf != null ? { printedTotal: result.printedTotalFromPdf } : {}),
-            receivers: result.receivers.map((r) => ({
+            receivers: effectiveResult.receivers.map((r) => ({
               dept: r.dept,
               glCode: r.glCode,
               ...(r.deptCode ? { deptCode: r.deptCode } : {}),
@@ -1003,8 +1023,10 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               confidence: "high" as const,
             })),
           };
-          const decision = evaluateDeterministicResult(candidateRow, result);
-          if (!decision.trust && decision.reason === "no-resolved-receivers") {
+          const decision = evaluateDeterministicResult(candidateRow, effectiveResult, {
+            allowUndercount: isDistributionShareBasis(basisName),
+          });
+          if (!decision.trust) {
             missingFallbackCount += 1;
             logEvent({
               tag: TAG,
@@ -1014,9 +1036,9 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               reason: decision.reason,
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
-              resolved_receivers: result.receivers.length,
+              resolved_receivers: effectiveResult.receivers.length,
               blank_receivers: result.blankReceivers.length,
-              deterministic_total: result.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
+              deterministic_total: effectiveResult.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
               printed_total: result.printedTotalFromPdf,
             });
             continue;
@@ -1030,13 +1052,9 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             path: "deterministic",
             page: semantic.page,
             column_header: semantic.basisColumnHeader,
-            resolved_receivers: result.receivers.length,
+            resolved_receivers: effectiveResult.receivers.length,
+            used_percent_column: effectiveResult !== result,
             blank_receivers: result.blankReceivers.length,
-            ...(decision.trust ? {} : {
-              review_reason: decision.reason,
-              deterministic_total: result.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
-              printed_total: result.printedTotalFromPdf,
-            }),
           });
         }
         logEvent({

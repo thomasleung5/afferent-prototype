@@ -205,7 +205,9 @@
       "Bash(kill 41900 75293 75304)",
       "Bash(kill 41900 *)",
       "Skill(run)",
-      "Bash(tee /tmp/milpitas-verify-output.log)"
+      "Bash(tee /tmp/milpitas-verify-output.log)",
+      "Bash(tee /tmp/milpitas-e2e-output.log)",
+      "Bash(echo \"exit code: $?\")"
     ]
   }
 }

@@ -85,11 +85,6 @@ export function syntheticDirectBasisId(poolId: string): string {
   return `synth:direct:${poolId}`;
 }
 
-/** True when a basis id was minted by `materializeDirectAsBasisUnits`. */
-export function isSyntheticDirectBasisId(id: string): boolean {
-  return id.startsWith("synth:direct:");
-}
-
 const SYNTHETIC_CREATED_AT = "1970-01-01T00:00:00.000Z";
 
 /** Engine-internal view of CAP state with all direct allocations folded

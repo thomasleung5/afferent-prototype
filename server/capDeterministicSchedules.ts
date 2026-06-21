@@ -27,7 +27,7 @@
 // cells collapse). Row-shift is structurally impossible.
 
 import {
-  clusterRows, extractTextItems, tableFromRows, type TextItem,
+  clusterRows, tableFromRows, type TextItem,
 } from "./pdfTableExtract";
 
 export interface ReceiverIdentity {
@@ -1157,24 +1157,6 @@ function deptTokens(text: string): string[] {
     .toLowerCase()
     .split(/[^a-z0-9]+/)
     .filter((token) => token.length >= 3);
-}
-
-/** Convenience wrapper for end-to-end use: pdfBuffer → text items →
- *  per-basis resolution. The orchestrator in aiParseCap.ts uses this
- *  after the AI semantic pass identifies (page, basisColumnHeader) per
- *  basis. Items from all pages are loaded once; per-basis filtering is
- *  done by passing only the relevant page's items to extractReceiverUnitsFromPdf. */
-export async function loadPdfItemsByPage(
-  pdfBuffer: Uint8Array,
-): Promise<Map<number, TextItem[]>> {
-  const items = await extractTextItems(pdfBuffer);
-  const byPage = new Map<number, TextItem[]>();
-  for (const item of items) {
-    const bucket = byPage.get(item.page) ?? [];
-    bucket.push(item);
-    byPage.set(item.page, bucket);
-  }
-  return byPage;
 }
 
 // ─── AI semantic pass ──────────────────────────────────────────────────
