@@ -42,6 +42,14 @@ interface Props {
    *  panel right under Upload PDF / Upload Excel — so it sits above
    *  the paste-JSON fallback rather than below it. */
   aiPdfBelow?: ReactNode;
+
+  /** Minimal PDF-upload status presentation — see ActionPanel's
+   *  `compact` doc. Used by the CAP source card to keep the import
+   *  affordance focused: spinner + filename while in flight, nothing
+   *  once it succeeds (the result shows up in Recent Imports), and the
+   *  failure message still surfaces since that path has no other
+   *  feedback. Has no effect on the paste-JSON action. */
+  compactAiStatus?: boolean;
 }
 
 type Status = { ok: boolean; message: string } | null;
@@ -62,6 +70,7 @@ export function InlineImportCard({
   pasteAdvanced = false,
   aiPdfAccessory,
   aiPdfBelow,
+  compactAiStatus,
 }: Props) {
   // Per-action state: loading flags + last status message. Independent so
   // a stale AI message doesn't get clobbered by a clipboard paste click.
@@ -139,6 +148,7 @@ export function InlineImportCard({
           loadingFileName={aiFileName}
           status={aiStatus}
           accessory={aiPdfAccessory}
+          compact={compactAiStatus}
         >
           <input
             ref={aiPdfInputRef}
@@ -260,6 +270,7 @@ function ActionPanel({
   loadingFileName,
   status,
   accessory,
+  compact,
   children,
 }: {
   tone?: "primary" | "secondary";
@@ -281,6 +292,13 @@ function ActionPanel({
    *  button row — e.g. a secondary Upload Excel button slotted in by
    *  the Fees source card. */
   accessory?: ReactNode;
+  /** Minimal status presentation: drop the uppercase label and the
+   *  loading-stage text (spinner + filename only while in flight), and
+   *  hide the row entirely on success — the import shows up in Recent
+   *  Imports instead. Failure messages still render, since a failed
+   *  import never reaches Recent Imports and would otherwise vanish
+   *  with no feedback. */
+  compact?: boolean;
   children?: ReactNode;
 }) {
   const isPrimary = tone === "primary";
@@ -313,7 +331,33 @@ function ActionPanel({
           whiteSpace: "pre-wrap", wordBreak: "break-word",
         }}>{schema}</pre>
       )}
-      {(loading || status) && (
+      {compact ? (
+        (loading || (status && !status.ok)) && (
+          <div
+            aria-live="polite"
+            aria-busy={loading}
+            style={{
+              display: "flex", alignItems: "center", gap: 8,
+              paddingTop: 4,
+              borderTop: "1px dashed var(--rule)",
+              fontSize: 12,
+              color: loading ? "var(--ink-3)" : "var(--warn)",
+              fontWeight: loading ? 400 : 500,
+            }}
+          >
+            {loading && <Spinner ariaLabel="Importing"/>}
+            {loading
+              ? (loadingFileName && (
+                <span style={{
+                  color: "var(--ink-2)", fontFamily: "var(--ff-mono)",
+                  display: "inline-block", maxWidth: 260,
+                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+                }} title={loadingFileName}>{displayFileName(loadingFileName)}</span>
+              ))
+              : status?.message}
+          </div>
+        )
+      ) : (loading || status) && (
         <div
           aria-live="polite"
           aria-busy={loading}

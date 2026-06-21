@@ -203,7 +203,8 @@
       "Bash(kill 41900 73259 73279)",
       "Bash(kill 75169 75170)",
       "Bash(kill 41900 75293 75304)",
-      "Bash(kill 41900 *)"
+      "Bash(kill 41900 *)",
+      "Skill(run)"
     ]
   }
 }

@@ -158,7 +158,10 @@ function CapCard({ card, imports }: DomainCardProps) {
   const importer = useCapImportHandlers();
   const reviewExtra = importer.unmappedBases.length;
   return (
-    <SourceCardShell card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}>
+    <SourceCardShell
+      card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}
+      compactAiStatus
+    >
       {importer.unmappedBases.length > 0 && (
         <CapUnmappedPanel
           unmappedBases={importer.unmappedBases}
@@ -186,6 +189,9 @@ interface SourceCardShellProps {
    *  render the Excel mapping panel directly below the upload buttons,
    *  above the paste-JSON fallback. */
   aiPdfBelow?: ReactNode;
+  /** Minimal PDF-upload status presentation for InlineImportCard — see
+   *  its `compactAiStatus` doc. Used by the CAP card. */
+  compactAiStatus?: boolean;
   children?: ReactNode;
 }
 
@@ -198,7 +204,7 @@ interface SourceCardShellProps {
  *  (children). */
 function SourceCardShell({
   card, imports, importer, reviewExtra = 0,
-  aiPdfAccessory, aiPdfBelow, children,
+  aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
 }: SourceCardShellProps) {
   const [expanded, setExpanded] = useState(false);
   const [hovered, setHovered] = useState(false);
@@ -291,6 +297,7 @@ function SourceCardShell({
           importer={importer}
           aiPdfAccessory={aiPdfAccessory}
           aiPdfBelow={aiPdfBelow}
+          compactAiStatus={compactAiStatus}
         >
           {children}
         </ExpandedDetail>
@@ -305,11 +312,12 @@ interface ExpandedDetailProps {
   importer: ImportHandlerBundle;
   aiPdfAccessory?: ReactNode;
   aiPdfBelow?: ReactNode;
+  compactAiStatus?: boolean;
   children?: ReactNode;
 }
 
 function ExpandedDetail({
-  card, imports, importer, aiPdfAccessory, aiPdfBelow, children,
+  card, imports, importer, aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
 }: ExpandedDetailProps) {
   const history = imports
     .filter((e) => e.domain === card.domain)
@@ -335,6 +343,7 @@ function ExpandedDetail({
         pasteAdvanced
         aiPdfAccessory={aiPdfAccessory}
         aiPdfBelow={aiPdfBelow}
+        compactAiStatus={compactAiStatus}
       />
 
       {/* Domain-specific review (volume unmapped, cap unbound bases) */}
