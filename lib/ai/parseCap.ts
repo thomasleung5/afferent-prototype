@@ -574,7 +574,15 @@ function inferBasisKey(row: BasisRow): BasisKey | null {
     .toLowerCase();
   if (!text.trim()) return null;
 
-  if (/\bdirect\b/.test(text)) return "DIRECT";
+  // NOTE: deliberately no "direct" => "DIRECT" inference here. Section 2
+  // bases routinely carry the word "direct" in an otherwise ordinary basis
+  // name (e.g. "Direct to Parks and Recreation") while still publishing a
+  // real Section 3 receiver schedule on the document's consolidated grid.
+  // Legitimate DIRECT-driver bases are only ever the synthetic ones minted
+  // by materializeDirectAsBasisUnits (lib/data/capBasisRouting.ts) from an
+  // actual Section 5 directAllocations entry — inferring it from name text
+  // here caused allocationBasesUsedByPools to silently filter such bases
+  // out of the Allocation Bases matrix even when they had a valid schedule.
   if (/\bequal\b|\ball departments\b|\bequally\b|\bflat\b/.test(text)) return "EQUAL";
   if (/\brecords?\b|\bdocuments?\b|\blaserfiche\b/.test(text)) return "RECORDS";
   if (/\bmeeting hours?\b|hours of meetings?/.test(text)) return "MEETING_HOURS";
