@@ -57,11 +57,7 @@ export function RefreshImportGrid() {
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      {/* Drop zone */}
-      <div style={{
-        background: "var(--paper)", border: "2px dashed var(--rule-strong)",
-        padding: "14px 20px",
-      }}>
+      <div>
         <div className="mono" style={{
           fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
           color: "var(--ink-3)", textTransform: "uppercase",
