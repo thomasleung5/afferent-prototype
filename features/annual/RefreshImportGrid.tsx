@@ -18,7 +18,7 @@ import {
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
-import { CellSelect } from "@/components/ui";
+import { CellSelect, SectionLabel } from "@/components/ui";
 import { displayFileName } from "@/lib/format";
 import {
   useLaborImportHandlers, useOperatingImportHandlers,
@@ -58,13 +58,8 @@ export function RefreshImportGrid() {
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
       <div>
-        <div className="mono" style={{
-          fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-          color: "var(--ink-3)", textTransform: "uppercase",
-        }}>
-          Refresh source files
-        </div>
-        <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)", marginTop: 6, lineHeight: 1.5 }}>
+        <SectionLabel>Refresh source files</SectionLabel>
+        <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2, lineHeight: 1.5 }}>
           Upload current-year exports to refresh the model.
         </div>
       </div>
