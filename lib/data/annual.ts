@@ -88,9 +88,6 @@ interface RefreshSummary {
   totalReview: number;
   inputsRefreshed: number;
   totalInputs: number;
-  /** Count of optional domains (e.g. CAP) that have at least one import,
-   *  tracked outside the required X-of-Y denominator. */
-  optionalConnected: number;
   lastRefresh: string;
 }
 
@@ -148,9 +145,6 @@ export function deriveRefreshSummary(input: AnnualInput): RefreshSummary {
   const importedCards = cards.filter((c) => c.hasImports);
   const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
   const importedRequiredCards = requiredCards.filter((c) => c.hasImports);
-  const optionalConnected = cards.filter(
-    (c) => OPTIONAL_DOMAINS.has(c.domain) && c.hasImports,
-  ).length;
   const totalReview = importedCards.reduce((a, c) => a + c.review, 0);
   const lastRefresh = importedCards
     .map((c) => c.lastImport).filter(Boolean)
@@ -159,7 +153,6 @@ export function deriveRefreshSummary(input: AnnualInput): RefreshSummary {
     totalReview,
     inputsRefreshed: importedRequiredCards.length,
     totalInputs: requiredCards.length,
-    optionalConnected,
     lastRefresh: lastRefresh ? formatStamp(lastRefresh) : "Seed data",
   };
 }

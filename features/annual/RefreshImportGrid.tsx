@@ -18,7 +18,7 @@ import {
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
-import { CellSelect, SectionLabel } from "@/components/ui";
+import { CellSelect } from "@/components/ui";
 import { displayFileName } from "@/lib/format";
 import {
   useLaborImportHandlers, useOperatingImportHandlers,
@@ -56,17 +56,8 @@ export function RefreshImportGrid() {
   const cards = deriveRefreshSections(input);
 
   return (
-    <div style={{ display: "flex", flexDirection: "column", gap: 16 }}>
-      <div>
-        <SectionLabel>Refresh source files</SectionLabel>
-        <div style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)", marginTop: 2, lineHeight: 1.5 }}>
-          Upload current-year exports to refresh the model.
-        </div>
-      </div>
-
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-        {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
-      </div>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+      {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
     </div>
   );
 }
