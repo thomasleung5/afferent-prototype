@@ -52,14 +52,26 @@ const BASIS_LABELS: Record<string, string> = {
   "Services & Supplies Expense": "S&S",
 };
 
+// Imported basis names are often long, boilerplate-prefixed schedule
+// titles (e.g. "FY 24/25 Budgeted Expenditures per Fund, Department,
+// and/or Division"). Taking the literal first two words there yields an
+// uninformative "FY 24/2" column header — strip the fiscal-year/connector
+// filler first so the abbreviation is built from the name's actual subject
+// (e.g. "BUDGT EXPND").
+const BASIS_LABEL_STOPWORDS = new Set(["fy", "per", "and/or", "the", "a", "an", "for", "of", "to"]);
+
 function basisLabel(name: string): string {
   if (BASIS_LABELS[name]) return BASIS_LABELS[name];
-  return name
+  const allWords = name
     .replace(/\([^)]*\)/g, "")
     .split(/\s+/)
-    .filter(Boolean)
+    .filter(Boolean);
+  const meaningfulWords = allWords.filter((word) =>
+    !BASIS_LABEL_STOPWORDS.has(word.toLowerCase()) && !/^\d{1,4}([/-]\d{1,4})*$/.test(word));
+  const words = meaningfulWords.length > 0 ? meaningfulWords : allWords;
+  return words
     .slice(0, 2)
-    .map((word) => word.slice(0, 4).toUpperCase())
+    .map((word) => word.slice(0, 5).toUpperCase())
     .join(" ");
 }
 
@@ -199,7 +211,7 @@ function Matrix({
 
   const GLCODE_W = 90;
   const NAME_W = 220;
-  const COL_W = 88;
+  const COL_W = 104;
   const tableWidth = GLCODE_W + NAME_W + columns.length * COL_W;
 
   const cellPad = "9px 12px";
@@ -299,7 +311,7 @@ function Matrix({
                 letterSpacing: "0.08em", color: "var(--ink-3)", textTransform: "uppercase",
               }}>Cost Center</th>
               {columns.map((b) => (
-                <th key={b.id} title={b.note} style={{
+                <th key={b.id} title={b.note ? `${b.longName}\n${b.note}` : b.longName} style={{
                   padding: cellPad,
                   background: "var(--paper-2)",
                   borderBottom: "1px solid var(--rule-strong)",
