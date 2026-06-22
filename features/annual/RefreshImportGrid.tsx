@@ -288,6 +288,8 @@ function FeeStudyCard() {
               </div>
             </div>
           )}
+
+          <RecentImportsSection entries={importer.history}/>
         </div>
       )}
     </div>
@@ -473,34 +475,51 @@ function ExpandedDetail({
       {children}
 
       {/* Recent import history */}
-      {history.length > 0 && (
-        <div>
-          <SubsectionEyebrow>Recent imports</SubsectionEyebrow>
-          <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-            {history.map((entry) => (
-              <div key={entry.id} style={{
-                display: "grid",
-                gridTemplateColumns: "minmax(0, 1fr) auto auto",
-                gap: 12,
-                fontSize: "var(--t-l7)", color: "var(--ink-2)",
-                padding: "4px 0",
-                borderBottom: "1px dashed var(--rule)",
-                alignItems: "baseline",
-              }}>
-                <span style={{
-                  overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-                }} title={entry.result.fileName}>{displayFileName(entry.result.fileName)}</span>
-                <span className="num" style={{ color: "var(--ink-3)" }}>
-                  {entry.result.rows.toLocaleString()} rows
-                </span>
-                <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-                  {formatStamp(entry.at)}
-                </span>
-              </div>
-            ))}
+      <RecentImportsSection entries={history.map((entry) => ({
+        id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
+      }))}/>
+    </div>
+  );
+}
+
+interface RecentImportEntry {
+  id: number;
+  fileName: string;
+  rows: number;
+  at: string;
+}
+
+/** "Recent imports" list shared by each domain card (ExpandedDetail) and
+ *  the Fee Study composite card — same filename/rows/date row shape, just
+ *  sourced differently (per-domain BuildImportLog vs. FeeStudyHistoryEntry). */
+function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
+  if (entries.length === 0) return null;
+  return (
+    <div>
+      <SubsectionEyebrow>Recent imports</SubsectionEyebrow>
+      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+        {entries.map((entry) => (
+          <div key={entry.id} style={{
+            display: "grid",
+            gridTemplateColumns: "minmax(0, 1fr) auto auto",
+            gap: 12,
+            fontSize: "var(--t-l7)", color: "var(--ink-2)",
+            padding: "4px 0",
+            borderBottom: "1px dashed var(--rule)",
+            alignItems: "baseline",
+          }}>
+            <span style={{
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }} title={entry.fileName}>{displayFileName(entry.fileName)}</span>
+            <span className="num" style={{ color: "var(--ink-3)" }}>
+              {entry.rows.toLocaleString()} rows
+            </span>
+            <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+              {formatStamp(entry.at)}
+            </span>
           </div>
-        </div>
-      )}
+        ))}
+      </div>
     </div>
   );
 }

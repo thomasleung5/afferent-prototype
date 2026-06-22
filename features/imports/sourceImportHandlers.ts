@@ -536,11 +536,25 @@ function formatFeeStudySummary(summaries: FeeStudyDomainSummary[]): string {
   return `Imported ${parts.join(", ")} from this fee study — see each source card above for full detail.`;
 }
 
+/** One past Fee Study upload, for this card's own "Recent imports" list.
+ *  Spans every domain the upload touched, so it's tracked here rather than
+ *  read off any single domain's BuildImportLog entries — same shape
+ *  (id/fileName/rows/at) so it renders through the same list component. */
+export interface FeeStudyHistoryEntry {
+  id: number;
+  fileName: string;
+  rows: number;
+  at: string;
+}
+
 export interface FeeStudyImportHandlerBundle {
   aiPdf: (file: File) => Promise<ImportResult>;
   /** Per-domain summaries from the last run, in apply order. A domain
    *  absent from the PDF is simply absent from this list. */
   summaries: FeeStudyDomainSummary[];
+  /** Past Fee Study uploads this session, most recent first, capped to 4 —
+   *  mirrors each domain card's own "Recent imports" list. */
+  history: FeeStudyHistoryEntry[];
   /** Volume's unmapped rows from the last run — same shape/lifecycle as
    *  useVolumeImportHandlers' `unmapped`, reused by VolumeUnmappedPanel
    *  verbatim. */
@@ -559,6 +573,7 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
   } = useBuildState();
 
   const [summaries, setSummaries] = useState<FeeStudyDomainSummary[]>([]);
+  const [history, setHistory] = useState<FeeStudyHistoryEntry[]>([]);
   const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
 
   const removeAt = (i: number) => setUnmapped((prev) => prev.filter((_, j) => j !== i));
@@ -610,6 +625,11 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
     }
 
     setSummaries(nextSummaries);
+    const rows = nextSummaries.reduce((sum, s) => sum + s.applied.rows, 0);
+    setHistory((prev) => [
+      { id: Date.now(), fileName, rows, at: new Date().toISOString() },
+      ...prev,
+    ].slice(0, 4));
     return formatFeeStudySummary(nextSummaries);
   };
 
@@ -620,6 +640,7 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
       onStart: () => { setUnmapped([]); setSummaries([]); },
     }),
     summaries,
+    history,
     unmapped,
     setUnmapped,
     services: services.map((s) => ({ id: s.id, name: s.name, dept: s.dept })),

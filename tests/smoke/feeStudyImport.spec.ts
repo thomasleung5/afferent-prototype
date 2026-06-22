@@ -48,6 +48,9 @@ test.describe("Source Data — Fee Study import flow", () => {
     await expect(page.getByText("Applied", { exact: true })).toBeVisible();
     await expect(page.getByText(/services:\s*1\s*new/i)).toBeVisible();
     await expect(page.getByText(/volume:\s*1\s*new/i)).toBeVisible();
+
+    await expect(page.getByText("Recent imports", { exact: true })).toBeVisible();
+    await expect(page.getByText("fee-study.pdf")).toBeVisible();
   });
 
   test("surfaces a failure message when the endpoint reports an error", async ({ page }) => {
