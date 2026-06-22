@@ -7,6 +7,7 @@ import {
   missingScheduleBasisNames,
   parseBasisUnitsResponse,
   receiverTotalMatchesPrintedTotal,
+  shouldSkipMissingScheduleBasis,
 } from "../aiParseCap";
 
 const gross = {
@@ -307,6 +308,27 @@ const gross = {
   assert.deepEqual(withOverride, { trust: true },
     "preferring the schedule's own printed Grand Total recovers trust in the correct result");
   console.log("  ✓ printedTotalFromPdf override recovers trust when the AI's printedTotal is wrong");
+}
+
+{
+  // Regression: the missing-schedule recovery loop (bases the primary AI
+  // parse never returned a basisUnits row for at all) has no AI-extracted
+  // row to fall back to, unlike the primary per-basis loop. A prior change
+  // made it hard-skip on ANY distrust reason, which silently dropped real
+  // receiver data for every total-mismatch/unmatched-receivers basis when
+  // AI schedule recovery is disabled — i.e. every CAP import in the default
+  // dev config, not just one vendor. Only "no-resolved-receivers" (nothing
+  // to show at all) should skip; the others have data worth surfacing with
+  // a review flag instead of being dropped.
+  assert.equal(shouldSkipMissingScheduleBasis({ trust: true }), false,
+    "a trusted result is never skipped");
+  assert.equal(shouldSkipMissingScheduleBasis({ trust: false, reason: "total-mismatch" }), false,
+    "a total-mismatch result still has receiver data and must be merged, not dropped");
+  assert.equal(shouldSkipMissingScheduleBasis({ trust: false, reason: "unmatched-receivers" }), false,
+    "an unmatched-receivers result still has receiver data and must be merged, not dropped");
+  assert.equal(shouldSkipMissingScheduleBasis({ trust: false, reason: "no-resolved-receivers" }), true,
+    "a result with zero receivers has nothing to merge and should hard-skip");
+  console.log("  ✓ Missing-schedule loop only hard-skips when there are zero receivers to show");
 }
 
 console.log("\nAll aiParseCap assertions passed.");

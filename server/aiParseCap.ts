@@ -565,6 +565,18 @@ export function evaluateDeterministicResult(
   return { trust: true };
 }
 
+/** Gate for the "missing schedule" recovery loop, where the primary AI
+ *  parse never returned a basisUnits row for this basis — unlike the
+ *  primary per-basis loop, there is no AI-extracted row to fall back to.
+ *  Only hard-skip (leaving the basis to AI schedule recovery, if enabled)
+ *  when there are literally no receivers to show. A total-mismatch or
+ *  unmatched-receivers verdict still has real receiver data worth
+ *  surfacing, so the caller merges it in and lets the client-side
+ *  printedTotal validator flag it for review instead. */
+export function shouldSkipMissingScheduleBasis(decision: DeterministicTrustDecision): boolean {
+  return !decision.trust && decision.reason === "no-resolved-receivers";
+}
+
 export function missingScheduleBasisNames(
   bases: BasisRow[],
   basisUnits: BasisUnitsRow[],
@@ -1026,7 +1038,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           const decision = evaluateDeterministicResult(candidateRow, effectiveResult, {
             allowUndercount: isDistributionShareBasis(basisName),
           });
-          if (!decision.trust) {
+          if (!decision.trust && shouldSkipMissingScheduleBasis(decision)) {
             missingFallbackCount += 1;
             logEvent({
               tag: TAG,
@@ -1055,6 +1067,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
             resolved_receivers: effectiveResult.receivers.length,
             used_percent_column: effectiveResult !== result,
             blank_receivers: result.blankReceivers.length,
+            ...(decision.trust ? {} : {
+              review_reason: decision.reason,
+              deterministic_total: effectiveResult.receivers.reduce((sum, receiver) => sum + receiver.units, 0),
+              printed_total: result.printedTotalFromPdf,
+            }),
           });
         }
         logEvent({
