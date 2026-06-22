@@ -309,6 +309,12 @@ interface ParseCapResponse {
 const SCHEDULE_BATCH_SIZE = 1;
 const AI_SCHEDULE_RECOVERY_ENABLED = process.env.CAP_AI_SCHEDULE_RECOVERY === "1";
 
+export function capDeterministicSchedulesEnabled(
+  value = process.env.CAP_DETERMINISTIC_SCHEDULES,
+): boolean {
+  return value !== "0";
+}
+
 const DETERMINISTIC_SCHEDULE_OVERRIDE = `================================================================
 DETERMINISTIC SCHEDULE MODE OVERRIDE
 ================================================================
@@ -565,6 +571,29 @@ export function evaluateDeterministicResult(
   return { trust: true };
 }
 
+export function shouldKeepAiScheduleAfterDeterministicMiss(
+  _reason: "no-semantic" | "no-header" | Extract<DeterministicTrustDecision, { trust: false }>["reason"],
+): boolean {
+  return false;
+}
+
+export function deterministicBasisUnitRow(
+  row: BasisUnitsRow,
+  result: Pick<DeterministicScheduleResult, "receivers">,
+): BasisUnitsRow {
+  return {
+    ...row,
+    source: row.source ?? "Deterministic PDF extraction",
+    receivers: result.receivers.map((r) => ({
+      dept: r.dept,
+      glCode: r.glCode,
+      ...(r.deptCode ? { deptCode: r.deptCode } : {}),
+      units: r.units,
+      confidence: "high" as const,
+    })),
+  };
+}
+
 /** Gate for the "missing schedule" recovery loop, where the primary AI
  *  parse never returned a basisUnits row for this basis — unlike the
  *  primary per-basis loop, there is no AI-extracted row to fall back to.
@@ -655,7 +684,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
     return pdfItemsPromise;
   };
   let profile = detectCapDocumentProfileFromText("");
-  const deterministicSchedulesEnabled = process.env.CAP_DETERMINISTIC_SCHEDULES === "1";
+  const deterministicSchedulesEnabled = capDeterministicSchedulesEnabled();
   try {
     profile = detectCapDocumentProfileFromText(
       capTextPreview(await getPdfItems()),
@@ -775,18 +804,19 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
 
     // Deterministic schedule verification (gated rollout).
     //
-    // When CAP_DETERMINISTIC_SCHEDULES=1, replace AI-extracted basis-unit
+    // Unless CAP_DETERMINISTIC_SCHEDULES=0, replace AI-extracted basis-unit
     // receiver lists with coordinate-based reads from the PDF for any
     // schedule the deterministic path can resolve. This structurally
     // prevents the row-shift class of bugs (Recreation's FTE landing on
     // Housing because Housing's cell is blank) by matching receivers via
     // dept-text identity rather than zipped row order.
     //
-    // The flag defaults off so existing CAP imports are unchanged until
-    // the path has been verified against real exhibits. The printedTotal
-    // validator already shipped (lib/ai/parseCap.ts) remains the
-    // import-layer backstop regardless of which path produced the units.
+    // Hybrid deterministic schedules are default-on. CAP may still use AI
+    // for structure and schedule semantics, but numeric receiver values must
+    // come from deterministic PDF reads; unverified AI schedules are stripped
+    // so the existing missing-schedule review flow can catch them.
     if (deterministicSchedulesEnabled) {
+      let verifiedBasisUnits: BasisUnitsRow[] = [];
       try {
         const missingForDeterministic = missingScheduleBasisNames(
           bases, basisUnits, pools, directAllocations,
@@ -839,13 +869,13 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           const semantic = semanticByBasis.get(basisNameKey(basisName));
           if (!semantic) {
             fallbackCount += 1;
-            nextBasisUnits.push(row);
             logEvent({
               tag: TAG,
               msg: "deterministic schedule per-basis",
               basis: basisName,
-              path: "ai-fallback",
+              path: "unverified-stripped",
               reason: "no-semantic",
+              keep_ai_schedule: shouldKeepAiScheduleAfterDeterministicMiss("no-semantic"),
             });
             continue;
           }
@@ -865,16 +895,16 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           });
           if (!result) {
             fallbackCount += 1;
-            nextBasisUnits.push(row);
             logEvent({
               tag: TAG,
               msg: "deterministic schedule per-basis",
               basis: basisName,
-              path: "ai-fallback",
+              path: "unverified-stripped",
               reason: "no-header",
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
               ai_receivers: aiReceiverCount,
+              keep_ai_schedule: shouldKeepAiScheduleAfterDeterministicMiss("no-header"),
             });
             continue;
           }
@@ -918,12 +948,11 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           });
           if (!decision.trust) {
             fallbackCount += 1;
-            nextBasisUnits.push(row);
             logEvent({
               tag: TAG,
               msg: "deterministic schedule per-basis",
               basis: basisName,
-              path: "ai-fallback",
+              path: "unverified-stripped",
               reason: decision.reason,
               page: semantic.page,
               column_header: semantic.basisColumnHeader,
@@ -933,21 +962,12 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
               unmatched_receivers: result.unmatchedReceivers.length,
               deterministic_total: deterministicTotal,
               printed_total: hasPrintedTotal ? printedTotal : undefined,
+              keep_ai_schedule: shouldKeepAiScheduleAfterDeterministicMiss(decision.reason),
             });
             continue;
           }
           resolvedCount += 1;
-          nextBasisUnits.push({
-            ...reconciliationRow,
-            source: row.source ?? "Deterministic PDF extraction",
-            receivers: effectiveResult.receivers.map((r) => ({
-              dept: r.dept,
-              glCode: r.glCode,
-              ...(r.deptCode ? { deptCode: r.deptCode } : {}),
-              units: r.units,
-              confidence: "high" as const,
-            })),
-          });
+          nextBasisUnits.push(deterministicBasisUnitRow(reconciliationRow, effectiveResult));
           logEvent({
             tag: TAG,
             msg: "deterministic schedule per-basis",
@@ -963,6 +983,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           });
         }
         basisUnits = nextBasisUnits;
+        verifiedBasisUnits = nextBasisUnits;
         let missingResolvedCount = 0;
         let missingFallbackCount = 0;
         const validScheduleNames = new Set(
@@ -1057,6 +1078,7 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
           }
           missingResolvedCount += 1;
           basisUnits = mergeBasisUnits(basisUnits, [candidateRow]);
+          verifiedBasisUnits = basisUnits;
           logEvent({
             tag: TAG,
             msg: "deterministic missing schedule per-basis",
@@ -1085,14 +1107,17 @@ export async function handleAiParseCap(req: Request): Promise<Response> {
         });
       } catch (err) {
         if (err instanceof Error && err.name === "AbortError") throw err;
-        // Any failure in the deterministic path is non-fatal — fall
-        // through to the existing AI path. The flag-gated rollout means
-        // we'd rather log and continue than break the existing import.
+        // Deterministic failures are non-fatal to the rest of the CAP bundle,
+        // but they must not silently authorize AI numeric schedules. Keep any
+        // schedules already verified by deterministic reads and strip the rest
+        // so missing schedules surface through the normal review flow.
+        basisUnits = verifiedBasisUnits;
         logEvent({
           level: "warn",
           tag: TAG,
           msg: "deterministic schedule verification failed",
           error: err instanceof Error ? err.message : "Unknown error",
+          retained_verified_schedules: verifiedBasisUnits.length,
         });
       }
     }

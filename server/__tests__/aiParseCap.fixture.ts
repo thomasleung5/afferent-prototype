@@ -1,12 +1,15 @@
 import assert from "node:assert/strict";
 import {
   alignRecoveredBasisNames,
+  capDeterministicSchedulesEnabled,
+  deterministicBasisUnitRow,
   evaluateDeterministicResult,
   isDistributionShareBasis,
   mergeBasisUnits,
   missingScheduleBasisNames,
   parseBasisUnitsResponse,
   receiverTotalMatchesPrintedTotal,
+  shouldKeepAiScheduleAfterDeterministicMiss,
   shouldSkipMissingScheduleBasis,
 } from "../aiParseCap";
 
@@ -21,6 +24,15 @@ const gross = {
     confidence: "high" as const,
   }],
 };
+
+{
+  assert.equal(capDeterministicSchedulesEnabled(undefined), true,
+    "hybrid CAP schedule extraction should be default-on when the env var is unset");
+  assert.equal(capDeterministicSchedulesEnabled("1"), true);
+  assert.equal(capDeterministicSchedulesEnabled("0"), false,
+    "CAP_DETERMINISTIC_SCHEDULES=0 is the explicit opt-out");
+  console.log("  ✓ CAP deterministic schedules are default-on with explicit opt-out");
+}
 
 {
   const rows = parseBasisUnitsResponse(JSON.stringify({ basisUnits: [gross] }));
@@ -237,6 +249,8 @@ const gross = {
     { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 150_000_000 }], unmatchedReceivers: [] },
   );
   assert.deepEqual(decision, { trust: false, reason: "total-mismatch" });
+  assert.equal(shouldKeepAiScheduleAfterDeterministicMiss(decision.reason), false,
+    "a deterministic total mismatch must not retain the original AI numeric schedule");
   console.log("  ✓ evaluateDeterministicResult distrusts a total mismatch even with zero unmatched receivers");
 }
 
@@ -246,6 +260,8 @@ const gross = {
     { receivers: [{ dept: "Planning", glCode: "100-512-0", units: 6 }], unmatchedReceivers: [{ dept: "Housing", glCode: "100-700-0" }] },
   );
   assert.deepEqual(decision, { trust: false, reason: "unmatched-receivers" });
+  assert.equal(shouldKeepAiScheduleAfterDeterministicMiss(decision.reason), false,
+    "unmatched deterministic receivers must not fall back to AI numeric schedules");
   console.log("  ✓ evaluateDeterministicResult distrusts unmatched receivers even if the total happens to reconcile");
 }
 
@@ -255,7 +271,17 @@ const gross = {
     { receivers: [], unmatchedReceivers: [] },
   );
   assert.deepEqual(decision, { trust: false, reason: "no-resolved-receivers" });
+  assert.equal(shouldKeepAiScheduleAfterDeterministicMiss(decision.reason), false,
+    "an empty deterministic result must not fall back to AI numeric schedules");
   console.log("  ✓ evaluateDeterministicResult distrusts an empty result with no printed total to check");
+}
+
+{
+  assert.equal(shouldKeepAiScheduleAfterDeterministicMiss("no-semantic"), false,
+    "no semantic match should surface as missing/review rather than keeping AI schedule values");
+  assert.equal(shouldKeepAiScheduleAfterDeterministicMiss("no-header"), false,
+    "no header match should surface as missing/review rather than keeping AI schedule values");
+  console.log("  ✓ deterministic no-semantic/no-header misses strip AI numeric schedules");
 }
 
 {
@@ -265,6 +291,34 @@ const gross = {
   );
   assert.deepEqual(decision, { trust: true });
   console.log("  ✓ evaluateDeterministicResult trusts a clean, reconciled result");
+}
+
+{
+  const replaced = deterministicBasisUnitRow(
+    {
+      basis: "Budgeted FTE",
+      source: "Exhibit 5",
+      receivers: [
+        { dept: "Housing", glCode: "100-410-0", units: 6, confidence: "high" as const },
+      ],
+    },
+    {
+      receivers: [
+        { dept: "Recreation", glCode: "100-420-0", deptCode: "PARKS", units: 6 },
+        { dept: "Police Administration", glCode: "100-700-0", deptCode: "PD", units: 366.92 },
+      ],
+    },
+  );
+  assert.deepEqual(
+    replaced.receivers.map((receiver) => [receiver.dept, receiver.glCode, receiver.units]),
+    [
+      ["Recreation", "100-420-0", 6],
+      ["Police Administration", "100-700-0", 366.92],
+    ],
+    "trusted deterministic receivers replace the original AI receiver list",
+  );
+  assert.ok(replaced.receivers.every((receiver) => receiver.confidence === "high"));
+  console.log("  ✓ successful deterministic schedules replace AI receiver values");
 }
 
 {
