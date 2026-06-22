@@ -67,6 +67,12 @@ export interface BuildImportLog {
   domain: Domain;
   result: ImportApplyResult;
   at: string;
+  /** Set when this entry was written by a multi-domain composite import
+   *  (e.g. the Fee Study card) — shared across every domain entry from the
+   *  same upload, so that card can group its own persisted history without
+   *  guessing from fileName/timestamp proximity. Absent for ordinary
+   *  single-domain imports. */
+  batchId?: string;
 }
 
 export type StudyVersionStatus = "draft" | "review" | "published" | "adopted" | "archived";
@@ -278,15 +284,15 @@ interface BuildActions {
   updateCenterDisallowed: (centerKey: string, disallowed: number) => void;
   /** Append a user-defined allocation basis to the catalog. Returns the new id. */
   addAllocationBasis: (input: { name: string; source: string; methodologyNote?: string }) => string;
-  mergePositions: (r: ExtractionResult<Position>, fileName: string) => ImportApplyResult;
+  mergePositions: (r: ExtractionResult<Position>, fileName: string, batchId?: string) => ImportApplyResult;
   mergeOperating: (r: ExtractionResult<OperatingLine>, fileName: string) => ImportApplyResult;
   /** Persist resolved Excel category mappings so subsequent imports in
    *  the same study apply them automatically. Merges into the existing
    *  record by normalized source-category key. */
   saveOperatingCategoryMappings: (mappings: Record<string, OpCategory>) => void;
-  mergeServices: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
-  mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string) => ImportApplyResult;
-  mergeVolume: (r: ExtractionResult<VolumeRow>, fileName: string) => ImportApplyResult;
+  mergeServices: (r: ExtractionResult<Service>, fileName: string, batchId?: string) => ImportApplyResult;
+  mergeFeeSchedule: (r: ExtractionResult<Service>, fileName: string, batchId?: string) => ImportApplyResult;
+  mergeVolume: (r: ExtractionResult<VolumeRow>, fileName: string, batchId?: string) => ImportApplyResult;
   /** Promote an unmapped volume review row into a brand-new Service +
    *  VolumeRow pair. Used by the Source Data volume review panel when
    *  no existing service matches the imported row. Reuses
@@ -793,7 +799,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         return id;
       },
 
-      mergePositions: (r, fileName) => {
+      mergePositions: (r, fileName, batchId) => {
         const result = toApplyResult("positions", fileName, r);
         set((s) => {
           // Each imported Position upserts into productiveHours (id mirrors
@@ -828,7 +834,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             productiveHours: [...phById.values()],
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, positions: [...s.pendingReview.positions, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "positions", result, at: new Date().toISOString() }],
+            imports: [...s.imports, {
+              id: Date.now(), domain: "positions", result, at: new Date().toISOString(),
+              ...(batchId ? { batchId } : {}),
+            }],
           };
         });
         return result;
@@ -854,7 +863,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         }));
       },
 
-      mergeServices: (r, fileName) => {
+      mergeServices: (r, fileName, batchId) => {
         const result = toApplyResult("services", fileName, r);
         set((s) => {
           const { services, volume, lineagePatch } =
@@ -865,13 +874,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             activeFeeDepts: mergeActiveFeeDeptsFromServices(s.activeFeeDepts, services),
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, services: [...s.pendingReview.services, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "services", result, at: new Date().toISOString() }],
+            imports: [...s.imports, {
+              id: Date.now(), domain: "services", result, at: new Date().toISOString(),
+              ...(batchId ? { batchId } : {}),
+            }],
           };
         });
         return result;
       },
 
-      mergeFeeSchedule: (r, fileName) => {
+      mergeFeeSchedule: (r, fileName, batchId) => {
         const result = toApplyResult("fees", fileName, r);
         set((s) => {
           const { services, volume, lineagePatch } =
@@ -882,7 +894,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             activeFeeDepts: mergeActiveFeeDeptsFromServices(s.activeFeeDepts, services),
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, fees: [...s.pendingReview.fees, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "fees", result, at: new Date().toISOString() }],
+            imports: [...s.imports, {
+              id: Date.now(), domain: "fees", result, at: new Date().toISOString(),
+              ...(batchId ? { batchId } : {}),
+            }],
           };
         });
         return result;
@@ -954,7 +969,7 @@ export const useBuildStore = create<BuildState & BuildActions>()(
         }));
       },
 
-      mergeVolume: (r, fileName) => {
+      mergeVolume: (r, fileName, batchId) => {
         const result = toApplyResult("volume", fileName, r);
         set((s) => {
           const { merged, lineagePatch } = mergeRows(s.volume, r);
@@ -962,7 +977,10 @@ export const useBuildStore = create<BuildState & BuildActions>()(
             volume: merged,
             lineage: { ...s.lineage, ...lineagePatch },
             pendingReview: { ...s.pendingReview, volume: [...s.pendingReview.volume, ...r.unmapped] },
-            imports: [...s.imports, { id: Date.now(), domain: "volume", result, at: new Date().toISOString() }],
+            imports: [...s.imports, {
+              id: Date.now(), domain: "volume", result, at: new Date().toISOString(),
+              ...(batchId ? { batchId } : {}),
+            }],
           };
         });
         return result;

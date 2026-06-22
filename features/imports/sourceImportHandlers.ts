@@ -22,6 +22,7 @@ import {
   type ImportResult,
 } from "./importRunners";
 import { useBuildActions, useBuildState, useBuildStore } from "@/lib/store";
+import type { BuildImportLog } from "@/lib/store";
 import type { ImportApplyResult, UnmappedRow } from "@/lib/parse/types";
 import {
   aiParseLaborPdf, laborToExtractionResult,
@@ -537,14 +538,36 @@ function formatFeeStudySummary(summaries: FeeStudyDomainSummary[]): string {
 }
 
 /** One past Fee Study upload, for this card's own "Recent imports" list.
- *  Spans every domain the upload touched, so it's tracked here rather than
- *  read off any single domain's BuildImportLog entries — same shape
- *  (id/fileName/rows/at) so it renders through the same list component. */
+ *  Spans every domain the upload touched, so it's grouped from the
+ *  persisted BuildImportLog entries that share a batchId rather than
+ *  tracked separately — same shape (id/fileName/rows/at) so it renders
+ *  through the same list component as the single-domain cards. */
 export interface FeeStudyHistoryEntry {
-  id: number;
+  id: string;
   fileName: string;
   rows: number;
   at: string;
+}
+
+/** Groups BuildImportLog entries written by one Fee Study upload (shared
+ *  batchId) into one history row, most recent first, capped to 4 — mirrors
+ *  ExpandedDetail's own filter/sort/slice for single-domain history. */
+export function feeStudyHistoryFromImports(imports: BuildImportLog[]): FeeStudyHistoryEntry[] {
+  const byBatch = new Map<string, FeeStudyHistoryEntry>();
+  for (const entry of imports) {
+    if (!entry.batchId) continue;
+    const existing = byBatch.get(entry.batchId);
+    if (existing) {
+      existing.rows += entry.result.rows;
+    } else {
+      byBatch.set(entry.batchId, {
+        id: entry.batchId, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
+      });
+    }
+  }
+  return [...byBatch.values()]
+    .sort((a, b) => (b.at > a.at ? 1 : -1))
+    .slice(0, 4);
 }
 
 export interface FeeStudyImportHandlerBundle {
@@ -552,8 +575,9 @@ export interface FeeStudyImportHandlerBundle {
   /** Per-domain summaries from the last run, in apply order. A domain
    *  absent from the PDF is simply absent from this list. */
   summaries: FeeStudyDomainSummary[];
-  /** Past Fee Study uploads this session, most recent first, capped to 4 —
-   *  mirrors each domain card's own "Recent imports" list. */
+  /** Past Fee Study uploads, most recent first, capped to 4 — mirrors each
+   *  domain card's own "Recent imports" list. Persisted (read off the
+   *  store's `imports` log), unlike the per-run `summaries` above. */
   history: FeeStudyHistoryEntry[];
   /** Volume's unmapped rows from the last run — same shape/lifecycle as
    *  useVolumeImportHandlers' `unmapped`, reused by VolumeUnmappedPanel
@@ -569,11 +593,10 @@ type FeeStudyParsed = Awaited<ReturnType<typeof aiParseFeeStudyPdf>>;
 
 export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
   const {
-    services, createServiceFromUnmappedVolume, mapUnmappedVolumeToService,
+    services, imports, createServiceFromUnmappedVolume, mapUnmappedVolumeToService,
   } = useBuildState();
 
   const [summaries, setSummaries] = useState<FeeStudyDomainSummary[]>([]);
-  const [history, setHistory] = useState<FeeStudyHistoryEntry[]>([]);
   const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
 
   const removeAt = (i: number) => setUnmapped((prev) => prev.filter((_, j) => j !== i));
@@ -591,21 +614,24 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
   // the LATEST store snapshot via getState() rather than this render's
   // `services` closure — mergeServices just wrote rows the Volume/Fees
   // steps need to see, and the render-time closure wouldn't reflect that
-  // within one synchronous apply() call.
+  // within one synchronous apply() call. All four merges share one
+  // batchId so the persisted import log can be grouped back into a single
+  // "Recent imports" row on this card.
   const apply = (parsed: FeeStudyParsed, fileName: string): string => {
+    const batchId = `fee-study-${Date.now()}`;
     const nextSummaries: FeeStudyDomainSummary[] = [];
 
     if (parsed.services.length > 0) {
       const store = useBuildStore.getState();
       const extraction = servicesToExtractionResult(parsed.services, store.services, fileName);
-      const applied = store.mergeServices(extraction, fileName);
+      const applied = store.mergeServices(extraction, fileName, batchId);
       nextSummaries.push({ domain: "services", applied });
     }
 
     if (parsed.items.length > 0) {
       const store = useBuildStore.getState();
       const extraction = volumeToExtractionResult(parsed.items, store.services, fileName, store.volume);
-      const applied = store.mergeVolume(extraction, fileName);
+      const applied = store.mergeVolume(extraction, fileName, batchId);
       setUnmapped(extraction.unmapped);
       nextSummaries.push({ domain: "volume", applied });
     }
@@ -613,23 +639,18 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
     if (parsed.fees.length > 0) {
       const store = useBuildStore.getState();
       const extraction = feesToExtractionResult(parsed.fees, store.services, fileName);
-      const applied = store.mergeFeeSchedule(extraction, fileName);
+      const applied = store.mergeFeeSchedule(extraction, fileName, batchId);
       nextSummaries.push({ domain: "fees", applied });
     }
 
     if (parsed.positions.length > 0) {
       const store = useBuildStore.getState();
       const extraction = laborToExtractionResult(parsed.positions, fileName);
-      const applied = store.mergePositions(extraction, fileName);
+      const applied = store.mergePositions(extraction, fileName, batchId);
       nextSummaries.push({ domain: "positions", applied });
     }
 
     setSummaries(nextSummaries);
-    const rows = nextSummaries.reduce((sum, s) => sum + s.applied.rows, 0);
-    setHistory((prev) => [
-      { id: Date.now(), fileName, rows, at: new Date().toISOString() },
-      ...prev,
-    ].slice(0, 4));
     return formatFeeStudySummary(nextSummaries);
   };
 
@@ -640,7 +661,7 @@ export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
       onStart: () => { setUnmapped([]); setSummaries([]); },
     }),
     summaries,
-    history,
+    history: feeStudyHistoryFromImports(imports),
     unmapped,
     setUnmapped,
     services: services.map((s) => ({ id: s.id, name: s.name, dept: s.dept })),

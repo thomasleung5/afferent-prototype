@@ -483,7 +483,7 @@ function ExpandedDetail({
 }
 
 interface RecentImportEntry {
-  id: number;
+  id: number | string;
   fileName: string;
   rows: number;
   at: string;
