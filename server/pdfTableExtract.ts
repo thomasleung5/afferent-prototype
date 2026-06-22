@@ -130,30 +130,6 @@ export async function extractTextItems(pdfBuffer: Uint8Array): Promise<TextItem[
   return extractTextItemsInternal(pdfBuffer);
 }
 
-export async function extractPdfTextPreview(
-  pdfBuffer: Uint8Array,
-  maxPages = 12,
-): Promise<string> {
-  const items = await extractTextItemsInternal(pdfBuffer, { maxPages });
-  return items.map((item) => item.text).join(" ").replace(/\s+/g, " ").trim();
-}
-
-export async function extractPdfTextPages(
-  pdfBuffer: Uint8Array,
-): Promise<Array<{ page: number; text: string }>> {
-  const items = await extractTextItemsInternal(pdfBuffer);
-  const pageNums = [...new Set(items.map((item) => item.page))].sort((a, b) => a - b);
-  return pageNums.map((page) => {
-    const pageItems = items.filter((item) => item.page === page);
-    const text = clusterRows(pageItems)
-      .map((row) => row.map((item) => item.text).join(" "))
-      .join("\n")
-      .replace(/[ \t]+/g, " ")
-      .trim();
-    return { page, text };
-  });
-}
-
 /** Group text items into visual rows by their Y position. Items whose Y
  *  midpoints fall within `yTolerance` of an existing row's median Y are
  *  merged into that row.
