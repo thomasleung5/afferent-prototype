@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from "react";
+import type { ReactNode } from "react";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
@@ -331,16 +331,15 @@ interface SourceCardShellProps {
   importer: ImportHandlerBundle;
   /** Extra review-pending count surfaced by domain-specific state
    *  (Volume's unmapped rows, CAP's unbound bases). Added to the
-   *  card-level low-confidence count for the collapsed badge. */
+   *  card-level low-confidence count in the status line. */
   reviewExtra?: number;
-  /** Slot rendered to the right of the Upload PDF button inside the
-   *  expanded InlineImportCard. Used by the Fees card to put the
-   *  Upload Excel button beside Upload PDF. */
+  /** Slot rendered to the right of the Upload PDF button inside
+   *  InlineImportCard. Used by the Fees card to put the Upload Excel
+   *  button beside Upload PDF. */
   aiPdfAccessory?: ReactNode;
-  /** Slot rendered between the PDF action panel and the Advanced
-   *  disclosure inside InlineImportCard. Used by the Fees card to
-   *  render the Excel mapping panel directly below the upload buttons,
-   *  above the paste-JSON fallback. */
+  /** Slot rendered below the PDF action panel inside InlineImportCard.
+   *  Used by the Fees card to render the Excel mapping panel directly
+   *  under the upload buttons. */
   aiPdfBelow?: ReactNode;
   /** Minimal PDF-upload status presentation for InlineImportCard — see
    *  its `compactAiStatus` doc. Defaults on for source cards so Upload
@@ -349,19 +348,15 @@ interface SourceCardShellProps {
   children?: ReactNode;
 }
 
-/** Source-Data card. Collapsed view shows source name, import status,
- *  items requiring review (if any), last-refresh date, and the Import
- *  action. The whole card header is the expand affordance — clicking
- *  anywhere outside the Import button toggles. Expand to surface
- *  import controls, contextual document-type guidance, paste-JSON
- *  shape, recent import history, and domain-specific review panels
- *  (children). */
+/** Source-Data card. Always shows source name, import status, items
+ *  requiring review (if any), the tagline, and — unconditionally below —
+ *  the import action, recent import history, and domain-specific review
+ *  panels (children). No expand/collapse: every card surfaces its full
+ *  detail up front. */
 function SourceCardShell({
   card, imports, importer, reviewExtra = 0,
   aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
 }: SourceCardShellProps) {
-  const [expanded, setExpanded] = useState(false);
-  const [hovered, setHovered] = useState(false);
   const noun = LOADED_NOUN[card.domain];
   const loaded = card.seedCount;
   const reviewTotal = card.review + reviewExtra;
@@ -369,49 +364,19 @@ function SourceCardShell({
   const status = cardStatus(card, imports, reviewExtra);
   const statusColor = STATUS_COLOR[status];
 
-  const toggle = () => setExpanded((v) => !v);
-  const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggle();
-    }
-  };
-
-  // Hover treatment mirrors .tbl-row-hover-grid in src/index.css: 80ms
-  // background tint to paper-2. The right/top/bottom border darkens to
-  // rule-strong for the same affordance the clickable rows on DataTable
-  // use; the left border is the 4px status accent instead, always on.
-  const borderColor = expanded || hovered ? "var(--rule-strong)" : "var(--rule)";
-  const headerBg = hovered && !expanded ? "var(--paper-2)" : "transparent";
-
   return (
     <div id={card.domain} style={{
       background: "var(--paper)",
-      borderTop: `1px solid ${borderColor}`,
-      borderRight: `1px solid ${borderColor}`,
-      borderBottom: `1px solid ${borderColor}`,
+      borderTop: "1px solid var(--rule)",
+      borderRight: "1px solid var(--rule)",
+      borderBottom: "1px solid var(--rule)",
       borderLeft: `4px solid ${statusColor.border}`,
-      transition: "border-color 80ms",
       scrollMarginTop: 110,
     }}>
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-label={`${card.name} — ${expanded ? "collapse" : "expand"} details`}
-        onClick={toggle}
-        onKeyDown={handleHeaderKeyDown}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          padding: 20,
-          display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-          cursor: "pointer",
-          background: headerBg,
-          transition: "background 80ms",
-          userSelect: "none",
-        }}
-      >
+      <div style={{
+        padding: 20,
+        display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+      }}>
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
             <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</span>
@@ -447,23 +412,21 @@ function SourceCardShell({
         </div>
       </div>
 
-      {expanded && (
-        <ExpandedDetail
-          card={card}
-          imports={imports}
-          importer={importer}
-          aiPdfAccessory={aiPdfAccessory}
-          aiPdfBelow={aiPdfBelow}
-          compactAiStatus={compactAiStatus}
-        >
-          {children}
-        </ExpandedDetail>
-      )}
+      <CardBody
+        card={card}
+        imports={imports}
+        importer={importer}
+        aiPdfAccessory={aiPdfAccessory}
+        aiPdfBelow={aiPdfBelow}
+        compactAiStatus={compactAiStatus}
+      >
+        {children}
+      </CardBody>
     </div>
   );
 }
 
-interface ExpandedDetailProps {
+interface CardBodyProps {
   card: RefreshSectionCard;
   imports: BuildImportLog[];
   importer: ImportHandlerBundle;
@@ -473,9 +436,9 @@ interface ExpandedDetailProps {
   children?: ReactNode;
 }
 
-function ExpandedDetail({
+function CardBody({
   card, imports, importer, aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
-}: ExpandedDetailProps) {
+}: CardBodyProps) {
   const history = imports
     .filter((e) => e.domain === card.domain)
     .sort((a, b) => (b.at > a.at ? 1 : -1))
@@ -483,7 +446,6 @@ function ExpandedDetail({
 
   return (
     <div
-      onClick={(e) => e.stopPropagation()}
       style={{
         borderTop: "1px solid var(--rule)",
         padding: "14px 20px 18px",

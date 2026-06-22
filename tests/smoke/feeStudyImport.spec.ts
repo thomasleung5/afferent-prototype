@@ -46,14 +46,15 @@ test.describe("Source Data — Fee Study import flow", () => {
       buffer: Buffer.from("%PDF-1.4 fake"),
     });
 
-    const servicesCard = page.getByRole("button", { name: /Services Catalog — (expand|collapse) details/ });
-    await expect(servicesCard.getByText(/Imported.*1\s*service/)).toBeVisible();
-    await servicesCard.click();
-    await expect(page.locator("#services").getByText("Recent imports", { exact: true })).toBeVisible();
-    await expect(page.locator("#services").getByText(/fee-study\.pdf.*via Fee Study extraction/)).toBeVisible();
+    // Cards aren't expandable — status, Recent Imports, and the upload
+    // action are all visible without clicking anything.
+    const services = page.locator("#services");
+    await expect(services.getByText(/Imported.*1\s*service/)).toBeVisible();
+    await expect(services.getByText("Recent imports", { exact: true })).toBeVisible();
+    await expect(services.getByText(/fee-study\.pdf.*via Fee Study extraction/)).toBeVisible();
 
-    const volumeCard = page.getByRole("button", { name: /Volume of Activity — (expand|collapse) details/ });
-    await expect(volumeCard.getByText(/Imported.*1\s*row/)).toBeVisible();
+    const volume = page.locator("#volume");
+    await expect(volume.getByText(/Imported.*1\s*row/)).toBeVisible();
   });
 
   test("surfaces a failure message when the endpoint reports an error", async ({ page }) => {
