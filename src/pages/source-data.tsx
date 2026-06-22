@@ -1,5 +1,5 @@
 import { Page, PageHeader } from "@/components/layout";
-import { RefreshImportGrid } from "@/features/annual/RefreshImportGrid";
+import { QuickImportBanner, RefreshImportGrid } from "@/features/annual/RefreshImportGrid";
 import { StatusRow } from "@/features/_shared/StatusRow";
 import { useBuildState } from "@/lib/store";
 import { deriveRefreshSummary } from "@/lib/data/annual";
@@ -23,6 +23,7 @@ export default function SourceDataPage() {
         title="Source Data"
         subtitle="Upload and manage model inputs."
       />
+      <QuickImportBanner/>
       <StatusRow items={[
         {
           label: "Sources connected",

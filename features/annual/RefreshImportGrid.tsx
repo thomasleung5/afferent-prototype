@@ -27,6 +27,7 @@ import {
   useFeeStudyImportHandlers,
   type ImportHandlerBundle,
 } from "@/features/imports/sourceImportHandlers";
+import type { ImportResult } from "@/features/imports/importRunners";
 import { unmappedBasisDetails } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
 
@@ -56,27 +57,19 @@ export function RefreshImportGrid() {
   };
   const cards = deriveRefreshSections(input);
   const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
-  const capCard = cards.find((c) => c.domain === "cap");
 
   return (
-    <>
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-        {requiredCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
-      </div>
-      {/* Optional cards (CAP, Fee Study) side by side at the bottom — both
-       *  cover supplementary data the rest of the build model works
-       *  without. */}
-      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginTop: 12 }}>
-        {capCard && <CapCard card={capCard} imports={state.imports}/>}
-        <FeeStudyCard/>
-      </div>
-    </>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+      {requiredCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
+    </div>
   );
 }
 
 /** Dispatch to the right per-domain card. Each card calls its own
  *  handler hook — keeping the call sites flat so React's hook order
- *  stays stable across renders. */
+ *  stays stable across renders. CAP never reaches this — it's filtered
+ *  out of RefreshImportGrid's requiredCards and lives only in
+ *  QuickImportBanner now — but the switch stays exhaustive over Domain. */
 function DomainCard({ card, imports }: { card: RefreshSectionCard; imports: BuildImportLog[] }) {
   switch (card.domain) {
     case "positions": return <PositionsCard card={card} imports={imports}/>;
@@ -84,7 +77,7 @@ function DomainCard({ card, imports }: { card: RefreshSectionCard; imports: Buil
     case "services":  return <ServicesCard card={card} imports={imports}/>;
     case "volume":    return <VolumeCard card={card} imports={imports}/>;
     case "fees":      return <FeesCard card={card} imports={imports}/>;
-    case "cap":       return <CapCard card={card} imports={imports}/>;
+    case "cap":       return null;
   }
 }
 
@@ -166,140 +159,170 @@ function VolumeCard({ card, imports }: DomainCardProps) {
   );
 }
 
-function CapCard({ card, imports }: DomainCardProps) {
-  const importer = useCapImportHandlers();
-  const reviewExtra = importer.unmappedBases.length;
-  return (
-    <SourceCardShell
-      card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}
-      compactAiStatus
-    >
-      {importer.unmappedBases.length > 0 && (
-        <CapUnmappedPanel
-          unmappedBases={importer.unmappedBases}
-          setUnmappedBases={importer.setUnmappedBases}
-        />
-      )}
-    </SourceCardShell>
-  );
+// ── Quick Import banner ─────────────────────────────────────────────────
+//
+// Fee Study and CAP are high-leverage optional inputs — one upload each
+// can auto-populate several of the required cards below (Fee Study →
+// Services/Volume/Fees/Positions; CAP → its own indirect-cost
+// methodology). They live here as an accelerated onboarding path, not as
+// cards: no expand/collapse, no Advanced/paste-JSON fallback, no
+// Recent Imports list of their own. The required cards below are the
+// single source of truth for "what's imported" — each one's own status
+// color + Recent Imports entry shows whether a given row came from here.
+
+const PROVENANCE_PREFIXES: { prefix: string; label: string }[] = [
+  { prefix: "fee-study-", label: "Fee Study extraction" },
+];
+
+/** Maps a BuildImportLog.batchId back to a human label for the Recent
+ *  Imports provenance tag. Returns null for ordinary direct imports
+ *  (no batchId) or an unrecognized prefix. */
+function provenanceLabel(batchId: string | undefined): string | null {
+  if (!batchId) return null;
+  return PROVENANCE_PREFIXES.find((p) => batchId.startsWith(p.prefix))?.label ?? null;
 }
 
-/** Optional composite upload surface — not a Domain. Lets the user select
- *  one fee-study PDF; extracted sections flow through the EXISTING
- *  services/volume/fees/positions converters and merge actions (see
- *  useFeeStudyImportHandlers), never a parallel calc/merge path. No new
- *  Domain, no new store slice — each domain's own "Recent imports" list
- *  shows the resulting entries. */
-function FeeStudyCard() {
-  const [expanded, setExpanded] = useState(false);
-  const [hovered, setHovered] = useState(false);
-  const importer = useFeeStudyImportHandlers();
+/** Quick Import banner — Fee Study and CAP upload rows, always visible
+ *  and re-uploadable. Rendered above the summary bar on the Source Data
+ *  page (see src/pages/source-data.tsx), distinct from RefreshImportGrid's
+ *  required-card grid below it. */
+export function QuickImportBanner() {
+  const { imports } = useBuildState();
+  const feeStudy = useFeeStudyImportHandlers();
+  const cap = useCapImportHandlers();
 
-  const toggle = () => setExpanded((v) => !v);
-  const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" || e.key === " ") {
-      e.preventDefault();
-      toggle();
-    }
-  };
-
-  const borderColor = expanded || hovered ? "var(--rule-strong)" : "var(--rule)";
-  const headerBg = hovered && !expanded ? "var(--paper-2)" : "transparent";
+  const capLatest = [...imports]
+    .filter((e) => e.domain === "cap")
+    .sort((a, b) => (b.at > a.at ? 1 : -1))[0];
+  const feeStudyLatest = feeStudy.history[0];
 
   return (
     <div style={{
-      background: "var(--paper)",
-      border: `1px solid ${borderColor}`,
-      transition: "border-color 80ms",
+      background: "var(--paper-2)",
+      border: "1px solid var(--rule)",
+      padding: "16px 20px",
     }}>
-      <div
-        role="button"
-        tabIndex={0}
-        aria-expanded={expanded}
-        aria-label={`Fee Study — ${expanded ? "collapse" : "expand"} details`}
-        onClick={toggle}
-        onKeyDown={handleHeaderKeyDown}
-        onMouseEnter={() => setHovered(true)}
-        onMouseLeave={() => setHovered(false)}
-        style={{
-          padding: 20,
-          display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
-          cursor: "pointer",
-          background: headerBg,
-          transition: "background 80ms",
-          userSelect: "none",
-        }}
-      >
-        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>Fee Study</span>
-            <span className="mono" style={{
-              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-              color: "var(--ink-3)", textTransform: "uppercase",
-              padding: "2px 6px", border: "1px solid var(--rule)",
-              background: "var(--paper-2)",
-            }}>Optional</span>
-          </div>
-          <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
-            {importer.summaries.length > 0
-              ? <span style={{ color: "var(--ink)", fontWeight: 500 }}>Imported</span>
-              : <span style={{ color: "var(--ink-3)", fontWeight: 500 }}>Not Imported</span>}
-          </div>
-          <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.45 }}>
-            Extract services, hours, volumes, and fee schedules from one study.
-          </div>
-        </div>
+      <div className="mono" style={{
+        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
+        color: "var(--ink-3)", textTransform: "uppercase",
+        marginBottom: 14,
+      }}>
+        Start with what you already have
       </div>
-
-      {expanded && (
-        <div
-          onClick={(e) => e.stopPropagation()}
-          style={{
-            borderTop: "1px solid var(--rule)",
-            padding: "14px 20px 18px",
-            display: "flex", flexDirection: "column", gap: 12,
-          }}
+      <div style={{ display: "flex", flexDirection: "column" }}>
+        <QuickImportRow
+          id="quick-import-fee-study"
+          name="Fee Study"
+          populates="Services Catalog, Fee Schedule, Volume of Activity"
+          latestFileName={feeStudyLatest?.fileName}
+          latestAt={feeStudyLatest?.at}
+          onAiPdfImport={feeStudy.aiPdf}
         >
-          <InlineImportCard
-            aiPdfLabel="Upload PDF"
-            aiPdfAccept=".pdf"
-            onAiPdfImport={importer.aiPdf}
-            compactAiStatus
-          />
-
-          {importer.unmapped.length > 0 && (
+          {feeStudy.unmapped.length > 0 && (
             <VolumeUnmappedPanel
-              unmapped={importer.unmapped}
-              setUnmapped={importer.setUnmapped}
-              services={importer.services}
-              onCreate={importer.createServiceForUnmapped}
-              onMap={importer.mapUnmappedToService}
+              unmapped={feeStudy.unmapped}
+              setUnmapped={feeStudy.setUnmapped}
+              services={feeStudy.services}
+              onCreate={feeStudy.createServiceForUnmapped}
+              onMap={feeStudy.mapUnmappedToService}
             />
           )}
-
-          {importer.summaries.length > 0 && (
-            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-              <SubsectionEyebrow>Applied</SubsectionEyebrow>
-              {importer.summaries.map((s) => (
-                <div key={s.domain} style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>
-                  <span className="mono" style={{ textTransform: "capitalize" }}>{s.domain}</span>
-                  {": "}
-                  <span className="num">{s.applied.mapped}</span> new,{" "}
-                  <span className="num">{s.applied.duplicates}</span> updated,{" "}
-                  <span className="num">{s.applied.lowConfidence}</span> for review
-                </div>
-              ))}
-              <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
-                See each source card above for full history and review.
-              </div>
-            </div>
+        </QuickImportRow>
+        <QuickImportRow
+          id="quick-import-cap"
+          name="Cost Allocation Plan"
+          populates="indirect cost methodology across all services"
+          latestFileName={capLatest?.result.fileName}
+          latestAt={capLatest?.at}
+          onAiPdfImport={cap.aiPdf}
+          isLast
+        >
+          {cap.unmappedBases.length > 0 && (
+            <CapUnmappedPanel
+              unmappedBases={cap.unmappedBases}
+              setUnmappedBases={cap.setUnmappedBases}
+            />
           )}
-
-          <RecentImportsSection entries={importer.history}/>
-        </div>
-      )}
+        </QuickImportRow>
+      </div>
     </div>
   );
+}
+
+function QuickImportRow({
+  id, name, populates, latestFileName, latestAt, onAiPdfImport, isLast, children,
+}: {
+  id: string;
+  name: string;
+  populates: string;
+  latestFileName?: string;
+  latestAt?: string;
+  onAiPdfImport: (file: File) => Promise<ImportResult>;
+  isLast?: boolean;
+  children?: ReactNode;
+}) {
+  const hasHistory = !!latestFileName;
+  return (
+    <div id={id} style={{
+      display: "flex", flexDirection: "column", gap: 8,
+      padding: "10px 0",
+      borderBottom: isLast ? "none" : "1px solid var(--rule)",
+    }}>
+      <div style={{
+        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
+        gap: 16, flexWrap: "wrap",
+      }}>
+        <div style={{ minWidth: 0 }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+            <span className="display" style={{ fontSize: 15, fontWeight: 600 }}>{name}</span>
+            <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
+              Populates: {populates}
+            </span>
+          </div>
+          {hasHistory && (
+            <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", marginTop: 4 }}>
+              {displayFileName(latestFileName!)} · {formatStamp(latestAt!)}
+            </div>
+          )}
+        </div>
+        <InlineImportCard
+          onAiPdfImport={onAiPdfImport}
+          aiPdfLabel={hasHistory ? "Re-upload" : "Upload PDF"}
+          aiPdfAccept=".pdf"
+          compactAiStatus
+        />
+      </div>
+      {children}
+    </div>
+  );
+}
+
+// ── Status color system ─────────────────────────────────────────────────
+//
+// "Not Imported" / "Imported, no issues" / "Imported, needs review" /
+// "Imported via extraction" — review takes priority over a clean import,
+// and "via extraction" reflects whether the most recent import for this
+// domain was auto-populated by Fee Study (batchId present) rather than a
+// direct upload through this card.
+
+type CardStatus = "not-imported" | "ok" | "review" | "extraction";
+
+const STATUS_COLOR: Record<CardStatus, { border: string; text: string }> = {
+  "not-imported": { border: "var(--rule-strong)", text: "var(--ink-4)" },
+  ok:             { border: "var(--pos)",         text: "var(--pos)" },
+  review:         { border: "var(--warn)",        text: "var(--warn)" },
+  extraction:     { border: "var(--ink-2)",       text: "var(--ink-3)" },
+};
+
+function cardStatus(
+  card: RefreshSectionCard, imports: BuildImportLog[], reviewExtra: number,
+): CardStatus {
+  if (card.review + reviewExtra > 0) return "review";
+  if (!card.hasImports) return "not-imported";
+  const latest = imports
+    .filter((e) => e.domain === card.domain)
+    .reduce((a, b) => (b.id > a.id ? b : a));
+  return latest.batchId ? "extraction" : "ok";
 }
 
 interface SourceCardShellProps {
@@ -343,6 +366,8 @@ function SourceCardShell({
   const loaded = card.seedCount;
   const reviewTotal = card.review + reviewExtra;
   const hasReview = reviewTotal > 0;
+  const status = cardStatus(card, imports, reviewExtra);
+  const statusColor = STATUS_COLOR[status];
 
   const toggle = () => setExpanded((v) => !v);
   const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
@@ -353,15 +378,19 @@ function SourceCardShell({
   };
 
   // Hover treatment mirrors .tbl-row-hover-grid in src/index.css: 80ms
-  // background tint to paper-2. The border darkens to rule-strong for
-  // the same affordance the clickable rows on DataTable use.
+  // background tint to paper-2. The right/top/bottom border darkens to
+  // rule-strong for the same affordance the clickable rows on DataTable
+  // use; the left border is the 4px status accent instead, always on.
   const borderColor = expanded || hovered ? "var(--rule-strong)" : "var(--rule)";
   const headerBg = hovered && !expanded ? "var(--paper-2)" : "transparent";
 
   return (
     <div id={card.domain} style={{
       background: "var(--paper)",
-      border: `1px solid ${borderColor}`,
+      borderTop: `1px solid ${borderColor}`,
+      borderRight: `1px solid ${borderColor}`,
+      borderBottom: `1px solid ${borderColor}`,
+      borderLeft: `4px solid ${statusColor.border}`,
       transition: "border-color 80ms",
       scrollMarginTop: 110,
     }}>
@@ -395,23 +424,20 @@ function SourceCardShell({
               }}>Optional</span>
             )}
           </div>
-          <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
+          <div style={{ fontSize: "var(--fs-ui)", color: statusColor.text, fontWeight: 500 }}>
             {card.hasImports
               ? (
                 <>
-                  <span style={{ color: "var(--ink)", fontWeight: 500 }}>Imported</span>
-                  {" · "}
+                  Imported{" · "}
                   <span className="num">{loaded.toLocaleString()}</span>
                   {" "}{loaded === 1 ? noun.singular : noun.plural}
                 </>
               )
-              : <span style={{ color: "var(--ink-3)", fontWeight: 500 }}>Not Imported</span>}
+              : "Not Imported"}
             {hasReview && (
               <>
                 {" · "}
-                <span className="num" style={{ color: "var(--warn)", fontWeight: 500 }}>
-                  {reviewTotal}
-                </span>{" "}item{reviewTotal === 1 ? "" : "s"} need review
+                <span className="num">{reviewTotal}</span>{" "}item{reviewTotal === 1 ? "" : "s"} need review
               </>
             )}
           </div>
@@ -483,6 +509,7 @@ function ExpandedDetail({
       {/* Recent import history */}
       <RecentImportsSection entries={history.map((entry) => ({
         id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
+        via: provenanceLabel(entry.batchId) ?? undefined,
       }))}/>
     </div>
   );
@@ -493,11 +520,15 @@ interface RecentImportEntry {
   fileName: string;
   rows: number;
   at: string;
+  /** Set when this entry was auto-populated by Fee Study or CAP rather
+   *  than uploaded directly through this card — e.g. "Fee Study
+   *  extraction". Rendered as "→ via {via}" next to the filename. */
+  via?: string;
 }
 
-/** "Recent imports" list shared by each domain card (ExpandedDetail) and
- *  the Fee Study composite card — same filename/rows/date row shape, just
- *  sourced differently (per-domain BuildImportLog vs. FeeStudyHistoryEntry). */
+/** "Recent imports" list shared by each domain card. Entries with a
+ *  `via` provenance tag get a second line for the source attribution;
+ *  ordinary direct-upload entries keep the single-line layout. */
 function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
   if (entries.length === 0) return null;
   return (
@@ -506,23 +537,43 @@ function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {entries.map((entry) => (
           <div key={entry.id} style={{
-            display: "grid",
-            gridTemplateColumns: "minmax(0, 1fr) auto auto",
-            gap: 12,
+            display: "flex", flexDirection: "column", gap: 2,
             fontSize: "var(--t-l7)", color: "var(--ink-2)",
             padding: "4px 0",
             borderBottom: "1px dashed var(--rule)",
-            alignItems: "baseline",
           }}>
-            <span style={{
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }} title={entry.fileName}>{displayFileName(entry.fileName)}</span>
-            <span className="num" style={{ color: "var(--ink-3)" }}>
-              {entry.rows.toLocaleString()} rows
-            </span>
-            <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-              {formatStamp(entry.at)}
-            </span>
+            <div style={{
+              display: "grid",
+              gridTemplateColumns: entry.via ? "minmax(0, 1fr)" : "minmax(0, 1fr) auto auto",
+              gap: 12, alignItems: "baseline",
+            }}>
+              <span style={{
+                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+              }} title={entry.fileName}>
+                {displayFileName(entry.fileName)}
+                {entry.via && (
+                  <span style={{ color: "var(--ink-3)" }}> → via {entry.via}</span>
+                )}
+              </span>
+              {!entry.via && (
+                <>
+                  <span className="num" style={{ color: "var(--ink-3)" }}>
+                    {entry.rows.toLocaleString()} rows
+                  </span>
+                  <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+                    {formatStamp(entry.at)}
+                  </span>
+                </>
+              )}
+            </div>
+            {entry.via && (
+              <span className="num" style={{ color: "var(--ink-3)" }}>
+                {entry.rows.toLocaleString()} rows
+                <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+                  {" "}· {formatStamp(entry.at)}
+                </span>
+              </span>
+            )}
           </div>
         ))}
       </div>

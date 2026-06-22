@@ -21,9 +21,11 @@ test.describe("Source Data imports", () => {
     await expect(feesCard).toBeVisible();
     await feesCard.click();
 
-    // The PDF upload button (primary action) and the Excel button
-    // (accessory in the same row) both render once expanded.
-    await expect(page.getByRole("button", { name: "Upload PDF" })).toBeVisible();
-    await expect(page.getByRole("button", { name: "Upload Excel" })).toBeVisible();
+    // Scoped to #fees — the Quick Import banner above also renders its
+    // own "Upload PDF" buttons (Fee Study, CAP), so an unscoped locator
+    // would match more than one element.
+    const fees = page.locator("#fees");
+    await expect(fees.getByRole("button", { name: "Upload PDF" })).toBeVisible();
+    await expect(fees.getByRole("button", { name: "Upload Excel" })).toBeVisible();
   });
 });

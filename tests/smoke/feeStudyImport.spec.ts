@@ -1,16 +1,19 @@
-/* Smoke: the Fee Study card's upload → extract → apply flow.
+/* Smoke: the Quick Import banner's Fee Study upload → extract → apply
+ * flow.
  *
  * Mocks /api/ai/parse-fee-study rather than depending on a real AI call.
- * The card must run extracted sections through the EXISTING
+ * The banner row must run extracted sections through the EXISTING
  * services/volume/fees/positions converters and merges — this test
- * confirms the resulting per-domain summary renders, and that a server
- * failure surfaces the existing warn-toned failure message (no new
- * failure UI). */
+ * confirms the result lands on the actual Services Catalog / Volume of
+ * Activity cards below (tagged "via Fee Study extraction" in their own
+ * Recent Imports), since the banner itself has no Recent Imports or
+ * "Applied" summary of its own. It also confirms a server failure
+ * surfaces the existing warn-toned failure message inline on the row. */
 
 import { test, expect } from "@playwright/test";
 
 test.describe("Source Data — Fee Study import flow", () => {
-  test("extracts and applies across domains via a mocked endpoint", async ({ page }) => {
+  test("extracts and applies across domains, tagged via Fee Study on the receiving cards", async ({ page }) => {
     await page.route("**/api/ai/parse-fee-study", (route) => route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -35,22 +38,22 @@ test.describe("Source Data — Fee Study import flow", () => {
     }));
 
     await page.goto("/source-data");
-    const card = page.getByRole("button", { name: /Fee Study — (expand|collapse) details/ });
-    await card.click();
 
-    const fileInput = page.locator('input[type="file"]');
+    const fileInput = page.locator("#quick-import-fee-study input[type=\"file\"]");
     await fileInput.setInputFiles({
       name: "fee-study.pdf",
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-1.4 fake"),
     });
 
-    await expect(page.getByText("Applied", { exact: true })).toBeVisible();
-    await expect(page.getByText(/services:\s*1\s*new/i)).toBeVisible();
-    await expect(page.getByText(/volume:\s*1\s*new/i)).toBeVisible();
+    const servicesCard = page.getByRole("button", { name: /Services Catalog — (expand|collapse) details/ });
+    await expect(servicesCard.getByText(/Imported.*1\s*service/)).toBeVisible();
+    await servicesCard.click();
+    await expect(page.locator("#services").getByText("Recent imports", { exact: true })).toBeVisible();
+    await expect(page.locator("#services").getByText(/fee-study\.pdf.*via Fee Study extraction/)).toBeVisible();
 
-    await expect(page.getByText("Recent imports", { exact: true })).toBeVisible();
-    await expect(page.getByText("fee-study.pdf")).toBeVisible();
+    const volumeCard = page.getByRole("button", { name: /Volume of Activity — (expand|collapse) details/ });
+    await expect(volumeCard.getByText(/Imported.*1\s*row/)).toBeVisible();
   });
 
   test("surfaces a failure message when the endpoint reports an error", async ({ page }) => {
@@ -64,16 +67,14 @@ test.describe("Source Data — Fee Study import flow", () => {
     }));
 
     await page.goto("/source-data");
-    const card = page.getByRole("button", { name: /Fee Study — (expand|collapse) details/ });
-    await card.click();
 
-    const fileInput = page.locator('input[type="file"]');
+    const fileInput = page.locator("#quick-import-fee-study input[type=\"file\"]");
     await fileInput.setInputFiles({
       name: "fee-study.pdf",
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-1.4 fake"),
     });
 
-    await expect(page.getByText(/temporarily unavailable/)).toBeVisible();
+    await expect(page.locator("#quick-import-fee-study").getByText(/temporarily unavailable/)).toBeVisible();
   });
 });
