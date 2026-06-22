@@ -55,13 +55,19 @@ export function RefreshImportGrid() {
     impact: state.derived.impact,
   };
   const cards = deriveRefreshSections(input);
+  const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
+  const capCard = cards.find((c) => c.domain === "cap");
 
   return (
     <>
       <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-        {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
+        {requiredCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
       </div>
-      <div style={{ marginTop: 12 }}>
+      {/* Optional cards (CAP, Fee Study) side by side at the bottom — both
+       *  cover supplementary data the rest of the build model works
+       *  without. */}
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12, marginTop: 12 }}>
+        {capCard && <CapCard card={capCard} imports={state.imports}/>}
         <FeeStudyCard/>
       </div>
     </>
