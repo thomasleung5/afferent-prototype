@@ -3,9 +3,9 @@
  * Minimal Save/Load bridge on top of the existing Zustand store —
  * the localStorage editing model is unchanged; this menu lets an
  * authenticated user push the current snapshot to the server,
- * pull it back later, cut and load named immutable versions, and
- * pick which organization a new study lives in when membership
- * spans multiple orgs.
+ * restore it later (recovery), create and load named immutable
+ * snapshots, and pick which organization a new study lives in when
+ * membership spans multiple orgs.
  *
  * Visibility:
  *   - Auth not configured (no VITE_SUPABASE_*)  → menu hidden.
@@ -39,7 +39,7 @@ import {
 import { disableSandboxMode, useSandboxMode } from "@/lib/studies/sandboxMode";
 import { emitStaleStudyNotice } from "@/lib/studies/staleStudyNotice";
 import {
-  syncStatusLabel, syncStatusIsRetryable, syncStatusTone,
+  studySaveSummary, syncStatusCanSaveNow, syncStatusTone,
   type SyncStatus, type SyncTone,
 } from "@/lib/studies/syncStatus";
 import { useAutoSaveStudy } from "./useAutoSaveStudy";
@@ -238,7 +238,7 @@ function StudyMenuMounted() {
     if (!activeId) return;
     const target = activeStudy?.name ?? "study";
     if (!window.confirm(
-      `Load draft from "${target}"?\n\n`
+      `Restore the last saved draft from "${target}"?\n\n`
       + "Local edits in this browser will be replaced with the saved draft.",
     )) return;
     setWorking("load");
@@ -259,7 +259,7 @@ function StudyMenuMounted() {
       // Seed the optimistic-lock token from the freshly-loaded draft so
       // the very next autosave can detect a parallel writer.
       autosave.markSynced(Date.now(), res.draft.revision_id);
-      setStatus({ kind: "ok", message: `Loaded ${target}.` });
+      setStatus({ kind: "ok", message: `Restored ${target}'s saved draft.` });
     } finally {
       setWorking(null);
     }
@@ -312,7 +312,7 @@ function StudyMenuMounted() {
 
   async function handleCutVersion() {
     if (!activeId) return;
-    const label = window.prompt("Version label (e.g. \"Mid-year cut\"):");
+    const label = window.prompt("Snapshot name (e.g. \"Mid-year cut\"):");
     if (!label || label.trim().length === 0) return;
     setWorking("version");
     setStatus(null);
@@ -325,10 +325,10 @@ function StudyMenuMounted() {
       if (!res.ok) { setStatus({ kind: "error", message: res.message }); return; }
       setStatus({
         kind: "ok",
-        message: `Cut version ${res.version.version_number}: ${res.version.label}.`,
+        message: `Created snapshot ${res.version.version_number}: ${res.version.label}.`,
       });
       // If we're sitting in the versions view, refresh the list so
-      // the new cut appears without an extra round trip.
+      // the new snapshot appears without an extra round trip.
       if (view === "versions") void loadVersions();
     } finally {
       setWorking(null);
@@ -381,9 +381,10 @@ function StudyMenuMounted() {
       withSuppressedAutosave(() => { loadSnapshot(coerced.snapshot); });
       // Deliberately DO NOT call markSynced — the local state now
       // differs from the server draft. The autosave subscription is
-      // suppressed during loadSnapshot, so no save fires here. The
-      // next user edit will trigger autosave; the explicit "Save now"
-      // button on the status row also works.
+      // suppressed during loadSnapshot, so no save fires here.
+      // markDiverged surfaces "Save now" explicitly since no pending
+      // edit exists to trigger autosave on its own.
+      autosave.markDiverged();
       setStatus({
         kind: "ok",
         message: `Loaded ${label} locally. Edit or Save now to push it to the draft.`,
@@ -413,10 +414,10 @@ function StudyMenuMounted() {
     ? "warn"
     : syncStatusTone(autosave.status);
   const triggerTitle = activeStudy
-    ? `Active study: ${activeStudy.name} · ${syncStatusLabel(autosave.status)}`
+    ? studySaveSummary(autosave.status, activeStudy.name)
     : isSandbox
-      ? "Sandbox mode — editing local-only; select a study from this menu to enable autosave."
-      : `Studies · ${syncStatusLabel(autosave.status)}`;
+      ? "Sandbox mode — current work is saved in this browser only. Select a study from this menu to save it to the server."
+      : studySaveSummary(autosave.status, null);
 
   return (
     <div ref={wrapRef} style={{ position: "relative", display: "flex", alignItems: "center" }}>
@@ -500,33 +501,33 @@ function StudyMenuMounted() {
           {serverState === "ok" && activeStudy && (
             <SyncStatusRow
               status={autosave.status}
+              studyName={activeStudy.name}
               onSaveNow={() => { void handleSaveNow(); }}
             />
+          )}
+          {serverState === "ok" && !activeStudy && (
+            <Body data-testid="study-menu-local-only-banner">
+              {studySaveSummary(autosave.status, null)}
+            </Body>
           )}
 
           {serverState === "ok" && (
             <>
               <SectionHeader
                 label="Actions"
-                hint={activeId
-                  ? "Auto-save runs in the background. Other actions target the selected study."
-                  : "Select a study first."}
+                hint={activeStudy
+                  ? `Auto-save runs in the background, saving to "${activeStudy.name}". Other actions target this study.`
+                  : "Select a study above, or create one below, first."}
               />
               <MenuAction
-                label="Load draft"
-                sub="Replace local edits with the selected study's saved draft."
-                disabled={!activeStudy || working === "load"}
-                onClick={() => { void handleLoad(); }}
-              />
-              <MenuAction
-                label="Cut version…"
-                sub="Snapshot the current state as a named, immutable version."
+                label="Create named snapshot…"
+                sub="Save the current state as a named, immutable snapshot you can return to later."
                 disabled={!activeStudy || working === "version"}
                 onClick={() => { void handleCutVersion(); }}
               />
               <MenuAction
                 label="Versions…"
-                sub="Browse + load named versions previously cut for this study."
+                sub="Browse + load named snapshots previously created for this study."
                 disabled={!activeStudy}
                 onClick={handleEnterVersions}
               />
@@ -545,6 +546,12 @@ function StudyMenuMounted() {
                 disabled={!inferredOrgId || working === "create"}
                 onClick={() => { void handleCreate(); }}
               />
+              <MenuAction
+                label="Restore saved draft…"
+                sub="Recovery: discard local edits and restore this study's last saved draft from the server."
+                disabled={!activeStudy || working === "load"}
+                onClick={() => { void handleLoad(); }}
+              />
             </>
           )}
 
@@ -556,7 +563,7 @@ function StudyMenuMounted() {
         <div role="menu" style={popoverStyle}>
           <SectionHeader
             label={`Versions of ${activeStudy?.name ?? "study"}`}
-            hint="Named immutable cuts. Loading a version updates only local state."
+            hint="Named immutable snapshots. Loading one updates only local state."
             backButton={{ label: "← Studies", onClick: handleExitVersions }}
           />
 
@@ -566,8 +573,8 @@ function StudyMenuMounted() {
           )}
           {versionsState === "ok" && versions && versions.length === 0 && (
             <Body>
-              No versions cut yet. Use “Cut version…” on the Studies view to
-              create the first one.
+              No snapshots yet. Use “Create named snapshot…” on the Studies
+              view to create the first one.
             </Body>
           )}
           {versionsState === "ok" && versions && versions.length > 0 && (
@@ -603,6 +610,7 @@ function triggerSyncLabel(s: SyncStatus): string {
     case "error":          return "Save failed";
     case "saved":          return "Saved";
     case "idle":           return "Saved";
+    case "diverged":       return "Unsaved";
     case "local-only":     return "Local";
     case "not-configured": return "Local";
     case "awaiting-study": return "Select study";
@@ -614,9 +622,9 @@ function triggerSyncLabel(s: SyncStatus): string {
 
 function labelForWorking(w: NonNullable<WorkingKind>): string {
   switch (w) {
-    case "load":         return "Loading";
+    case "load":         return "Restoring";
     case "create":       return "Creating";
-    case "version":      return "Cutting version";
+    case "version":      return "Creating snapshot";
     case "load-version": return "Loading version";
   }
 }
@@ -647,11 +655,17 @@ function toneColor(tone: SyncTone): string {
 }
 
 function SyncStatusRow({
-  status, onSaveNow,
-}: { status: SyncStatus; onSaveNow: () => void }) {
+  status, studyName, onSaveNow,
+}: { status: SyncStatus; studyName: string; onSaveNow: () => void }) {
   const tone = syncStatusTone(status);
-  const label = syncStatusLabel(status);
-  const showRetry = syncStatusIsRetryable(status);
+  // Names the save destination explicitly ("current work saved to X")
+  // rather than a bare status word — the primary concept the popover
+  // should communicate is WHERE this is saved, not just whether.
+  const label = studySaveSummary(status, studyName);
+  // Broader than "is this a failure" — also covers idle/saved states
+  // where local content may have diverged from the last save with no
+  // pending edit to trigger autosave (e.g. just loaded a named version).
+  const showSaveNow = syncStatusCanSaveNow(status);
   // Inline error / conflict messages instead of hiding them behind a
   // title attribute — analysts couldn't see why a save failed without
   // hovering, and the verbose status fits in the popover row.
@@ -676,7 +690,7 @@ function SyncStatusRow({
         }}>
           {label}
         </span>
-        {showRetry && (
+        {showSaveNow && (
           <button
             type="button"
             onClick={onSaveNow}
@@ -754,9 +768,11 @@ function SectionHeader({
   );
 }
 
-function Body({ children, tone }: { children: ReactNode; tone?: "error" }) {
+function Body({
+  children, tone, "data-testid": testId,
+}: { children: ReactNode; tone?: "error"; "data-testid"?: string }) {
   return (
-    <div style={{
+    <div data-testid={testId} style={{
       padding: "10px 14px",
       fontSize: "var(--t-l7)",
       lineHeight: 1.5,

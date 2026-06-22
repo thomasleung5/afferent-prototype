@@ -67,6 +67,14 @@ export interface UseAutoSaveStudyApi {
    *  `revisionId`, when supplied, seeds the optimistic-lock token used
    *  on subsequent saves (omit on local-only paths). */
   markSynced: (at: number, revisionId?: string | null) => void;
+  /** Mark the current local state as diverged from the server draft
+   *  without anything queued to push it — e.g. after loading a named
+   *  version, which intentionally doesn't autosave. Surfaces "Save
+   *  now" so the user has an explicit way to push it. Leaves the
+   *  optimistic-lock revision token untouched: the server draft itself
+   *  hasn't moved, so the next save's expected_revision_id is still
+   *  valid. */
+  markDiverged: () => void;
 }
 
 export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyApi {
@@ -259,7 +267,12 @@ export function useAutoSaveStudy(args: UseAutoSaveStudyArgs): UseAutoSaveStudyAp
     setStatus({ kind: "saved", at });
   }, [cancelTimer]);
 
-  return { status, saveNow, markSynced };
+  const markDiverged = useCallback(() => {
+    cancelTimer();
+    setStatus({ kind: "diverged" });
+  }, [cancelTimer]);
+
+  return { status, saveNow, markSynced, markDiverged };
 }
 
 function initialStatus(args: {

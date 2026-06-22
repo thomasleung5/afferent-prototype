@@ -98,6 +98,38 @@ test.describe("Studies popover", () => {
     await expect(page.getByTestId("study-menu-trigger")).toContainText("Saved");
   });
 
+  test("local-only banner names the next action before a study is selected, then names the study once one is", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    // Before any study is selected: the popover must read as local-only
+    // with an obvious next action, not a bare status word.
+    await expect(page.getByTestId("study-menu-local-only-banner")).toContainText(
+      /Local only.*select or create a study/i,
+    );
+    await page.getByRole("button", { name: /FY26 Fee Study/ }).click();
+    // Once selected: the save destination is named explicitly, and the
+    // local-only banner is gone (replaced by the named sync status row).
+    await expect(page.getByTestId("study-menu-local-only-banner")).toHaveCount(0);
+    await expect(page.getByText(/Current work saved to FY26 Fee Study/)).toBeVisible();
+  });
+
+  test("primary actions read 'Create named snapshot…' and 'Restore saved draft…' (recovery, listed last)", async ({ page }) => {
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    await page.getByRole("button", { name: /FY26 Fee Study/ }).click();
+    await expect(page.getByRole("button", { name: /Create named snapshot…/ })).toBeVisible();
+    await expect(page.getByRole("button", { name: /Cut version…/ })).toHaveCount(0);
+    const restoreAction = page.getByRole("button", { name: /Restore saved draft…/ });
+    await expect(restoreAction).toBeVisible();
+    await expect(restoreAction).toContainText("Recovery");
+    // Listed last among the Actions buttons — reads as secondary/recovery,
+    // not the primary save action.
+    const actionLabels = await page.getByRole("menu").locator("button").allTextContents();
+    const restoreIndex = actionLabels.findIndex((t) => t.includes("Restore saved draft…"));
+    const newStudyIndex = actionLabels.findIndex((t) => t.includes("New study…"));
+    expect(restoreIndex).toBeGreaterThan(newStudyIndex);
+  });
+
   test("'New study…' is enabled when a creatable membership is available", async ({ page }) => {
     await page.goto("/");
     await page.getByTestId("study-menu-trigger").click();
@@ -233,5 +265,58 @@ test.describe("Studies popover", () => {
     // After dismiss we're still in the versions view; the version
     // row remains visible.
     await expect(page.getByText(/v3/)).toBeVisible();
+  });
+
+  test("loading a version surfaces 'Save now' to push it to the draft", async ({ page }) => {
+    const VERSION_ID = "44444444-4444-4444-4444-444444444444";
+    await page.route(`**/api/studies/${TEST_STUDY_ID}/versions`, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      await fulfillJson(route, 200, {
+        ok: true,
+        versions: [{
+          id: VERSION_ID,
+          study_id: TEST_STUDY_ID,
+          version_number: 3,
+          label: "Q3 cut",
+          status: "draft",
+          notes: null,
+          created_by: "00000000-0000-0000-0000-0000000000aa",
+          created_at: "2026-06-01T00:00:00Z",
+        }],
+      });
+    });
+    await page.route(`**/api/studies/${TEST_STUDY_ID}/versions/${VERSION_ID}`, async (route) => {
+      if (route.request().method() !== "GET") return route.fallback();
+      await fulfillJson(route, 200, {
+        ok: true,
+        version: {
+          id: VERSION_ID,
+          study_id: TEST_STUDY_ID,
+          version_number: 3,
+          label: "Q3 cut",
+          status: "draft",
+          notes: null,
+          created_by: "00000000-0000-0000-0000-0000000000aa",
+          created_at: "2026-06-01T00:00:00Z",
+          snapshot: {},
+        },
+      });
+    });
+    await page.goto("/");
+    await page.getByTestId("study-menu-trigger").click();
+    await page.getByRole("button", { name: /FY26 Fee Study/ }).click();
+    await page.getByRole("button", { name: /Versions…/ }).click();
+    await expect(page.getByText(/v3/)).toBeVisible();
+    // Accept the confirm this time — actually load the version.
+    page.once("dialog", (d) => { void d.accept(); });
+    await page.getByRole("button", { name: "Load", exact: true }).click();
+    // Loading a version intentionally does NOT push to the server
+    // draft (markSynced is deliberately skipped, markDiverged is
+    // called instead) — "Save now" must be visible immediately so the
+    // user can push it without making an unrelated edit first, and the
+    // trigger must read as unsaved rather than a stale "Saved".
+    await expect(page.getByRole("button", { name: "Save now" })).toBeVisible();
+    await expect(page.getByText(/Loaded locally — not yet saved to FY26 Fee Study/)).toBeVisible();
+    await expect(page.getByTestId("study-menu-trigger")).toContainText("Unsaved");
   });
 });
