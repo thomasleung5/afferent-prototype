@@ -27,5 +27,10 @@ test.describe("Source Data imports", () => {
     const fees = page.locator("#fees");
     await expect(fees.getByRole("button", { name: "Upload PDF" })).toBeVisible();
     await expect(fees.getByRole("button", { name: "Upload Excel" })).toBeVisible();
+
+    // Paste JSON (and the Advanced disclosure that hid it) is removed
+    // from every source card.
+    await expect(fees.getByRole("button", { name: "Paste JSON" })).toHaveCount(0);
+    await expect(fees.getByText("Advanced", { exact: true })).toHaveCount(0);
   });
 });

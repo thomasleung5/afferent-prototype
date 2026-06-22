@@ -490,14 +490,9 @@ function ExpandedDetail({
         display: "flex", flexDirection: "column", gap: 12,
       }}
     >
-      {/* Import actions — PDF primary, paste hidden behind Advanced */}
+      {/* Import action — PDF only; Paste JSON removed from the UI */}
       <InlineImportCard
         onAiPdfImport={importer.aiPdf}
-        pasteExample={importer.pasteExample}
-        pasteHelper={importer.pasteHelper}
-        pasteSchema={importer.pasteSchema}
-        onPasteJson={importer.pasteJson}
-        pasteAdvanced
         aiPdfAccessory={aiPdfAccessory}
         aiPdfBelow={aiPdfBelow}
         compactAiStatus={compactAiStatus ?? true}
