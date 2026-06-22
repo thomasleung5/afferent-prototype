@@ -16,6 +16,7 @@ import { handleAiParseLabor } from "./aiParseLabor";
 import { handleAiParseOperating } from "./aiParseOperating";
 import { handleAiParseCap } from "./aiParseCap";
 import { handleAiParseVolume } from "./aiParseVolume";
+import { handleAiParseFeeStudy } from "./aiParseFeeStudy";
 import { handleExcelPreview } from "./excelImport";
 import { studiesRoutes, resolveStudySnapshotMaxBytes } from "./studies";
 import { organizationsRoutes } from "./organizations";
@@ -113,6 +114,7 @@ app.post("/api/ai/parse-labor", (c) => handleAiParseLabor(c.req.raw));
 app.post("/api/ai/parse-operating", (c) => handleAiParseOperating(c.req.raw));
 app.post("/api/ai/parse-cap", (c) => handleAiParseCap(c.req.raw));
 app.post("/api/ai/parse-volume", (c) => handleAiParseVolume(c.req.raw));
+app.post("/api/ai/parse-fee-study", (c) => handleAiParseFeeStudy(c.req.raw));
 
 app.post("/api/import/excel/preview", (c) => handleExcelPreview(c.req.raw));
 

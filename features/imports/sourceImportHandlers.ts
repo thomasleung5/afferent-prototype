@@ -21,8 +21,8 @@ import {
   createJsonImportHandler, createPdfImportHandler,
   type ImportResult,
 } from "./importRunners";
-import { useBuildActions, useBuildState } from "@/lib/store";
-import type { UnmappedRow } from "@/lib/parse/types";
+import { useBuildActions, useBuildState, useBuildStore } from "@/lib/store";
+import type { ImportApplyResult, UnmappedRow } from "@/lib/parse/types";
 import {
   aiParseLaborPdf, laborToExtractionResult,
 } from "@/lib/ai/parseLabor";
@@ -47,6 +47,7 @@ import {
   capDirectAllocationsToExtractionResult,
   capImportIntegrityIssues,
 } from "@/lib/ai/parseCap";
+import { aiParseFeeStudyPdf } from "@/lib/ai/parseFeeStudy";
 
 type LaborRows = Parameters<typeof laborToExtractionResult>[0];
 type OperatingRows   = Parameters<typeof operatingToExtractionResult>[0];
@@ -498,5 +499,131 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
     pasteSchema: CAP_SCHEMA,
     unmappedBases,
     setUnmappedBases,
+  };
+}
+
+// ─── Fee Study (composite) ──────────────────────────────────────────────
+//
+// Fee Study is not a domain — it's an optional composite upload surface
+// for one PDF that may mix Services, Staffing, Volume, and Fee Schedule
+// data. The parser returns the same wire shapes the four single-domain
+// endpoints already produce; this hook's only job is to run them through
+// the EXISTING converters + merge actions, in the safe order (Services
+// populates the catalog Volume/Fees match against by name), and collect
+// per-domain summaries. No new store field, no new Domain value.
+
+export interface FeeStudyDomainSummary {
+  domain: "services" | "volume" | "fees" | "positions";
+  applied: ImportApplyResult;
+}
+
+const FEE_STUDY_DOMAIN_NOUN: Record<FeeStudyDomainSummary["domain"], { singular: string; plural: string }> = {
+  services: { singular: "service", plural: "services" },
+  volume: { singular: "volume row", plural: "volume rows" },
+  fees: { singular: "fee", plural: "fees" },
+  positions: { singular: "position", plural: "positions" },
+};
+
+function formatFeeStudySummary(summaries: FeeStudyDomainSummary[]): string {
+  if (summaries.length === 0) {
+    return "No services, staffing, volume, or fee data found in this PDF.";
+  }
+  const parts = summaries.map(({ domain, applied }) => {
+    const total = applied.mapped + applied.duplicates + applied.lowConfidence;
+    const noun = FEE_STUDY_DOMAIN_NOUN[domain];
+    return `${total} ${total === 1 ? noun.singular : noun.plural}`;
+  });
+  return `Imported ${parts.join(", ")} from this fee study — see each source card above for full detail.`;
+}
+
+export interface FeeStudyImportHandlerBundle {
+  aiPdf: (file: File) => Promise<ImportResult>;
+  /** Per-domain summaries from the last run, in apply order. A domain
+   *  absent from the PDF is simply absent from this list. */
+  summaries: FeeStudyDomainSummary[];
+  /** Volume's unmapped rows from the last run — same shape/lifecycle as
+   *  useVolumeImportHandlers' `unmapped`, reused by VolumeUnmappedPanel
+   *  verbatim. */
+  unmapped: UnmappedRow[];
+  setUnmapped: Dispatch<SetStateAction<UnmappedRow[]>>;
+  services: { id: string; name: string; dept: string }[];
+  createServiceForUnmapped: (u: UnmappedRow, index: number) => string | null;
+  mapUnmappedToService: (u: UnmappedRow, index: number, serviceId: string) => void;
+}
+
+type FeeStudyParsed = Awaited<ReturnType<typeof aiParseFeeStudyPdf>>;
+
+export function useFeeStudyImportHandlers(): FeeStudyImportHandlerBundle {
+  const {
+    services, createServiceFromUnmappedVolume, mapUnmappedVolumeToService,
+  } = useBuildState();
+
+  const [summaries, setSummaries] = useState<FeeStudyDomainSummary[]>([]);
+  const [unmapped, setUnmapped] = useState<UnmappedRow[]>([]);
+
+  const removeAt = (i: number) => setUnmapped((prev) => prev.filter((_, j) => j !== i));
+  const createServiceForUnmapped = (u: UnmappedRow, i: number): string | null => {
+    const id = createServiceFromUnmappedVolume(u);
+    if (id) removeAt(i);
+    return id;
+  };
+  const mapUnmappedToService = (u: UnmappedRow, i: number, serviceId: string): void => {
+    mapUnmappedVolumeToService(u, serviceId);
+    removeAt(i);
+  };
+
+  // Sequenced Services -> Volume -> Fees -> Positions. Each step reads
+  // the LATEST store snapshot via getState() rather than this render's
+  // `services` closure — mergeServices just wrote rows the Volume/Fees
+  // steps need to see, and the render-time closure wouldn't reflect that
+  // within one synchronous apply() call.
+  const apply = (parsed: FeeStudyParsed, fileName: string): string => {
+    const nextSummaries: FeeStudyDomainSummary[] = [];
+
+    if (parsed.services.length > 0) {
+      const store = useBuildStore.getState();
+      const extraction = servicesToExtractionResult(parsed.services, store.services, fileName);
+      const applied = store.mergeServices(extraction, fileName);
+      nextSummaries.push({ domain: "services", applied });
+    }
+
+    if (parsed.items.length > 0) {
+      const store = useBuildStore.getState();
+      const extraction = volumeToExtractionResult(parsed.items, store.services, fileName, store.volume);
+      const applied = store.mergeVolume(extraction, fileName);
+      setUnmapped(extraction.unmapped);
+      nextSummaries.push({ domain: "volume", applied });
+    }
+
+    if (parsed.fees.length > 0) {
+      const store = useBuildStore.getState();
+      const extraction = feesToExtractionResult(parsed.fees, store.services, fileName);
+      const applied = store.mergeFeeSchedule(extraction, fileName);
+      nextSummaries.push({ domain: "fees", applied });
+    }
+
+    if (parsed.positions.length > 0) {
+      const store = useBuildStore.getState();
+      const extraction = laborToExtractionResult(parsed.positions, fileName);
+      const applied = store.mergePositions(extraction, fileName);
+      nextSummaries.push({ domain: "positions", applied });
+    }
+
+    setSummaries(nextSummaries);
+    return formatFeeStudySummary(nextSummaries);
+  };
+
+  return {
+    aiPdf: createPdfImportHandler({
+      parsePdf: (file) => aiParseFeeStudyPdf(file, services.map((s) => ({ name: s.name, dept: s.dept }))),
+      apply: (parsed, fileName) => apply(parsed, fileName),
+      onStart: () => { setUnmapped([]); setSummaries([]); },
+    }),
+    summaries,
+    unmapped,
+    setUnmapped,
+    services: services.map((s) => ({ id: s.id, name: s.name, dept: s.dept })),
+    createServiceForUnmapped,
+    mapUnmappedToService,
   };
 }

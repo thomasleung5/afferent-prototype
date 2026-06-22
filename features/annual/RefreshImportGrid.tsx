@@ -24,6 +24,7 @@ import {
   useLaborImportHandlers, useOperatingImportHandlers,
   useServicesImportHandlers, useVolumeImportHandlers,
   useFeesImportHandlers, useCapImportHandlers,
+  useFeeStudyImportHandlers,
   type ImportHandlerBundle,
 } from "@/features/imports/sourceImportHandlers";
 import { unmappedBasisDetails } from "@/lib/ai/parseCap";
@@ -56,9 +57,14 @@ export function RefreshImportGrid() {
   const cards = deriveRefreshSections(input);
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
-      {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
-    </div>
+    <>
+      <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+        {cards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
+      </div>
+      <div style={{ marginTop: 12 }}>
+        <FeeStudyCard/>
+      </div>
+    </>
   );
 }
 
@@ -172,6 +178,122 @@ function CapCard({ card, imports }: DomainCardProps) {
   );
 }
 
+/** Optional composite upload surface — not a Domain. Lets the user select
+ *  one fee-study PDF; extracted sections flow through the EXISTING
+ *  services/volume/fees/positions converters and merge actions (see
+ *  useFeeStudyImportHandlers), never a parallel calc/merge path. No new
+ *  Domain, no new store slice — each domain's own "Recent imports" list
+ *  shows the resulting entries. */
+function FeeStudyCard() {
+  const [expanded, setExpanded] = useState(false);
+  const [hovered, setHovered] = useState(false);
+  const importer = useFeeStudyImportHandlers();
+
+  const toggle = () => setExpanded((v) => !v);
+  const handleHeaderKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key === "Enter" || e.key === " ") {
+      e.preventDefault();
+      toggle();
+    }
+  };
+
+  const borderColor = expanded || hovered ? "var(--rule-strong)" : "var(--rule)";
+  const headerBg = hovered && !expanded ? "var(--paper-2)" : "transparent";
+
+  return (
+    <div style={{
+      background: "var(--paper)",
+      border: `1px solid ${borderColor}`,
+      transition: "border-color 80ms",
+    }}>
+      <div
+        role="button"
+        tabIndex={0}
+        aria-expanded={expanded}
+        aria-label={`Fee Study — ${expanded ? "collapse" : "expand"} details`}
+        onClick={toggle}
+        onKeyDown={handleHeaderKeyDown}
+        onMouseEnter={() => setHovered(true)}
+        onMouseLeave={() => setHovered(false)}
+        style={{
+          padding: 20,
+          display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+          cursor: "pointer",
+          background: headerBg,
+          transition: "background 80ms",
+          userSelect: "none",
+        }}
+      >
+        <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
+          <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
+            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>Fee Study</span>
+            <span className="mono" style={{
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
+              color: "var(--ink-3)", textTransform: "uppercase",
+              padding: "2px 6px", border: "1px solid var(--rule)",
+              background: "var(--paper-2)",
+            }}>Optional</span>
+          </div>
+          <div style={{ fontSize: "var(--fs-ui)", color: "var(--ink-2)" }}>
+            {importer.summaries.length > 0
+              ? <span style={{ color: "var(--ink)", fontWeight: 500 }}>Imported</span>
+              : <span style={{ color: "var(--ink-3)", fontWeight: 500 }}>Not Imported</span>}
+          </div>
+          <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.45 }}>
+            Extract services, hours, volumes, and fee schedules from one study.
+          </div>
+        </div>
+      </div>
+
+      {expanded && (
+        <div
+          onClick={(e) => e.stopPropagation()}
+          style={{
+            borderTop: "1px solid var(--rule)",
+            padding: "14px 20px 18px",
+            display: "flex", flexDirection: "column", gap: 12,
+          }}
+        >
+          <InlineImportCard
+            aiPdfLabel="Upload PDF"
+            aiPdfAccept=".pdf"
+            onAiPdfImport={importer.aiPdf}
+            compactAiStatus
+          />
+
+          {importer.unmapped.length > 0 && (
+            <VolumeUnmappedPanel
+              unmapped={importer.unmapped}
+              setUnmapped={importer.setUnmapped}
+              services={importer.services}
+              onCreate={importer.createServiceForUnmapped}
+              onMap={importer.mapUnmappedToService}
+            />
+          )}
+
+          {importer.summaries.length > 0 && (
+            <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+              <SubsectionEyebrow>Applied</SubsectionEyebrow>
+              {importer.summaries.map((s) => (
+                <div key={s.domain} style={{ fontSize: "var(--t-l7)", color: "var(--ink-2)" }}>
+                  <span className="mono" style={{ textTransform: "capitalize" }}>{s.domain}</span>
+                  {": "}
+                  <span className="num">{s.applied.mapped}</span> new,{" "}
+                  <span className="num">{s.applied.duplicates}</span> updated,{" "}
+                  <span className="num">{s.applied.lowConfidence}</span> for review
+                </div>
+              ))}
+              <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
+                See each source card above for full history and review.
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
 interface SourceCardShellProps {
   card: RefreshSectionCard;
   imports: BuildImportLog[];
@@ -190,7 +312,8 @@ interface SourceCardShellProps {
    *  above the paste-JSON fallback. */
   aiPdfBelow?: ReactNode;
   /** Minimal PDF-upload status presentation for InlineImportCard — see
-   *  its `compactAiStatus` doc. Used by the CAP card. */
+   *  its `compactAiStatus` doc. Defaults on for source cards so Upload
+   *  PDF behaves consistently with the CAP card. */
   compactAiStatus?: boolean;
   children?: ReactNode;
 }
@@ -343,7 +466,7 @@ function ExpandedDetail({
         pasteAdvanced
         aiPdfAccessory={aiPdfAccessory}
         aiPdfBelow={aiPdfBelow}
-        compactAiStatus={compactAiStatus}
+        compactAiStatus={compactAiStatus ?? true}
       />
 
       {/* Domain-specific review (volume unmapped, cap unbound bases) */}
