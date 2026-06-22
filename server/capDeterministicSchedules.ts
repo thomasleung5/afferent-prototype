@@ -152,7 +152,7 @@ function extractReceiverUnitsForHeaderAttempt(args: {
     rows, normalizedTarget, normalizedBasis, hasExpectedTotal,
     expectedTotal, deriveReceiversFromPdf, receivers,
   } = args;
-  // NBS-template gridded schedules (identified by a GL-code-style anchor
+  // Gridded GL-code schedules (identified by a GL-code-style anchor
   // row, e.g. "011 - 1100") print each column's header word-wrapped across
   // many physical lines, with different columns wrapping to different
   // numbers of lines — no single PDF text item ever contains the full
@@ -270,7 +270,7 @@ function pickBestResult(
 
 // ─── Wrapped multi-line header fallback ───────────────────────────────────
 //
-// Gridded CAP exhibits (e.g. the NBS template) print a single logical
+// Gridded CAP exhibits (GL-code-anchored row layout) print a single logical
 // column header word-wrapped across 3-9 physical lines, and different
 // columns wrap to different numbers of lines — so no single PDF text item
 // ever equals (or contains) the full header phrase the AI semantic pass
@@ -759,8 +759,8 @@ function receiverIdentityFromTableRow(identityCells: string[]): ReceiverIdentity
 
   const first = cells[0];
 
-  // Gridded basis schedules (NBS-template, e.g. "011 - 1100") print the
-  // full GL code as its own bare leading cell — fund and org/dept code
+  // Gridded basis schedules (GL-code anchor row, e.g. "011 - 1100") print
+  // the full GL code as its own bare leading cell — fund and org/dept code
   // joined by a dash, no department text mixed in — with the department
   // name in a wholly separate following cell. The general dept-with-
   // trailing-number heuristic below assumes a single combined cell and

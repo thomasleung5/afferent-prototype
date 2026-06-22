@@ -1124,7 +1124,7 @@ function item(text: string, x: number, y: number, width = 50, height = 10, page 
 
 // ─── Wrapped multi-line gridded header (Los Altos Hills page-84/85 shape) ──
 //
-// NBS-template gridded basis-schedule exhibits print each column's header
+// Gridded GL-code basis-schedule exhibits print each column's header
 // word-wrapped across several physical lines, with different columns
 // wrapping to different numbers of lines — no single PDF text item ever
 // contains the full header phrase. headerCandidates()'s single-cell match

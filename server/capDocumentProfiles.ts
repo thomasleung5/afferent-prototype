@@ -1,3 +1,11 @@
+/* CAP document "profiles" are prompt-tuning + detection hints keyed by the
+ * originating vendor's typical document conventions (section naming, table
+ * layout, receiver-identity formatting). They are NOT separate business
+ * schemas: every profile feeds the same normalized CAP entities (pools,
+ * bases, receivers) through the same parser. A profile only changes which
+ * promptGuidance text and deterministicScheduleMode the parser uses to read
+ * a given document's particular layout. */
+
 export type CapDocumentProfileId =
   | "clearsource-allocation-inventory"
   | "matrix-provider-detail"
