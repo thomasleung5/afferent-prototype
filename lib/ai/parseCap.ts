@@ -72,7 +72,11 @@ interface DirectAllocationsRow {
 interface PoolRow {
   center: string;
   pool: string;
-  allocationPercent: number;
+  /** Optional — some source documents publish pool splits as dollar
+   *  amounts only (no printed percent column), so the AI sometimes omits
+   *  this. capPoolsToExtractionResult imports the row regardless; amount
+   *  is what the engine actually allocates from. */
+  allocationPercent?: number;
   amount: number;
   /** Personnel-cost portion (salaries + benefits). Optional. */
   personnelCost?: number;
@@ -379,11 +383,19 @@ export function capPoolsToExtractionResult(
   rows.forEach((row, i) => {
     const center = row.center?.trim();
     const pool = row.pool?.trim();
+    // Source documents that publish pool splits as dollar amounts only
+    // (no printed percent column) sometimes get an AI response that
+    // omits allocationPercent entirely rather than computing it — amount
+    // is what the engine actually allocates from (capStepDownEngine.ts
+    // prefers pool dollar size over allocationPercent whenever it's
+    // available), so a missing percent shouldn't drop real receiver data.
+    // NaN sentinel signals "not yet known"; mergeCapBundle backfills it
+    // from amount / center total once the post-merge center total is
+    // resolved, mirroring storeMigration.ts's pre-existing legacy backfill.
     const allocationPercent = Number(row.allocationPercent);
     const amount = Number(row.amount);
     if (!center || !pool) return;
-    if (!Number.isFinite(allocationPercent) || !Number.isFinite(amount)) return;
-    if (amount < 0) return;
+    if (!Number.isFinite(amount) || amount < 0) return;
 
     const basisName = row.basis?.trim() ?? "";
     const basisMatch = normBasisName(basisName, bases);
@@ -408,7 +420,7 @@ export function capPoolsToExtractionResult(
       row: i + 1,
       rawCells: {
         center: row.center, pool: row.pool,
-        allocationPercent: row.allocationPercent, amount: row.amount,
+        allocationPercent: row.allocationPercent ?? null, amount: row.amount,
         personnelCost: row.personnelCost ?? null,
         operatingCost: row.operatingCost ?? null,
         disallowedCost: row.disallowedCost ?? null,
@@ -429,6 +441,8 @@ export function capPoolsToExtractionResult(
       // here so the entity type-checks; never reaches the engine.
       centerGlCode: "",
       pool,
+      // Math.max/min on NaN stays NaN — the sentinel survives the clamp
+      // for mergeCapBundle to backfill.
       allocationPercent: Math.max(0, Math.min(100, allocationPercent)),
       amount,
       basisId: basisMatch?.id ?? "",

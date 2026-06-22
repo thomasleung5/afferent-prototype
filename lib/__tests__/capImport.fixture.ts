@@ -357,4 +357,30 @@ console.log("  ✓ CAP integrity: pools with direct-allocation receivers bypass 
   console.log("  ✓ CAP schedules: schedule without printedTotal imports unchanged");
 }
 
+// Regression: a source document that publishes pool splits as dollar
+// amounts only (no printed percent column) can get an AI response that
+// omits allocationPercent entirely for every pool. amount is what the
+// engine actually allocates from, so a missing percent must not drop the
+// row — capPoolsToExtractionResult should still import it, with a NaN
+// sentinel for allocationPercent that mergeCapBundle backfills later
+// (lib/store.ts) once the post-merge center total is known.
+
+{
+  const noPercent = capPoolsToExtractionResult([
+    {
+      center: "City Council",
+      pool: "City Council",
+      amount: 631_378,
+      basis: "City Council Agenda Items",
+      confidence: "high",
+    },
+  ], fileName, importedBases);
+  assert.equal(noPercent.mapped.length, 1,
+    "a pool missing allocationPercent is still imported, not dropped");
+  assert.equal(noPercent.mapped[0].entity.amount, 631_378);
+  assert.ok(!Number.isFinite(noPercent.mapped[0].entity.allocationPercent),
+    "allocationPercent is left as a non-finite sentinel for mergeCapBundle to backfill from amount/center total");
+  console.log("  ✓ CAP pools: missing allocationPercent imports via amount, not dropped");
+}
+
 console.log("\nAll CAP import assertions passed.");

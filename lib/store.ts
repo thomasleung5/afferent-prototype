@@ -1125,8 +1125,16 @@ export const useBuildStore = create<BuildState & BuildActions>()(
                 name: entity.center, source: "imported", sourceFile: fileName,
               };
             }
+            // Backfill a missing allocationPercent (NaN sentinel from
+            // capPoolsToExtractionResult, set when the source document
+            // publishes pool splits as dollar amounts only) now that the
+            // post-merge center total is resolved — same formula as
+            // storeMigration.ts's pre-existing legacy backfill.
+            const allocationPercent = Number.isFinite(entity.allocationPercent)
+              ? entity.allocationPercent
+              : (nextTotals[centerGlCode] > 0 ? (entity.amount / nextTotals[centerGlCode]) * 100 : 0);
             return {
-              entity: { ...entity, basisId, centerGlCode },
+              entity: { ...entity, basisId, centerGlCode, allocationPercent },
               lineage,
             };
           });
