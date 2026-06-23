@@ -25,7 +25,7 @@
 import type {
   AllocationBasis, BasisUnitRow, CapPool, DeptCode, InstDeptCode,
 } from "../types";
-import { basisForPool, type BasisResolution } from "./capBasisRouting";
+import { basisForPool } from "./capBasisRouting";
 import { INDIRECT_CODE_BY_NAME } from "./institutionalDepts";
 import type { ReceiverEntry } from "./capReceiverRegistry";
 

@@ -52,9 +52,3 @@ export function dismissStaleStudyNotice(): void {
 export function useStaleStudyNotice(): StaleStudyNotice | null {
   return useSyncExternalStore(subscribe, getStaleStudyNotice, getStaleStudyNotice);
 }
-
-/** Test seam — reset state between fixture cases. */
-export function resetStaleStudyNoticeForTests(): void {
-  current = null;
-  listeners.clear();
-}

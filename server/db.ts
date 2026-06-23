@@ -45,12 +45,6 @@ export function getDbClient(): SupabaseClient | null {
   return provider();
 }
 
-/** Test seam — clears the cached client so a fixture can swap in a
- *  fake or re-read env. Not used by production code. */
-export function resetDbClient(): void {
-  cached = null;
-}
-
 /** Test seam — inject a fake SupabaseClient (or any object that
  *  satisfies the subset of the client API the handlers actually use).
  *  Pass `null` to simulate "DB not configured" (handlers should 503).
@@ -69,7 +63,3 @@ export function resetDbClientProviderForTests(): void {
   cached = null;
 }
 
-/** Boot-time predicate for the env summary log line. */
-export function isDbConfigured(): boolean {
-  return Boolean(process.env.SUPABASE_URL && process.env.SUPABASE_SERVICE_ROLE_KEY);
-}

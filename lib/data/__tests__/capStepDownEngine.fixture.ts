@@ -147,8 +147,6 @@ const capPools: CapPool[] = [
   },
 ];
 
-const capDirectAllocations: DirectAllocationRow[] = [];
-
 const matrixBases = allocationBasesUsedByPools(capPools, [
   {
     id: "bas-old",
