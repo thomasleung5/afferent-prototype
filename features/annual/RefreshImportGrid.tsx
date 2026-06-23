@@ -374,8 +374,8 @@ function SourceCardShell({
       scrollMarginTop: 110,
     }}>
       <div style={{
-        padding: 20,
-        display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 12,
+        padding: "16px 20px",
+        display: "flex", flexDirection: "column", gap: 16,
       }}>
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
@@ -407,18 +407,18 @@ function SourceCardShell({
             )}
           </div>
         </div>
-      </div>
 
-      <CardBody
-        card={card}
-        imports={imports}
-        importer={importer}
-        aiPdfAccessory={aiPdfAccessory}
-        aiPdfBelow={aiPdfBelow}
-        compactAiStatus={compactAiStatus}
-      >
-        {children}
-      </CardBody>
+        <CardBody
+          card={card}
+          imports={imports}
+          importer={importer}
+          aiPdfAccessory={aiPdfAccessory}
+          aiPdfBelow={aiPdfBelow}
+          compactAiStatus={compactAiStatus}
+        >
+          {children}
+        </CardBody>
+      </div>
     </div>
   );
 }
@@ -442,12 +442,7 @@ function CardBody({
     .slice(0, 4);
 
   return (
-    <div
-      style={{
-        padding: "14px 20px 18px",
-        display: "flex", flexDirection: "column", gap: 12,
-      }}
-    >
+    <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
       {/* Import action — PDF only; Paste JSON removed from the UI */}
       <InlineImportCard
         onAiPdfImport={importer.aiPdf}
