@@ -257,7 +257,7 @@ function QuickImportRow({
   const hasHistory = !!latestFileName;
   return (
     <div id={id} style={{
-      display: "flex", flexDirection: "column", gap: 8,
+      display: "flex", flexDirection: "column", gap: 12,
       padding: "10px 0",
       borderBottom: isLast ? "none" : "1px solid var(--rule)",
     }}>
@@ -266,7 +266,7 @@ function QuickImportRow({
         gap: 16, flexWrap: "wrap",
       }}>
         <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 10, flexWrap: "wrap" }}>
+          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
             <span className="display" style={{ fontSize: 15, fontWeight: 600 }}>{name}</span>
             <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
               Populates: {populates}
