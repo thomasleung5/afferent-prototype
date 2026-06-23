@@ -78,12 +78,6 @@ export interface ImportHandlerBundle {
   title: string;
   /** One-line description shown under the title. */
   helper: string;
-  /** Tag-line style summary surfaced in the COLLAPSED card so users can
-   *  scan what each source represents at a glance. Comma-separated list
-   *  of fields / concepts (no full sentence, no period). The expanded
-   *  card relies on the same tagline + supported-document chips, so the
-   *  description doesn't repeat there. */
-  tagline: string;
   /** Inline example shape (e.g. "{ items: [...] }"). */
   pasteExample: string;
   /** Optional richer help line for the paste button. */
@@ -156,7 +150,6 @@ export function useLaborImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Labor",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    tagline: "Positions, departments, FTEs, productive hours",
     pasteExample: "{ positions: [...] }",
     pasteHelper: "Paste structured output shaped like { positions: [...] }.",
     pasteSchema: LABOR_SCHEMA,
@@ -205,7 +198,6 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Operating Costs",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    tagline: "Operating expenditures and personnel costs",
     pasteExample: "{ operating: [...] }",
     pasteHelper: "Paste structured output shaped like { operating: [...] }.",
     pasteSchema: OPERATING_SCHEMA,
@@ -256,7 +248,6 @@ export function useServicesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Services",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    tagline: "Department services and workflows",
     pasteExample: "{ services: [...] }",
     pasteHelper: "Paste structured output shaped like { services: [...] }.",
     pasteSchema: SERVICES_SCHEMA,
@@ -319,7 +310,6 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
     }),
     title: "Import Volume of Activity",
     helper: "Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog.",
-    tagline: "Permit, inspection, and review counts",
     pasteExample: "{ items: [...] }",
     pasteHelper: "Paste structured output shaped like { items: [...] }.",
     pasteSchema: VOLUME_SCHEMA,
@@ -367,7 +357,6 @@ export function useFeesImportHandlers(): ImportHandlerBundle {
     }),
     title: "Import Fee Schedule",
     helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    tagline: "Fees, departments, pricing units, current rates",
     pasteExample: "{ fees: [...] }",
     pasteHelper: "Paste structured output shaped like { fees: [...] }.",
     pasteSchema: FEES_SCHEMA,
@@ -494,7 +483,6 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
     }),
     title: "Import Overhead Costs",
     helper: "Imports centers, allocation bases, and cost pools.",
-    tagline: "Indirect cost allocation methodology",
     pasteExample: "{ centers?, bases?, pools? }",
     pasteHelper: "Paste JSON shaped like { centers?, bases?, pools? }.",
     pasteSchema: CAP_SCHEMA,

@@ -349,9 +349,9 @@ interface SourceCardShellProps {
 }
 
 /** Source-Data card. Always shows source name, import status, items
- *  requiring review (if any), the tagline, and — unconditionally below —
- *  the import action, recent import history, and domain-specific review
- *  panels (children). No expand/collapse: every card surfaces its full
+ *  requiring review (if any), and — unconditionally below — the import
+ *  action, recent import history, and domain-specific review panels
+ *  (children). No expand/collapse: every card surfaces its full
  *  detail up front. */
 function SourceCardShell({
   card, imports, importer, reviewExtra = 0,
@@ -406,9 +406,6 @@ function SourceCardShell({
               </>
             )}
           </div>
-          <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", lineHeight: 1.45 }}>
-            {importer.tagline}
-          </div>
         </div>
       </div>
 
@@ -447,7 +444,6 @@ function CardBody({
   return (
     <div
       style={{
-        borderTop: "1px solid var(--rule)",
         padding: "14px 20px 18px",
         display: "flex", flexDirection: "column", gap: 12,
       }}
