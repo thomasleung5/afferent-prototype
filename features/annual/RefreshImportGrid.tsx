@@ -283,6 +283,7 @@ function QuickImportRow({
           aiPdfLabel={hasHistory ? "Re-upload" : "Upload PDF"}
           aiPdfAccept=".pdf"
           compactAiStatus
+          actionAlign="end"
         />
       </div>
       {children}
