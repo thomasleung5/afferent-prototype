@@ -59,7 +59,7 @@ export function RefreshImportGrid() {
   const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
 
   return (
-    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 12 }}>
+    <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
       {requiredCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
     </div>
   );
