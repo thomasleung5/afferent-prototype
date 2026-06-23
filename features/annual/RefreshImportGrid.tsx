@@ -202,13 +202,6 @@ export function QuickImportBanner() {
       border: "1px solid var(--rule)",
       padding: "16px 20px",
     }}>
-      <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-        color: "var(--ink-3)", textTransform: "uppercase",
-        marginBottom: 14,
-      }}>
-        Start with what you already have
-      </div>
       <div style={{ display: "flex", flexDirection: "column" }}>
         <QuickImportRow
           id="quick-import-fee-study"
