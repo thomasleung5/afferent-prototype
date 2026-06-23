@@ -441,7 +441,7 @@ function CardBody({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
-      {/* Import action — PDF only; Paste JSON removed from the UI */}
+      {/* Import action */}
       <InlineImportCard
         onAiPdfImport={importer.aiPdf}
         aiPdfAccessory={aiPdfAccessory}

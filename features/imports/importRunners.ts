@@ -2,32 +2,19 @@
  *
  * Each domain's import wiring (parser, merge call, summary formatter,
  * any local review state) lives in sourceImportHandlers.ts. The
- * surrounding scaffolding — try/catch shape, clipboard JSON
- * extraction, root-key validation, "clipboard" source tag, fallback
- * error messages — was identical across every domain, so these
- * factories collapse that boilerplate into one place.
+ * surrounding try/catch shape and fallback error messages were
+ * identical across every domain, so this factory collapses that
+ * boilerplate into one place.
  *
- * Source-tag convention: PDF imports use `file.name`; clipboard
- * imports use the literal string `"clipboard"`. Codified here so the
- * convention can't drift. */
+ * Source-tag convention: PDF imports use `file.name`. Codified here
+ * so the convention can't drift. */
 
-/** Standard return type for both handlers (`onAiPdfImport`,
- *  `onPasteJson`). Consumers render the message inline with warn-tone
- *  styling when `ok === false`. */
+/** Standard return type for `onAiPdfImport` handlers. Consumers
+ *  render the message inline with warn-tone styling when
+ *  `ok === false`. */
 export interface ImportResult {
   ok: boolean;
   message: string;
-}
-
-/** Extract the first JSON object out of arbitrary clipboard text and
- *  parse it. Mirrors the regex every page was using to be resilient
- *  to surrounding prose ("Here's the JSON: { ... }"). Used by
- *  createJsonImportHandler below; not exported because no external
- *  caller needs it. */
-function extractJsonObject(text: string): Record<string, unknown> {
-  const match = text.match(/\{[\s\S]*\}/);
-  if (!match) throw new Error("No JSON object found in clipboard.");
-  return JSON.parse(match[0]) as Record<string, unknown>;
 }
 
 // ---------------------------------------------------------------------------
@@ -85,62 +72,3 @@ export function createPdfImportHandler<P extends PdfParserResult>(
   };
 }
 
-// ---------------------------------------------------------------------------
-// JSON handler factory
-// ---------------------------------------------------------------------------
-
-interface JsonImportConfig {
-  /** Required root key in the parsed JSON. When set, validates
-   *  `parsed[rootKey]` is a non-empty array and passes that array to
-   *  `apply`. Use for the common `{ services: [...] }` shape. */
-  rootKey?: string;
-  /** Custom validator for shapes that don't fit a single rootKey
-   *  (e.g. CAP's `{ centers?, bases?, basisUnits?, pools?,
-   *  directAllocations? }` where at least one section must be
-   *  present). Receives the parsed object; throw to fail. Mutually
-   *  exclusive with `rootKey`. */
-  validate?: (parsed: Record<string, unknown>) => void;
-  /** Apply the validated payload. Receives the rootKey array when
-   *  `rootKey` was set, otherwise the full parsed object. Returns
-   *  the success message. Always invoked with `source = "clipboard"`. */
-  apply: (payload: unknown, source: "clipboard") => string | Promise<string>;
-  /** Pre-parse hook — same purpose as PDF's onStart. */
-  onStart?: () => void;
-  /** Override for the catch-all "Failed to parse JSON." fallback. */
-  importFailureMessage?: string;
-}
-
-/** Build a JSON paste handler. Handles clipboard text → JSON object
- *  extraction, optional rootKey validation, and the canonical
- *  try/catch shape. */
-export function createJsonImportHandler(
-  config: JsonImportConfig,
-): (text: string) => Promise<ImportResult> {
-  const {
-    rootKey, validate, apply, onStart,
-    importFailureMessage = "Failed to parse JSON.",
-  } = config;
-  return async (text) => {
-    onStart?.();
-    try {
-      const parsed = extractJsonObject(text);
-      let payload: unknown = parsed;
-      if (rootKey) {
-        const rows = parsed[rootKey];
-        if (!Array.isArray(rows) || rows.length === 0) {
-          throw new Error(`Expected { "${rootKey}": [...] } structure.`);
-        }
-        payload = rows;
-      } else if (validate) {
-        validate(parsed);
-      }
-      const message = await apply(payload, "clipboard");
-      return { ok: true, message };
-    } catch (err) {
-      return {
-        ok: false,
-        message: err instanceof Error ? err.message : importFailureMessage,
-      };
-    }
-  };
-}
