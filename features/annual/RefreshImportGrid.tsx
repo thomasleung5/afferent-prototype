@@ -1,4 +1,4 @@
-import type { ReactNode } from "react";
+import { useState, type ReactNode } from "react";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
@@ -436,10 +436,15 @@ interface CardBodyProps {
 function CardBody({
   card, imports, importer, aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
 }: CardBodyProps) {
+  const [showHistory, setShowHistory] = useState(false);
   const history = imports
     .filter((e) => e.domain === card.domain)
     .sort((a, b) => (b.at > a.at ? 1 : -1))
     .slice(0, 4);
+  const entries: RecentImportEntry[] = history.map((entry) => ({
+    id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
+    via: provenanceLabel(entry.batchId) ?? undefined,
+  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -454,11 +459,30 @@ function CardBody({
       {/* Domain-specific review (volume unmapped, cap unbound bases) */}
       {children}
 
-      {/* Recent import history */}
-      <RecentImportsSection entries={history.map((entry) => ({
-        id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
-        via: provenanceLabel(entry.batchId) ?? undefined,
-      }))}/>
+      {/* Recent import history — collapsed by default, no link at all on
+       *  not-imported cards (entries is empty there). */}
+      {entries.length > 0 && (
+        <div>
+          <button
+            type="button"
+            onClick={() => setShowHistory((v) => !v)}
+            aria-expanded={showHistory}
+            style={{
+              all: "unset",
+              cursor: "pointer",
+              fontSize: "var(--t-l7)",
+              color: "var(--ink-3)",
+            }}
+          >
+            Recent imports {showHistory ? "▼" : "▶"}
+          </button>
+          {showHistory && (
+            <div style={{ marginTop: 8 }}>
+              <RecentImportsSection entries={entries}/>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   );
 }
@@ -470,13 +494,12 @@ interface RecentImportEntry {
   at: string;
   /** Set when this entry was auto-populated by Fee Study or CAP rather
    *  than uploaded directly through this card — e.g. "Fee Study
-   *  extraction". Rendered as "→ via {via}" next to the filename. */
+   *  extraction". Rendered as " · via {via}" next to the filename. */
   via?: string;
 }
 
-/** "Recent imports" list shared by each domain card. Entries with a
- *  `via` provenance tag get a second line for the source attribution;
- *  ordinary direct-upload entries keep the single-line layout. */
+/** "Recent imports" list shared by each domain card — one line per
+ *  entry: filename, provenance (if any), row count, date. */
 function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
   if (entries.length === 0) return null;
   return (
@@ -485,43 +508,20 @@ function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
       <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
         {entries.map((entry) => (
           <div key={entry.id} style={{
-            display: "flex", flexDirection: "column", gap: 2,
             fontSize: "var(--t-l7)", color: "var(--ink-2)",
             padding: "4px 0",
             borderBottom: "1px dashed var(--rule)",
           }}>
-            <div style={{
-              display: "grid",
-              gridTemplateColumns: entry.via ? "minmax(0, 1fr)" : "minmax(0, 1fr) auto auto",
-              gap: 12, alignItems: "baseline",
-            }}>
-              <span style={{
-                overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-              }} title={entry.fileName}>
-                {displayFileName(entry.fileName)}
-                {entry.via && (
-                  <span style={{ color: "var(--ink-3)" }}> → via {entry.via}</span>
-                )}
-              </span>
-              {!entry.via && (
-                <>
-                  <span className="num" style={{ color: "var(--ink-3)" }}>
-                    {entry.rows.toLocaleString()} rows
-                  </span>
-                  <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-                    {formatStamp(entry.at)}
-                  </span>
-                </>
-              )}
-            </div>
-            {entry.via && (
-              <span className="num" style={{ color: "var(--ink-3)" }}>
-                {entry.rows.toLocaleString()} rows
-                <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-                  {" "}· {formatStamp(entry.at)}
-                </span>
-              </span>
-            )}
+            <span style={{
+              display: "inline-block", maxWidth: 220, verticalAlign: "bottom",
+              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+            }} title={entry.fileName}>{displayFileName(entry.fileName)}</span>
+            {entry.via && <span style={{ color: "var(--ink-3)" }}> · via {entry.via}</span>}
+            {" · "}
+            <span className="num">{entry.rows.toLocaleString()}</span> rows{" · "}
+            <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+              {formatStamp(entry.at)}
+            </span>
           </div>
         ))}
       </div>

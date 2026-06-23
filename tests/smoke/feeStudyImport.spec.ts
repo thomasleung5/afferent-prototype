@@ -46,10 +46,12 @@ test.describe("Source Data — Fee Study import flow", () => {
       buffer: Buffer.from("%PDF-1.4 fake"),
     });
 
-    // Cards aren't expandable — status, Recent Imports, and the upload
-    // action are all visible without clicking anything.
+    // Cards aren't expandable — status and the upload action are visible
+    // without clicking anything. Recent Imports is a collapsed disclosure;
+    // click the toggle to reveal the provenance-tagged entry.
     const services = page.locator("#services");
     await expect(services.getByText(/Imported.*1\s*service/)).toBeVisible();
+    await services.getByRole("button", { name: /Recent imports/ }).click();
     await expect(services.getByText("Recent imports", { exact: true })).toBeVisible();
     await expect(services.getByText(/fee-study\.pdf.*via Fee Study extraction/)).toBeVisible();
 
