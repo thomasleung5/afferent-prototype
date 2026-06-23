@@ -465,6 +465,7 @@ function CardBody({
         <div>
           <button
             type="button"
+            className="mono"
             onClick={() => setShowHistory((v) => !v)}
             aria-expanded={showHistory}
             style={{
@@ -472,7 +473,6 @@ function CardBody({
               background: "transparent", border: "none",
               padding: "2px 0",
               cursor: "pointer",
-              fontFamily: "var(--ff-mono)",
               fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.1em",
               color: "var(--ink-2)", textTransform: "uppercase",
             }}
