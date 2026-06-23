@@ -473,8 +473,8 @@ function CardBody({
               padding: "2px 0",
               cursor: "pointer",
               fontFamily: "var(--ff-mono)",
-              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-              color: "var(--ink-3)", textTransform: "uppercase",
+              fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.1em",
+              color: "var(--ink-2)", textTransform: "uppercase",
             }}
           >
             Recent imports <ExpandIndicator open={showHistory}/>
