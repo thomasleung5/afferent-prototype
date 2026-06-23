@@ -18,7 +18,7 @@ import {
 import {
   ImportReviewAction, ImportReviewPanel, ImportReviewRow,
 } from "@/features/imports/ImportReviewPanel";
-import { CellSelect } from "@/components/ui";
+import { CellSelect, ExpandIndicator } from "@/components/ui";
 import { displayFileName } from "@/lib/format";
 import {
   useLaborImportHandlers, useOperatingImportHandlers,
@@ -468,13 +468,16 @@ function CardBody({
             onClick={() => setShowHistory((v) => !v)}
             aria-expanded={showHistory}
             style={{
-              all: "unset",
+              display: "inline-flex", alignItems: "center", gap: 6,
+              background: "transparent", border: "none",
+              padding: "2px 0",
               cursor: "pointer",
-              fontSize: "var(--t-l7)",
-              color: "var(--ink-3)",
+              fontFamily: "var(--ff-mono)",
+              fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
+              color: "var(--ink-3)", textTransform: "uppercase",
             }}
           >
-            Recent imports {showHistory ? "▼" : "▶"}
+            Recent imports <ExpandIndicator open={showHistory}/>
           </button>
           {showHistory && (
             <div style={{ marginTop: 8 }}>
@@ -503,39 +506,26 @@ interface RecentImportEntry {
 function RecentImportsSection({ entries }: { entries: RecentImportEntry[] }) {
   if (entries.length === 0) return null;
   return (
-    <div>
-      <SubsectionEyebrow>Recent imports</SubsectionEyebrow>
-      <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
-        {entries.map((entry) => (
-          <div key={entry.id} style={{
-            fontSize: "var(--t-l7)", color: "var(--ink-2)",
-            padding: "4px 0",
-            borderBottom: "1px dashed var(--rule)",
-          }}>
-            <span style={{
-              display: "inline-block", maxWidth: 220, verticalAlign: "bottom",
-              overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
-            }} title={entry.fileName}>{displayFileName(entry.fileName)}</span>
-            {entry.via && <span style={{ color: "var(--ink-3)" }}> · via {entry.via}</span>}
-            {" · "}
-            <span className="num">{entry.rows.toLocaleString()}</span> rows{" · "}
-            <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
-              {formatStamp(entry.at)}
-            </span>
-          </div>
-        ))}
-      </div>
+    <div style={{ display: "flex", flexDirection: "column", gap: 4 }}>
+      {entries.map((entry) => (
+        <div key={entry.id} style={{
+          fontSize: "var(--t-l7)", color: "var(--ink-2)",
+          padding: "4px 0",
+          borderBottom: "1px dashed var(--rule)",
+        }}>
+          <span style={{
+            display: "inline-block", maxWidth: 220, verticalAlign: "bottom",
+            overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap",
+          }} title={entry.fileName}>{displayFileName(entry.fileName)}</span>
+          {entry.via && <span style={{ color: "var(--ink-3)" }}> · via {entry.via}</span>}
+          {" · "}
+          <span className="num">{entry.rows.toLocaleString()}</span> rows{" · "}
+          <span className="mono" style={{ color: "var(--ink-4)", fontSize: "var(--t-l4)" }}>
+            {formatStamp(entry.at)}
+          </span>
+        </div>
+      ))}
     </div>
-  );
-}
-
-function SubsectionEyebrow({ children }: { children: ReactNode }) {
-  return (
-    <div className="mono" style={{
-      fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
-      color: "var(--ink-3)", textTransform: "uppercase",
-      marginBottom: 6,
-    }}>{children}</div>
   );
 }
 

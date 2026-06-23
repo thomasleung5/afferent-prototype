@@ -52,7 +52,6 @@ test.describe("Source Data — Fee Study import flow", () => {
     const services = page.locator("#services");
     await expect(services.getByText(/Imported.*1\s*service/)).toBeVisible();
     await services.getByRole("button", { name: /Recent imports/ }).click();
-    await expect(services.getByText("Recent imports", { exact: true })).toBeVisible();
     await expect(services.getByText(/fee-study\.pdf.*via Fee Study extraction/)).toBeVisible();
 
     const volume = page.locator("#volume");
