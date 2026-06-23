@@ -203,7 +203,7 @@ export function QuickImportBanner() {
       padding: "16px 20px",
     }}>
       <div className="mono" style={{
-        fontSize: "var(--t-l9)", fontWeight: 700, letterSpacing: "0.12em",
+        fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.12em",
         color: "var(--ink-3)", textTransform: "uppercase",
         marginBottom: 14,
       }}>
@@ -382,8 +382,8 @@ function SourceCardShell({
             <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</span>
             {OPTIONAL_DOMAINS.has(card.domain) && (
               <span className="mono" style={{
-                fontSize: "var(--t-l9)", fontWeight: 600, letterSpacing: "0.1em",
-                color: "var(--ink-3)", textTransform: "uppercase",
+                fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.06em",
+                color: "var(--ink-2)", textTransform: "uppercase",
                 padding: "2px 6px", border: "1px solid var(--rule)",
                 background: "var(--paper-2)",
               }}>Optional</span>
@@ -658,7 +658,7 @@ function CapUnmappedPanel({ unmappedBases, setUnmappedBases }: {
             isLast={i === unmappedBases.length - 1}
           >
             <span style={{ color: "var(--ink)" }}>{d.name}</span>
-            <span style={{ color: "var(--ink-2)", fontSize: 12 }}>{d.source}</span>
+            <span style={{ color: "var(--ink-2)", fontSize: "var(--t-l8)" }}>{d.source}</span>
             <span style={{ fontSize: "var(--t-l8)", color: "var(--ink-3)" }}>{d.reason}</span>
             <ImportReviewAction
               align="right"
