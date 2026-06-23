@@ -2,14 +2,11 @@
  *
  * One hook per domain (positions, operating, services, volume, fees,
  * cap). Each returns a bundle wiring up:
- *   - aiPdf:    PDF upload handler (Promise<{ ok, message }>)
- *   - pasteJson: clipboard JSON handler (same shape)
- *   - the per-domain drawer copy (title, helper, schema preview, etc.)
+ *   - aiPdf: PDF upload handler (Promise<{ ok, message }>)
  *
- * The handlers themselves are constructed via the existing
- * createPdfImportHandler / createJsonImportHandler factories in
- * importRunners.ts; this module owns the wiring that previously lived
- * inline in each Build Model page.
+ * The handler itself is constructed via the existing
+ * createPdfImportHandler factory in importRunners.ts; this module owns
+ * the wiring that previously lived inline in each Build Model page.
  *
  * Volume + CAP additionally surface inline review state (unmapped rows
  * / unmapped bases) because their merge actions write those out as
@@ -18,7 +15,7 @@
 
 import { useState, type Dispatch, type SetStateAction } from "react";
 import {
-  createJsonImportHandler, createPdfImportHandler,
+  createPdfImportHandler,
   type ImportResult,
 } from "./importRunners";
 import { useBuildActions, useBuildState, useBuildStore } from "@/lib/store";
@@ -69,21 +66,8 @@ interface CapImportSections {
   directAllocations: CapDirectAllocationRows;
 }
 
-const arrLen = (v: unknown): number => (Array.isArray(v) ? v.length : 0);
-
 export interface ImportHandlerBundle {
   aiPdf: (file: File) => Promise<ImportResult>;
-  pasteJson: (text: string) => Promise<ImportResult>;
-  /** Modal/section title. */
-  title: string;
-  /** One-line description shown under the title. */
-  helper: string;
-  /** Inline example shape (e.g. "{ items: [...] }"). */
-  pasteExample: string;
-  /** Optional richer help line for the paste button. */
-  pasteHelper?: string;
-  /** Optional multi-line schema preview rendered under the paste action. */
-  pasteSchema?: string;
 }
 
 export interface VolumeImportHandlerBundle extends ImportHandlerBundle {
@@ -109,12 +93,6 @@ export interface CapImportHandlerBundle extends ImportHandlerBundle {
 }
 
 // ─── Labor ─────────────────────────────────────────────────────────────
-
-const LABOR_SCHEMA = `{
-  positions: [
-    { title, dept, fte, hours, confidence }
-  ]
-}`;
 
 function formatLaborSummary(
   total: number, mapped: number, lowConfidence: number,
@@ -144,25 +122,10 @@ export function useLaborImportHandlers(): ImportHandlerBundle {
       parsePdf: aiParseLaborPdf,
       apply: (parsed, fileName) => apply(parsed.positions, fileName),
     }),
-    pasteJson: createJsonImportHandler({
-      rootKey: "positions",
-      apply: (rows, source) => apply(rows as LaborRows, source),
-    }),
-    title: "Import Labor",
-    helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    pasteExample: "{ positions: [...] }",
-    pasteHelper: "Paste structured output shaped like { positions: [...] }.",
-    pasteSchema: LABOR_SCHEMA,
   };
 }
 
 // ─── Operating ─────────────────────────────────────────────────────────
-
-const OPERATING_SCHEMA = `{
-  operating: [
-    { code, line, dept, category, amount, include, confidence }
-  ]
-}`;
 
 function formatOperatingSummary(
   total: number, mapped: number, lowConfidence: number,
@@ -192,25 +155,10 @@ export function useOperatingImportHandlers(): ImportHandlerBundle {
       parsePdf: aiParseOperatingPdf,
       apply: (parsed, fileName) => apply(parsed.operating, fileName),
     }),
-    pasteJson: createJsonImportHandler({
-      rootKey: "operating",
-      apply: (rows, source) => apply(rows as OperatingRows, source),
-    }),
-    title: "Import Operating Costs",
-    helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    pasteExample: "{ operating: [...] }",
-    pasteHelper: "Paste structured output shaped like { operating: [...] }.",
-    pasteSchema: OPERATING_SCHEMA,
   };
 }
 
 // ─── Services ──────────────────────────────────────────────────────────
-
-const SERVICES_SCHEMA = `{
-  services: [
-    { name, dept, hours, volume, fee, target, confidence }
-  ]
-}`;
 
 function formatServicesSummary(
   total: number, mapped: number, lowConfidence: number, duplicates: number,
@@ -242,25 +190,10 @@ export function useServicesImportHandlers(): ImportHandlerBundle {
       ),
       apply: (parsed, fileName) => apply(parsed.services, fileName),
     }),
-    pasteJson: createJsonImportHandler({
-      rootKey: "services",
-      apply: (rows, source) => apply(rows as ServiceRows, source),
-    }),
-    title: "Import Services",
-    helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    pasteExample: "{ services: [...] }",
-    pasteHelper: "Paste structured output shaped like { services: [...] }.",
-    pasteSchema: SERVICES_SCHEMA,
   };
 }
 
 // ─── Volume of Activity ────────────────────────────────────────────────
-
-const VOLUME_SCHEMA = `{
-  items: [
-    { name, dept, prior, current, unit, confidence }
-  ]
-}`;
 
 export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
   const {
@@ -303,16 +236,6 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
       apply: (parsed, fileName) => apply(parsed.items, fileName),
       onStart: resetUnmapped,
     }),
-    pasteJson: createJsonImportHandler({
-      rootKey: "items",
-      apply: (rows, source) => apply(rows as VolumeRows, source),
-      onStart: resetUnmapped,
-    }),
-    title: "Import Volume of Activity",
-    helper: "Upload a source PDF, or paste structured JSON as a fallback. Service names fuzzy-match to the existing catalog.",
-    pasteExample: "{ items: [...] }",
-    pasteHelper: "Paste structured output shaped like { items: [...] }.",
-    pasteSchema: VOLUME_SCHEMA,
     unmapped,
     setUnmapped,
     services: services.map((s) => ({ id: s.id, name: s.name, dept: s.dept })),
@@ -323,58 +246,28 @@ export function useVolumeImportHandlers(): VolumeImportHandlerBundle {
 
 // ─── Fee Schedule ──────────────────────────────────────────────────────
 
-const FEES_SCHEMA = `{
-  fees: [
-    { name, dept, unit, fee, confidence }
-  ]
-}`;
-
 export function useFeesImportHandlers(): ImportHandlerBundle {
   const { services, mergeFeeSchedule } = useBuildState();
 
-  // Fee Schedule's two summaries differ subtly: PDF includes "from PDF"
-  // in its sentence; clipboard does not. Each handler owns that
-  // formatting so the existing copy is preserved verbatim.
-  const apply = (rows: FeeRows, source: string, fromPdf: boolean) => {
+  const apply = (rows: FeeRows, source: string) => {
     const extraction = feesToExtractionResult(rows, services, source);
     const applied = mergeFeeSchedule(extraction, source);
     const total = applied.mapped + applied.duplicates + applied.lowConfidence;
     const noun = `fee${total === 1 ? "" : "s"}`;
-    const suffix = fromPdf ? " from PDF" : "";
-    return `${total} ${noun} imported${suffix} (${applied.mapped} new, ${applied.duplicates} updated).`;
+    return `${total} ${noun} imported from PDF (${applied.mapped} new, ${applied.duplicates} updated).`;
   };
 
   return {
     aiPdf: createPdfImportHandler({
       parsePdf: aiParseFeesPdf,
-      apply: (parsed, fileName) => apply(parsed.fees, fileName, true),
+      apply: (parsed, fileName) => apply(parsed.fees, fileName),
       parseFailureMessage: "AI parsing failed.",
       importFailureMessage: "PDF parsing failed.",
     }),
-    pasteJson: createJsonImportHandler({
-      rootKey: "fees",
-      apply: (rows, source) => apply(rows as FeeRows, source, false),
-    }),
-    title: "Import Fee Schedule",
-    helper: "Upload a source PDF, or paste structured JSON as a fallback.",
-    pasteExample: "{ fees: [...] }",
-    pasteHelper: "Paste structured output shaped like { fees: [...] }.",
-    pasteSchema: FEES_SCHEMA,
   };
 }
 
 // ─── Overhead Costs (CAP bundle) ───────────────────────────────────────
-
-const CAP_SCHEMA = `{
-  centers: [{ name, glCode, totalCost, confidence }],
-  bases:   [{ name, source, methodologyNote, driverKey, directTo, confidence }],
-  basisUnits: [{ basis, source?, receivers:
-    [{ dept, glCode, deptCode?, units, confidence? }] }],
-  pools:   [{ center, pool, allocationPercent, amount,
-              basis, recoverability, confidence }],
-  directAllocations: [{ pool, center?, receivers:
-    [{ dept, glCode, deptCode?, percent, confidence? }] }]
-}`;
 
 function bundleCountsMessage(counts: {
   centers: number; bases: number; basisUnits: number;
@@ -457,35 +350,6 @@ export function useCapImportHandlers(): CapImportHandlerBundle {
       }, fileName),
       onStart: resetUnmappedBases,
     }),
-    pasteJson: createJsonImportHandler({
-      onStart: resetUnmappedBases,
-      // No single rootKey — every section is optional but at least one
-      // must be non-empty.
-      validate: (parsed) => {
-        const total =
-          arrLen(parsed.centers) + arrLen(parsed.bases) + arrLen(parsed.basisUnits)
-          + arrLen(parsed.pools) + arrLen(parsed.directAllocations);
-        if (total === 0) {
-          throw new Error('Expected { centers?, bases?, basisUnits?, pools?, directAllocations? } with at least one section.');
-        }
-      },
-      apply: (payload, source) => {
-        const p = payload as Record<string, unknown>;
-        return applySections({
-          centers: (Array.isArray(p.centers) ? p.centers : []) as CapCenterRows,
-          bases:   (Array.isArray(p.bases)   ? p.bases   : []) as CapBaseRows,
-          basisUnits: (Array.isArray(p.basisUnits) ? p.basisUnits : []) as CapBasisUnitRows,
-          pools:   (Array.isArray(p.pools)   ? p.pools   : []) as CapPoolRows,
-          directAllocations: (Array.isArray(p.directAllocations)
-            ? p.directAllocations : []) as CapDirectAllocationRows,
-        }, source);
-      },
-    }),
-    title: "Import Overhead Costs",
-    helper: "Imports centers, allocation bases, and cost pools.",
-    pasteExample: "{ centers?, bases?, pools? }",
-    pasteHelper: "Paste JSON shaped like { centers?, bases?, pools? }.",
-    pasteSchema: CAP_SCHEMA,
     unmappedBases,
     setUnmappedBases,
   };
