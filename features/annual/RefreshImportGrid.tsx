@@ -2,7 +2,7 @@ import { useState, type ReactNode } from "react";
 import { useBuildState } from "@/lib/store";
 import type { BuildImportLog, Domain } from "@/lib/store";
 import {
-  deriveRefreshSections, OPTIONAL_DOMAINS, type RefreshSectionCard,
+  deriveRefreshSections, type RefreshSectionCard,
 } from "@/lib/data/annual";
 import { InlineImportCard } from "@/features/imports/InlineImportCard";
 import {
@@ -27,7 +27,6 @@ import {
   useFeeStudyImportHandlers,
   type ImportHandlerBundle,
 } from "@/features/imports/sourceImportHandlers";
-import type { ImportResult } from "@/features/imports/importRunners";
 import { unmappedBasisDetails } from "@/lib/ai/parseCap";
 import type { UnmappedRow } from "@/lib/parse/types";
 
@@ -43,6 +42,11 @@ const LOADED_NOUN: Record<Domain, { singular: string; plural: string }> = {
   cap:       { singular: "pool",       plural: "pools" },
 };
 
+/** Every source on the page — Fee Study (a composite, non-domain
+ *  accelerant) and CAP first since one upload each can auto-populate
+ *  several of the other cards, then the 5 required domains in their
+ *  established order. All 7 render through the identical
+ *  SourceCardShell — see that component's doc comment. */
 export function RefreshImportGrid() {
   const state = useBuildState();
   const input = {
@@ -56,20 +60,21 @@ export function RefreshImportGrid() {
     impact: state.derived.impact,
   };
   const cards = deriveRefreshSections(input);
-  const requiredCards = cards.filter((c) => !OPTIONAL_DOMAINS.has(c.domain));
+  const capCard = cards.find((c) => c.domain === "cap")!;
+  const otherCards = cards.filter((c) => c.domain !== "cap");
 
   return (
     <div style={{ display: "grid", gridTemplateColumns: "repeat(2, 1fr)", gap: 16 }}>
-      {requiredCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
+      <FeeStudyCard/>
+      <DomainCard card={capCard} imports={state.imports}/>
+      {otherCards.map((c) => <DomainCard key={c.domain} card={c} imports={state.imports}/>)}
     </div>
   );
 }
 
 /** Dispatch to the right per-domain card. Each card calls its own
  *  handler hook — keeping the call sites flat so React's hook order
- *  stays stable across renders. CAP never reaches this — it's filtered
- *  out of RefreshImportGrid's requiredCards and lives only in
- *  QuickImportBanner now — but the switch stays exhaustive over Domain. */
+ *  stays stable across renders. */
 function DomainCard({ card, imports }: { card: RefreshSectionCard; imports: BuildImportLog[] }) {
   switch (card.domain) {
     case "positions": return <PositionsCard card={card} imports={imports}/>;
@@ -77,7 +82,7 @@ function DomainCard({ card, imports }: { card: RefreshSectionCard; imports: Buil
     case "services":  return <ServicesCard card={card} imports={imports}/>;
     case "volume":    return <VolumeCard card={card} imports={imports}/>;
     case "fees":      return <FeesCard card={card} imports={imports}/>;
-    case "cap":       return null;
+    case "cap":       return <CapCard card={card} imports={imports}/>;
   }
 }
 
@@ -86,12 +91,64 @@ interface DomainCardProps {
   imports: BuildImportLog[];
 }
 
+const PROVENANCE_PREFIXES: { prefix: string; label: string }[] = [
+  { prefix: "fee-study-", label: "Fee Study extraction" },
+];
+
+/** Maps a BuildImportLog.batchId back to a human label for the Recent
+ *  Imports provenance tag. Returns null for ordinary direct imports
+ *  (no batchId) or an unrecognized prefix. */
+function provenanceLabel(batchId: string | undefined): string | null {
+  if (!batchId) return null;
+  return PROVENANCE_PREFIXES.find((p) => batchId.startsWith(p.prefix))?.label ?? null;
+}
+
+interface DomainCardInfo {
+  hasImports: boolean;
+  loadedCount: number;
+  loadedNoun: { singular: string; plural: string };
+  reviewTotal: number;
+  isExtraction: boolean;
+  recentEntries: RecentImportEntry[];
+}
+
+/** Derives every SourceCardShell status input from a domain's
+ *  RefreshSectionCard + the global imports log — the one place that
+ *  filters `imports` by `card.domain`, so every *Card component below
+ *  stays domain-agnostic past this point. `reviewExtra` folds in
+ *  domain-specific pending review (Volume's unmapped rows, CAP's
+ *  unbound bases) that doesn't show up in card.review itself. */
+function domainCardInfo(
+  card: RefreshSectionCard, imports: BuildImportLog[], reviewExtra: number,
+): DomainCardInfo {
+  const matching = imports.filter((e) => e.domain === card.domain);
+  const latest = matching.length > 0
+    ? matching.reduce((a, b) => (b.id > a.id ? b : a))
+    : undefined;
+  return {
+    hasImports: card.hasImports,
+    loadedCount: card.seedCount,
+    loadedNoun: LOADED_NOUN[card.domain],
+    reviewTotal: card.review + reviewExtra,
+    isExtraction: Boolean(latest?.batchId),
+    recentEntries: matching
+      .sort((a, b) => (b.at > a.at ? 1 : -1))
+      .slice(0, 4)
+      .map((entry) => ({
+        id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
+        via: provenanceLabel(entry.batchId) ?? undefined,
+      })),
+  };
+}
+
 function PositionsCard({ card, imports }: DomainCardProps) {
   const importer = useLaborImportHandlers();
   const excel = useExcelLaborImport();
   return (
     <SourceCardShell
-      card={card} imports={imports} importer={importer}
+      id={card.domain} name={card.name} description={card.description}
+      {...domainCardInfo(card, imports, 0)}
+      importer={importer}
       aiPdfAccessory={<ExcelUploadButton state={excel}/>}
       aiPdfBelow={<ExcelLaborMappingPanel state={excel}/>}
     />
@@ -103,7 +160,9 @@ function OperatingCard({ card, imports }: DomainCardProps) {
   const excel = useExcelOperatingImport();
   return (
     <SourceCardShell
-      card={card} imports={imports} importer={importer}
+      id={card.domain} name={card.name} description={card.description}
+      {...domainCardInfo(card, imports, 0)}
+      importer={importer}
       aiPdfAccessory={<ExcelUploadButton state={excel}/>}
       aiPdfBelow={<ExcelOperatingMappingPanel state={excel}/>}
     />
@@ -115,7 +174,9 @@ function ServicesCard({ card, imports }: DomainCardProps) {
   const excel = useExcelServicesImport();
   return (
     <SourceCardShell
-      card={card} imports={imports} importer={importer}
+      id={card.domain} name={card.name} description={card.description}
+      {...domainCardInfo(card, imports, 0)}
+      importer={importer}
       aiPdfAccessory={<ExcelUploadButton state={excel}/>}
       aiPdfBelow={<ExcelServicesMappingPanel state={excel}/>}
     />
@@ -127,8 +188,8 @@ function FeesCard({ card, imports }: DomainCardProps) {
   const excel = useExcelFeeImport();
   return (
     <SourceCardShell
-      card={card}
-      imports={imports}
+      id={card.domain} name={card.name} description={card.description}
+      {...domainCardInfo(card, imports, 0)}
       importer={importer}
       aiPdfAccessory={<ExcelFeeUploadButton state={excel}/>}
       aiPdfBelow={<ExcelFeeMappingPanel state={excel}/>}
@@ -139,10 +200,11 @@ function FeesCard({ card, imports }: DomainCardProps) {
 function VolumeCard({ card, imports }: DomainCardProps) {
   const importer = useVolumeImportHandlers();
   const excel = useExcelVolumeImport();
-  const reviewExtra = importer.unmapped.length;
   return (
     <SourceCardShell
-      card={card} imports={imports} importer={importer} reviewExtra={reviewExtra}
+      id={card.domain} name={card.name} description={card.description}
+      {...domainCardInfo(card, imports, importer.unmapped.length)}
+      importer={importer}
       aiPdfAccessory={<ExcelUploadButton state={excel}/>}
       aiPdfBelow={<ExcelVolumeMappingPanel state={excel}/>}
     >
@@ -159,135 +221,62 @@ function VolumeCard({ card, imports }: DomainCardProps) {
   );
 }
 
-// ── Quick Import banner ─────────────────────────────────────────────────
-//
-// Fee Study and CAP are high-leverage optional inputs — one upload each
-// can auto-populate several of the required cards below (Fee Study →
-// Services/Volume/Fees/Positions; CAP → its own indirect-cost
-// methodology). They live here as an accelerated onboarding path, not as
-// cards: no expand/collapse, no Advanced/paste-JSON fallback, no
-// Recent Imports list of their own. The required cards below are the
-// single source of truth for "what's imported" — each one's own status
-// color + Recent Imports entry shows whether a given row came from here.
-
-const PROVENANCE_PREFIXES: { prefix: string; label: string }[] = [
-  { prefix: "fee-study-", label: "Fee Study extraction" },
-];
-
-/** Maps a BuildImportLog.batchId back to a human label for the Recent
- *  Imports provenance tag. Returns null for ordinary direct imports
- *  (no batchId) or an unrecognized prefix. */
-function provenanceLabel(batchId: string | undefined): string | null {
-  if (!batchId) return null;
-  return PROVENANCE_PREFIXES.find((p) => batchId.startsWith(p.prefix))?.label ?? null;
-}
-
-/** Quick Import banner — Fee Study and CAP upload rows, always visible
- *  and re-uploadable. Rendered above the summary bar on the Source Data
- *  page (see src/pages/source-data.tsx), distinct from RefreshImportGrid's
- *  required-card grid below it. */
-export function QuickImportBanner() {
-  const { imports } = useBuildState();
-  const feeStudy = useFeeStudyImportHandlers();
-  const cap = useCapImportHandlers();
-
-  const capLatest = [...imports]
-    .filter((e) => e.domain === "cap")
-    .sort((a, b) => (b.at > a.at ? 1 : -1))[0];
-  const feeStudyLatest = feeStudy.history[0];
-
+function CapCard({ card, imports }: DomainCardProps) {
+  const importer = useCapImportHandlers();
   return (
-    <div style={{
-      background: "var(--paper-2)",
-      border: "1px solid var(--rule)",
-      padding: "16px 20px",
-    }}>
-      <div style={{ display: "flex", flexDirection: "column" }}>
-        <QuickImportRow
-          id="quick-import-fee-study"
-          name="Fee Study"
-          populates="Services Catalog, Fee Schedule, Volume of Activity"
-          latestFileName={feeStudyLatest?.fileName}
-          latestAt={feeStudyLatest?.at}
-          onAiPdfImport={feeStudy.aiPdf}
-        >
-          {feeStudy.unmapped.length > 0 && (
-            <VolumeUnmappedPanel
-              unmapped={feeStudy.unmapped}
-              setUnmapped={feeStudy.setUnmapped}
-              services={feeStudy.services}
-              onCreate={feeStudy.createServiceForUnmapped}
-              onMap={feeStudy.mapUnmappedToService}
-            />
-          )}
-        </QuickImportRow>
-        <QuickImportRow
-          id="quick-import-cap"
-          name="Cost Allocation Plan"
-          populates="indirect cost methodology across all services"
-          latestFileName={capLatest?.result.fileName}
-          latestAt={capLatest?.at}
-          onAiPdfImport={cap.aiPdf}
-          isLast
-        >
-          {cap.unmappedBases.length > 0 && (
-            <CapUnmappedPanel
-              unmappedBases={cap.unmappedBases}
-              setUnmappedBases={cap.setUnmappedBases}
-            />
-          )}
-        </QuickImportRow>
-      </div>
-    </div>
+    <SourceCardShell
+      id={card.domain} name={card.name} description={card.description}
+      optional
+      {...domainCardInfo(card, imports, importer.unmappedBases.length)}
+      importer={importer}
+    >
+      {importer.unmappedBases.length > 0 && (
+        <CapUnmappedPanel
+          unmappedBases={importer.unmappedBases}
+          setUnmappedBases={importer.setUnmappedBases}
+        />
+      )}
+    </SourceCardShell>
   );
 }
 
-function QuickImportRow({
-  id, name, populates, latestFileName, latestAt, onAiPdfImport, isLast, children,
-}: {
-  id: string;
-  name: string;
-  populates: string;
-  latestFileName?: string;
-  latestAt?: string;
-  onAiPdfImport: (file: File) => Promise<ImportResult>;
-  isLast?: boolean;
-  children?: ReactNode;
-}) {
-  const hasHistory = !!latestFileName;
+const FEE_STUDY_NOUN = { singular: "row", plural: "rows" };
+const FEE_STUDY_DESCRIPTION =
+  "Populates Services Catalog, Volume of Activity, Fee Schedule, and Staffing & Positions from one PDF.";
+
+/** Fee Study has no domain of its own — one upload spans up to 4 other
+ *  domains, each tagged with a shared batchId rather than written under
+ *  a "fee-study" domain. Its status/history are derived from that
+ *  batch grouping (feeStudyHistoryFromImports) instead of
+ *  domainCardInfo's per-domain filtering, but it renders through the
+ *  exact same SourceCardShell as every other source. */
+function FeeStudyCard() {
+  const feeStudy = useFeeStudyImportHandlers();
+  const latest = feeStudy.history[0];
   return (
-    <div id={id} style={{
-      display: "flex", flexDirection: "column", gap: 12,
-      padding: "10px 0",
-      borderBottom: isLast ? "none" : "1px solid var(--rule)",
-    }}>
-      <div style={{
-        display: "flex", alignItems: "flex-start", justifyContent: "space-between",
-        gap: 16, flexWrap: "wrap",
-      }}>
-        <div style={{ minWidth: 0 }}>
-          <div style={{ display: "flex", alignItems: "baseline", gap: 8, flexWrap: "wrap" }}>
-            <span className="display" style={{ fontSize: 15, fontWeight: 600 }}>{name}</span>
-            <span style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
-              Populates: {populates}
-            </span>
-          </div>
-          {hasHistory && (
-            <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)", marginTop: 4 }}>
-              {displayFileName(latestFileName!)} · {formatStamp(latestAt!)}
-            </div>
-          )}
-        </div>
-        <InlineImportCard
-          onAiPdfImport={onAiPdfImport}
-          aiPdfLabel={hasHistory ? "Re-upload" : "Upload PDF"}
-          aiPdfAccept=".pdf"
-          compactAiStatus
-          actionAlign="end"
+    <SourceCardShell
+      id="fee-study" name="Fee Study" description={FEE_STUDY_DESCRIPTION}
+      optional
+      hasImports={feeStudy.history.length > 0}
+      loadedCount={latest?.rows ?? 0}
+      loadedNoun={FEE_STUDY_NOUN}
+      reviewTotal={feeStudy.unmapped.length}
+      isExtraction={false}
+      recentEntries={feeStudy.history.map((h) => (
+        { id: h.id, fileName: h.fileName, rows: h.rows, at: h.at }
+      ))}
+      importer={feeStudy}
+    >
+      {feeStudy.unmapped.length > 0 && (
+        <VolumeUnmappedPanel
+          unmapped={feeStudy.unmapped}
+          setUnmapped={feeStudy.setUnmapped}
+          services={feeStudy.services}
+          onCreate={feeStudy.createServiceForUnmapped}
+          onMap={feeStudy.mapUnmappedToService}
         />
-      </div>
-      {children}
-    </div>
+      )}
+    </SourceCardShell>
   );
 }
 
@@ -309,24 +298,32 @@ const STATUS_COLOR: Record<CardStatus, { border: string; text: string }> = {
 };
 
 function cardStatus(
-  card: RefreshSectionCard, imports: BuildImportLog[], reviewExtra: number,
+  hasImports: boolean, reviewTotal: number, isExtraction: boolean,
 ): CardStatus {
-  if (card.review + reviewExtra > 0) return "review";
-  if (!card.hasImports) return "not-imported";
-  const latest = imports
-    .filter((e) => e.domain === card.domain)
-    .reduce((a, b) => (b.id > a.id ? b : a));
-  return latest.batchId ? "extraction" : "ok";
+  if (reviewTotal > 0) return "review";
+  if (!hasImports) return "not-imported";
+  return isExtraction ? "extraction" : "ok";
 }
 
 interface SourceCardShellProps {
-  card: RefreshSectionCard;
-  imports: BuildImportLog[];
+  id: string;
+  name: string;
+  description: string;
+  /** Renders the "Optional" badge beside the title. True for CAP and
+   *  Fee Study — neither counts toward the "X of 5 required" stat. */
+  optional?: boolean;
+  hasImports: boolean;
+  loadedCount: number;
+  loadedNoun: { singular: string; plural: string };
+  /** Total items needing review, already folded in from any
+   *  domain-specific source (Volume's unmapped rows, CAP's unbound
+   *  bases, Fee Study's unmapped rows). */
+  reviewTotal: number;
+  /** True when the most recent import for this card was auto-populated
+   *  via Fee Study (a shared batchId) rather than uploaded directly. */
+  isExtraction: boolean;
+  recentEntries: RecentImportEntry[];
   importer: ImportHandlerBundle;
-  /** Extra review-pending count surfaced by domain-specific state
-   *  (Volume's unmapped rows, CAP's unbound bases). Added to the
-   *  card-level low-confidence count in the status line. */
-  reviewExtra?: number;
   /** Slot rendered to the right of the Upload PDF button inside
    *  InlineImportCard. Used by the Fees card to put the Upload Excel
    *  button beside Upload PDF. */
@@ -337,29 +334,30 @@ interface SourceCardShellProps {
   aiPdfBelow?: ReactNode;
   /** Minimal PDF-upload status presentation for InlineImportCard — see
    *  its `compactAiStatus` doc. Defaults on for source cards so Upload
-   *  PDF behaves consistently with the CAP card. */
+   *  PDF behaves consistently across every card. */
   compactAiStatus?: boolean;
   children?: ReactNode;
 }
 
-/** Source-Data card. Always shows source name, import status, items
- *  requiring review (if any), and — unconditionally below — the import
- *  action, recent import history, and domain-specific review panels
- *  (children). No expand/collapse: every card surfaces its full
- *  detail up front. */
+/** The single source-card pattern used by every source on this page —
+ *  CAP and Fee Study alike with the 5 required domains. Always shows
+ *  title, description, import status, items requiring review (if
+ *  any), the upload action, and — once something is imported — the
+ *  Recent Imports disclosure, in that fixed order regardless of
+ *  whether a given source supports PDF-only (CAP, Fee Study) or
+ *  PDF+Excel (the rest), or has its own review panel (children). No
+ *  expand/collapse: every card surfaces its full detail up front. */
 function SourceCardShell({
-  card, imports, importer, reviewExtra = 0,
+  id, name, description, optional, hasImports, loadedCount, loadedNoun,
+  reviewTotal, isExtraction, recentEntries, importer,
   aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
 }: SourceCardShellProps) {
-  const noun = LOADED_NOUN[card.domain];
-  const loaded = card.seedCount;
-  const reviewTotal = card.review + reviewExtra;
   const hasReview = reviewTotal > 0;
-  const status = cardStatus(card, imports, reviewExtra);
+  const status = cardStatus(hasImports, reviewTotal, isExtraction);
   const statusColor = STATUS_COLOR[status];
 
   return (
-    <div id={card.domain} style={{
+    <div id={id} style={{
       background: "var(--paper)",
       borderTop: "1px solid var(--rule)",
       borderRight: "1px solid var(--rule)",
@@ -373,8 +371,8 @@ function SourceCardShell({
       }}>
         <div style={{ minWidth: 0, display: "flex", flexDirection: "column", gap: 4 }}>
           <div style={{ display: "flex", alignItems: "center", gap: 8, flexWrap: "wrap" }}>
-            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>{card.name}</span>
-            {OPTIONAL_DOMAINS.has(card.domain) && (
+            <span className="display" style={{ fontSize: 16, fontWeight: 600 }}>{name}</span>
+            {optional && (
               <span className="mono" style={{
                 fontSize: "var(--t-l4)", fontWeight: 600, letterSpacing: "0.06em",
                 color: "var(--ink-2)", textTransform: "uppercase",
@@ -383,13 +381,16 @@ function SourceCardShell({
               }}>Optional</span>
             )}
           </div>
+          <div style={{ fontSize: "var(--t-l7)", color: "var(--ink-3)" }}>
+            {description}
+          </div>
           <div style={{ fontSize: "var(--fs-ui)", color: statusColor.text, fontWeight: 500 }}>
-            {card.hasImports
+            {hasImports
               ? (
                 <>
                   Imported{" · "}
-                  <span className="num">{loaded.toLocaleString()}</span>
-                  {" "}{loaded === 1 ? noun.singular : noun.plural}
+                  <span className="num">{loadedCount.toLocaleString()}</span>
+                  {" "}{loadedCount === 1 ? loadedNoun.singular : loadedNoun.plural}
                 </>
               )
               : "Not Imported"}
@@ -403,12 +404,11 @@ function SourceCardShell({
         </div>
 
         <CardBody
-          card={card}
-          imports={imports}
           importer={importer}
           aiPdfAccessory={aiPdfAccessory}
           aiPdfBelow={aiPdfBelow}
           compactAiStatus={compactAiStatus}
+          recentEntries={recentEntries}
         >
           {children}
         </CardBody>
@@ -418,27 +418,18 @@ function SourceCardShell({
 }
 
 interface CardBodyProps {
-  card: RefreshSectionCard;
-  imports: BuildImportLog[];
   importer: ImportHandlerBundle;
   aiPdfAccessory?: ReactNode;
   aiPdfBelow?: ReactNode;
   compactAiStatus?: boolean;
+  recentEntries: RecentImportEntry[];
   children?: ReactNode;
 }
 
 function CardBody({
-  card, imports, importer, aiPdfAccessory, aiPdfBelow, compactAiStatus, children,
+  importer, aiPdfAccessory, aiPdfBelow, compactAiStatus, recentEntries, children,
 }: CardBodyProps) {
   const [showHistory, setShowHistory] = useState(false);
-  const history = imports
-    .filter((e) => e.domain === card.domain)
-    .sort((a, b) => (b.at > a.at ? 1 : -1))
-    .slice(0, 4);
-  const entries: RecentImportEntry[] = history.map((entry) => ({
-    id: entry.id, fileName: entry.result.fileName, rows: entry.result.rows, at: entry.at,
-    via: provenanceLabel(entry.batchId) ?? undefined,
-  }));
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
@@ -454,8 +445,8 @@ function CardBody({
       {children}
 
       {/* Recent import history — collapsed by default, no link at all on
-       *  not-imported cards (entries is empty there). */}
-      {entries.length > 0 && (
+       *  not-imported cards (recentEntries is empty there). */}
+      {recentEntries.length > 0 && (
         <div>
           <button
             type="button"
@@ -475,7 +466,7 @@ function CardBody({
           </button>
           {showHistory && (
             <div style={{ marginTop: 8 }}>
-              <RecentImportsSection entries={entries}/>
+              <RecentImportsSection entries={recentEntries}/>
             </div>
           )}
         </div>

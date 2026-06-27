@@ -66,6 +66,10 @@ export interface AnnualChange {
 export interface RefreshSectionCard {
   domain: Domain;
   name: string;
+  /** One-line summary of what this source covers — shown under the
+   *  card title on the Source Data page, between the title and the
+   *  import-status line. */
+  description: string;
   /** Σ low-confidence rows across this domain's imports — the
    *  warn-tone "X items need review" badge in the collapsed card. */
   review: number;
@@ -166,6 +170,7 @@ function buildSectionCard(domain: Domain, input: AnnualInput): RefreshSectionCar
   return {
     domain,
     name: SOURCE_NAMES[domain],
+    description: SOURCE_DESCRIPTIONS[domain],
     review,
     lastImport,
     hasImports: matching.length > 0,
@@ -183,6 +188,16 @@ const SOURCE_NAMES: Record<Domain, string> = {
   services:  "Services Catalog",
   fees:      "Fee Schedule",
   cap:       "Cost Allocation Plan",
+};
+
+/** One-line card descriptions, paired with SOURCE_NAMES above. */
+const SOURCE_DESCRIPTIONS: Record<Domain, string> = {
+  positions: "Department staffing levels, FTE, and direct labor hours.",
+  operating: "Non-labor operating expenditures by department.",
+  volume:    "Annual transaction or activity volume by service.",
+  services:  "The services your departments perform and what drives their cost.",
+  fees:      "Currently adopted fees by service.",
+  cap:       "Indirect cost methodology and overhead allocation across departments.",
 };
 
 function seedCountFor(domain: Domain, input: AnnualInput): number {

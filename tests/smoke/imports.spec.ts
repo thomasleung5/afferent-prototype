@@ -15,8 +15,8 @@ test.describe("Source Data imports", () => {
   test("Fees card surfaces PDF + Excel upload buttons", async ({ page }) => {
     await page.goto("/source-data");
 
-    // Scoped to #fees — the Quick Import banner above also renders its
-    // own "Upload PDF" buttons (Fee Study, CAP), so an unscoped locator
+    // Scoped to #fees — every other source card on the page also
+    // renders its own "Upload PDF" button, so an unscoped locator
     // would match more than one element.
     const fees = page.locator("#fees");
     await expect(fees.getByText("Fee Schedule", { exact: true })).toBeVisible();

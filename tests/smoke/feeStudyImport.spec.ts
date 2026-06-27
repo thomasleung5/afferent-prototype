@@ -1,14 +1,12 @@
-/* Smoke: the Quick Import banner's Fee Study upload → extract → apply
- * flow.
+/* Smoke: the Fee Study card's upload → extract → apply flow.
  *
  * Mocks /api/ai/parse-fee-study rather than depending on a real AI call.
- * The banner row must run extracted sections through the EXISTING
+ * The card must run extracted sections through the EXISTING
  * services/volume/fees/positions converters and merges — this test
  * confirms the result lands on the actual Services Catalog / Volume of
  * Activity cards below (tagged "via Fee Study extraction" in their own
- * Recent Imports), since the banner itself has no Recent Imports or
- * "Applied" summary of its own. It also confirms a server failure
- * surfaces the existing warn-toned failure message inline on the row. */
+ * Recent Imports). It also confirms a server failure surfaces the
+ * existing warn-toned failure message inline on the card. */
 
 import { test, expect } from "@playwright/test";
 
@@ -39,7 +37,7 @@ test.describe("Source Data — Fee Study import flow", () => {
 
     await page.goto("/source-data");
 
-    const fileInput = page.locator("#quick-import-fee-study input[type=\"file\"]");
+    const fileInput = page.locator("#fee-study input[type=\"file\"]");
     await fileInput.setInputFiles({
       name: "fee-study.pdf",
       mimeType: "application/pdf",
@@ -70,13 +68,13 @@ test.describe("Source Data — Fee Study import flow", () => {
 
     await page.goto("/source-data");
 
-    const fileInput = page.locator("#quick-import-fee-study input[type=\"file\"]");
+    const fileInput = page.locator("#fee-study input[type=\"file\"]");
     await fileInput.setInputFiles({
       name: "fee-study.pdf",
       mimeType: "application/pdf",
       buffer: Buffer.from("%PDF-1.4 fake"),
     });
 
-    await expect(page.locator("#quick-import-fee-study").getByText(/temporarily unavailable/)).toBeVisible();
+    await expect(page.locator("#fee-study").getByText(/temporarily unavailable/)).toBeVisible();
   });
 });

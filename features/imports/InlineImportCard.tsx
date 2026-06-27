@@ -30,9 +30,6 @@ interface Props {
    *  failure message still surfaces since that path has no other
    *  feedback. */
   compactAiStatus?: boolean;
-  /** Button-row alignment. Right-edge Quick Import rows use end alignment
-   *  so compact status text can grow left without moving the button. */
-  actionAlign?: "start" | "end";
 }
 
 type Status = { ok: boolean; message: string } | null;
@@ -47,7 +44,6 @@ export function InlineImportCard({
   aiPdfAccessory,
   aiPdfBelow,
   compactAiStatus,
-  actionAlign = "start",
 }: Props) {
   // aiFileName surfaces the picked filename next to the loading text so
   // the user can confirm the right file is being processed. Cleared in
@@ -99,7 +95,6 @@ export function InlineImportCard({
           status={aiStatus}
           accessory={aiPdfAccessory}
           compact={compactAiStatus}
-          actionAlign={actionAlign}
         >
           <input
             ref={aiPdfInputRef}
@@ -140,7 +135,6 @@ function ActionPanel({
   status,
   accessory,
   compact,
-  actionAlign,
   children,
 }: {
   label: string;
@@ -166,7 +160,6 @@ function ActionPanel({
    *  import never reaches Recent Imports and would otherwise vanish
    *  with no feedback. */
   compact?: boolean;
-  actionAlign: "start" | "end";
   children?: ReactNode;
 }) {
   return (
@@ -175,7 +168,6 @@ function ActionPanel({
     }}>
       <div style={{
         display: "flex", alignItems: "baseline", gap: 12, flexWrap: "wrap",
-        justifyContent: actionAlign === "end" ? "flex-end" : "flex-start",
       }}>
         <Btn kind="primary" onClick={onClick} disabled={buttonDisabled}>
           {icon === "sparkles" && <Icon name="sparkles" size={13}/>} {buttonText}
