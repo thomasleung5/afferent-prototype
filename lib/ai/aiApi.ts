@@ -19,7 +19,7 @@ import { reportClientError } from "@/lib/telemetry/clientErrorReporter";
  *  object when no session is active — the server will then 401 the
  *  request, which the caller surfaces as a sign-in prompt. */
 export async function aiAuthHeaders(): Promise<Record<string, string>> {
-  const supabase = getSupabaseClient();
+  const supabase = await getSupabaseClient();
   if (!supabase) return {};
   const { data } = await supabase.auth.getSession();
   const token = data.session?.access_token;

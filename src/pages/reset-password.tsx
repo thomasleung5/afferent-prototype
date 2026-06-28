@@ -50,9 +50,9 @@ export function ResetPasswordPage() {
   // SDK versions emit either "PASSWORD_RECOVERY" or "SIGNED_IN" here.
   useEffect(() => {
     if (!configured) return;
-    const supabase = getSupabaseClient();
-    if (!supabase) return;
     let cancelled = false;
+    let unsubscribe: (() => void) | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
 
     // If we already have a session (e.g. the user reloaded the page),
     // the recovery session is in hand — show the form immediately.
@@ -61,24 +61,29 @@ export function ResetPasswordPage() {
       return;
     }
 
-    const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
-      if (cancelled) return;
-      if (next || event === "PASSWORD_RECOVERY") {
-        setPhase({ kind: "ready" });
-      }
-    });
+    getSupabaseClient().then((supabase) => {
+      if (cancelled || !supabase) return;
 
-    const timeout = setTimeout(() => {
-      if (cancelled) return;
-      // No session by now — the link is expired or invalid. We don't
-      // distinguish further; the user just needs a new recovery email.
-      setPhase((p) => (p.kind === "checking" ? { kind: "expired" } : p));
-    }, RECOVERY_TIMEOUT_MS);
+      const { data: sub } = supabase.auth.onAuthStateChange((event, next) => {
+        if (cancelled) return;
+        if (next || event === "PASSWORD_RECOVERY") {
+          setPhase({ kind: "ready" });
+        }
+      });
+      unsubscribe = () => sub.subscription.unsubscribe();
+
+      timeout = setTimeout(() => {
+        if (cancelled) return;
+        // No session by now — the link is expired or invalid. We don't
+        // distinguish further; the user just needs a new recovery email.
+        setPhase((p) => (p.kind === "checking" ? { kind: "expired" } : p));
+      }, RECOVERY_TIMEOUT_MS);
+    });
 
     return () => {
       cancelled = true;
-      clearTimeout(timeout);
-      sub.subscription.unsubscribe();
+      if (timeout) clearTimeout(timeout);
+      unsubscribe?.();
     };
   }, [configured, session]);
 

@@ -8,7 +8,7 @@
  * before any /api/ai/* or /api/import/* route runs. Never wire the
  * service-role key here. */
 
-import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
 interface AppEnv {
   VITE_SUPABASE_URL?: string;
@@ -37,13 +37,21 @@ function readEnv(): AppEnv {
 }
 
 let cached: SupabaseClient | null = null;
+let pending: Promise<SupabaseClient | null> | null = null;
 
 /** Returns the singleton browser Supabase client, or null when the
  *  env vars aren't configured (local dev without an auth project) OR
  *  when VITE_AUTH_DISABLED is set (smoke-test mode). The auth provider
- *  falls back to a "no-supabase" state so the SPA still mounts. */
-export function getSupabaseClient(): SupabaseClient | null {
+ *  falls back to a "no-supabase" state so the SPA still mounts.
+ *
+ *  The real `@supabase/supabase-js` SDK (~150 KB raw — it bundles the
+ *  Realtime/Storage/Postgrest sub-clients the app never uses
+ *  client-side) is dynamically imported here rather than at module
+ *  load, so it lands in its own async chunk instead of the main
+ *  entry bundle. */
+export async function getSupabaseClient(): Promise<SupabaseClient | null> {
   if (cached) return cached;
+  if (pending) return pending;
   const env = readEnv();
   if (env.VITE_AUTH_TEST_FIXTURE === "1" || env.VITE_AUTH_TEST_FIXTURE === "true") {
     cached = buildFakeFixtureClient();
@@ -51,18 +59,28 @@ export function getSupabaseClient(): SupabaseClient | null {
   }
   if (env.VITE_AUTH_DISABLED === "1" || env.VITE_AUTH_DISABLED === "true") return null;
   if (!env.VITE_SUPABASE_URL || !env.VITE_SUPABASE_ANON_KEY) return null;
-  cached = createClient(env.VITE_SUPABASE_URL, env.VITE_SUPABASE_ANON_KEY, {
-    auth: {
-      persistSession: true,
-      autoRefreshToken: true,
-      detectSessionInUrl: true,
-    },
+  pending = import("@supabase/supabase-js").then(({ createClient }) => {
+    cached = createClient(env.VITE_SUPABASE_URL!, env.VITE_SUPABASE_ANON_KEY!, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+      },
+    });
+    pending = null;
+    return cached;
   });
-  return cached;
+  return pending;
 }
 
+/** Sync check for whether auth is configured, used to set the
+ *  AuthProvider's initial render state. Reads env vars only — does
+ *  NOT trigger the supabase-js dynamic import. */
 export function isSupabaseConfigured(): boolean {
-  return getSupabaseClient() !== null;
+  const env = readEnv();
+  if (env.VITE_AUTH_TEST_FIXTURE === "1" || env.VITE_AUTH_TEST_FIXTURE === "true") return true;
+  if (env.VITE_AUTH_DISABLED === "1" || env.VITE_AUTH_DISABLED === "true") return false;
+  return Boolean(env.VITE_SUPABASE_URL && env.VITE_SUPABASE_ANON_KEY);
 }
 
 /** Synthetic SupabaseClient used by the StudyMenu Playwright smoke.
